@@ -275,6 +275,7 @@ export type Database = {
           attendee_count: number
           capacity: number | null
           city: string | null
+          country: string | null
           created_at: string
           description: string | null
           donation_note: string | null
@@ -287,9 +288,11 @@ export type Database = {
           image_url: string | null
           lat: number | null
           lng: number | null
+          location_label: string | null
           meeting_point: string | null
           practice_id: string | null
           price_cents: number
+          region: string | null
           slug: string
           starts_at: string
           state: string | null
@@ -307,6 +310,7 @@ export type Database = {
           attendee_count?: number
           capacity?: number | null
           city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           donation_note?: string | null
@@ -319,9 +323,11 @@ export type Database = {
           image_url?: string | null
           lat?: number | null
           lng?: number | null
+          location_label?: string | null
           meeting_point?: string | null
           practice_id?: string | null
           price_cents?: number
+          region?: string | null
           slug: string
           starts_at: string
           state?: string | null
@@ -339,6 +345,7 @@ export type Database = {
           attendee_count?: number
           capacity?: number | null
           city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           donation_note?: string | null
@@ -351,9 +358,11 @@ export type Database = {
           image_url?: string | null
           lat?: number | null
           lng?: number | null
+          location_label?: string | null
           meeting_point?: string | null
           practice_id?: string | null
           price_cents?: number
+          region?: string | null
           slug?: string
           starts_at?: string
           state?: string | null
@@ -475,16 +484,21 @@ export type Database = {
       groups: {
         Row: {
           city: string | null
+          country: string | null
           created_at: string
           description: string | null
           group_type: string | null
           id: string
           image_url: string | null
           is_active: boolean
+          lat: number | null
+          lng: number | null
+          location_label: string | null
           member_count: number
           name: string
           owner_user_id: string | null
           practice_id: string | null
+          region: string | null
           slug: string
           state: string | null
           theme: string | null
@@ -492,16 +506,21 @@ export type Database = {
         }
         Insert: {
           city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           group_type?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          lat?: number | null
+          lng?: number | null
+          location_label?: string | null
           member_count?: number
           name: string
           owner_user_id?: string | null
           practice_id?: string | null
+          region?: string | null
           slug: string
           state?: string | null
           theme?: string | null
@@ -509,16 +528,21 @@ export type Database = {
         }
         Update: {
           city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           group_type?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          lat?: number | null
+          lng?: number | null
+          location_label?: string | null
           member_count?: number
           name?: string
           owner_user_id?: string | null
           practice_id?: string | null
+          region?: string | null
           slug?: string
           state?: string | null
           theme?: string | null
@@ -685,6 +709,10 @@ export type Database = {
           display_name: string | null
           id: string
           is_private: boolean
+          lat: number | null
+          lng: number | null
+          location_label: string | null
+          region: string | null
           state: string | null
           updated_at: string
           username: string | null
@@ -698,6 +726,10 @@ export type Database = {
           display_name?: string | null
           id: string
           is_private?: boolean
+          lat?: number | null
+          lng?: number | null
+          location_label?: string | null
+          region?: string | null
           state?: string | null
           updated_at?: string
           username?: string | null
@@ -711,6 +743,10 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_private?: boolean
+          lat?: number | null
+          lng?: number | null
+          location_label?: string | null
+          region?: string | null
           state?: string | null
           updated_at?: string
           username?: string | null
