@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Shield, Pause, Play, Square, Headphones, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { AudioRoomPanel } from "@/components/audio-room-panel";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
