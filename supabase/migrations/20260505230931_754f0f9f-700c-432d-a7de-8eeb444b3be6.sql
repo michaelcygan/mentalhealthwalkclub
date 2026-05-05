@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.evaluate_badges(UUID, UUID) FROM authenticated;
