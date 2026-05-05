@@ -18,6 +18,7 @@ interface Event {
 function EventDetail() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
   const [event, setEvent] = useState<Event | null>(null);
   const [rsvp, setRsvp] = useState<{status:string; checked_in_at:string|null} | null>(null);
 
