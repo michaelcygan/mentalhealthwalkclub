@@ -39,6 +39,19 @@ function JournalTab() {
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
   const totalSteps = walks.reduce((s, w) => s + (w.steps ?? 0), 0);
 
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-md space-y-5 py-12 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent">
+          <BookHeart className="h-6 w-6 text-forest" />
+        </div>
+        <h1 className="font-serif text-3xl">Your journal lives here</h1>
+        <p className="text-muted-foreground">Walks, moods, reflections, and gentle badges — all private to you.</p>
+        <Button onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Create your account</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <header>
