@@ -81,7 +81,7 @@ function TabBar() {
             return (
               <li key={to}>
                 <Link
-                  to={to}
+                  to={to as never}
                   className={`flex flex-col items-center gap-1 py-2.5 text-[11px] transition ${active ? "text-primary" : "text-muted-foreground"}`}
                 >
                   <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
@@ -109,7 +109,7 @@ function TabBar() {
             return (
               <li key={to}>
                 <Link
-                  to={to}
+                  to={to as never}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                     active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent/60"
                   }`}
