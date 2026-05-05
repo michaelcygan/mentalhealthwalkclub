@@ -1,21 +1,18 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { Toaster } from "@/components/ui/sonner";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon } from "lucide-react";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
+        <h1 className="font-serif text-7xl text-foreground">404</h1>
+        <h2 className="mt-4 text-xl text-foreground">This path doesn't exist yet.</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Let's get you back on the trail.</p>
         <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          <Link to="/" className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90">
             Go home
           </Link>
         </div>
@@ -29,20 +26,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Mental Health Walk Club — You don't have to walk through it alone" },
+      { name: "description", content: "Walk solo, join live audio walks, RSVP to IRL community walks, and track your wellness journey. A warm, community-first walking app." },
+      { property: "og:title", content: "Mental Health Walk Club" },
+      { property: "og:description", content: "You don't have to walk through it alone." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" },
     ],
   }),
   shellComponent: RootShell,
@@ -64,6 +59,114 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+const TABS = [
+  { to: "/", label: "Walk", icon: Footprints, exact: true },
+  { to: "/groups", label: "Groups", icon: Users },
+  { to: "/events", label: "Events", icon: Calendar },
+  { to: "/journal", label: "Journal", icon: BookHeart },
+  { to: "/profile", label: "Profile", icon: UserIcon },
+] as const;
+
+function TabBar() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
+
+  return (
+    <>
+      {/* Mobile bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur md:hidden">
+        <ul className="grid grid-cols-5">
+          {TABS.map(({ to, label, icon: Icon, exact }) => {
+            const active = isActive(to, exact);
+            return (
+              <li key={to}>
+                <Link
+                  to={to}
+                  className={`flex flex-col items-center gap-1 py-2.5 text-[11px] transition ${active ? "text-primary" : "text-muted-foreground"}`}
+                >
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+                  <span className={active ? "font-medium" : ""}>{label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
+        <Link to="/" className="mb-10 flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-forest">
+            <Footprints className="h-4.5 w-4.5 text-primary-foreground" />
+          </div>
+          <span className="font-serif text-lg leading-tight text-sidebar-foreground">
+            Walk Club
+          </span>
+        </Link>
+        <ul className="space-y-1">
+          {TABS.map(({ to, label, icon: Icon, exact }) => {
+            const active = isActive(to, exact);
+            return (
+              <li key={to}>
+                <Link
+                  to={to}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                    active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent/60"
+                  }`}
+                >
+                  <Icon className="h-4.5 w-4.5" />
+                  {label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-auto pt-6 font-serif text-xs italic leading-relaxed text-muted-foreground">
+          You don't have to walk through it alone.
+        </p>
+      </aside>
+    </>
+  );
+}
+
+function AppFrame({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+
+  if (path.startsWith("/auth")) return <>{children}</>;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="font-serif text-muted-foreground">a quiet moment…</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (typeof window !== "undefined") {
+      window.location.replace("/auth");
+    }
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <TabBar />
+      <main className="md:pl-60">
+        <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 md:px-8 md:pb-12 md:pt-10">{children}</div>
+      </main>
+    </div>
+  );
+}
+
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <AuthProvider>
+      <AppFrame>
+        <Outlet />
+      </AppFrame>
+      <Toaster />
+    </AuthProvider>
+  );
 }
