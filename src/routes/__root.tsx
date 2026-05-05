@@ -59,13 +59,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const TABS = [
+const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
   { to: "/", label: "Walk", icon: Footprints, exact: true },
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/events", label: "Events", icon: Calendar },
   { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/profile", label: "Profile", icon: UserIcon },
-] as const;
+];
 
 function TabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
