@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
+import { Button } from "@/components/ui/button";
+import { BookHeart } from "lucide-react";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -17,6 +20,7 @@ interface Badge { name: string; description: string | null; earned_at: string; }
 
 function JournalTab() {
   const { user } = useAuth();
+  const { openAuth } = useAuthPrompt();
   const [walks, setWalks] = useState<Walk[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
 
