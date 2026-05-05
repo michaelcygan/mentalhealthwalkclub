@@ -93,8 +93,6 @@ function ActiveWalk() {
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).rpc("evaluate_badges", { _user_id: user.id, _walk_session_id: session.id });
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
