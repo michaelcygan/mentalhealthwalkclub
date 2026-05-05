@@ -19,6 +19,7 @@ interface Group { id: string; name: string; }
 
 function ProfileTab() {
   const { user, signOut } = useAuth();
+  const { openAuth } = useAuthPrompt();
   const [p, setP] = useState<Profile | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
 
@@ -35,6 +36,19 @@ function ProfileTab() {
     await supabase.from("profiles").update(p).eq("id", user.id);
     toast.success("Saved.");
   };
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-md space-y-5 py-12 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent">
+          <UserIcon className="h-6 w-6 text-forest" />
+        </div>
+        <h1 className="font-serif text-3xl">Your profile</h1>
+        <p className="text-muted-foreground">Create an account to save your walks, set goals, and join groups that fit you.</p>
+        <Button onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Create your account</Button>
+      </div>
+    );
+  }
 
   if (!p) return <div className="py-20 text-center text-muted-foreground">…</div>;
 
