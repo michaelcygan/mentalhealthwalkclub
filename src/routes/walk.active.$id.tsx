@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Shield, Pause, Play, Square, Headphones, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { AudioRoomPanel } from "@/components/audio-room-panel";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -30,7 +31,8 @@ function ActiveWalk() {
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
   const [hasMoved, setHasMoved] = useState(false);
-  const [audioRooms, setAudioRooms] = useState<Array<{id:string;title:string;theme:string|null;current_participant_count:number;max_participants:number;external_room_url:string|null}>>([]);
+  const [audioRooms, setAudioRooms] = useState<Array<{id:string;title:string;theme:string|null;current_participant_count:number;max_participants:number}>>([]);
+  const [activeRoom, setActiveRoom] = useState<{id:string;title:string;capacity:number} | null>(null);
   const [ending, setEnding] = useState(false);
   const [moodAfter, setMoodAfter] = useState("");
   const [moodAfterScore, setMoodAfterScore] = useState<number | null>(null);
@@ -74,7 +76,7 @@ function ActiveWalk() {
 
   useEffect(() => {
     if (session?.walk_type === "audio" && hasMoved) {
-      supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants,external_room_url").eq("status","open").limit(8)
+      supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("status","open").limit(8)
         .then(({ data }) => setAudioRooms(data ?? []));
     }
   }, [session?.walk_type, hasMoved]);
@@ -140,7 +142,17 @@ function ActiveWalk() {
         </div>
       </div>
 
-      {session.walk_type === "audio" && (
+      {session.walk_type === "audio" && activeRoom && (
+        <AudioRoomPanel
+          roomId={activeRoom.id}
+          walkSessionId={session.id}
+          roomTitle={activeRoom.title}
+          capacity={activeRoom.capacity}
+          onLeave={() => setActiveRoom(null)}
+        />
+      )}
+
+      {session.walk_type === "audio" && !activeRoom && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium">
             <Headphones className="h-4 w-4 text-forest" /> Live audio walks
@@ -160,11 +172,14 @@ function ActiveWalk() {
                     <div className="text-sm font-medium">{r.title}</div>
                     <div className="text-xs text-muted-foreground">{r.theme} · {r.current_participant_count}/{r.max_participants}</div>
                   </div>
-                  <Button size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90" onClick={async () => {
-                    if (!user) return;
-                    await supabase.from("audio_room_participants").insert({ audio_room_id: r.id, user_id: user.id, walk_session_id: session.id });
-                    if (r.external_room_url) window.open(r.external_room_url, "_blank");
-                  }}>Join</Button>
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-forest text-primary-foreground hover:opacity-90"
+                    disabled={r.current_participant_count >= r.max_participants}
+                    onClick={() => setActiveRoom({ id: r.id, title: r.title, capacity: r.max_participants })}
+                  >
+                    {r.current_participant_count >= r.max_participants ? "Full" : "Join"}
+                  </Button>
                 </li>
               ))}
             </ul>

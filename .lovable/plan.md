@@ -1,88 +1,88 @@
-# Logged-out experience: home page + welcome modal
+# Plan: Free, Keyless Audio Walks (Mesh WebRTC, 8-Person Cap)
 
-## Goal
-
-Anyone who lands on the URL sees the actual app — a warm, inviting Walk home page — not a sterile login wall. A welcome dialog overlays the page on first visit explaining the model, with a clear path to sign up. Every meaningful action (Start Walk, Join Group, RSVP, Join Audio Walk) gracefully funnels logged-out visitors into account creation.
+Build live audio rooms for active walks using browser-native WebRTC + Supabase Realtime for signaling + Google's public STUN. No third-party API keys. Cap each room at 8 participants (matches existing `audio_rooms.max_participants` default). Wrap everything behind a swappable transport interface so a future LiveKit/Daily upgrade is a one-file change.
 
 ## What changes
 
-### 1. Stop redirecting logged-out users to /auth
+### 1. Transport abstraction (future-proofing)
+New file `src/lib/audio/types.ts` defines an `AudioTransport` interface:
+- `join(roomId, userId)` / `leave()`
+- `setMuted(boolean)`
+- `onParticipantsChange(cb)` — emits `{ userId, muted, speaking }[]`
+- `onError(cb)`
 
-Currently `__root.tsx` force-redirects unauthenticated users to `/auth`. Remove that. Instead:
+New file `src/lib/audio/mesh-transport.ts` implements it using:
+- `RTCPeerConnection` per remote peer (mesh topology)
+- Supabase Realtime channel `audio-room:{roomId}` for SDP offer/answer + ICE candidate exchange (ephemeral broadcasts, no DB writes)
+- Google STUN: `stun:stun.l.google.com:19302`, `stun:stun1.l.google.com:19302`
+- Web Audio `AnalyserNode` on each remote stream for speaking-indicator volume detection
+- Hidden `<audio autoplay>` element per remote peer
 
-- Logged-out users see the full app shell (sidebar / tab bar) and can browse.
-- `/auth` and `/welcome` keep their existing standalone layouts.
+When time comes to swap, add `livekit-transport.ts` implementing the same interface; `useAudioRoom` picks via env flag.
 
-### 2. Public-friendly home page (`/`)
+### 2. Hook
+New file `src/lib/audio/use-audio-room.ts`:
+- `useAudioRoom(roomId)` returns `{ participants, isMuted, toggleMute, leave, status, error }`
+- Instantiates the mesh transport, manages mic permission, cleans up on unmount
+- Refuses to join unless caller passes a `walkSessionId` with `status='active'` (enforces "must be walking" gate)
 
-The Walk tab becomes the public landing. For logged-out visitors:
+### 3. Server-side participant capacity guard
+New `src/server/audio.functions.ts` with `joinAudioRoom({ roomId, walkSessionId })`:
+- Uses `requireSupabaseAuth`
+- Verifies user's walk session is `active`
+- Counts current `audio_room_participants` where `status='active'` for the room
+- Rejects if count >= `audio_rooms.max_participants` (currently 8)
+- Inserts `audio_room_participants` row (the existing `tg_audio_room_participant_count` trigger updates the count)
+- Returns OK; client then connects via mesh transport
 
-- Hero with the existing imagery + tagline ("Take the walk. Let it count.")
-- Primary CTA "Start a mental health walk" → opens auth modal (signup mode)
-- Secondary CTA "How it works" → opens welcome modal
-- Below the hero, three calm value cards: *Walk solo*, *Audio walks (only while moving)*, *IRL community walks* — short, emotionally warm copy.
-- "This week" stats card replaced with "What walkers say" / mission line for logged-out state.
-- Quick action grid still visible but each tile triggers the auth modal instead of starting a walk.
+`leaveAudioRoom` updates the participant row to `status='left'`, `left_at=now()`.
 
-For logged-in users: unchanged behavior (start-walk flow + weekly minutes).
+### 4. UI integration
+Update `src/routes/walk.active.$id.tsx` (existing audio walk surface):
+- When walk type is `audio` or `irl_event` and `audio_room_id` exists, render `<AudioRoomPanel roomId={audio_room_id} walkSessionId={id} />`
+- New component `src/components/audio-room-panel.tsx`:
+  - Shows participant chips with avatar, display name, mute icon, animated speaking ring
+  - Big mute/unmute button
+  - "Leave audio (keep walking)" button — exits the room but doesn't end the walk
+  - Capacity indicator: "5 of 8 walking together"
+  - Empty/loading/error states; mic-permission denied state with retry
 
-### 3. Welcome / marketing modal
+### 5. Database
+No schema changes required — `audio_rooms` (max_participants default 8) and `audio_room_participants` already model this. We will:
+- Confirm `max_participants` default stays 8 (matches your ask of 7–8)
+- Add a small migration to set `audio_rooms.max_participants` to 8 for any existing rows (sample data) so the cap is consistent
 
-A new `<WelcomeDialog>` (shadcn Dialog) component shown:
+### 6. Out of scope (deliberately)
+- TURN server (mesh works for ~80% of NATs without TURN; we accept this tradeoff for keyless/free; analytics will show if it becomes a problem)
+- Recording, transcription
+- Server-side moderation/kick (host can still report via existing `safety_reports`)
+- LiveKit/Daily implementation (interface is ready; swap when analytics justify it)
 
-- Automatically once on first visit (gated by a `localStorage` flag `wc_seen_welcome=1`)
-- On demand from a "How it works" button in the header / hero / footer
-- After auto-open, dismissable; never re-opens automatically
+## Technical details
 
-Contents (3 short panels in a single dialog, no carousel needed):
+```text
+Browser A                Supabase Realtime              Browser B
+   │   ── offer (SDP) ──────►│────────── offer ─────────►│
+   │◄─── answer (SDP) ───────│◄───────── answer ─────────│
+   │   ── ICE candidates ───►│────────── ICE ───────────►│
+   │                                                     │
+   │═══════ direct WebRTC audio (P2P, via STUN) ════════│
+```
 
-1. **What this is** — peer-supported walking, not therapy. 988 callout.
-2. **How it works** — Walk solo, join an IRL walk, or step into a live audio walk *only once you're actually moving*. Groups are quiet affinity tags, not feeds.
-3. **Privacy** — Your walks, moods, and reflections stay private to you.
+Files created:
+- `src/lib/audio/types.ts`
+- `src/lib/audio/mesh-transport.ts`
+- `src/lib/audio/use-audio-room.ts`
+- `src/server/audio.functions.ts`
+- `src/components/audio-room-panel.tsx`
+- One migration to normalize `max_participants = 8`
 
-Footer of dialog: "Create your account" (primary, opens auth modal in signup mode) and "I already have one" (signin mode).
+Files edited:
+- `src/routes/walk.active.$id.tsx` (mount the panel for audio walks)
 
-### 4. Auth modal (replaces full-page redirect for funnel actions)
+## Why this matches your goals
 
-Convert the existing `/auth` page into a reusable `<AuthDialog>` component, while keeping `/auth` as a standalone route fallback (deep links, password reset later). Triggered by:
-
-- Welcome dialog CTAs
-- Any "Start walk" CTA when logged out
-- Group "Join", Event "RSVP", Audio room "Join", Profile, Journal nav clicks (intercepted at the action layer)
-
-After successful signup → close modal → navigate to `/welcome` (the existing 4-step onboarding) → then return to `/`. After successful signin → close modal, stay on current page.
-
-### 5. Gentle gating across the app
-
-Instead of redirecting protected pages, render them with a soft prompt for logged-out users:
-
-- `/groups`, `/events`, `/events/$slug`, `/groups/$slug`: readable (already public RLS), but Join / RSVP buttons trigger the auth modal.
-- `/journal`, `/profile`: show a friendly empty state with a "Create your account to start your journal" CTA opening the auth modal.
-- `/walk/active/$id`: requires a session — if not logged in, redirect to `/`.
-
-### 6. Sidebar / tab bar for logged-out
-
-Keep the same nav visible (so visitors can explore Groups & Events to feel the product), but add a small "Sign in" pill at the top of the sidebar / a sign-in icon in the mobile bar. Logged-in users see no change.
-
-## Technical notes
-
-- New file `src/components/welcome-dialog.tsx` — shadcn Dialog, controlled via a tiny `useWelcome()` hook backed by `localStorage`.
-- New file `src/components/auth-dialog.tsx` — extracts the existing form from `src/routes/auth.tsx`. Both the route and the dialog import this shared form. Accepts `defaultMode` and `onSuccess` props.
-- New file `src/lib/auth-prompt.tsx` — a context exposing `requireAuth(action: () => void)` so any button can wrap its handler: if user is signed in, runs the action; if not, opens the auth dialog and runs the action after success.
-- `src/routes/__root.tsx`:
-  - Remove the `if (!user) window.location.replace("/auth")` block.
-  - Always render the shell. Add `<WelcomeDialog />` and `<AuthDialog />` mounted globally, controlled by the new context/provider.
-  - Add a "Sign in" pill in the sidebar header for logged-out users.
-- `src/routes/index.tsx`:
-  - Branch on `user`. Logged-out variant renders the marketing hero + value cards + "How it works" trigger.
-  - All start-walk handlers route through `requireAuth(...)`.
-- `src/routes/groups.tsx`, `src/routes/events.tsx`, `src/routes/events.$slug.tsx`, `src/routes/groups.$slug.tsx`: wrap action buttons in `requireAuth(...)`.
-- `src/routes/journal.tsx`, `src/routes/profile.tsx`: render a logged-out empty state with a CTA that opens the auth dialog.
-- `src/routes/walk.active.$id.tsx`: if no user, redirect to `/`.
-- Welcome modal first-open flag uses `localStorage`, guarded by `typeof window !== "undefined"` for SSR safety.
-
-## Out of scope
-
-- Real Google/Apple sign-in buttons (still email/password only).
-- Server-side rendering of personalization (keep public home identical for everyone for now).
-- Saving the intercepted action (e.g. resuming an RSVP after signup) — for v1 we just close the modal and let the user click again. Can be added later.
+- **Keyless & free**: zero third-party accounts, zero API keys, zero monthly cost.
+- **8-person cap**: enforced server-side, matches existing schema default. Bumping to 10 later is a one-line DB change.
+- **Swap path**: when admin analytics show connection failures or you outgrow 8, add `livekit-transport.ts` (same interface), add `LIVEKIT_API_KEY` + `LIVEKIT_API_SECRET` secrets, change one import in `use-audio-room.ts`. UI, RLS, gates, participant tracking — all unchanged.
+- **Walk-gated**: server function rejects joins without an active walk session, so audio rooms can't become a "sit on phone" feature.
