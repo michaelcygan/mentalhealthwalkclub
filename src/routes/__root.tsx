@@ -1,8 +1,10 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
