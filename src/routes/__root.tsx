@@ -71,6 +71,8 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
 
 function TabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useAuth();
+  const { openAuth, openWelcome } = useAuthPrompt();
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
   return (
@@ -97,7 +99,7 @@ function TabBar() {
 
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
-        <Link to="/" className="mb-10 flex items-center gap-2">
+        <Link to="/" className="mb-8 flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-forest">
             <Footprints className="h-4.5 w-4.5 text-primary-foreground" />
           </div>
@@ -105,6 +107,18 @@ function TabBar() {
             Walk Club
           </span>
         </Link>
+
+        {!user && (
+          <div className="mb-5 space-y-2">
+            <Button onClick={() => openAuth("signup")} className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+              Create account
+            </Button>
+            <button onClick={() => openAuth("signin")} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+              Sign in
+            </button>
+          </div>
+        )}
+
         <ul className="space-y-1">
           {TABS.map(({ to, label, icon: Icon, exact }) => {
             const active = isActive(to, exact);
@@ -123,16 +137,38 @@ function TabBar() {
             );
           })}
         </ul>
-        <p className="mt-auto pt-6 font-serif text-xs italic leading-relaxed text-muted-foreground">
-          You don't have to walk through it alone.
-        </p>
+
+        <div className="mt-auto pt-6">
+          <button onClick={openWelcome} className="text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
+            How it works →
+          </button>
+          <p className="mt-3 font-serif text-xs italic leading-relaxed text-muted-foreground">
+            You don't have to walk through it alone.
+          </p>
+        </div>
       </aside>
+
+      {/* Mobile top bar — sign in for logged-out visitors */}
+      {!user && (
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur md:hidden">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
+              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="font-serif text-sm">Walk Club</span>
+          </Link>
+          <div className="flex items-center gap-1">
+            <button onClick={openWelcome} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">How it works</button>
+            <Button size="sm" onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Sign up</Button>
+          </div>
+        </header>
+      )}
     </>
   );
 }
 
 function AppFrame({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   if (path.startsWith("/auth") || path.startsWith("/welcome")) return <>{children}</>;
@@ -143,13 +179,6 @@ function AppFrame({ children }: { children: React.ReactNode }) {
         <div className="font-serif text-muted-foreground">a quiet moment…</div>
       </div>
     );
-  }
-
-  if (!user) {
-    if (typeof window !== "undefined") {
-      window.location.replace("/auth");
-    }
-    return null;
   }
 
   return (
@@ -165,10 +194,12 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <AuthProvider>
-      <AppFrame>
-        <Outlet />
-      </AppFrame>
-      <Toaster />
+      <AuthPromptProvider>
+        <AppFrame>
+          <Outlet />
+        </AppFrame>
+        <Toaster />
+      </AuthPromptProvider>
     </AuthProvider>
   );
 }
