@@ -1,149 +1,88 @@
+# Logged-out experience: home page + welcome modal
 
-# Mental Health Walk Club — MVP Plan (v2)
+## Goal
 
-A warm, community-first wellness web app. The socializing happens **on your feet** — IRL events or live audio walks while actually walking. Solo walks count too. Mood and notes private. Peer support, not therapy.
+Anyone who lands on the URL sees the actual app — a warm, inviting Walk home page — not a sterile login wall. A welcome dialog overlays the page on first visit explaining the model, with a clear path to sign up. Every meaningful action (Start Walk, Join Group, RSVP, Join Audio Walk) gracefully funnels logged-out visitors into account creation.
 
-## Core Philosophy Shift
+## What changes
 
-- **No social feeds, no chat, no "hanging out" in the app.** Time in-app should push you outside.
-- **Groups** (renamed from Clubs) are lightweight identity/affinity tags — opt-in chips on your profile and on events. They are not destinations with feeds.
-- **Audio walks** are only available *during* an active walk session. You must start walking (motion detected) before you can join or stay in an audio room.
-- **IRL events** are the primary group experience.
+### 1. Stop redirecting logged-out users to /auth
 
-## Brand & Design
+Currently `__root.tsx` force-redirects unauthenticated users to `/auth`. Remove that. Instead:
 
-- Palette: warm cream `#F7F2E9`, soft sage `#C9D6C2`, forest `#2F4A3A`, muted clay `#C8866D`, warm stone `#A89E8E`, charcoal `#2A2A2A`.
-- Serif display (Fraunces) headings + Inter body. Rounded-2xl cards, soft shadows, calm transitions.
-- Mobile-first; bottom tab bar on mobile, sidebar on desktop.
+- Logged-out users see the full app shell (sidebar / tab bar) and can browse.
+- `/auth` and `/welcome` keep their existing standalone layouts.
 
-## Auth
+### 2. Public-friendly home page (`/`)
 
-Email/password + Google via Lovable Cloud. Trigger auto-creates `profiles` + `user_preferences`. Onboarding: city, preferred walk modes, group affinities (chips), audio comfort, **location permission**.
+The Walk tab becomes the public landing. For logged-out visitors:
 
-## Location & Tracking (new emphasis)
+- Hero with the existing imagery + tagline ("Take the walk. Let it count.")
+- Primary CTA "Start a mental health walk" → opens auth modal (signup mode)
+- Secondary CTA "How it works" → opens welcome modal
+- Below the hero, three calm value cards: *Walk solo*, *Audio walks (only while moving)*, *IRL community walks* — short, emotionally warm copy.
+- "This week" stats card replaced with "What walkers say" / mission line for logged-out state.
+- Quick action grid still visible but each tile triggers the auth modal instead of starting a walk.
 
-This is a location-first app:
-- On walk start, request `geolocation` permission; use `watchPosition` to track route.
-- **Distance** computed from haversine between GPS samples; persisted to `walk_sessions.distance_meters` and `route_id` (sampled polyline in a `walk_routes` table).
-- **Steps** estimated from distance × user stride (with manual override) — schema-ready for native HealthKit/Health Connect later.
-- **Movement gate for audio walks**: a small motion detector requires sustained movement (e.g. >15 m in first 60 s) before the Join Audio Room button activates. If movement stops for >2 min during an audio walk, a gentle nudge appears: "Still walking? Audio walks happen on your feet."
-- All location data stays private to the user; only aggregate distance shown.
+For logged-in users: unchanged behavior (start-walk flow + weekly minutes).
 
-New table: `walk_routes (id, walk_session_id, points jsonb, created_at)`.
+### 3. Welcome / marketing modal
 
-## Navigation (5 tabs, opens to Walk)
+A new `<WelcomeDialog>` (shadcn Dialog) component shown:
 
-1. **Walk** · 2. **Groups** · 3. **Events** · 4. **Journal** · 5. **Profile**
+- Automatically once on first visit (gated by a `localStorage` flag `wc_seen_welcome=1`)
+- On demand from a "How it works" button in the header / hero / footer
+- After auto-open, dismissable; never re-opens automatically
 
-## Walk Tab (primary surface)
+Contents (3 short panels in a single dialog, no carousel needed):
 
-Hero CTA: **Start Mental Health Walk**. Secondary: Walk Solo · Guided Solo Walk · Find an IRL Walk. Weekly goal progress. Suggested walk based on last mood/intention.
+1. **What this is** — peer-supported walking, not therapy. 988 callout.
+2. **How it works** — Walk solo, join an IRL walk, or step into a live audio walk *only once you're actually moving*. Groups are quiet affinity tags, not feeds.
+3. **Privacy** — Your walks, moods, and reflections stay private to you.
 
-Note: "Join Live Audio Walk" is **not** a top-level entry point anymore — audio rooms are surfaced *inside* the active walk screen once you're moving.
+Footer of dialog: "Create your account" (primary, opens auth modal in signup mode) and "I already have one" (signin mode).
 
-### Start Walk Flow
-1. How are you walking today? (Solo / Guided Solo / IRL Event / Audio Walk)
-2. Feeling chips (anxious, lonely, overwhelmed, sad, burned out, grieving, restless, okay, hopeful, just need company, prefer not to say)
-3. Optional 1–10 mood score
-4. Optional intention text
-5. Start → request location → create `walk_sessions` row (`status=active`)
+### 4. Auth modal (replaces full-page redirect for funnel actions)
 
-### Active Walk Screen
-Elapsed time, **live distance (mi)**, estimated steps, mood/intention chip, pause/end, calming gradient.
+Convert the existing `/auth` page into a reusable `<AuthDialog>` component, while keeping `/auth` as a standalone route fallback (deep links, password reset later). Triggered by:
 
-- Solo: "Walking alone still counts."
-- Audio mode: shows **"Confirming you're walking…"** spinner until motion gate passes, then reveals matching audio rooms (filtered by your group affinities + comfort level). Tap to join → opens external audio URL + creates participant row.
-- Persistent safety button.
+- Welcome dialog CTAs
+- Any "Start walk" CTA when logged out
+- Group "Join", Event "RSVP", Audio room "Join", Profile, Journal nav clicks (intercepted at the action layer)
 
-### End Walk Flow
-Mood after + score, optional reflection, save. Then totals (minutes, miles, steps), goal progress, badges earned, gentle insight.
+After successful signup → close modal → navigate to `/welcome` (the existing 4-step onboarding) → then return to `/`. After successful signin → close modal, stay on current page.
 
-## Groups Tab (de-emphasized, lightweight)
+### 5. Gentle gating across the app
 
-Groups = affinity chips, not communities with feeds. Seeded: Anxiety, Burnout, Grief, New Friends, Quiet Walkers, Sunday Reset, Chicago Chapter.
+Instead of redirecting protected pages, render them with a soft prompt for logged-out users:
 
-Each group page shows only:
-- Name + short description
-- Member count
-- **Upcoming IRL events tagged with this group**
-- **Active audio rooms tagged with this group** (only joinable from an active walk)
-- Join/Leave (adds chip to profile + filters event/audio matching)
+- `/groups`, `/events`, `/events/$slug`, `/groups/$slug`: readable (already public RLS), but Join / RSVP buttons trigger the auth modal.
+- `/journal`, `/profile`: show a friendly empty state with a "Create your account to start your journal" CTA opening the auth modal.
+- `/walk/active/$id`: requires a session — if not logged in, redirect to `/`.
 
-No feed. No posts. No chat. No "live now" lounge.
+### 6. Sidebar / tab bar for logged-out
 
-## Events Tab (the real social layer)
+Keep the same nav visible (so visitors can explore Groups & Events to feel the product), but add a small "Sign in" pill at the top of the sidebar / a sign-in icon in the mobile bar. Logged-in users see no change.
 
-List + detail. Types: community walk, walk + coffee, walk + party, therapist-led, fundraiser, private practice. Filter by city, date, group affinity, vibe. RSVP, check-in, claim badge after.
+## Technical notes
 
-## Journal Tab
+- New file `src/components/welcome-dialog.tsx` — shadcn Dialog, controlled via a tiny `useWelcome()` hook backed by `localStorage`.
+- New file `src/components/auth-dialog.tsx` — extracts the existing form from `src/routes/auth.tsx`. Both the route and the dialog import this shared form. Accepts `defaultMode` and `onSuccess` props.
+- New file `src/lib/auth-prompt.tsx` — a context exposing `requireAuth(action: () => void)` so any button can wrap its handler: if user is signed in, runs the action; if not, opens the auth dialog and runs the action after success.
+- `src/routes/__root.tsx`:
+  - Remove the `if (!user) window.location.replace("/auth")` block.
+  - Always render the shell. Add `<WelcomeDialog />` and `<AuthDialog />` mounted globally, controlled by the new context/provider.
+  - Add a "Sign in" pill in the sidebar header for logged-out users.
+- `src/routes/index.tsx`:
+  - Branch on `user`. Logged-out variant renders the marketing hero + value cards + "How it works" trigger.
+  - All start-walk handlers route through `requireAuth(...)`.
+- `src/routes/groups.tsx`, `src/routes/events.tsx`, `src/routes/events.$slug.tsx`, `src/routes/groups.$slug.tsx`: wrap action buttons in `requireAuth(...)`.
+- `src/routes/journal.tsx`, `src/routes/profile.tsx`: render a logged-out empty state with a CTA that opens the auth dialog.
+- `src/routes/walk.active.$id.tsx`: if no user, redirect to `/`.
+- Welcome modal first-open flag uses `localStorage`, guarded by `typeof window !== "undefined"` for SSR safety.
 
-Private dashboard: walk history, totals (walks/minutes/**miles**/steps), mood before/after trend chart, best day/time, goal progress, badges, private notes. Optional map of a recent route.
+## Out of scope
 
-## Profile Tab
-
-Identity, city/chapter, **group affinity chips**, badges, subscription placeholder, privacy settings, safety + emergency resources, hosted walks, impact/donation section.
-
-## Safety Layer
-
-Persistent safety button on active walk + audio rooms: emergency services note, 988 crisis line, leave room, report user, block user, community guidelines.
-
-## Database Schema
-
-All tables per original spec, plus:
-- `walk_routes` (per above) for GPS samples.
-- Rename: `clubs` → `groups`, `club_memberships` → `group_memberships`, FKs `club_id` → `group_id` on `walk_sessions`, `audio_rooms`, `events`.
-- `audio_rooms` gains `requires_active_walk boolean default true`.
-- `user_roles` separate table with `app_role` enum + `has_role()` SECURITY DEFINER for admin checks.
-
-### Indexes
-- `walk_sessions(user_id, started_at desc)`
-- `events(city, starts_at)`, `events(starts_at)`
-- `audio_rooms(status, theme)`
-- `group_memberships(group_id)`, `(user_id)`
-- `event_rsvps(event_id)`, `(user_id)`
-- `safety_reports(status)`
-- `walk_routes(walk_session_id)`
-
-### RLS
-- Walk sessions, routes, mood, notes: owner-only read/write.
-- Groups + events: public read; write by owner/host or admin.
-- RSVPs: owner-only; host reads attendees for own event.
-- Audio room participants: insert requires an active walk session owned by the user with confirmed motion (enforced in server function, not RLS).
-- Safety reports: any auth user inserts; admin/moderator reads.
-- Aggregate counters via triggers (member_count, attendee_count, current_participant_count) for 1M-user scale.
-
-## Badges
-
-Seed: First Walk, Ten Walks Taken, Walked It Through, Quiet Courage, Walked With Others, Sunday Reset, Still Here, Chicago Chapter Founding Walker. `evaluate_badges()` runs on walk completion.
-
-## Goals
-
-Weekly: walks count, minutes, **miles**, steps, audio walks, solo walks, IRL walks.
-
-## Audio Rooms (placeholder + gated)
-
-Schema fields `external_room_name`, `external_room_url` ready for Daily/LiveKit. Join button only renders after motion gate passes inside an active walk. Participant row records `walk_session_id` (required FK).
-
-## Admin (`/admin`, role-gated)
-
-Users, Events, Groups, Safety Reports, Badge Definitions, Donation Ledger, Featured Events, Featured Groups.
-
-## Seeded Sample Data
-
-7 groups, ~12 events across cities, 8 badges, sample walk history with routes + goals for demo user, one impact_donations row.
-
-## Technical
-
-- TanStack Start routes: `/`, `/walk`, `/walk/active/$id`, `/groups`, `/groups/$slug`, `/events`, `/events/$slug`, `/journal`, `/profile`, `/admin/*`, `/auth`.
-- Server functions (`createServerFn` + `requireSupabaseAuth`): start/end walk, push GPS sample, RSVP, join/leave group, join audio room (validates active walk + motion), evaluate badges, admin queries. Zod-validated.
-- Browser geolocation `watchPosition` with batched server pushes.
-- Recharts for mood trends; lightweight SVG polyline for route preview.
-- shadcn/ui restyled to brand tokens in `styles.css`.
-
-## Out of Scope (v1)
-
-- 1:1 DMs (never, by design)
-- Group feeds/posts/chat (intentionally absent)
-- Real audio SDK (placeholder URL)
-- Native step tracking (schema-ready)
-- Payments checkout (fields stored only)
+- Real Google/Apple sign-in buttons (still email/password only).
+- Server-side rendering of personalization (keep public home identical for everyone for now).
+- Saving the intercepted action (e.g. resuming an RSVP after signup) — for v1 we just close the modal and let the user click again. Can be added later.
