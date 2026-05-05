@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.evaluate_badges(uuid, uuid) TO authenticated;

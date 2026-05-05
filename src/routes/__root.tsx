@@ -133,7 +133,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
-  if (path.startsWith("/auth")) return <>{children}</>;
+  if (path.startsWith("/auth") || path.startsWith("/welcome")) return <>{children}</>;
 
   if (loading) {
     return (

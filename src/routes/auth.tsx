@@ -35,12 +35,13 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/welcome`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
         if (error) throw error;
         toast.success("Welcome. Lacing up your walking shoes…");
+        navigate({ to: "/welcome" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

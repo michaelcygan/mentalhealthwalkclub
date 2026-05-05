@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as GroupsRouteImport } from './routes/groups'
@@ -19,6 +20,11 @@ import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
+  '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
+  '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
+  '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/profile'
+    | '/welcome'
     | '/events/$slug'
     | '/groups/$slug'
     | '/walk/active/$id'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/profile'
+    | '/welcome'
     | '/events/$slug'
     | '/groups/$slug'
     | '/walk/active/$id'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/profile'
+    | '/welcome'
     | '/events/$slug'
     | '/groups/$slug'
     | '/walk/active/$id'
@@ -142,11 +154,19 @@ export interface RootRouteChildren {
   GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
   ProfileRoute: typeof ProfileRoute
+  WelcomeRoute: typeof WelcomeRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
   ProfileRoute: ProfileRoute,
+  WelcomeRoute: WelcomeRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
 }
 export const routeTree = rootRouteImport
