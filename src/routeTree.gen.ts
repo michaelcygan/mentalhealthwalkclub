@@ -9,9 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as JournalRouteImport } from './routes/journal'
+import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
+import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
 
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -22,35 +49,132 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsSlugRoute = GroupsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => GroupsRoute,
+} as any)
+const EventsSlugRoute = EventsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => EventsRoute,
+} as any)
+const WalkActiveIdRoute = WalkActiveIdRouteImport.update({
+  id: '/walk/active/$id',
+  path: '/walk/active/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
+  '/journal': typeof JournalRoute
+  '/profile': typeof ProfileRoute
+  '/events/$slug': typeof EventsSlugRoute
+  '/groups/$slug': typeof GroupsSlugRoute
+  '/walk/active/$id': typeof WalkActiveIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
+  '/journal': typeof JournalRoute
+  '/profile': typeof ProfileRoute
+  '/events/$slug': typeof EventsSlugRoute
+  '/groups/$slug': typeof GroupsSlugRoute
+  '/walk/active/$id': typeof WalkActiveIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
+  '/journal': typeof JournalRoute
+  '/profile': typeof ProfileRoute
+  '/events/$slug': typeof EventsSlugRoute
+  '/groups/$slug': typeof GroupsSlugRoute
+  '/walk/active/$id': typeof WalkActiveIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/events'
+    | '/groups'
+    | '/journal'
+    | '/profile'
+    | '/events/$slug'
+    | '/groups/$slug'
+    | '/walk/active/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth'
-  id: '__root__' | '/' | '/auth'
+  to:
+    | '/'
+    | '/auth'
+    | '/events'
+    | '/groups'
+    | '/journal'
+    | '/profile'
+    | '/events/$slug'
+    | '/groups/$slug'
+    | '/walk/active/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/events'
+    | '/groups'
+    | '/journal'
+    | '/profile'
+    | '/events/$slug'
+    | '/groups/$slug'
+    | '/walk/active/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  EventsRoute: typeof EventsRouteWithChildren
+  GroupsRoute: typeof GroupsRouteWithChildren
+  JournalRoute: typeof JournalRoute
+  ProfileRoute: typeof ProfileRoute
+  WalkActiveIdRoute: typeof WalkActiveIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -65,12 +189,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups/$slug': {
+      id: '/groups/$slug'
+      path: '/$slug'
+      fullPath: '/groups/$slug'
+      preLoaderRoute: typeof GroupsSlugRouteImport
+      parentRoute: typeof GroupsRoute
+    }
+    '/events/$slug': {
+      id: '/events/$slug'
+      path: '/$slug'
+      fullPath: '/events/$slug'
+      preLoaderRoute: typeof EventsSlugRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/walk/active/$id': {
+      id: '/walk/active/$id'
+      path: '/walk/active/$id'
+      fullPath: '/walk/active/$id'
+      preLoaderRoute: typeof WalkActiveIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface EventsRouteChildren {
+  EventsSlugRoute: typeof EventsSlugRoute
+}
+
+const EventsRouteChildren: EventsRouteChildren = {
+  EventsSlugRoute: EventsSlugRoute,
+}
+
+const EventsRouteWithChildren =
+  EventsRoute._addFileChildren(EventsRouteChildren)
+
+interface GroupsRouteChildren {
+  GroupsSlugRoute: typeof GroupsSlugRoute
+}
+
+const GroupsRouteChildren: GroupsRouteChildren = {
+  GroupsSlugRoute: GroupsSlugRoute,
+}
+
+const GroupsRouteWithChildren =
+  GroupsRoute._addFileChildren(GroupsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  EventsRoute: EventsRouteWithChildren,
+  GroupsRoute: GroupsRouteWithChildren,
+  JournalRoute: JournalRoute,
+  ProfileRoute: ProfileRoute,
+  WalkActiveIdRoute: WalkActiveIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
