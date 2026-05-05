@@ -142,7 +142,17 @@ function ActiveWalk() {
         </div>
       </div>
 
-      {session.walk_type === "audio" && (
+      {session.walk_type === "audio" && activeRoom && (
+        <AudioRoomPanel
+          roomId={activeRoom.id}
+          walkSessionId={session.id}
+          roomTitle={activeRoom.title}
+          capacity={activeRoom.capacity}
+          onLeave={() => setActiveRoom(null)}
+        />
+      )}
+
+      {session.walk_type === "audio" && !activeRoom && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium">
             <Headphones className="h-4 w-4 text-forest" /> Live audio walks
@@ -162,11 +172,14 @@ function ActiveWalk() {
                     <div className="text-sm font-medium">{r.title}</div>
                     <div className="text-xs text-muted-foreground">{r.theme} · {r.current_participant_count}/{r.max_participants}</div>
                   </div>
-                  <Button size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90" onClick={async () => {
-                    if (!user) return;
-                    await supabase.from("audio_room_participants").insert({ audio_room_id: r.id, user_id: user.id, walk_session_id: session.id });
-                    if (r.external_room_url) window.open(r.external_room_url, "_blank");
-                  }}>Join</Button>
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-forest text-primary-foreground hover:opacity-90"
+                    disabled={r.current_participant_count >= r.max_participants}
+                    onClick={() => setActiveRoom({ id: r.id, title: r.title, capacity: r.max_participants })}
+                  >
+                    {r.current_participant_count >= r.max_participants ? "Full" : "Join"}
+                  </Button>
                 </li>
               ))}
             </ul>
