@@ -33,7 +33,7 @@ function EventDetail() {
   };
   useEffect(() => { refresh(); }, [slug, user]);
 
-  const goRSVP = async () => {
+  const goRSVP = () => requireAuth(async () => {
     if (!user || !event) return;
     if (rsvp) {
       await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", user.id);
@@ -43,7 +43,7 @@ function EventDetail() {
       toast.success("You're going. We'll save you a spot.");
     }
     refresh();
-  };
+  });
 
   const checkIn = async () => {
     if (!user || !event) return;
