@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
+import { Button } from "@/components/ui/button";
+import { BookHeart } from "lucide-react";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -17,6 +20,7 @@ interface Badge { name: string; description: string | null; earned_at: string; }
 
 function JournalTab() {
   const { user } = useAuth();
+  const { openAuth } = useAuthPrompt();
   const [walks, setWalks] = useState<Walk[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
 
@@ -34,6 +38,19 @@ function JournalTab() {
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
   const totalSteps = walks.reduce((s, w) => s + (w.steps ?? 0), 0);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-md space-y-5 py-12 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent">
+          <BookHeart className="h-6 w-6 text-forest" />
+        </div>
+        <h1 className="font-serif text-3xl">Your journal lives here</h1>
+        <p className="text-muted-foreground">Walks, moods, reflections, and gentle badges — all private to you.</p>
+        <Button onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Create your account</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

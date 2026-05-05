@@ -2,9 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Footprints, Users, Headphones, MapPin, Sparkles } from "lucide-react";
+import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock } from "lucide-react";
 import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ const FEELINGS = ["anxious","lonely","overwhelmed","sad","burned out","grieving"
 function WalkTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { requireAuth, openWelcome } = useAuthPrompt();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [walkType, setWalkType] = useState<"solo" | "guided_solo" | "irl_event" | "audio">("solo");
   const [feeling, setFeeling] = useState<string>("");
@@ -56,6 +58,61 @@ function WalkTab() {
       setBusy(false);
     }
   };
+
+  // Logged-out marketing landing
+  if (!user) {
+    return (
+      <div className="space-y-8">
+        <div className="relative overflow-hidden rounded-3xl shadow-elevated">
+          <img src={heroImg} alt="A quiet forest path at golden hour" width={1536} height={1024} className="h-72 w-full object-cover md:h-96" />
+          <div className="absolute inset-0 bg-gradient-to-t from-forest/85 via-forest/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground md:p-10">
+            <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
+            <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight md:text-5xl">Take the walk. Let it count.</h1>
+            <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">Peer-supported walks for the days that feel heavy. Solo, audio, or IRL — never alone.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button onClick={() => requireAuth(() => setStep(1))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
+                <Footprints className="mr-2 h-4 w-4" /> Start a walk
+              </Button>
+              <Button onClick={openWelcome} variant="outline" className="rounded-full border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
+                How it works
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
+          <ValueCard icon={Headphones} title="Audio walks" body="Live, gentle audio rooms — only available once you're actually moving." />
+          <ValueCard icon={MapPin} title="IRL community walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
+        </div>
+
+        <Card className="rounded-3xl border-border bg-card p-7 shadow-soft md:p-9">
+          <div className="grid gap-6 md:grid-cols-[1.2fr,1fr] md:items-center">
+            <div>
+              <h2 className="font-serif text-2xl md:text-3xl">A different kind of social app</h2>
+              <p className="mt-3 text-muted-foreground">No feeds. No chat. No doomscroll. Groups are quiet affinity tags — Anxiety, Burnout, Sunday Reset, your city — that surface walks that fit you. The socializing happens in person, or on your feet with audio.</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button onClick={() => requireAuth(() => setStep(1))} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
+                  Take your first walk
+                </Button>
+                <Button onClick={openWelcome} variant="ghost" className="rounded-full">Learn more</Button>
+              </div>
+            </div>
+            <ul className="space-y-3 text-sm">
+              <Bullet icon={HeartHandshake}>Peer support, not therapy.</Bullet>
+              <Bullet icon={Lock}>Walks, moods, and reflections stay private to you.</Bullet>
+              <Bullet icon={Sparkles}>Gentle badges for showing up — never streak shame.</Bullet>
+            </ul>
+          </div>
+        </Card>
+
+        <p className="pt-2 text-center font-serif text-sm italic text-muted-foreground">
+          You don't have to walk through it alone.
+        </p>
+      </div>
+    );
+  }
 
   if (step === 0) {
     return (
@@ -163,5 +220,26 @@ function FlowCard({ title, sub, children }: { title: string; sub?: string; child
       {sub && <p className="text-muted-foreground">{sub}</p>}
       <div className="pt-2">{children}</div>
     </div>
+  );
+}
+
+function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
+        <Icon className="h-5 w-5 text-forest" />
+      </div>
+      <h3 className="mt-3 font-serif text-lg">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function Bullet({ icon: Icon, children }: { icon: typeof Footprints; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-forest" />
+      <span className="text-foreground/85">{children}</span>
+    </li>
   );
 }

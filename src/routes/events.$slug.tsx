@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ interface Event {
 function EventDetail() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
   const [event, setEvent] = useState<Event | null>(null);
   const [rsvp, setRsvp] = useState<{status:string; checked_in_at:string|null} | null>(null);
 
@@ -31,7 +33,7 @@ function EventDetail() {
   };
   useEffect(() => { refresh(); }, [slug, user]);
 
-  const goRSVP = async () => {
+  const goRSVP = () => requireAuth(async () => {
     if (!user || !event) return;
     if (rsvp) {
       await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", user.id);
@@ -41,7 +43,7 @@ function EventDetail() {
       toast.success("You're going. We'll save you a spot.");
     }
     refresh();
-  };
+  });
 
   const checkIn = async () => {
     if (!user || !event) return;

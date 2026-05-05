@@ -18,9 +18,14 @@ interface Session {
 
 function ActiveWalk() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/" });
+  }, [loading, user, navigate]);
+
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);

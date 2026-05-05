@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/groups")({
@@ -13,6 +14,7 @@ interface Group { id: string; name: string; slug: string; description: string | 
 
 function GroupsTab() {
   const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
   const [groups, setGroups] = useState<Group[]>([]);
   const [mine, setMine] = useState<Set<string>>(new Set());
 
@@ -22,11 +24,13 @@ function GroupsTab() {
     if (user) {
       const { data: m } = await supabase.from("group_memberships").select("group_id").eq("user_id", user.id);
       setMine(new Set((m ?? []).map((x) => x.group_id)));
+    } else {
+      setMine(new Set());
     }
   };
   useEffect(() => { refresh(); }, [user]);
 
-  const toggle = async (g: Group) => {
+  const toggle = (g: Group) => requireAuth(async () => {
     if (!user) return;
     if (mine.has(g.id)) {
       await supabase.from("group_memberships").delete().eq("group_id", g.id).eq("user_id", user.id);
@@ -34,7 +38,7 @@ function GroupsTab() {
       await supabase.from("group_memberships").insert({ group_id: g.id, user_id: user.id });
     }
     refresh();
-  };
+  });
 
   return (
     <div className="space-y-6">
