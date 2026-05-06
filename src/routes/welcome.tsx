@@ -15,11 +15,11 @@ const THEMES = ["anxiety", "burnout", "grief", "loneliness", "new in town", "qui
 const MODES: ReadonlyArray<readonly [string, string]> = [
   ["solo", "Solo"],
   ["guided_solo", "Guided Solo"],
-  ["audio", "Group Walk (audio)"],
-  ["irl_event", "In-person event"],
+  ["audio", "Walk & Talk"],
+  ["irl_event", "Local Walk"],
 ];
 const COMFORT = [
-  ["listener", "Listener", "I'd rather just listen on group walks."],
+  ["listener", "Listener", "I'd rather just listen on Walk & Talks."],
   ["sometimes_speak", "Sometimes speak", "I'll chime in when it feels right."],
   ["talker", "Talker", "I'm comfortable talking on a walk."],
 ] as const;
@@ -78,7 +78,7 @@ function Welcome() {
           {step === 0 && (
             <>
               <h2 className="font-serif text-3xl">Where are you walking from?</h2>
-              <p className="mt-2 text-sm text-muted-foreground">We'll surface IRL walks and chapters near you. Skip if you'd rather not say.</p>
+              <p className="mt-2 text-sm text-muted-foreground">We'll surface Local Walks and chapters near you. Skip if you'd rather not say.</p>
               <div className="mt-5"><LocationAutosuggest value={location} onChange={setLocation} /></div>
             </>
           )}
@@ -108,7 +108,7 @@ function Welcome() {
           )}
           {step === 3 && (
             <>
-              <h2 className="font-serif text-3xl">Group walks</h2>
+              <h2 className="font-serif text-3xl">Walk & Talks</h2>
               <p className="mt-2 text-sm text-muted-foreground">If you ever join one (only while you're walking), how comfortable are you on voice?</p>
               <div className="mt-5 grid gap-2">
                 {COMFORT.map(([v, label, sub]) => (
