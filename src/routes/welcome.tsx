@@ -74,7 +74,7 @@ function Welcome() {
             <>
               <h2 className="font-serif text-3xl">Where are you walking from?</h2>
               <p className="mt-2 text-sm text-muted-foreground">We'll surface IRL walks and chapters near you. Skip if you'd rather not say.</p>
-              <Input className="mt-5" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+              <div className="mt-5"><LocationAutosuggest value={location} onChange={setLocation} /></div>
             </>
           )}
           {step === 1 && (
