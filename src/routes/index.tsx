@@ -29,14 +29,31 @@ function WalkTab() {
   const [intention, setIntention] = useState("");
   const [busy, setBusy] = useState(false);
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
+  const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
+  const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    const since = new Date(); since.setDate(since.getDate() - 7);
-    supabase.from("walk_sessions").select("duration_seconds").eq("user_id", user.id).eq("status", "completed").gte("started_at", since.toISOString())
+    const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0,0,0,0);
+    supabase.from("walk_sessions").select("started_at,duration_seconds,status")
+      .eq("user_id", user.id).gte("started_at", since.toISOString())
       .then(({ data }) => {
-        const mins = (data ?? []).reduce((s, r) => s + Math.round((r.duration_seconds ?? 0) / 60), 0);
+        const rows = data ?? [];
+        const mins = rows.filter(r => r.status === "completed").reduce((s, r) => s + Math.round((r.duration_seconds ?? 0) / 60), 0);
         setWeeklyMinutes(mins);
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dots = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(today); d.setDate(d.getDate() - (6 - i));
+          const next = new Date(d); next.setDate(next.getDate() + 1);
+          return rows.some(r => { const t = new Date(r.started_at).getTime(); return t >= d.getTime() && t < next.getTime() && r.status === "completed"; });
+        });
+        setWeeklyDots(dots);
+        const active = rows.find(r => r.status === "active");
+        // refetch id for active walk
+        if (active) {
+          supabase.from("walk_sessions").select("id").eq("user_id", user.id).eq("status","active").order("started_at",{ascending:false}).limit(1).maybeSingle()
+            .then(({ data: a }) => setActiveWalkId(a?.id ?? null));
+        } else setActiveWalkId(null);
       });
   }, [user]);
 
