@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Footprints } from "lucide-react";
+import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 
 export const Route = createFileRoute("/welcome")({
   component: Welcome,
@@ -12,9 +12,14 @@ export const Route = createFileRoute("/welcome")({
 });
 
 const THEMES = ["anxiety", "burnout", "grief", "loneliness", "new in town", "quiet", "sunday reset", "general wellness"];
-const MODES = ["solo", "guided_solo", "audio", "irl_event"] as const;
+const MODES: ReadonlyArray<readonly [string, string]> = [
+  ["solo", "Solo"],
+  ["guided_solo", "Guided Solo"],
+  ["audio", "Group Walk (audio)"],
+  ["irl_event", "In-person event"],
+];
 const COMFORT = [
-  ["listener", "Listener", "I'd rather just listen on audio walks."],
+  ["listener", "Listener", "I'd rather just listen on group walks."],
   ["sometimes_speak", "Sometimes speak", "I'll chime in when it feels right."],
   ["talker", "Talker", "I'm comfortable talking on a walk."],
 ] as const;
@@ -23,7 +28,7 @@ function Welcome() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [city, setCity] = useState("");
+  const [location, setLocation] = useState<LocationValue | null>(null);
   const [themes, setThemes] = useState<string[]>([]);
   const [modes, setModes] = useState<string[]>(["solo"]);
   const [comfort, setComfort] = useState<string>("listener");
@@ -40,7 +45,14 @@ function Welcome() {
     if (!user) return;
     setBusy(true);
     try {
-      await supabase.from("profiles").update({ city: city || null }).eq("id", user.id);
+      await supabase.from("profiles").update({
+        city: location?.city || null,
+        region: location?.region || null,
+        country: location?.country || null,
+        location_label: location?.location_label || null,
+        lat: location?.lat ?? null,
+        lng: location?.lng ?? null,
+      }).eq("id", user.id);
       await supabase.from("user_preferences").update({
         preferred_themes: themes,
         preferred_walk_modes: modes,
@@ -67,7 +79,7 @@ function Welcome() {
             <>
               <h2 className="font-serif text-3xl">Where are you walking from?</h2>
               <p className="mt-2 text-sm text-muted-foreground">We'll surface IRL walks and chapters near you. Skip if you'd rather not say.</p>
-              <Input className="mt-5" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+              <div className="mt-5"><LocationAutosuggest value={location} onChange={setLocation} /></div>
             </>
           )}
           {step === 1 && (
@@ -86,9 +98,9 @@ function Welcome() {
               <h2 className="font-serif text-3xl">How do you like to walk?</h2>
               <p className="mt-2 text-sm text-muted-foreground">All of these are fine. You'll never be pushed.</p>
               <div className="mt-5 grid gap-2">
-                {MODES.map((m) => (
-                  <button key={m} type="button" onClick={() => toggle(modes, m, setModes)} className={`rounded-2xl border p-4 text-left transition ${modes.includes(m) ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
-                    <div className="font-medium capitalize">{m.replace(/_/g, " ")}</div>
+                {MODES.map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => toggle(modes, v, setModes)} className={`rounded-2xl border p-4 text-left transition ${modes.includes(v) ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
+                    <div className="font-medium">{label}</div>
                   </button>
                 ))}
               </div>
@@ -96,8 +108,8 @@ function Welcome() {
           )}
           {step === 3 && (
             <>
-              <h2 className="font-serif text-3xl">Audio walks</h2>
-              <p className="mt-2 text-sm text-muted-foreground">If you ever join one (only while you're walking), how comfortable are you?</p>
+              <h2 className="font-serif text-3xl">Group walks</h2>
+              <p className="mt-2 text-sm text-muted-foreground">If you ever join one (only while you're walking), how comfortable are you on voice?</p>
               <div className="mt-5 grid gap-2">
                 {COMFORT.map(([v, label, sub]) => (
                   <button key={v} type="button" onClick={() => setComfort(v)} className={`rounded-2xl border p-4 text-left transition ${comfort === v ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>

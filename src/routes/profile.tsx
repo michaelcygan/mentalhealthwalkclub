@@ -8,13 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, LogOut, AlertTriangle, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
+import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
   head: () => ({ meta: [{ title: "Profile — Walk Club" }] }),
 });
 
-interface Profile { display_name: string | null; city: string | null; bio: string | null; is_private: boolean; }
+interface Profile {
+  display_name: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  location_label: string | null;
+  lat: number | null;
+  lng: number | null;
+  bio: string | null;
+  is_private: boolean;
+}
 interface Group { id: string; name: string; }
 
 function ProfileTab() {
@@ -25,7 +36,7 @@ function ProfileTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name,city,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data));
+    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
     supabase.from("group_memberships").select("groups(id,name)").eq("user_id", user.id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
@@ -64,8 +75,11 @@ function ProfileTab() {
           <Input value={p.display_name ?? ""} onChange={(e) => setP({ ...p, display_name: e.target.value })} />
         </div>
         <div>
-          <Label>City / Chapter</Label>
-          <Input value={p.city ?? ""} onChange={(e) => setP({ ...p, city: e.target.value })} />
+          <Label>Location</Label>
+          <LocationAutosuggest
+            value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
+            onChange={(v: LocationValue | null) => setP({ ...p, city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
+          />
         </div>
         <div>
           <Label>A few words about you</Label>

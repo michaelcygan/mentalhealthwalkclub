@@ -155,12 +155,12 @@ function ActiveWalk() {
       {session.walk_type === "audio" && !activeRoom && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-            <Headphones className="h-4 w-4 text-forest" /> Live audio walks
+            <Headphones className="h-4 w-4 text-forest" /> Live group walks
           </div>
           {!hasMoved ? (
             <div className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Confirming you're walking…</span>
-              <p className="mt-1 text-xs">Audio walks happen on your feet. Take a few steps to unlock.</p>
+              <p className="mt-1 text-xs">Group walks happen on your feet. Take a few steps to unlock.</p>
             </div>
           ) : audioRooms.length === 0 ? (
             <p className="text-sm text-muted-foreground">No live rooms right now. Keep walking — one may open soon.</p>

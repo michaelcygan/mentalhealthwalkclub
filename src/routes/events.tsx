@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapPin, Users } from "lucide-react";
+import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 
 export const Route = createFileRoute("/events")({
   component: EventsTab,
@@ -16,16 +17,14 @@ interface Event {
 
 function EventsTab() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [city, setCity] = useState<string>("");
+  const [location, setLocation] = useState<LocationValue | null>(null);
 
   useEffect(() => {
     const now = new Date().toISOString();
     let q = supabase.from("events").select("id,title,slug,description,starts_at,city,vibe,venue_name,capacity,attendee_count,event_type").gte("starts_at", now).order("starts_at");
-    if (city) q = q.eq("city", city);
+    if (location?.city) q = q.ilike("city", location.city);
     q.then(({ data }) => setEvents(data ?? []));
-  }, [city]);
-
-  const cities = Array.from(new Set(events.map((e) => e.city).filter(Boolean))) as string[];
+  }, [location]);
 
   return (
     <div className="space-y-6">
@@ -34,11 +33,8 @@ function EventsTab() {
         <p className="mt-1 text-muted-foreground">Real walks, in real places, with real people.</p>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setCity("")} className={`rounded-full border px-3 py-1.5 text-sm ${!city ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card"}`}>All cities</button>
-        {cities.map((c) => (
-          <button key={c} onClick={() => setCity(c)} className={`rounded-full border px-3 py-1.5 text-sm ${city === c ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card"}`}>{c}</button>
-        ))}
+      <div className="max-w-md">
+        <LocationAutosuggest value={location} onChange={setLocation} placeholder="Filter by city…" />
       </div>
 
       <ul className="space-y-3">
