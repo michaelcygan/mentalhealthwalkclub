@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Users, CalendarPlus } from "lucide-react";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
+import { EmptyState } from "@/components/empty-state";
 
 export const Route = createFileRoute("/events")({
   component: EventsTab,
@@ -98,7 +99,7 @@ function EventsTab() {
       </div>
 
       {grouped.length === 0 && (
-        <p className="rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">No upcoming walks here yet. A small walk on your own still counts.</p>
+        <EmptyState icon={CalendarPlus} title="No walks scheduled here yet" body="Be the first to plant a Sunday Reset or quiet morning loop. A small walk on your own still counts." action={<Link to={"/events/new" as never} className="rounded-full bg-forest px-4 py-2 text-sm text-primary-foreground hover:opacity-90">Schedule a walk</Link>} />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),360px]">

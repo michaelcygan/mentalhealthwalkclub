@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { BookHeart, Award } from "lucide-react";
+import { BookHeart, Award, Footprints } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
+import { EmptyState } from "@/components/empty-state";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -129,7 +131,7 @@ function JournalTab() {
       <section className="space-y-3">
         <SectionHeading eyebrow="Your walks" title="History" />
         {walks.length === 0 ? (
-          <p className="rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">Your first walk is waiting. A small walk is still a walk.</p>
+          <EmptyState icon={Footprints} title="Your first walk is waiting" body="A small walk is still a walk. Step out for five minutes — your journal will fill itself." action={<Link to="/" className="rounded-full bg-forest px-4 py-2 text-sm text-primary-foreground hover:opacity-90">Take a walk</Link>} />
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),360px]">
             <div className="space-y-5">

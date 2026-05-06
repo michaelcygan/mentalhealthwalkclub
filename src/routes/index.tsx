@@ -31,9 +31,11 @@ function WalkTab() {
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
+  const [totalWalks, setTotalWalks] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "completed").then(({ count }) => setTotalWalks(count ?? 0));
     const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0,0,0,0);
     supabase.from("walk_sessions").select("started_at,duration_seconds,status")
       .eq("user_id", user.id).gte("started_at", since.toISOString())
@@ -173,6 +175,13 @@ function WalkTab() {
             </div>
             <Play className="h-5 w-5 text-forest" />
           </Link>
+        )}
+
+        {totalWalks === 0 && !activeWalkId && (
+          <div className="rounded-2xl border border-forest/30 bg-accent/40 p-4">
+            <p className="font-serif text-base">Your first walk is the hardest.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Five minutes around the block counts. We'll be here when you get back.</p>
+          </div>
         )}
 
         <Button onClick={() => { setWalkType("solo"); setStep(2); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
