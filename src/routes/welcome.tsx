@@ -19,7 +19,7 @@ const MODES: ReadonlyArray<readonly [string, string]> = [
   ["irl_event", "In-person event"],
 ];
 const COMFORT = [
-  ["listener", "Listener", "I'd rather just listen on audio walks."],
+  ["listener", "Listener", "I'd rather just listen on group walks."],
   ["sometimes_speak", "Sometimes speak", "I'll chime in when it feels right."],
   ["talker", "Talker", "I'm comfortable talking on a walk."],
 ] as const;
