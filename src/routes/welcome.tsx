@@ -108,8 +108,8 @@ function Welcome() {
           )}
           {step === 3 && (
             <>
-              <h2 className="font-serif text-3xl">Audio walks</h2>
-              <p className="mt-2 text-sm text-muted-foreground">If you ever join one (only while you're walking), how comfortable are you?</p>
+              <h2 className="font-serif text-3xl">Group walks</h2>
+              <p className="mt-2 text-sm text-muted-foreground">If you ever join one (only while you're walking), how comfortable are you on voice?</p>
               <div className="mt-5 grid gap-2">
                 {COMFORT.map(([v, label, sub]) => (
                   <button key={v} type="button" onClick={() => setComfort(v)} className={`rounded-2xl border p-4 text-left transition ${comfort === v ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
