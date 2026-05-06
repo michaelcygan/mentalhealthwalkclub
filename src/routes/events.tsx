@@ -28,9 +28,14 @@ function EventsTab() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-serif text-3xl">Events</h1>
-        <p className="mt-1 text-muted-foreground">Real walks, in real places, with real people.</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-3xl">Local Walks</h1>
+          <p className="mt-1 text-muted-foreground">Real walks, in real places, with real people.</p>
+        </div>
+        <Link to={"/events/new" as never} className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+          Schedule a walk
+        </Link>
       </header>
 
       <div className="max-w-md">
