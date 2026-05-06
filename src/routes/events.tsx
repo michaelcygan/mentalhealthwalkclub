@@ -51,6 +51,7 @@ function EventsTab() {
   const [location, setLocation] = useState<LocationValue | null>(null);
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
   const [didDefault, setDidDefault] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || didDefault) return;
@@ -65,7 +66,7 @@ function EventsTab() {
     const now = new Date().toISOString();
     let q = supabase.from("events").select("id,title,slug,description,starts_at,city,vibe,venue_name,capacity,attendee_count,event_type,lat,lng").gte("starts_at", now).order("starts_at");
     if (location?.city) q = q.ilike("city", location.city);
-    q.then(({ data }) => setEvents(data ?? []));
+    q.then(({ data }) => { setEvents(data ?? []); setSelectedId((data ?? [])[0]?.id ?? null); });
   }, [location]);
 
   const grouped = useMemo(() => {
@@ -77,6 +78,8 @@ function EventsTab() {
     });
     return Array.from(m.entries());
   }, [events]);
+
+  const selected = events.find((e) => e.id === selectedId);
 
   return (
     <div className="space-y-6">
@@ -98,40 +101,83 @@ function EventsTab() {
         <p className="rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">No upcoming walks here yet. A small walk on your own still counts.</p>
       )}
 
-      <div className="space-y-6">
-        {grouped.map(([bucket, list]) => (
-          <section key={bucket} className="space-y-3">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">{bucket}</div>
-            <ul className="space-y-3">
-              {list.map((e) => {
-                const grad = (e.vibe && vibeGradient[e.vibe]) || "from-accent/40 to-card";
-                const dist = me && e.lat && e.lng ? haversineMi(me, { lat: Number(e.lat), lng: Number(e.lng) }) : null;
-                return (
-                  <li key={e.id}>
-                    <Link to={"/events/$slug" as never} params={{ slug: e.slug } as never} className="block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-px hover:border-forest/40">
-                      <div className={`h-2 w-full bg-gradient-to-r ${grad}`} />
-                      <div className="p-5">
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-clay">
-                          <span>{e.event_type.replace(/_/g, " ")}</span>
-                          {e.vibe && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] normal-case tracking-normal text-foreground">{e.vibe}</span>}
-                        </div>
-                        <h3 className="mt-1 font-serif text-xl">{e.title}</h3>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span>{new Date(e.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
-                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{e.venue_name}, {e.city}</span>
-                          <span className="flex items-center gap-1"><Users className="h-3 w-3" />{e.attendee_count}/{e.capacity ?? "—"}</span>
-                          {dist !== null && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{dist < 0.1 ? "<0.1" : dist.toFixed(1)} mi away</span>}
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),360px]">
+        <div className="space-y-6">
+          {grouped.map(([bucket, list]) => (
+            <section key={bucket} className="space-y-3">
+              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">{bucket}</div>
+              <ul className="space-y-3">
+                {list.map((e) => {
+                  const grad = (e.vibe && vibeGradient[e.vibe]) || "from-accent/40 to-card";
+                  const dist = me && e.lat && e.lng ? haversineMi(me, { lat: Number(e.lat), lng: Number(e.lng) }) : null;
+                  const active = selectedId === e.id;
+                  return (
+                    <li key={e.id}>
+                      {/* desktop: select; mobile: navigate */}
+                      <button onClick={() => setSelectedId(e.id)} className={`hidden w-full overflow-hidden rounded-2xl border text-left shadow-soft transition hover:-translate-y-px lg:block ${active ? "border-forest bg-accent/30" : "border-border bg-card hover:border-forest/40"}`}>
+                        <CardBody e={e} grad={grad} dist={dist} />
+                      </button>
+                      <Link to={"/events/$slug" as never} params={{ slug: e.slug } as never} className="block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-px hover:border-forest/40 lg:hidden">
+                        <CardBody e={e} grad={grad} dist={dist} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        <aside className="hidden lg:block">
+          <div className="sticky top-4">
+            {selected ? (
+              <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
+                <div className={`h-3 w-full bg-gradient-to-r ${(selected.vibe && vibeGradient[selected.vibe]) || "from-accent/40 to-card"}`} />
+                <div className="p-6">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-clay">
+                    <span>{selected.event_type.replace(/_/g, " ")}</span>
+                    {selected.vibe && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] normal-case tracking-normal text-foreground">{selected.vibe}</span>}
+                  </div>
+                  <h3 className="mt-1 font-serif text-2xl">{selected.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{selected.description}</p>
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center gap-2"><MapPin className="h-3 w-3 text-forest" />{selected.venue_name}, {selected.city}</div>
+                    <div className="flex items-center gap-2"><Users className="h-3 w-3 text-forest" />{selected.attendee_count}/{selected.capacity ?? "—"} going</div>
+                    <div className="text-muted-foreground">{new Date(selected.starts_at).toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+                  </div>
+                  <Link to={"/events/$slug" as never} params={{ slug: selected.slug } as never} className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90">
+                    Open & RSVP
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see details.</div>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
+  );
+}
+
+function CardBody({ e, grad, dist }: { e: Event; grad: string; dist: number | null }) {
+  return (
+    <>
+      <div className={`h-2 w-full bg-gradient-to-r ${grad}`} />
+      <div className="p-5">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-clay">
+          <span>{e.event_type.replace(/_/g, " ")}</span>
+          {e.vibe && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] normal-case tracking-normal text-foreground">{e.vibe}</span>}
+        </div>
+        <h3 className="mt-1 font-serif text-xl">{e.title}</h3>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>{new Date(e.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{e.venue_name}, {e.city}</span>
+          <span className="flex items-center gap-1"><Users className="h-3 w-3" />{e.attendee_count}/{e.capacity ?? "—"}</span>
+          {dist !== null && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{dist < 0.1 ? "<0.1" : dist.toFixed(1)} mi away</span>}
+        </div>
+      </div>
+    </>
   );
 }
