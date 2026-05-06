@@ -23,7 +23,7 @@ function Welcome() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [city, setCity] = useState("");
+  const [location, setLocation] = useState<LocationValue | null>(null);
   const [themes, setThemes] = useState<string[]>([]);
   const [modes, setModes] = useState<string[]>(["solo"]);
   const [comfort, setComfort] = useState<string>("listener");
