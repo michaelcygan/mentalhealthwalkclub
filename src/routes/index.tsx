@@ -137,12 +137,31 @@ function WalkTab() {
     const hour = new Date().getHours();
     const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
+    // Time-of-day hero gradient
+    const heroGrad =
+      hour < 5 ? "from-slate-700/90 via-forest/60 to-forest" :
+      hour < 9 ? "from-amber-200/70 via-rose-200/40 to-cream" :
+      hour < 17 ? "from-sage/60 via-cream to-cream" :
+      hour < 20 ? "from-clay/60 via-amber-200/40 to-cream" :
+      "from-indigo-300/40 via-forest/40 to-forest/60";
+    const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
+    const quickFeel = (mood: string, score: number) => {
+      setFeeling(mood); setMoodScore(score); setWalkType("solo"); setStep(3);
+    };
     return (
       <div className="space-y-5">
-        <header className="flex items-end justify-between gap-3">
-          <div>
-            <p className="font-serif text-xs italic text-muted-foreground">Come as you are. Walk at your pace.</p>
-            <h1 className="mt-0.5 font-serif text-2xl leading-tight md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
+        <header className={`overflow-hidden rounded-3xl bg-gradient-to-br ${heroGrad} p-6 shadow-soft md:p-8`}>
+          <p className="font-serif text-xs italic text-foreground/70">Come as you are. Walk at your pace.</p>
+          <h1 className="mt-1 font-serif text-2xl leading-tight md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-forest/80">How are you arriving?</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {[
+              { l: "heavy", s: 3 }, { l: "tender", s: 4 }, { l: "okay", s: 6 }, { l: "lighter", s: 8 },
+            ].map((m) => (
+              <button key={m.l} onClick={() => quickFeel(m.l, m.s)} className="rounded-full border border-foreground/15 bg-card/80 px-3.5 py-1.5 text-sm backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/50">
+                {m.l}
+              </button>
+            ))}
           </div>
         </header>
 
@@ -160,17 +179,24 @@ function WalkTab() {
           <Footprints className="mr-2 h-5 w-5" /> Start a walk
         </Button>
 
-        <div className="flex flex-wrap gap-2">
-          <ModePill icon={Footprints} label="Solo" onClick={() => { setWalkType("solo"); setStep(2); }} />
-          <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(2); }} />
-          <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(2); }} />
-          <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
+        <div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
+          <div className="flex flex-wrap gap-2">
+            <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(2); }} />
+            <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(2); }} />
+            <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
+          </div>
         </div>
 
         <LiveNowStrip />
 
         <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
           <WeeklyRing minutes={weeklyMinutes} dots={weeklyDots} />
+          {streak > 0 && (
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              <span className="font-medium text-forest tabular-nums">{streak}-day</span> streak · rest is part of walking.
+            </p>
+          )}
         </Card>
       </div>
     );
