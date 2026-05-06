@@ -177,6 +177,13 @@ function WalkTab() {
           </Link>
         )}
 
+        {totalWalks === 0 && !activeWalkId && (
+          <div className="rounded-2xl border border-forest/30 bg-accent/40 p-4">
+            <p className="font-serif text-base">Your first walk is the hardest.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Five minutes around the block counts. We'll be here when you get back.</p>
+          </div>
+        )}
+
         <Button onClick={() => { setWalkType("solo"); setStep(2); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
           <Footprints className="mr-2 h-5 w-5" /> Start a walk
         </Button>
