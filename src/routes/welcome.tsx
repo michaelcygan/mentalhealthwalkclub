@@ -98,9 +98,9 @@ function Welcome() {
               <h2 className="font-serif text-3xl">How do you like to walk?</h2>
               <p className="mt-2 text-sm text-muted-foreground">All of these are fine. You'll never be pushed.</p>
               <div className="mt-5 grid gap-2">
-                {MODES.map((m) => (
-                  <button key={m} type="button" onClick={() => toggle(modes, m, setModes)} className={`rounded-2xl border p-4 text-left transition ${modes.includes(m) ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
-                    <div className="font-medium capitalize">{m.replace(/_/g, " ")}</div>
+                {MODES.map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => toggle(modes, v, setModes)} className={`rounded-2xl border p-4 text-left transition ${modes.includes(v) ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
+                    <div className="font-medium">{label}</div>
                   </button>
                 ))}
               </div>
