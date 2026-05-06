@@ -75,8 +75,11 @@ function ProfileTab() {
           <Input value={p.display_name ?? ""} onChange={(e) => setP({ ...p, display_name: e.target.value })} />
         </div>
         <div>
-          <Label>City / Chapter</Label>
-          <Input value={p.city ?? ""} onChange={(e) => setP({ ...p, city: e.target.value })} />
+          <Label>Location</Label>
+          <LocationAutosuggest
+            value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
+            onChange={(v: LocationValue | null) => setP({ ...p, city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
+          />
         </div>
         <div>
           <Label>A few words about you</Label>
