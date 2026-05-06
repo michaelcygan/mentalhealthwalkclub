@@ -134,38 +134,43 @@ function WalkTab() {
   }
 
   if (step === 0) {
+    const hour = new Date().getHours();
+    const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
     return (
-      <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-3xl shadow-elevated">
-          <img src={heroImg} alt="A quiet forest path at golden hour" width={1536} height={1024} className="h-56 w-full object-cover md:h-72" />
-          <div className="absolute inset-0 bg-gradient-to-t from-forest/80 via-forest/30 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground">
-            <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
-            <h1 className="mt-1 font-serif text-3xl leading-tight md:text-4xl">Take the walk. Let it count.</h1>
+      <div className="space-y-5">
+        <header className="flex items-end justify-between gap-3">
+          <div>
+            <p className="font-serif text-xs italic text-muted-foreground">Come as you are. Walk at your pace.</p>
+            <h1 className="mt-0.5 font-serif text-2xl leading-tight md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
           </div>
-        </div>
+        </header>
 
-        <Button onClick={() => setStep(1)} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
-          <Footprints className="mr-2 h-5 w-5" />
-          Start Mental Health Walk
+        {activeWalkId && (
+          <Link to={"/walk/active/$id" as never} params={{ id: activeWalkId } as never} className="flex items-center justify-between gap-3 rounded-2xl border border-forest/40 bg-accent/40 p-4 transition hover:-translate-y-px">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wider text-forest">Walk in progress</div>
+              <div className="font-serif text-base">Continue where you left off</div>
+            </div>
+            <Play className="h-5 w-5 text-forest" />
+          </Link>
+        )}
+
+        <Button onClick={() => { setWalkType("solo"); setStep(2); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
+          <Footprints className="mr-2 h-5 w-5" /> Start a walk
         </Button>
 
-        <div className="grid grid-cols-2 gap-3">
-          <QuickAction icon={Footprints} label="Walk Solo" onClick={() => { setWalkType("solo"); setStep(1); }} />
-          <QuickAction icon={Sparkles} label="Guided Solo" onClick={() => { setWalkType("guided_solo"); setStep(1); }} />
-          <QuickAction icon={Headphones} label="Walk & Talk" sub="On your feet" onClick={() => { setWalkType("audio"); setStep(1); }} />
-          <QuickAction icon={MapPin} label="Find a Local Walk" onClick={() => navigate({ to: "/events" as never })} />
+        <div className="flex flex-wrap gap-2">
+          <ModePill icon={Footprints} label="Solo" onClick={() => { setWalkType("solo"); setStep(2); }} />
+          <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(2); }} />
+          <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(2); }} />
+          <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
         </div>
 
+        <LiveNowStrip />
+
         <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
-          <div className="flex items-baseline justify-between">
-            <h3 className="font-serif text-lg">This week</h3>
-            <span className="text-sm text-muted-foreground">{weeklyMinutes} min walked</span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-forest transition-all" style={{ width: `${Math.min(100, (weeklyMinutes / 90) * 100)}%` }} />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">Goal: 90 minutes a week. Small walks count.</p>
+          <WeeklyRing minutes={weeklyMinutes} dots={weeklyDots} />
         </Card>
       </div>
     );
