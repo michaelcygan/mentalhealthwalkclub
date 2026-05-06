@@ -83,7 +83,7 @@ function WalkTab() {
 
         <div className="grid gap-3 md:grid-cols-3">
           <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
-          <ValueCard icon={Headphones} title="Audio walks" body="Live, gentle audio rooms — only available once you're actually moving." />
+          <ValueCard icon={Headphones} title="Group walks" body="Live, gentle group rooms — only available once you're actually moving." />
           <ValueCard icon={MapPin} title="IRL community walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
         </div>
 
@@ -134,7 +134,7 @@ function WalkTab() {
         <div className="grid grid-cols-2 gap-3">
           <QuickAction icon={Footprints} label="Walk Solo" onClick={() => { setWalkType("solo"); setStep(1); }} />
           <QuickAction icon={Sparkles} label="Guided Solo" onClick={() => { setWalkType("guided_solo"); setStep(1); }} />
-          <QuickAction icon={Headphones} label="Audio Walk" sub="On your feet" onClick={() => { setWalkType("audio"); setStep(1); }} />
+          <QuickAction icon={Headphones} label="Group Walk" sub="On your feet" onClick={() => { setWalkType("audio"); setStep(1); }} />
           <QuickAction icon={MapPin} label="Find an IRL Walk" onClick={() => navigate({ to: "/events" as never })} />
         </div>
 
@@ -159,7 +159,7 @@ function WalkTab() {
           {([
             ["solo", "Walk Solo", "Walking alone still counts."],
             ["guided_solo", "Guided Solo Walk", "A gentle voice in your ear."],
-            ["audio", "Audio Walk with Others", "Live audio, only while walking."],
+            ["audio", "Group Walk (audio)", "Live audio, only while walking."],
             ["irl_event", "IRL / Event Walk", "Meeting people in real life."],
           ] as const).map(([v, label, sub]) => (
             <button key={v} onClick={() => { setWalkType(v); setStep(2); }} className={`rounded-2xl border p-4 text-left transition ${walkType === v ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>

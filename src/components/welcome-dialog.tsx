@@ -37,12 +37,12 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
           <Item
             icon={Headphones}
             title="Walks that fit your day"
-            body="Walk solo. Slip into a guided audio walk. Step into a live audio room — only after you're actually moving. Or meet real people on a real sidewalk at an IRL walk."
+            body="Walk solo. Slip into a guided group walk. Step into a live group room — only after you're actually moving. Or meet real people on a real sidewalk at an IRL walk."
           />
           <Item
             icon={MapPin}
             title="Groups are quiet, not loud"
-            body="No feeds. No chat. Groups are gentle affinity tags (Anxiety, Burnout, Sunday Reset, your city) that help us surface walks that fit you. The socializing happens in person or on an audio walk."
+            body="No feeds. No chat. Groups are gentle affinity tags (Anxiety, Burnout, Sunday Reset, your city) that help us surface walks that fit you. The socializing happens in person or on an group walk."
           />
           <Item
             icon={Lock}

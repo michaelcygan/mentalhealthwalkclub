@@ -54,7 +54,7 @@ function GroupDetail() {
       </section>
 
       <section>
-        <h2 className="font-serif text-xl">Live audio rooms</h2>
+        <h2 className="font-serif text-xl">Live group walks</h2>
         <p className="mt-1 text-xs text-muted-foreground">Joinable from the active walk screen, once you're moving.</p>
         {rooms.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No live rooms right now.</p> : (
           <ul className="mt-3 space-y-2">

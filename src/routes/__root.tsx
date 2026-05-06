@@ -29,7 +29,7 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Mental Health Walk Club — You don't have to walk through it alone" },
-      { name: "description", content: "Walk solo, join live audio walks, RSVP to IRL community walks, and track your wellness journey. A warm, community-first walking app." },
+      { name: "description", content: "Walk solo, join live group walks, RSVP to IRL community walks, and track your wellness journey. A warm, community-first walking app." },
       { property: "og:title", content: "Mental Health Walk Club" },
       { property: "og:description", content: "You don't have to walk through it alone." },
       { property: "og:type", content: "website" },
