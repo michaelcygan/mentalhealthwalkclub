@@ -36,7 +36,7 @@ function ProfileTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name,city,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data));
+    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
     supabase.from("group_memberships").select("groups(id,name)").eq("user_id", user.id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
