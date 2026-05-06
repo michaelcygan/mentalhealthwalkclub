@@ -227,12 +227,11 @@ function WalkTab() {
   );
 }
 
-function QuickAction({ icon: Icon, label, sub, onClick }: { icon: typeof Footprints; label: string; sub?: string; onClick: () => void }) {
+function ModePill({ icon: Icon, label, onClick }: { icon: typeof Footprints; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="rounded-2xl border border-border bg-card p-4 text-left shadow-soft transition hover:border-forest/40">
-      <Icon className="mb-2 h-5 w-5 text-forest" />
-      <div className="text-sm font-medium">{label}</div>
-      {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+    <button onClick={onClick} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/50">
+      <Icon className="h-4 w-4 text-forest" />
+      {label}
     </button>
   );
 }
