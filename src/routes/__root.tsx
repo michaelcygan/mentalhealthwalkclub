@@ -1,9 +1,11 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
@@ -138,6 +140,8 @@ function TabBar() {
           })}
         </ul>
 
+        <LiveSidebarPill />
+
         <div className="mt-auto pt-6">
           <button onClick={openWelcome} className="text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
             How it works →
@@ -201,5 +205,23 @@ function RootComponent() {
         <Toaster />
       </AuthPromptProvider>
     </AuthProvider>
+  );
+}
+
+function LiveSidebarPill() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const load = () => supabase.from("audio_rooms").select("current_participant_count").eq("status", "open").gt("current_participant_count", 0)
+      .then(({ data }) => setCount((data ?? []).reduce((s, r) => s + (r.current_participant_count ?? 0), 0)));
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, []);
+  if (count === 0) return null;
+  return (
+    <Link to="/" className="mt-4 flex items-center gap-2 rounded-full border border-forest/30 bg-accent/40 px-3 py-1.5 text-xs text-forest hover:bg-accent/60">
+      <Radio className="h-3 w-3" />
+      <span className="font-medium">{count} walking & talking now</span>
+    </Link>
   );
 }
