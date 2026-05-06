@@ -131,39 +131,50 @@ function JournalTab() {
         {walks.length === 0 ? (
           <p className="rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">Your first walk is waiting. A small walk is still a walk.</p>
         ) : (
-          <div className="space-y-5">
-            {grouped.map(([month, ws]) => (
-              <div key={month}>
-                <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/90 px-1 py-1 font-serif text-sm text-muted-foreground backdrop-blur">{month}</div>
-                <ul className="space-y-2">
-                  {ws.map((w) => {
-                    const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
-                    return (
-                      <li key={w.id} className="rounded-2xl border border-border bg-card p-4 transition hover:-translate-y-px hover:border-forest/30">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
-                        </div>
-                        {(w.mood_before || w.mood_after) && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                            {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
-                            <span className="text-muted-foreground">→</span>
-                            {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
-                            {delta !== null && (
-                              <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),360px]">
+            <div className="space-y-5">
+              {grouped.map(([month, ws]) => (
+                <div key={month}>
+                  <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/90 px-1 py-1 font-serif text-sm text-muted-foreground backdrop-blur">{month}</div>
+                  <ul className="space-y-2">
+                    {ws.map((w) => {
+                      const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
+                      const active = selectedId === w.id;
+                      return (
+                        <li key={w.id}>
+                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
+                            </div>
+                            {(w.mood_before || w.mood_after) && (
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
+                                <span className="text-muted-foreground">→</span>
+                                {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
+                                {delta !== null && (
+                                  <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        )}
-                        {w.reflection_note && <p className="mt-2 text-sm">{w.reflection_note}</p>}
-                      </li>
-                    );
-                  })}
-                </ul>
+                            {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <aside className="hidden lg:block">
+              <div className="sticky top-4">
+                <WalkDetailPane walk={walks.find((w) => w.id === selectedId) ?? walks[0]} />
               </div>
-            ))}
+            </aside>
           </div>
         )}
       </section>
