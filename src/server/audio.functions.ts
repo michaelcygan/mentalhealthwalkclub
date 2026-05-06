@@ -27,7 +27,7 @@ export const joinAudioRoom = createServerFn({ method: "POST" })
       .select("id,max_participants,status")
       .eq("id", data.roomId)
       .single();
-    if (roomErr || !room) throw new Error("Audio room not found");
+    if (roomErr || !room) throw new Error("Group walk not found");
     if (room.status !== "open") throw new Error("This room is closed");
 
     const { count } = await supabase
