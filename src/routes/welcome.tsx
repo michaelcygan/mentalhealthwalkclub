@@ -72,6 +72,7 @@ function Welcome() {
             <Footprints className="h-5 w-5 text-primary-foreground" />
           </div>
           <p className="font-serif text-sm italic text-muted-foreground">Step {step + 1} of 4</p>
+          <button onClick={() => navigate({ to: "/" })} className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:text-forest hover:underline">Just let me walk →</button>
         </div>
 
         <div className="rounded-3xl border border-border bg-card p-7 shadow-elevated">
