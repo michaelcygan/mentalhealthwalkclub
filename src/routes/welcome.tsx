@@ -12,7 +12,12 @@ export const Route = createFileRoute("/welcome")({
 });
 
 const THEMES = ["anxiety", "burnout", "grief", "loneliness", "new in town", "quiet", "sunday reset", "general wellness"];
-const MODES = ["solo", "guided_solo", "audio", "irl_event"] as const;
+const MODES: ReadonlyArray<readonly [string, string]> = [
+  ["solo", "Solo"],
+  ["guided_solo", "Guided Solo"],
+  ["audio", "Group Walk (audio)"],
+  ["irl_event", "In-person event"],
+];
 const COMFORT = [
   ["listener", "Listener", "I'd rather just listen on audio walks."],
   ["sometimes_speak", "Sometimes speak", "I'll chime in when it feels right."],
