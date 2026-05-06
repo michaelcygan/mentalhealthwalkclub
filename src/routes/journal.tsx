@@ -26,6 +26,7 @@ function JournalTab() {
   const [walks, setWalks] = useState<Walk[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
