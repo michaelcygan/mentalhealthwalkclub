@@ -69,7 +69,7 @@ function WalkTab() {
           <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground md:p-10">
             <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
             <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight md:text-5xl">Take the walk. Let it count.</h1>
-            <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">Peer-supported walks for the days that feel heavy. Solo, audio, or IRL — never alone.</p>
+            <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk & Talk, or Local — never alone.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button onClick={() => requireAuth(() => setStep(1))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
                 <Footprints className="mr-2 h-4 w-4" /> Start a walk
@@ -83,8 +83,8 @@ function WalkTab() {
 
         <div className="grid gap-3 md:grid-cols-3">
           <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
-          <ValueCard icon={Headphones} title="Group walks" body="Live, gentle group rooms — only available once you're actually moving." />
-          <ValueCard icon={MapPin} title="IRL community walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
+          <ValueCard icon={Headphones} title="Walk & Talks" body="Live, gentle Walk & Talk rooms — only available once you're actually moving." />
+          <ValueCard icon={MapPin} title="Local Walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
         </div>
 
         <Card className="rounded-3xl border-border bg-card p-7 shadow-soft md:p-9">
@@ -134,8 +134,8 @@ function WalkTab() {
         <div className="grid grid-cols-2 gap-3">
           <QuickAction icon={Footprints} label="Walk Solo" onClick={() => { setWalkType("solo"); setStep(1); }} />
           <QuickAction icon={Sparkles} label="Guided Solo" onClick={() => { setWalkType("guided_solo"); setStep(1); }} />
-          <QuickAction icon={Headphones} label="Group Walk" sub="On your feet" onClick={() => { setWalkType("audio"); setStep(1); }} />
-          <QuickAction icon={MapPin} label="Find an IRL Walk" onClick={() => navigate({ to: "/events" as never })} />
+          <QuickAction icon={Headphones} label="Walk & Talk" sub="On your feet" onClick={() => { setWalkType("audio"); setStep(1); }} />
+          <QuickAction icon={MapPin} label="Find a Local Walk" onClick={() => navigate({ to: "/events" as never })} />
         </div>
 
         <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
@@ -159,8 +159,8 @@ function WalkTab() {
           {([
             ["solo", "Walk Solo", "Walking alone still counts."],
             ["guided_solo", "Guided Solo Walk", "A gentle voice in your ear."],
-            ["audio", "Group Walk (audio)", "Live audio, only while walking."],
-            ["irl_event", "IRL / Event Walk", "Meeting people in real life."],
+            ["audio", "Walk & Talk", "Live audio, only while walking."],
+            ["irl_event", "Local Walk", "Meeting people in real life."],
           ] as const).map(([v, label, sub]) => (
             <button key={v} onClick={() => { setWalkType(v); setStep(2); }} className={`rounded-2xl border p-4 text-left transition ${walkType === v ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
               <div className="font-medium">{label}</div>

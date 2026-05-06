@@ -58,7 +58,7 @@ export function AudioRoomPanel({ roomId, walkSessionId, roomTitle, capacity, onL
   const handleLeave = async () => {
     await leave();
     await leaveFn({ data: { roomId } }).catch(() => {});
-    toast.success("Left the group walk. Keep going.");
+    toast.success("Left the Walk & Talk. Keep going.");
     onLeave?.();
   };
 

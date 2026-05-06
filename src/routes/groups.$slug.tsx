@@ -40,7 +40,7 @@ function GroupDetail() {
       </header>
 
       <section>
-        <h2 className="font-serif text-xl">Upcoming IRL walks</h2>
+        <h2 className="font-serif text-xl">Upcoming Local Walks</h2>
         {events.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No upcoming walks tagged with this group yet.</p> : (
           <ul className="mt-3 space-y-2">
             {events.map((e) => (
@@ -54,7 +54,7 @@ function GroupDetail() {
       </section>
 
       <section>
-        <h2 className="font-serif text-xl">Live group walks</h2>
+        <h2 className="font-serif text-xl">Live Walk & Talks</h2>
         <p className="mt-1 text-xs text-muted-foreground">Joinable from the active walk screen, once you're moving.</p>
         {rooms.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No live rooms right now.</p> : (
           <ul className="mt-3 space-y-2">
