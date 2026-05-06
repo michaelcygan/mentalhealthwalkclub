@@ -8,13 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, LogOut, AlertTriangle, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
+import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
   head: () => ({ meta: [{ title: "Profile — Walk Club" }] }),
 });
 
-interface Profile { display_name: string | null; city: string | null; bio: string | null; is_private: boolean; }
+interface Profile {
+  display_name: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  location_label: string | null;
+  lat: number | null;
+  lng: number | null;
+  bio: string | null;
+  is_private: boolean;
+}
 interface Group { id: string; name: string; }
 
 function ProfileTab() {
