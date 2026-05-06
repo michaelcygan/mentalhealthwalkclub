@@ -40,7 +40,14 @@ function Welcome() {
     if (!user) return;
     setBusy(true);
     try {
-      await supabase.from("profiles").update({ city: city || null }).eq("id", user.id);
+      await supabase.from("profiles").update({
+        city: location?.city || null,
+        region: location?.region || null,
+        country: location?.country || null,
+        location_label: location?.location_label || null,
+        lat: location?.lat ?? null,
+        lng: location?.lng ?? null,
+      }).eq("id", user.id);
       await supabase.from("user_preferences").update({
         preferred_themes: themes,
         preferred_walk_modes: modes,
