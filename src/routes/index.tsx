@@ -31,9 +31,11 @@ function WalkTab() {
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
+  const [totalWalks, setTotalWalks] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "completed").then(({ count }) => setTotalWalks(count ?? 0));
     const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0,0,0,0);
     supabase.from("walk_sessions").select("started_at,duration_seconds,status")
       .eq("user_id", user.id).gte("started_at", since.toISOString())
