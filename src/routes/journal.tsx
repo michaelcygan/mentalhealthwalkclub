@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { BookHeart } from "lucide-react";
+import { BookHeart, Award } from "lucide-react";
+import { SectionHeading } from "@/components/section-heading";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -13,8 +14,9 @@ export const Route = createFileRoute("/journal")({
 
 interface Walk {
   id: string; started_at: string; duration_seconds: number | null; distance_meters: number | null;
-  steps: number | null; mood_before: string | null; mood_after: string | null; reflection_note: string | null;
-  walk_type: string;
+  steps: number | null; mood_before: string | null; mood_after: string | null;
+  mood_before_score: number | null; mood_after_score: number | null;
+  reflection_note: string | null; walk_type: string;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
 
@@ -23,21 +25,49 @@ function JournalTab() {
   const { openAuth } = useAuthPrompt();
   const [walks, setWalks] = useState<Walk[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,reflection_note,walk_type")
-      .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(50)
-      .then(({ data }) => setWalks(data ?? []));
-    supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
-      .eq("user_id", user.id).order("earned_at", { ascending: false })
+    if (!user) { setLoading(false); return; }
+    Promise.all([
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type")
+        .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
+      supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
+        .eq("user_id", user.id).order("earned_at", { ascending: false }),
+    ]).then(([w, b]) => {
+      setWalks(w.data ?? []);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }) => setBadges((data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at }))));
+      setBadges((b.data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at })));
+      setLoading(false);
+    });
   }, [user]);
 
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
-  const totalSteps = walks.reduce((s, w) => s + (w.steps ?? 0), 0);
+
+  // 12 week sparkline
+  const weeklyMins = useMemo(() => {
+    const weeks = Array(12).fill(0);
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    walks.forEach((w) => {
+      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      const wk = Math.floor(diffDays / 7);
+      if (wk >= 0 && wk < 12) weeks[11 - wk] += Math.round((w.duration_seconds ?? 0) / 60);
+    });
+    return weeks;
+  }, [walks]);
+  const maxWk = Math.max(1, ...weeklyMins);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Walk[]>();
+    walks.forEach((w) => {
+      const d = new Date(w.started_at);
+      const k = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(w);
+    });
+    return Array.from(map.entries());
+  }, [walks]);
 
   if (!user) {
     return (
@@ -52,6 +82,8 @@ function JournalTab() {
     );
   }
 
+  if (loading) return <div className="space-y-3"><div className="h-32 animate-pulse rounded-2xl bg-secondary/60" /><div className="h-64 animate-pulse rounded-2xl bg-secondary/60" /></div>;
+
   return (
     <div className="space-y-6">
       <header>
@@ -59,61 +91,92 @@ function JournalTab() {
         <p className="mt-1 text-muted-foreground">Just for you. Always.</p>
       </header>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="walks" value={walks.length} />
-        <Stat label="minutes" value={totalMin} />
-        <Stat label="miles" value={totalMiles.toFixed(1)} />
+      {/* Hero stats card with sparkline */}
+      <div className="rounded-3xl border border-border bg-card p-5 shadow-soft md:p-6">
+        <div className="grid gap-5 md:grid-cols-[auto,1fr] md:items-center md:gap-8">
+          <div className="grid grid-cols-3 gap-6">
+            <Stat label="walks" value={walks.length} />
+            <Stat label="minutes" value={totalMin} />
+            <Stat label="miles" value={totalMiles.toFixed(1)} />
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
+            <div className="flex h-16 items-end gap-1">
+              {weeklyMins.map((m, i) => (
+                <div key={i} className="flex-1 rounded-t bg-forest/80" style={{ height: `${Math.max(4, (m / maxWk) * 100)}%`, opacity: m === 0 ? 0.15 : 0.5 + (m / maxWk) * 0.5 }} title={`${m} min`} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {badges.length > 0 && (
-        <section>
-          <h2 className="font-serif text-xl">Badges</h2>
-          <ul className="mt-3 grid gap-2 md:grid-cols-2">
+        <section className="space-y-3">
+          <SectionHeading eyebrow="Earned" title="Badges" />
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
             {badges.map((b, i) => (
-              <li key={i} className="rounded-2xl border border-border bg-card p-4">
-                <div className="font-medium">{b.name}</div>
-                <div className="text-xs text-muted-foreground">{b.description}</div>
-              </li>
+              <div key={i} className="min-w-[180px] shrink-0 rounded-2xl border border-border bg-card p-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent"><Award className="h-4 w-4 text-forest" /></div>
+                <div className="mt-2 font-serif text-base">{b.name}</div>
+                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{b.description}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
-      <section>
-        <h2 className="font-serif text-xl">Walks</h2>
+      <section className="space-y-3">
+        <SectionHeading eyebrow="Your walks" title="History" />
         {walks.length === 0 ? (
-          <p className="mt-2 rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">Your first walk is waiting. A small walk is still a walk.</p>
+          <p className="rounded-2xl bg-secondary p-6 text-center text-sm text-muted-foreground">Your first walk is waiting. A small walk is still a walk.</p>
         ) : (
-          <ul className="mt-3 space-y-2">
-            {walks.map((w) => (
-              <li key={w.id} className="rounded-2xl border border-border bg-card p-4">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
-                  <span className="text-xs text-muted-foreground">{w.walk_type.replace(/_/g," ")}</span>
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {Math.round((w.duration_seconds ?? 0)/60)} min · {((w.distance_meters ?? 0)*0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
-                </div>
-                {(w.mood_before || w.mood_after) && (
-                  <div className="mt-2 text-xs italic text-muted-foreground">{w.mood_before} → {w.mood_after ?? "—"}</div>
-                )}
-                {w.reflection_note && <p className="mt-2 text-sm">{w.reflection_note}</p>}
-              </li>
+          <div className="space-y-5">
+            {grouped.map(([month, ws]) => (
+              <div key={month}>
+                <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/90 px-1 py-1 font-serif text-sm text-muted-foreground backdrop-blur">{month}</div>
+                <ul className="space-y-2">
+                  {ws.map((w) => {
+                    const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
+                    return (
+                      <li key={w.id} className="rounded-2xl border border-border bg-card p-4 transition hover:-translate-y-px hover:border-forest/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
+                        </div>
+                        {(w.mood_before || w.mood_after) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
+                            <span className="text-muted-foreground">→</span>
+                            {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
+                            {delta !== null && (
+                              <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+                            )}
+                          </div>
+                        )}
+                        {w.reflection_note && <p className="mt-2 text-sm">{w.reflection_note}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Total steps tracked: {totalSteps.toLocaleString()}. Still here. Still walking.</p>
+      <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Still here. Still walking.</p>
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-soft">
-      <div className="font-serif text-2xl tabular-nums">{value}</div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+    <div className="text-center">
+      <div className="font-serif text-2xl tabular-nums leading-none">{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
   );
 }
