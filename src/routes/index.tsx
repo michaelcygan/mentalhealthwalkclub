@@ -1,13 +1,15 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock } from "lucide-react";
+import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, Play } from "lucide-react";
 import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
+import { LiveNowStrip } from "@/components/live-now-strip";
+import { WeeklyRing } from "@/components/weekly-ring";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
