@@ -280,6 +280,7 @@ export type Database = {
           description: string | null
           donation_note: string | null
           donation_percent: number
+          ended_at: string | null
           ends_at: string | null
           event_type: string
           group_id: string | null
@@ -294,6 +295,7 @@ export type Database = {
           price_cents: number
           region: string | null
           slug: string
+          started_at: string | null
           starts_at: string
           state: string | null
           status: string
@@ -315,6 +317,7 @@ export type Database = {
           description?: string | null
           donation_note?: string | null
           donation_percent?: number
+          ended_at?: string | null
           ends_at?: string | null
           event_type?: string
           group_id?: string | null
@@ -329,6 +332,7 @@ export type Database = {
           price_cents?: number
           region?: string | null
           slug: string
+          started_at?: string | null
           starts_at: string
           state?: string | null
           status?: string
@@ -350,6 +354,7 @@ export type Database = {
           description?: string | null
           donation_note?: string | null
           donation_percent?: number
+          ended_at?: string | null
           ends_at?: string | null
           event_type?: string
           group_id?: string | null
@@ -364,6 +369,7 @@ export type Database = {
           price_cents?: number
           region?: string | null
           slug?: string
+          started_at?: string | null
           starts_at?: string
           state?: string | null
           status?: string
