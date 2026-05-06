@@ -192,3 +192,40 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     </div>
   );
 }
+
+function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
+  if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
+  const delta = walk.mood_before_score && walk.mood_after_score ? walk.mood_after_score - walk.mood_before_score : null;
+  const mins = Math.round((walk.duration_seconds ?? 0) / 60);
+  const miles = ((walk.distance_meters ?? 0) * 0.000621371).toFixed(2);
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
+      <h3 className="mt-1 font-serif text-2xl capitalize">{walk.walk_type.replace(/_/g, " ")} walk</h3>
+      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+        <div><div className="font-serif text-2xl tabular-nums">{mins}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">min</div></div>
+        <div><div className="font-serif text-2xl tabular-nums">{miles}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">mi</div></div>
+        <div><div className="font-serif text-2xl tabular-nums">{(walk.steps ?? 0).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">steps</div></div>
+      </div>
+      {(walk.mood_before || walk.mood_after) && (
+        <div className="mt-5 rounded-2xl bg-secondary/60 p-4">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Mood</div>
+          <div className="mt-1 flex items-center gap-2 text-sm">
+            <span className="rounded-full bg-card px-2 py-0.5">{walk.mood_before ?? "—"}</span>
+            <span>→</span>
+            <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{walk.mood_after ?? "—"}</span>
+            {delta !== null && (
+              <span className={`ml-auto font-serif text-2xl tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+            )}
+          </div>
+        </div>
+      )}
+      {walk.reflection_note && (
+        <div className="mt-5">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Reflection</div>
+          <p className="mt-1 font-serif italic leading-relaxed">"{walk.reflection_note}"</p>
+        </div>
+      )}
+    </div>
+  );
+}
