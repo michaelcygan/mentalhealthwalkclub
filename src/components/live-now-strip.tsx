@@ -12,16 +12,23 @@ export function LiveNowStrip() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const now = new Date();
-    const in2h = new Date(now.getTime() + 2 * 3600_000);
-    Promise.all([
-      supabase.from("audio_rooms").select("id,title,theme,current_participant_count").eq("status", "open").gt("current_participant_count", 0).limit(4),
-      supabase.from("events").select("id,title,slug,starts_at,city").gte("starts_at", now.toISOString()).lte("starts_at", in2h.toISOString()).order("starts_at").limit(4),
-    ]).then(([r, e]) => {
-      setRooms(r.data ?? []);
-      setEvents(e.data ?? []);
-      setLoading(false);
-    });
+    const load = () => {
+      const now = new Date();
+      const in2h = new Date(now.getTime() + 2 * 3600_000);
+      Promise.all([
+        supabase.from("audio_rooms").select("id,title,theme,current_participant_count").eq("status", "open").gt("current_participant_count", 0).limit(4),
+        supabase.from("events").select("id,title,slug,starts_at,city").gte("starts_at", now.toISOString()).lte("starts_at", in2h.toISOString()).order("starts_at").limit(4),
+      ]).then(([r, e]) => {
+        setRooms(r.data ?? []);
+        setEvents(e.data ?? []);
+        setLoading(false);
+      });
+    };
+    load();
+    const ch = supabase.channel("live-now-strip")
+      .on("postgres_changes", { event: "*", schema: "public", table: "audio_rooms" }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   if (loading) return <div className="h-24 animate-pulse rounded-2xl bg-secondary/60" />;
