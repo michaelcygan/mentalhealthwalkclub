@@ -17,6 +17,7 @@ import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
+import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
 
@@ -60,6 +61,11 @@ const GroupsSlugRoute = GroupsSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => GroupsRoute,
 } as any)
+const EventsNewRoute = EventsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => EventsRoute,
+} as any)
 const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/events/$slug'
+    | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/events/$slug'
+    | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/events/$slug'
+    | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
   fileRoutesById: FileRoutesById
@@ -216,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GroupsSlugRouteImport
       parentRoute: typeof GroupsRoute
     }
+    '/events/new': {
+      id: '/events/new'
+      path: '/new'
+      fullPath: '/events/new'
+      preLoaderRoute: typeof EventsNewRouteImport
+      parentRoute: typeof EventsRoute
+    }
     '/events/$slug': {
       id: '/events/$slug'
       path: '/$slug'
@@ -235,10 +254,12 @@ declare module '@tanstack/react-router' {
 
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
+  EventsNewRoute: typeof EventsNewRoute
 }
 
 const EventsRouteChildren: EventsRouteChildren = {
   EventsSlugRoute: EventsSlugRoute,
+  EventsNewRoute: EventsNewRoute,
 }
 
 const EventsRouteWithChildren =
