@@ -63,10 +63,17 @@ function ProfileTab() {
 
   if (!p) return <div className="py-20 text-center text-muted-foreground">…</div>;
 
+  const initials = (p.display_name || user.email || "?").split(/\s+/).map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+  const since = user.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : null;
+
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-serif text-3xl">Profile</h1>
+      <header className="flex items-center gap-4 rounded-3xl border border-border bg-gradient-to-br from-accent/40 to-card p-5 shadow-soft">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-forest font-serif text-xl text-primary-foreground">{initials}</div>
+        <div>
+          <h1 className="font-serif text-2xl">{p.display_name || "Walker"}</h1>
+          <p className="text-sm text-muted-foreground">{p.location_label || p.city || "Add your city"}{since ? ` · since ${since}` : ""}</p>
+        </div>
       </header>
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-soft">
