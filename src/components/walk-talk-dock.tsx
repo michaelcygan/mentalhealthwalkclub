@@ -247,7 +247,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     return (
       <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-soft">
         <p className="font-serif text-lg">Walking on your own.</p>
-        <p className="mt-1 text-sm text-muted-foreground">A room is always one tap away.</p>
+        <p className="mt-1 text-sm text-muted-foreground">A walk is always one tap away.</p>
         <Button onClick={() => setPhase("waiting-to-walk")} className="mt-4 rounded-full bg-forest text-primary-foreground hover:opacity-90">
           Re-join Walk &amp; Talk
         </Button>
