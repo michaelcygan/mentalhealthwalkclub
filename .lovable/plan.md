@@ -1,72 +1,158 @@
-## Reflection prompts across the walk
+## North star
 
-A new shared library of reflection prompts, surfaced as gentle, slow-moving slideshows in three places — most prominently in Walk & Talk's quiet/music waiting state, where the screen otherwise sits empty.
+A walker opens the app and sees one calm, time-aware list: *what's about to start, what's live now, what's later this week*. Tapping anything is one step from being inside it. No new mental model — just smarter use of what's already there.
 
-### The library
+## What we're building
 
-- Take your 100 prompts as the seed corpus, lightly edited to match the app's voice (short, lowercase-ish, second-person, never clinical).
-- Expand to **~250 prompts** by writing variants in the same voice, organized by **mood family** so we can serve ones that fit the walker:
-  - `heavy` — for anxious / overwhelmed / sad / numb
-  - `tender` — for fragile / restless / wistful / unsettled
-  - `steady` — for okay / focused / present
-  - `light` — for hopeful / grateful / open / curious
-  - `connection` — for need-to-vent / need-company / lonely
-  - `universal` — works for any state (the largest bucket)
-- Each prompt also gets a **depth tier**: `noticing` (surface, body-aware, no commitment), `reflecting` (a memory or pattern), `imagining` (future-oriented, hopeful). The slideshow always opens with `noticing`, drifts to `reflecting`, only occasionally to `imagining` — same shape as a real walk.
-- Stored in `src/lib/reflection-prompts.ts` as a typed array. No DB migration needed (these are content, not user data). A small `pickPrompts(mood, count)` helper matches the walker's `mood_before` to a family with universal fallback.
+### 1. Scheduled audio walks (group "circles")
+A host (group owner or admin) schedules an audio walk for a specific time. At T-15 it surfaces in Live Now with a soft countdown. At T-0 it opens. Walkers tap once, their walk auto-starts, and they're placed into a **breakout pod of 3–4** (randomized). Pods can be reshuffled mid-walk by the host, or auto-reshuffle every N minutes for "speed-walk" style mixers.
 
-### The slideshow component
+### 2. Scheduled IRL walks
+Already mostly there. We polish surfacing, add a T-30 push-style nudge in-app, and add a "starting soon" state to the events list and Live strip.
 
-New `<ReflectionDrift>` component:
-- Shows one prompt at a time, large, serif, centered.
-- Auto-advances every **18 seconds** with a slow crossfade (no swipe-style snap — feels like thoughts surfacing).
-- A barely-visible progress hairline under the prompt fills over the 18 s.
-- Tap to **pause / resume** the drift; long-press to **save** the prompt to the walker's reflection (fed into End-Walk Flow's reflection field as a starting line).
-- "Skip" arrow on the right for the impatient; "next" never has urgency styling.
-- A tiny "✿ for you" chip when the prompt was matched to the walker's mood, so the personalization is felt without being announced.
-- Respects `prefers-reduced-motion`: crossfade replaced with instant swap.
+### 3. Unified Live strip
+Today's `<LiveNowStrip>` shows only currently-live audio rooms. We expand it to a single timeline:
+`Starting in 8 min` · `Live now (3 walking)` · `Tonight 7pm` · `Sat morning`.
+Same component, smarter query.
 
-### Where it appears
+---
 
-1. **Walk & Talk — alone, quiet chosen** *(primary surface)*
-   Replaces the empty constellation circle copy with the drifting prompts; the constellation shrinks to a small badge in the corner so users still know the room exists. Returns to full constellation the moment another walker joins.
+## Data model (minimal additions)
 
-2. **Walk & Talk — alone, music chosen**
-   Same drift, but tinted toward "noticing" prompts and slowed to 24 s between prompts so it pairs with the ambient pad rather than competing.
+We **keep `events` and `audio_rooms` separate** but add bridge fields. No table renames.
 
-3. **Solo / Guided — at the 7-minute mark**
-   A single prompt slides up as a soft sheet over the hero (not a toast), dismissable. Doesn't interrupt audio. Same long-press-to-save behavior.
+### `events` — add
+- `audio_room_id uuid null` — when set, this scheduled event is an audio walk; the room exists from the moment it's scheduled (created in `scheduled` status).
+- `breakout_size int default 0` — 0 = no pods (one big circle); 3 or 4 = pod size.
+- `breakout_rotate_minutes int null` — null = pods are fixed; N = auto-reshuffle every N minutes.
 
-4. **End-walk reflection step**
-   The "A line for future you" textarea gets a "need a starting line?" link that reveals 3 prompts matched to the walker's `delta` (got lighter / no change / heavier). Tap to seed the textarea.
+### `audio_rooms` — add
+- `status` gains a new value `'scheduled'` (alongside existing `'open'` / `'closed'`). Pre-T-0 the room is reservable but not joinable.
+- `scheduled_event_id uuid null` — back-pointer to the parent event (for pods, points to the parent event too).
+- `parent_room_id uuid null` — pods point to the umbrella room. Umbrella row holds the "this gathering exists" record; pod rows are the actual joinable circles.
+- `pod_index int null` — 1, 2, 3… for display ("Pod 2 of 4").
 
-### Data flow & persistence
+### `audio_room_participants` — unchanged
+A walker's `audio_room_id` is always a *pod* (or the umbrella room when `breakout_size = 0`). Reshuffling = update participants' `audio_room_id`.
 
-- Saved prompts are kept in component state during the walk and folded into `reflection_note` on End walk, prefixed as quoted lines, e.g. `"What helped you feel grounded today?" → I noticed my breath`.
-- No new tables. No realtime. No user input leaves the device until End walk.
+### Why this shape
+- Keeps `walk_session` pure: one person walking. Untouched.
+- Keeps `event` as the scheduled-thing primitive (works for both IRL and audio).
+- Pods reuse the existing audio room infrastructure — the WebRTC mesh, mute, participants list — *zero* new realtime code.
+- "Live now" becomes one query: `events where starts_at between T-15 and T+90 OR audio_rooms where status='open'`.
 
-### One bug to fix on the way through
+---
 
-The current Walk & Talk preview screenshot shows a runtime error toast. Most likely cause from the last pass: `EndWalkFlow`'s autosave-on-unmount fires when the component first unmounts as part of route reuse, calling `onSave` with empty fields and triggering navigation/state churn. Fix by gating autosave on a `hasInteractedRef` (only autosave if the user actually engaged with mood/score/reflection), and by guarding `onSave` against being called when the parent has already navigated. Also wrap `toast.custom` returning JSX in a function `(t) => …` strictly typed — sonner's signature change can throw if the id arg is missed.
+## Server functions (new)
 
-### Files I'd touch
+In `src/server/audio.functions.ts`:
 
-- new `src/lib/reflection-prompts.ts` — corpus + `pickPrompts(mood, count, depth?)`
-- new `src/components/reflection-drift.tsx` — the slideshow primitive
-- `src/components/walk-talk-dock.tsx` — render `<ReflectionDrift>` in the alone state (both quiet and music branches), shrink constellation when drifting
-- `src/routes/walk.active.$id.tsx` — slide-up sheet at 7-min mark for Solo / Guided (no extra audio interruption)
-- `src/components/end-walk-flow.tsx` — "need a starting line?" prompt picker; bug fix for autosave guard
-- `src/styles.css` — `@keyframes reflection-fade` (550 ms ease) + reduced-motion override
+- **`scheduleAudioWalk({ groupId, title, theme, startsAt, durationMinutes, breakoutSize, breakoutRotateMinutes, capacity })`**
+  Creates an `event` (event_type='audio_walk') + an umbrella `audio_room` in `scheduled` status. Returns `{ eventId, slug }`.
 
-### Out of scope
+- **`openScheduledRoom({ eventId })`** — called by cron at T-0 (and a manual "open early" button for hosts). Flips umbrella room to `open`. If `breakout_size > 0`, pre-creates `audio_rooms` for pods (status='open', `parent_room_id`, `pod_index`).
 
-- AI-generated prompts (you specified pre-recorded only).
-- Cross-walker prompt voting/curation.
-- Saving prompts to a personal library outside a single walk's reflection.
+- **`joinScheduledWalk({ eventId, walkSessionId })`** — replaces today's "join" flow when entering from a scheduled event. Picks the least-full pod (or the umbrella if no pods), inserts the participant, returns `{ roomId, podIndex, podCount }`. Also creates the walker's `walk_session` if they don't have one active (one-tap join).
 
-### Verification
+- **`reshufflePods({ eventId })`** — host-triggered or cron-triggered. Pulls all active participants, randomizes, reassigns `audio_room_id` evenly across pods. Real-time subscription on `audio_room_participants` makes the UI swap automatically.
 
-- Open Walk & Talk in the preview, hit "I'm walking — start the room", confirm the drift renders with mood-matched prompts and the constellation shrinks to a corner badge.
-- Confirm long-press saves a prompt and that it shows up pre-filled in End-Walk's reflection field.
-- Confirm the error toast no longer fires on entering / leaving the active-walk route.
-- Re-screenshot at 390×726 to verify the prompt fits with safe margins and doesn't overlap the cockpit.
+In `src/server/walks.functions.ts` (existing file) — small helper:
+- **`startWalkForEvent({ eventId })`** — one-step "I'm here": creates walk_session with `event_id` + `walk_type` set, then redirects to `/walk/active/$id`.
+
+## Cron jobs
+
+Two scheduled jobs (pg_cron → server route):
+
+- `*/1 * * * *` → `POST /api/public/hooks/open-due-rooms` — finds events where `starts_at <= now() + 1min` and `audio_rooms.status='scheduled'`, calls `openScheduledRoom`.
+- `*/2 * * * *` → `POST /api/public/hooks/rotate-pods` — finds open events with `breakout_rotate_minutes` set, calls `reshufflePods` if interval elapsed.
+
+Auth: `apikey` header with anon key (per the standard pattern).
+
+---
+
+## UI changes
+
+### A. New scheduling flow — `/events/new` enhancement
+Today's form schedules IRL events. Add a single toggle at the top: **"Where does this walk happen?" → [In person] [Audio together]**.
+
+When **Audio together** is selected:
+- Hide location/address fields.
+- Show: pod size (`Solo · Pairs · Trios · Quads`), rotation toggle (`Fixed pods` / `Mix every 10 min`), capacity slider (4–32), theme chip.
+- "Schedule" CTA copy becomes *"Open the circle"*.
+
+One form, two modes. No new route.
+
+### B. Live strip — `/` (home)
+`<LiveNowStrip>` rewritten to merge three queries (live audio, starting-soon events, your group's upcoming). Single horizontal scroller, three card states:
+
+```
+┌────────────────┐  ┌────────────────┐  ┌────────────────┐
+│ ● LIVE · 3     │  │ in 8 min       │  │ Sat 8:00 am    │
+│ Quiet Morning  │  │ Sunday Reset   │  │ Park Loop      │
+│ join walking → │  │ open early →   │  │ rsvp →         │
+└────────────────┘  └────────────────┘  └────────────────┘
+```
+
+Cards animate from "later" → "starting soon" → "live" without re-render hops (sorted by absolute time, state derived from `starts_at` vs now).
+
+### C. Scheduled event page — `/events/$slug`
+Already shows IRL walks well. For audio walks:
+- Replace location card with **"Audio circle · 8 spots · trios, mixing every 10 min"**.
+- Within T-5 the CTA becomes one button: **"Join the circle"** → calls `joinScheduledWalk` → goes straight to `/walk/active/$id` with audio panel docked.
+- After T-0, show live participant count and pod count: *"4 walking · 2 pods"*.
+
+### D. In-walk pod UI — `walk-talk-dock.tsx`
+When the walker is in a scheduled walk with pods:
+- Pod label appears in the dock header: **"Pod 2 · 3 walking together"**.
+- A subtle "🔀 mixing in 4:32" countdown when rotation is on.
+- On reshuffle: voices fade out 1s, new participants fade in. A single line: *"new walkers · keep going"*.
+
+No new screens.
+
+### E. Group page — `/groups/$slug`
+Add a small **"Schedule a walk"** button (visible to group owner/admin) that deep-links into `/events/new?group=...&mode=audio`. Group's upcoming scheduled walks list above the existing rooms list.
+
+---
+
+## Files touched
+
+New:
+- `src/routes/api/public/hooks/open-due-rooms.ts`
+- `src/routes/api/public/hooks/rotate-pods.ts`
+
+Edited:
+- `src/server/audio.functions.ts` — three new server fns
+- `src/server/walks.functions.ts` — `startWalkForEvent`
+- `src/routes/events.new.tsx` — IRL/Audio toggle + pod controls
+- `src/routes/events.$slug.tsx` — audio-walk presentation, one-tap join
+- `src/components/live-now-strip.tsx` — unified time-aware query
+- `src/components/walk-talk-dock.tsx` — pod label + rotation countdown
+- `src/routes/groups.$slug.tsx` — schedule button + upcoming list
+
+Migration: one file adding the new columns + one cron schedule registration.
+
+---
+
+## What makes this feel 2026
+
+- **One primitive surface, three time states.** Same card animates across "later → soon → live". No tab switching, no separate "scheduled" page.
+- **One-tap joins.** No pre-RSVP gate for audio walks — show up at start time and the next tap puts you in a pod with your walk auto-started.
+- **Soft rotation.** Pods that mix every 10 minutes turn a 45-min walk into 4 short conversations with different walkers. Feels like a real walk-and-talk gathering, not a Zoom room.
+- **Calm density.** The Live strip is one row, three states, no badges screaming. Time itself is the organizing principle.
+
+---
+
+## Out of scope (deliberately)
+- Push notifications (in-app surfacing only for v1).
+- Voice/audio recording or transcripts.
+- Cross-group discovery for scheduled walks (your groups only).
+- Custom pod assignment by host (auto-random only in v1).
+
+---
+
+## Approval needed
+This requires:
+1. A schema migration (additive only — no drops, no renames).
+2. Two new cron jobs.
+
+Ready to build on approval.
