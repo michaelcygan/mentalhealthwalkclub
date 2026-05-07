@@ -118,7 +118,7 @@ function WalkTab() {
 
         <div className="grid gap-3 md:grid-cols-3">
           <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
-          <ValueCard icon={Headphones} title="Walk & Talks" body="Live, gentle Walk & Talk rooms — only available once you're actually moving." />
+          <ValueCard icon={Headphones} title="Walk & Talks" body="Live, gentle Walk & Talks — only available once you're actually moving." />
           <ValueCard icon={MapPin} title="Local Walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
         </div>
 
