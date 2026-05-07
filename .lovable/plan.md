@@ -1,70 +1,72 @@
-## What's broken (root causes)
+## Reflection prompts across the walk
 
-**1. Motion never registers on iPhone in the preview.**
-The Lovable preview renders the app inside an iframe. Geolocation in iframes requires `allow="geolocation; microphone"` on the parent `<iframe>`. We can't change Lovable's preview iframe, so on the preview URL `navigator.geolocation.watchPosition` silently fails (or its permission prompt never appears). Walk & Talk currently waits on `hasMoved` to start matching, so it never matches in the preview — the user sees an empty waiting room forever. This works fine once published on a real domain.
+A new shared library of reflection prompts, surfaced as gentle, slow-moving slideshows in three places — most prominently in Walk & Talk's quiet/music waiting state, where the screen otherwise sits empty.
 
-**2. 6 "steps" on a laptop with 0.00 mi.**
-`walk.active.$id.tsx` accepts every GPS sample and accumulates distance with no minimum-delta gate (it only filters > 200 m teleports). Desktop browsers return Wi-Fi positions that drift several meters per refresh, which slowly accumulates fake meters → `meters/0.78` rounds up to 6 steps even when the device hasn't moved.
+### The library
 
-**3. Solo end-walk flow.**
-- Step 0 ("How are you arriving?") shows a 4-row scrolling MoodCloud — too tall/busy for an end-of-walk screen.
-- The whole flow is 4 separate screens (mood → score → reflection → ceremony) with no progress indicator, and "skip" only exists on step 0. If the user loses focus, there's no way out.
-- Saving only happens on step 3's "Save to journal" — if a user closes mid-flow, the walk is left in `active` status forever (also breaks the "Walk in progress" card on home).
+- Take your 100 prompts as the seed corpus, lightly edited to match the app's voice (short, lowercase-ish, second-person, never clinical).
+- Expand to **~250 prompts** by writing variants in the same voice, organized by **mood family** so we can serve ones that fit the walker:
+  - `heavy` — for anxious / overwhelmed / sad / numb
+  - `tender` — for fragile / restless / wistful / unsettled
+  - `steady` — for okay / focused / present
+  - `light` — for hopeful / grateful / open / curious
+  - `connection` — for need-to-vent / need-company / lonely
+  - `universal` — works for any state (the largest bucket)
+- Each prompt also gets a **depth tier**: `noticing` (surface, body-aware, no commitment), `reflecting` (a memory or pattern), `imagining` (future-oriented, hopeful). The slideshow always opens with `noticing`, drifts to `reflecting`, only occasionally to `imagining` — same shape as a real walk.
+- Stored in `src/lib/reflection-prompts.ts` as a typed array. No DB migration needed (these are content, not user data). A small `pickPrompts(mood, count)` helper matches the walker's `mood_before` to a family with universal fallback.
 
-**4. Walk & Talk dock.**
-- Hard-blocks on `hasMoved`. Combined with #1, this is the primary "didn't detect my motion" complaint.
-- Mic permission isn't requested up-front; user only finds out it failed after matching.
+### The slideshow component
 
-**5. Guided walk.**
-- `GuidedPlayer` autoplays audio in `useEffect` — Safari/iOS will reject this if there's been no recent user gesture between mode pick and active page mount, leaving a silent player with no visible "tap to start" affordance.
-- No progress bar / time remaining / scrubbing; `duration_seconds` is fetched but unused.
+New `<ReflectionDrift>` component:
+- Shows one prompt at a time, large, serif, centered.
+- Auto-advances every **18 seconds** with a slow crossfade (no swipe-style snap — feels like thoughts surfacing).
+- A barely-visible progress hairline under the prompt fills over the 18 s.
+- Tap to **pause / resume** the drift; long-press to **save** the prompt to the walker's reflection (fed into End-Walk Flow's reflection field as a starting line).
+- "Skip" arrow on the right for the impatient; "next" never has urgency styling.
+- A tiny "✿ for you" chip when the prompt was matched to the walker's mood, so the personalization is felt without being announced.
+- Respects `prefers-reduced-motion`: crossfade replaced with instant swap.
 
----
+### Where it appears
 
-## Plan
+1. **Walk & Talk — alone, quiet chosen** *(primary surface)*
+   Replaces the empty constellation circle copy with the drifting prompts; the constellation shrinks to a small badge in the corner so users still know the room exists. Returns to full constellation the moment another walker joins.
 
-### A. Fix motion + step accuracy (`walk.active.$id.tsx`)
-- Add an accuracy + delta gate to `watchPosition`: drop samples with `accuracy > 30 m`; only add distance when delta is **between 2 m and 200 m** (kills Wi-Fi jitter, still kills teleports).
-- Compute steps from a rolling mean speed × time when GPS is reporting, not from total meters, so fake meters → fake steps is impossible.
-- Add a fallback "I'm walking" manual chip in the hero (small, under the timer): if no valid GPS sample arrives within 25 s, surface it. Tapping it sets `hasMoved = true` so Walk & Talk can match in environments without geolocation (preview iframe, indoor, GPS denied). This makes the preview testable without changing real-device behavior.
-- Show a tiny GPS status dot (green/amber/grey) in the hero so users can tell whether tracking is live.
+2. **Walk & Talk — alone, music chosen**
+   Same drift, but tinted toward "noticing" prompts and slowed to 24 s between prompts so it pairs with the ambient pad rather than competing.
 
-### B. Walk & Talk dock (`walk-talk-dock.tsx`)
-- Pre-warm mic permission on mount of the in-room phase (request `getUserMedia` early, surface a friendly inline error if denied — instead of silent failure).
-- Respect the new manual-walking signal from A so matching kicks off in the preview.
-- Tighten the "waiting-to-walk" card copy + add a subtle "Start anyway" link after 25 s.
+3. **Solo / Guided — at the 7-minute mark**
+   A single prompt slides up as a soft sheet over the hero (not a toast), dismissable. Doesn't interrupt audio. Same long-press-to-save behavior.
 
-### C. Solo end-walk flow (`end-walk-flow.tsx`)
-- Collapse to **two screens** instead of four: (1) mood + weight + one-line reflection on a single scrollable card with a small progress bar, (2) ceremony + save.
-- Always render an "End now, save what I have" button — saving works at any step (mood/score/reflection all optional).
-- On unmount **without explicit save**, persist `status='completed'` with whatever fields we have so a closed tab doesn't leave an orphaned active walk. (Also fixes the "Walk in progress" stale state on Home.)
-- Use a smaller MoodCloud variant (2 marquee rows instead of 4) for the end-walk so it doesn't dominate the screen.
+4. **End-walk reflection step**
+   The "A line for future you" textarea gets a "need a starting line?" link that reveals 3 prompts matched to the walker's `delta` (got lighter / no change / heavier). Tap to seed the textarea.
 
-### D. Guided player (`guided-player.tsx`)
-- Replace silent autoplay with a large central play button on first mount; only start audio after the user taps it (works on iOS).
-- Add a thin progress bar bound to `audioRef.current.currentTime` / `duration_seconds`, plus elapsed/remaining labels.
-- Pause the generative pad / audio when the parent walk is paused (currently it keeps playing).
-- When the track ends, fade to "walk continues — your guide is finished" instead of going silent.
+### Data flow & persistence
 
-### E. Small UI tightening across all three modes
-- Unify the sticky bottom Pause/End-walk dock height to 56 px on mobile, 48 px on md+ (currently 56 everywhere — wastes vertical space on desktop).
-- Move the "Quick check-in / lighter / same / heavier" pulse card from above the dock to a slide-in toast — currently it pushes the audio dock down and feels modal.
-- Hero sparkline: only render once `points.current.length >= 2` (today it draws a spurious diagonal line from origin when there's only one point, visible in the user's screenshot).
-- `MoodCloud` end-walk variant: 2 rows, slightly faster cycle so the "after" mood feels distinct from the "before" mood.
-- Add `aria-live="polite"` to the timer so screen readers don't re-read every second; only milestones speak.
+- Saved prompts are kept in component state during the walk and folded into `reflection_note` on End walk, prefixed as quoted lines, e.g. `"What helped you feel grounded today?" → I noticed my breath`.
+- No new tables. No realtime. No user input leaves the device until End walk.
 
-### F. Verification
-- Local: open Solo walk, confirm 0 steps with no GPS movement; open the Walk tab in the preview, tap "Start anyway" after 25 s, confirm Walk & Talk progresses to "matching".
-- Browser: screenshot the active walk page on the 390×726 viewport before/after to confirm the spurious sparkline line and the cleaner pulse-as-toast.
-- Re-test the solo End walk → Save to journal happy path, plus the new "close tab mid-flow" path (expect the walk to land in Journal anyway).
+### One bug to fix on the way through
 
-### Out of scope
-- Native iOS step counting (CoreMotion) — requires a real app shell, not a PWA.
-- Real-time voice transport changes — Walk & Talk transport stays as-is; only the UX entry point changes.
+The current Walk & Talk preview screenshot shows a runtime error toast. Most likely cause from the last pass: `EndWalkFlow`'s autosave-on-unmount fires when the component first unmounts as part of route reuse, calling `onSave` with empty fields and triggering navigation/state churn. Fix by gating autosave on a `hasInteractedRef` (only autosave if the user actually engaged with mood/score/reflection), and by guarding `onSave` against being called when the parent has already navigated. Also wrap `toast.custom` returning JSX in a function `(t) => …` strictly typed — sonner's signature change can throw if the id arg is missed.
 
 ### Files I'd touch
-- `src/routes/walk.active.$id.tsx` — GPS gate, manual-walking chip, GPS status, sparkline guard, pulse-as-toast, sticky-dock height
-- `src/components/walk-talk-dock.tsx` — mic pre-warm, "Start anyway" affordance, copy
-- `src/components/end-walk-flow.tsx` — collapse to 2 screens, autosave-on-unmount, "End now" always available
-- `src/components/mood-cloud.tsx` — add `compact` prop (2 rows) for end-walk
-- `src/components/guided-player.tsx` — gesture-gated playback, progress bar, pause sync, end state
+
+- new `src/lib/reflection-prompts.ts` — corpus + `pickPrompts(mood, count, depth?)`
+- new `src/components/reflection-drift.tsx` — the slideshow primitive
+- `src/components/walk-talk-dock.tsx` — render `<ReflectionDrift>` in the alone state (both quiet and music branches), shrink constellation when drifting
+- `src/routes/walk.active.$id.tsx` — slide-up sheet at 7-min mark for Solo / Guided (no extra audio interruption)
+- `src/components/end-walk-flow.tsx` — "need a starting line?" prompt picker; bug fix for autosave guard
+- `src/styles.css` — `@keyframes reflection-fade` (550 ms ease) + reduced-motion override
+
+### Out of scope
+
+- AI-generated prompts (you specified pre-recorded only).
+- Cross-walker prompt voting/curation.
+- Saving prompts to a personal library outside a single walk's reflection.
+
+### Verification
+
+- Open Walk & Talk in the preview, hit "I'm walking — start the room", confirm the drift renders with mood-matched prompts and the constellation shrinks to a corner badge.
+- Confirm long-press saves a prompt and that it shows up pre-filled in End-Walk's reflection field.
+- Confirm the error toast no longer fires on entering / leaving the active-walk route.
+- Re-screenshot at 390×726 to verify the prompt fits with safe margins and doesn't overlap the cockpit.
