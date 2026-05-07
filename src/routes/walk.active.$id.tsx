@@ -99,12 +99,6 @@ function ActiveWalk() {
     }
   }, [elapsed, pulseHint]);
 
-  useEffect(() => {
-    if (session?.walk_type === "audio" && hasMoved) {
-      supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("status","open").limit(8)
-        .then(({ data }) => setAudioRooms(data ?? []));
-    }
-  }, [session?.walk_type, hasMoved]);
 
   const miles = meters * 0.000621371;
   const stride = 0.78;
