@@ -84,7 +84,7 @@ export function AudioRoomPanel({ roomId, walkSessionId, roomTitle, capacity, onL
       <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-sm">
         <div className="mb-1 flex items-center gap-2 font-medium text-destructive"><AlertCircle className="h-4 w-4" />Mic blocked</div>
         <p className="text-foreground">{error?.message ?? "Allow microphone access in your browser to join."}</p>
-        <Button onClick={handleLeave} variant="outline" size="sm" className="mt-3 rounded-full">Leave room</Button>
+        <Button onClick={handleLeave} variant="outline" size="sm" className="mt-3 rounded-full">Leave walk</Button>
       </div>
     );
   }
