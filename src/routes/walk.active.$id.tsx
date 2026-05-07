@@ -252,38 +252,8 @@ function ActiveWalk() {
         <RouteSparkline points={points.current} key={routeTick} />
       </div>
 
-      {session.walk_type === "audio" && activeRoom && (
-        <AudioRoomPanel roomId={activeRoom.id} walkSessionId={session.id} roomTitle={activeRoom.title} capacity={activeRoom.capacity} onLeave={() => setActiveRoom(null)} />
-      )}
-
-      {session.walk_type === "audio" && !activeRoom && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-            <Headphones className="h-4 w-4 text-forest" /> Live Walk & Talks
-          </div>
-          {!hasMoved ? (
-            <div className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Confirming you're walking…</span>
-              <p className="mt-1 text-xs">A few more steps unlocks live rooms ({Math.max(0, 15 - Math.round(meters))}m to go).</p>
-            </div>
-          ) : audioRooms.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live rooms right now. Keep walking — one may open soon.</p>
-          ) : (
-            <ul className="space-y-2">
-              {audioRooms.map((r) => (
-                <li key={r.id} className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <div>
-                    <div className="text-sm font-medium">{r.title}</div>
-                    <div className="text-xs text-muted-foreground">{r.theme} · {r.current_participant_count}/{r.max_participants}</div>
-                  </div>
-                  <Button size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90" disabled={r.current_participant_count >= r.max_participants} onClick={() => setActiveRoom({ id: r.id, title: r.title, capacity: r.max_participants })}>
-                    {r.current_participant_count >= r.max_participants ? "Full" : "Join"}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {session.walk_type === "audio" && (
+        <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
       )}
 
       <div className="flex gap-3">
