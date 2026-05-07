@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { AmbientPad, playJoinChime, timeOfDayKey } from "@/lib/audio/ambient-pad";
 import { toast } from "sonner";
+import { ReflectionDrift } from "@/components/reflection-drift";
 
 interface Props {
   walkSessionId: string;
   mood: string | null;
   hasMoved: boolean;
+  onSavePrompt?: (text: string) => void;
 }
 
 const MATCH_PHRASES = [
