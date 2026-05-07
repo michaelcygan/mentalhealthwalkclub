@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -7,7 +7,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee } from "@/server/walks.functions";
-import { MapPin, Play, Square, CheckCircle2, Loader2 } from "lucide-react";
+import { joinScheduledWalk, openScheduledRoom, reshufflePods } from "@/server/audio.functions";
+import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users } from "lucide-react";
 
 export const Route = createFileRoute("/events/$slug")({ component: EventDetail });
 
@@ -18,6 +19,7 @@ interface EventRow {
   meeting_point: string | null; accessibility_notes: string | null; capacity: number | null;
   attendee_count: number; donation_note: string | null; vibe: string | null; event_type: string;
   status: string; host_user_id: string | null; started_at: string | null; ended_at: string | null;
+  audio_room_id: string | null; breakout_size: number; breakout_rotate_minutes: number | null;
 }
 
 interface Attendee { user_id: string; status: string; checked_in_at: string | null; profiles?: { display_name: string | null } | null }
@@ -26,17 +28,29 @@ function EventDetail() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
   const { requireAuth } = useAuthPrompt();
+  const navigate = useNavigate();
   const [event, setEvent] = useState<EventRow | null>(null);
   const [rsvp, setRsvp] = useState<{ status: string; checked_in_at: string | null } | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [livePodCount, setLivePodCount] = useState<{ pods: number; walkers: number } | null>(null);
+  const [now, setNow] = useState(Date.now());
 
   const startFn = useServerFn(startLocalWalk);
   const checkInFn = useServerFn(checkInToLocalWalk);
   const endFn = useServerFn(endLocalWalk);
   const hostCheckInFn = useServerFn(hostCheckInAttendee);
+  const joinScheduledFn = useServerFn(joinScheduledWalk);
+  const openRoomFn = useServerFn(openScheduledRoom);
+  const reshuffleFn = useServerFn(reshufflePods);
 
   const isHost = !!user && !!event && event.host_user_id === user.id;
+  const isAudio = event?.event_type === "audio_walk";
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
 
   const refresh = async () => {
     const { data } = await supabase.from("events").select("*").eq("slug", slug).single();
@@ -51,8 +65,28 @@ function EventDetail() {
       const { data: list } = await supabase.from("event_rsvps").select("user_id,status,checked_in_at,profiles(display_name)").eq("event_id", data.id) as any;
       setAttendees((list ?? []) as Attendee[]);
     }
+    // Live pod stats for audio walks
+    if (data.event_type === "audio_walk" && data.audio_room_id) {
+      const { data: pods } = await supabase
+        .from("audio_rooms")
+        .select("id,current_participant_count")
+        .or(`id.eq.${data.audio_room_id},parent_room_id.eq.${data.audio_room_id}`);
+      const list = (pods ?? []).filter((p) => data.breakout_size > 0 ? p.id !== data.audio_room_id : true);
+      const walkers = list.reduce((s, p) => s + (p.current_participant_count ?? 0), 0);
+      setLivePodCount({ pods: data.breakout_size > 0 ? list.length : 1, walkers });
+    }
   };
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, user]);
+
+  // Realtime for live audio walk stats
+  useEffect(() => {
+    if (!event?.audio_room_id) return;
+    const ch = supabase.channel(`event-live-${event.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "audio_rooms" }, refresh)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.audio_room_id]);
 
   const goRSVP = () => requireAuth(async () => {
     if (!user || !event) return;
@@ -71,7 +105,7 @@ function EventDetail() {
     setBusy("start");
     try {
       await startFn({ data: { event_id: event.id } });
-      toast.success("Walk started. Folks can check in now.");
+      toast.success("Walk started.");
       refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not start"); }
     finally { setBusy(null); }
@@ -120,82 +154,167 @@ function EventDetail() {
     finally { setBusy(null); }
   };
 
+  const joinCircle = () => requireAuth(async () => {
+    if (!event) return;
+    setBusy("join");
+    try {
+      const res = await joinScheduledFn({ data: { eventId: event.id } });
+      toast.success(res.podIndex ? `You're in pod ${res.podIndex}.` : "You're in the circle.");
+      navigate({ to: "/walk/active/$id" as never, params: { id: res.walkSessionId } as never });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not join"); setBusy(null); }
+  });
+
+  const openEarly = async () => {
+    if (!event) return;
+    setBusy("open");
+    try {
+      await openRoomFn({ data: { eventId: event.id } });
+      toast.success("Circle opened. Walkers can join now.");
+      refresh();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not open"); }
+    finally { setBusy(null); }
+  };
+
+  const reshuffle = async () => {
+    if (!event) return;
+    setBusy("reshuffle");
+    try {
+      const r = await reshuffleFn({ data: { eventId: event.id } });
+      toast.success(`Mixed ${r.rotated} walker${r.rotated === 1 ? "" : "s"}.`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not reshuffle"); }
+    finally { setBusy(null); }
+  };
+
   if (!event) return <div className="py-20 text-center text-muted-foreground">…</div>;
 
   const startMs = new Date(event.starts_at).getTime();
-  const minsToStart = (startMs - Date.now()) / 60_000;
-  const canStart = isHost && event.status === "published" && Math.abs(minsToStart) <= 30;
+  const minsToStart = (startMs - now) / 60_000;
+  const canStart = isHost && event.status === "published" && Math.abs(minsToStart) <= 30 && !isAudio;
   const inProgress = event.status === "in_progress";
   const completed = event.status === "completed";
   const locationDisplay = event.location_label || [event.city, event.state].filter(Boolean).join(", ");
+  const audioJoinable = isAudio && minsToStart <= 5 && !completed;
+  const audioOpenedEarly = isAudio && isHost && minsToStart > 5 && event.status === "published";
+
+  const startLabel = (() => {
+    if (minsToStart > 60) return new Date(event.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    if (minsToStart > 0) return `Starting in ${Math.ceil(minsToStart)} min`;
+    if (minsToStart > -1) return "Starting now";
+    return "Live";
+  })();
 
   return (
     <div className="space-y-6">
-      <Link to={"/events" as never} className="text-sm text-muted-foreground hover:text-foreground">← All Local Walks</Link>
+      <Link to={"/events" as never} className="text-sm text-muted-foreground hover:text-foreground">← All Walks</Link>
       <header>
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wider text-clay">Local Walk</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1 text-xs uppercase tracking-wider text-clay">
+            {isAudio ? <Headphones className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+            {isAudio ? "Audio Walk" : "Local Walk"}
+          </span>
           {inProgress && <span className="rounded-full bg-forest px-2 py-0.5 text-xs font-medium text-primary-foreground">In progress</span>}
           {completed && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">Completed</span>}
-          {event.status === "published" && <span className="rounded-full bg-accent px-2 py-0.5 text-xs">Scheduled</span>}
+          {event.status === "published" && <span className="rounded-full bg-accent px-2 py-0.5 text-xs">{startLabel}</span>}
         </div>
         <h1 className="mt-1 font-serif text-3xl">{event.title}</h1>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="h-3 w-3" />
           {new Date(event.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          {locationDisplay && ` · ${locationDisplay}`}
+          {!isAudio && locationDisplay && ` · ${locationDisplay}`}
         </p>
       </header>
 
       {event.description && <p className="text-foreground">{event.description}</p>}
 
       <div className="rounded-2xl border border-border bg-card p-5 text-sm">
-        <Row label="Meeting point" value={event.meeting_point} />
-        <Row label="Capacity" value={`${event.attendee_count}/${event.capacity ?? "—"} going`} />
-        {event.vibe && <Row label="Vibe" value={event.vibe} />}
-        {event.accessibility_notes && <Row label="Accessibility" value={event.accessibility_notes} />}
+        {isAudio ? (
+          <>
+            <Row label="Format" value={event.breakout_size === 0 ? `One open circle · ${event.capacity ?? 8} spots` : `${event.breakout_size === 2 ? "Pairs" : event.breakout_size === 3 ? "Trios" : "Quads"} · up to ${event.capacity ?? 8} walkers`} />
+            {event.breakout_rotate_minutes && <Row label="Mixing" value={`Walkers shuffle every ${event.breakout_rotate_minutes} min`} />}
+            {event.vibe && <Row label="Theme" value={event.vibe} />}
+            {livePodCount && livePodCount.walkers > 0 && (
+              <Row label="Live now" value={`${livePodCount.walkers} walking · ${livePodCount.pods} pod${livePodCount.pods === 1 ? "" : "s"}`} />
+            )}
+          </>
+        ) : (
+          <>
+            <Row label="Meeting point" value={event.meeting_point} />
+            <Row label="Capacity" value={`${event.attendee_count}/${event.capacity ?? "—"} going`} />
+            {event.vibe && <Row label="Vibe" value={event.vibe} />}
+            {event.accessibility_notes && <Row label="Accessibility" value={event.accessibility_notes} />}
+          </>
+        )}
       </div>
 
       {/* Action area */}
       {!completed && (
         <div className="space-y-3">
-          {!isHost && (
-            <Button onClick={goRSVP} className={`h-12 w-full rounded-full ${rsvp ? "bg-secondary text-foreground" : "bg-forest text-primary-foreground"} hover:opacity-90`}>
-              {rsvp ? "You're going · tap to undo" : "RSVP — I'm going"}
-            </Button>
-          )}
-
-          {inProgress && rsvp && !rsvp.checked_in_at && (
-            <Button onClick={checkInHere} disabled={busy === "checkin"} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
-              {busy === "checkin" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reading location…</> : <>Check in here (within ~50 ft)</>}
-            </Button>
-          )}
-          {inProgress && rsvp?.checked_in_at && (
-            <div className="flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-forest" /> You're checked in
-            </div>
-          )}
-
-          {canStart && (
-            <Button onClick={startWalk} disabled={busy === "start"} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
-              <Play className="mr-2 h-4 w-4" />{busy === "start" ? "Starting…" : "Start the walk"}
-            </Button>
-          )}
-          {isHost && event.status === "published" && !canStart && (
-            <p className="text-center text-xs text-muted-foreground">You can start the walk within 30 min of the scheduled time.</p>
-          )}
-          {isHost && inProgress && (
-            <Button onClick={endWalk} disabled={busy === "end"} variant="outline" className="h-12 w-full rounded-full">
-              <Square className="mr-2 h-4 w-4" />{busy === "end" ? "Wrapping…" : "End the walk"}
-            </Button>
+          {isAudio ? (
+            <>
+              {audioJoinable && (
+                <Button onClick={joinCircle} disabled={busy === "join"} className="h-14 w-full rounded-full bg-forest text-primary-foreground text-base hover:opacity-90">
+                  {busy === "join" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Joining…</> : <><Headphones className="mr-2 h-4 w-4" />Join the circle</>}
+                </Button>
+              )}
+              {!audioJoinable && !isHost && (
+                <Button onClick={goRSVP} className={`h-12 w-full rounded-full ${rsvp ? "bg-secondary text-foreground" : "bg-forest text-primary-foreground"} hover:opacity-90`}>
+                  {rsvp ? "You'll be there · tap to undo" : "I'll be there"}
+                </Button>
+              )}
+              {audioOpenedEarly && (
+                <Button onClick={openEarly} disabled={busy === "open"} variant="outline" className="h-12 w-full rounded-full">
+                  {busy === "open" ? "Opening…" : "Open circle early"}
+                </Button>
+              )}
+              {isHost && event.breakout_size > 0 && livePodCount && livePodCount.walkers > 1 && (
+                <Button onClick={reshuffle} disabled={busy === "reshuffle"} variant="outline" className="h-12 w-full rounded-full">
+                  <Shuffle className="mr-2 h-4 w-4" />{busy === "reshuffle" ? "Mixing…" : "Reshuffle pods now"}
+                </Button>
+              )}
+              {isHost && (
+                <Button onClick={endWalk} disabled={busy === "end"} variant="ghost" className="h-10 w-full rounded-full text-muted-foreground">
+                  {busy === "end" ? "Wrapping…" : "End this walk"}
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {!isHost && (
+                <Button onClick={goRSVP} className={`h-12 w-full rounded-full ${rsvp ? "bg-secondary text-foreground" : "bg-forest text-primary-foreground"} hover:opacity-90`}>
+                  {rsvp ? "You're going · tap to undo" : "RSVP — I'm going"}
+                </Button>
+              )}
+              {inProgress && rsvp && !rsvp.checked_in_at && (
+                <Button onClick={checkInHere} disabled={busy === "checkin"} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+                  {busy === "checkin" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reading location…</> : <>Check in here (within ~50 ft)</>}
+                </Button>
+              )}
+              {inProgress && rsvp?.checked_in_at && (
+                <div className="flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-forest" /> You're checked in
+                </div>
+              )}
+              {canStart && (
+                <Button onClick={startWalk} disabled={busy === "start"} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+                  <Play className="mr-2 h-4 w-4" />{busy === "start" ? "Starting…" : "Start the walk"}
+                </Button>
+              )}
+              {isHost && event.status === "published" && !canStart && (
+                <p className="text-center text-xs text-muted-foreground">You can start the walk within 30 min of the scheduled time.</p>
+              )}
+              {isHost && inProgress && (
+                <Button onClick={endWalk} disabled={busy === "end"} variant="outline" className="h-12 w-full rounded-full">
+                  <Square className="mr-2 h-4 w-4" />{busy === "end" ? "Wrapping…" : "End the walk"}
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {/* Host attendee list */}
-      {isHost && (inProgress || event.status === "published") && attendees.length > 0 && (
+      {/* Host attendee list (IRL only) */}
+      {!isAudio && isHost && (inProgress || event.status === "published") && attendees.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="font-serif text-lg">Attendees ({attendees.length})</h2>
+          <h2 className="font-serif text-lg flex items-center gap-2"><Users className="h-4 w-4" />Attendees ({attendees.length})</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {attendees.map((a) => (
               <li key={a.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2">
