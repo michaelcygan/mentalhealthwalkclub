@@ -278,15 +278,6 @@ function ModePill({ icon: Icon, label, onClick }: { icon: typeof Footprints; lab
   );
 }
 
-function FlowCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return (
-    <div className="mx-auto max-w-lg space-y-4 pt-6">
-      <h2 className="font-serif text-3xl leading-tight">{title}</h2>
-      {sub && <p className="text-muted-foreground">{sub}</p>}
-      <div className="pt-2">{children}</div>
-    </div>
-  );
-}
 
 function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
   return (
