@@ -320,46 +320,53 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
         </button>
       </div>
 
-      {/* Constellation */}
-      <div className="relative mx-auto mb-5 grid h-44 w-44 place-items-center">
-        {alone && (
-          <>
-            <span className="absolute h-44 w-44 rounded-full border border-forest/20" style={{ animation: "ripple 3s ease-out infinite" }} />
-            <span className="absolute h-44 w-44 rounded-full border border-forest/10" style={{ animation: "ripple 3s ease-out 1.5s infinite" }} />
-            <Users className="h-5 w-5 text-forest/40" />
-          </>
-        )}
-        {positioned.map((p) => {
-          const profile = profiles[p.userId];
-          const name = profile?.display_name ?? (p.userId === user?.id ? "you" : "walker");
-          const initial = (name?.[0] ?? "•").toUpperCase();
-          return (
-            <div
-              key={p.userId}
-              className="absolute flex flex-col items-center gap-1 transition-transform duration-700 animate-in fade-in zoom-in"
-              style={{ transform: `translate(${p.x}px, ${p.y}px)` }}
-            >
-              <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card" : ""}`}>
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                ) : <span>{initial}</span>}
-                {p.muted && (
-                  <div className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-muted-foreground text-background">
-                    <MicOff className="h-3 w-3" />
-                  </div>
-                )}
+      {/* Constellation — full size when others present, compact badge when alone */}
+      {!alone ? (
+        <div className="relative mx-auto mb-5 grid h-44 w-44 place-items-center">
+          {positioned.map((p) => {
+            const profile = profiles[p.userId];
+            const name = profile?.display_name ?? (p.userId === user?.id ? "you" : "walker");
+            const initial = (name?.[0] ?? "•").toUpperCase();
+            return (
+              <div
+                key={p.userId}
+                className="absolute flex flex-col items-center gap-1 transition-transform duration-700 animate-in fade-in zoom-in"
+                style={{ transform: `translate(${p.x}px, ${p.y}px)` }}
+              >
+                <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card" : ""}`}>
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                  ) : <span>{initial}</span>}
+                  {p.muted && (
+                    <div className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-muted-foreground text-background">
+                      <MicOff className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+                <div className="max-w-[70px] truncate text-[10px] text-muted-foreground">{name}</div>
               </div>
-              <div className="max-w-[70px] truncate text-[10px] text-muted-foreground">{name}</div>
-            </div>
-          );
-        })}
-        <style>{`@keyframes ripple { 0% { transform: scale(.5); opacity: .9 } 100% { transform: scale(1.4); opacity: 0 } }`}</style>
-      </div>
+            );
+          })}
+          <style>{`@keyframes ripple { 0% { transform: scale(.5); opacity: .9 } 100% { transform: scale(1.4); opacity: 0 } }`}</style>
+        </div>
+      ) : (
+        <div className="mb-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="relative grid h-7 w-7 place-items-center rounded-full border border-forest/20 bg-secondary">
+            <Users className="h-3.5 w-3.5 text-forest/60" />
+            <span className="absolute inset-0 rounded-full border border-forest/20" style={{ animation: "ripple 3s ease-out infinite" }} />
+          </span>
+          <span className="font-serif italic">holding the room — someone may join</span>
+          <style>{`@keyframes ripple { 0% { transform: scale(.85); opacity: .9 } 100% { transform: scale(1.5); opacity: 0 } }`}</style>
+        </div>
+      )}
 
       {alone && !showSilenceChoice && (
-        <p className="mb-4 text-center font-serif text-xs italic text-muted-foreground">
-          Someone will join. The air will hold the room.
-        </p>
+        <ReflectionDrift
+          mood={mood}
+          intervalMs={preferQuiet ? 18_000 : 24_000}
+          onSavePrompt={onSavePrompt}
+          className="mb-4"
+        />
       )}
 
       {showSilenceChoice && alone && (
