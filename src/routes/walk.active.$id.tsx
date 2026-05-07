@@ -186,6 +186,7 @@ function ActiveWalk() {
         moodBeforeScore={session.mood_before_score}
         elapsed={elapsed}
         miles={miles}
+        savedPrompts={savedPrompts}
         onSave={endWalk}
       />
     );
