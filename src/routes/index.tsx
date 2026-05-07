@@ -67,7 +67,7 @@ function WalkTab() {
       });
   }, [user]);
 
-  const beginWalk = async () => {
+  const beginWalk = async (track?: GuidedTrack | null) => {
     if (!user) return;
     setBusy(true);
     try {
@@ -78,6 +78,7 @@ function WalkTab() {
         mood_before: feeling || null,
         mood_before_score: moodScore,
         intention: intention || null,
+        guided_track_id: track?.id ?? guidedTrack?.id ?? null,
       }).select("id").single();
       if (error) throw error;
       navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
@@ -86,6 +87,11 @@ function WalkTab() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const proceedAfterMood = () => {
+    if (walkType === "guided_solo") setStep(2);
+    else beginWalk();
   };
 
   // Logged-out marketing landing
