@@ -186,3 +186,12 @@
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
 }
+
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  25%      { transform: translate3d(2px, -5px, 0) rotate(-0.6deg); }
+  50%      { transform: translate3d(-1px, -8px, 0) rotate(0.4deg); }
+  75%      { transform: translate3d(-3px, -3px, 0) rotate(0.7deg); }
+}
+.mood-drift { animation: drift var(--d, 7s) ease-in-out var(--dl, 0s) infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .mood-drift { animation: none; } }
