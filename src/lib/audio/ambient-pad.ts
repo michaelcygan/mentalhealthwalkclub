@@ -1,6 +1,18 @@
 // Generative ambient pad — Web Audio, no assets, no network.
 // Soft, slow-moving drone for "waiting alone" moments in a Walk & Talk room.
 
+const KEY_PRESETS: Record<string, number[]> = {
+  // root, fifth, octave (Hz)
+  morning:    [146.83, 220.00, 293.66],   // D minor open — bright but calm
+  midday:     [164.81, 246.94, 329.63],   // E
+  afternoon:  [130.81, 196.00, 261.63],   // C
+  evening:    [123.47, 185.00, 246.94],   // B
+  night:      [110.00, 164.81, 220.00],   // A — low, settling
+  default:    [110.00, 164.81, 220.00],
+};
+
+export type PadKey = keyof typeof KEY_PRESETS;
+
 export class AmbientPad {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -8,7 +20,7 @@ export class AmbientPad {
   private lfo: OscillatorNode | null = null;
   private targetGain = 0;
 
-  async start(volume = 0.18) {
+  async start(volume = 0.18, key: PadKey | string = "default") {
     if (this.ctx) return;
     this.ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     const ctx = this.ctx;
@@ -17,15 +29,13 @@ export class AmbientPad {
     this.master.gain.value = 0;
     this.master.connect(ctx.destination);
 
-    // Soft lowpass so harmonics don't bite
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.value = 900;
     lp.Q.value = 0.7;
     lp.connect(this.master);
 
-    // Three detuned sines forming a quiet open chord (root, fifth, octave)
-    const freqs = [110, 164.81, 220];
+    const freqs = KEY_PRESETS[key as PadKey] ?? KEY_PRESETS.default;
     for (const f of freqs) {
       const o = ctx.createOscillator();
       o.type = "sine";
@@ -38,7 +48,6 @@ export class AmbientPad {
       this.oscs.push(o);
     }
 
-    // Slow LFO on filter cutoff for breathing motion
     this.lfo = ctx.createOscillator();
     this.lfo.frequency.value = 0.06;
     const lfoGain = ctx.createGain();
@@ -78,6 +87,15 @@ export class AmbientPad {
     this.ctx = null;
     await ctx.close().catch(() => {});
   }
+}
+
+export function timeOfDayKey(d = new Date()): PadKey {
+  const h = d.getHours();
+  if (h < 9) return "morning";
+  if (h < 14) return "midday";
+  if (h < 17) return "afternoon";
+  if (h < 20) return "evening";
+  return "night";
 }
 
 // Soft chime when a walker joins or you join a room.
