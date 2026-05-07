@@ -59,14 +59,15 @@ export const sendKudos = createServerFn({ method: "POST" })
     if (data.recipientUserId === userId) return { sent: 0 };
     const { error } = await supabase
       .from("group_signals")
-      .upsert({
+      .insert({
         group_id: data.groupId,
         sender_user_id: userId,
         recipient_user_id: data.recipientUserId,
         kind: "kudos",
         badge_id: data.badgeId,
-      }, { onConflict: "sender_user_id,recipient_user_id,kind,badge_id,created_day", ignoreDuplicates: true });
-    if (error) throw new Error(error.message);
+      });
+    // Unique index will reject same-day duplicates; treat as success.
+    if (error && !/duplicate key/i.test(error.message)) throw new Error(error.message);
     return { sent: 1 };
   });
 
