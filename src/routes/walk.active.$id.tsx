@@ -8,6 +8,7 @@ import { Shield, Pause, Play, Square, Headphones, AlertTriangle, Heart, ArrowRig
 import { toast } from "sonner";
 import { AudioRoomPanel } from "@/components/audio-room-panel";
 import { RouteSparkline } from "@/components/route-sparkline";
+import { WalkTalkDock } from "@/components/walk-talk-dock";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
