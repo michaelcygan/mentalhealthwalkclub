@@ -29,7 +29,8 @@ function WalkTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { requireAuth, openWelcome } = useAuthPrompt();
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [guidedTrack, setGuidedTrack] = useState<GuidedTrack | null>(null);
   const [walkType, setWalkType] = useState<"solo" | "guided_solo" | "irl_event" | "audio">("solo");
   const [feeling, setFeeling] = useState<string>("");
   const [moodScore, setMoodScore] = useState<number | null>(null);
