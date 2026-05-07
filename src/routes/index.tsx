@@ -198,15 +198,15 @@ function WalkTab() {
           </div>
         )}
 
-        <Button onClick={() => { setWalkType("solo"); setStep(2); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
+        <Button onClick={() => { setWalkType("solo"); setStep(1); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
           <Footprints className="mr-2 h-5 w-5" /> Start a walk
         </Button>
 
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
           <div className="flex flex-wrap gap-2">
-            <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(2); }} />
-            <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(2); }} />
+            <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(1); }} />
+            <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(1); }} />
             <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
           </div>
         </div>
@@ -227,52 +227,45 @@ function WalkTab() {
 
   if (step === 1) {
     return (
-      <FlowCard title="How are you walking today?" sub="No wrong answer.">
-        <div className="grid gap-2">
-          {([
-            ["solo", "Walk Solo", "Walking alone still counts."],
-            ["guided_solo", "Guided Solo Walk", "A gentle voice in your ear."],
-            ["audio", "Walk & Talk", "Live audio, only while walking."],
-            ["irl_event", "Local Walk", "Meeting people in real life."],
-          ] as const).map(([v, label, sub]) => (
-            <button key={v} onClick={() => { setWalkType(v); setStep(2); }} className={`rounded-2xl border p-4 text-left transition ${walkType === v ? "border-forest bg-accent" : "border-border bg-card hover:border-forest/40"}`}>
-              <div className="font-medium">{label}</div>
-              <div className="text-sm text-muted-foreground">{sub}</div>
-            </button>
-          ))}
+      <div className="mx-auto max-w-lg space-y-6 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        <button onClick={() => setStep(0)} className="text-xs text-muted-foreground underline-offset-4 hover:text-forest hover:underline">← back</button>
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">{walkType === "audio" ? "Walk & Talk" : walkType === "guided_solo" ? "Guided walk" : walkType === "irl_event" ? "Local walk" : "Solo walk"}</p>
+          <h2 className="mt-1 font-serif text-3xl leading-tight">How are you arriving?</h2>
+          <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
         </div>
-      </FlowCard>
-    );
-  }
 
-  if (step === 2) {
-    return (
-      <FlowCard title="How are you feeling?" sub="One word is enough.">
-        <div className="flex flex-wrap gap-2">
-          {FEELINGS.map((f) => (
-            <button key={f} onClick={() => setFeeling(f)} className={`rounded-full border px-4 py-2 text-sm transition ${feeling === f ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:border-forest/40"}`}>
-              {f}
-            </button>
-          ))}
+        <MoodCloud value={feeling} onChange={setFeeling} />
+
+        <div className={`transition-all duration-500 ${feeling ? "max-h-40 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel?</p>
+          <WeightBar value={moodScore} onChange={setMoodScore} />
         </div>
-        <div className="mt-6">
-          <label className="text-sm text-muted-foreground">Optional: 1 (heavy) → 10 (light)</label>
-          <input type="range" min={1} max={10} value={moodScore ?? 5} onChange={(e) => setMoodScore(Number(e.target.value))} className="mt-2 w-full accent-[var(--forest)]" />
-          {moodScore && <div className="text-xs text-muted-foreground">{moodScore}/10</div>}
+
+        <div className={`transition-all duration-500 ${moodScore ? "max-h-60 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">An intention? <span className="lowercase italic tracking-normal text-muted-foreground/70">optional</span></p>
+          <textarea value={intention} onChange={(e) => setIntention(e.target.value)} placeholder="e.g. let my shoulders drop" rows={2} className="w-full rounded-2xl border border-border bg-card p-3 text-sm focus:border-forest focus:outline-none" />
         </div>
-        <Button onClick={() => setStep(3)} className="mt-6 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">Continue</Button>
-      </FlowCard>
+
+        <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+          <Button onClick={proceedAfterMood} disabled={busy} className="h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
+            {busy ? "Starting…" : walkType === "guided_solo" ? "Choose a guide" : "Begin walking"}
+          </Button>
+          <button onClick={proceedAfterMood} className="mt-2 block w-full text-center text-xs italic text-muted-foreground hover:text-forest">skip the rest, just walk</button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <FlowCard title="An intention?" sub="Optional. Skip if you'd rather just go.">
-      <textarea value={intention} onChange={(e) => setIntention(e.target.value)} placeholder="e.g. let my shoulders drop" rows={3} className="w-full rounded-2xl border border-border bg-card p-4 text-sm focus:border-forest focus:outline-none" />
-      <Button onClick={beginWalk} disabled={busy} className="mt-6 h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
-        {busy ? "Starting…" : "Start walking"}
-      </Button>
-      <p className="mt-3 text-center font-serif text-xs italic text-muted-foreground">A small walk is still a walk.</p>
-    </FlowCard>
+    <div className="mx-auto max-w-lg pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+      <button onClick={() => setStep(1)} className="mb-4 text-xs text-muted-foreground underline-offset-4 hover:text-forest hover:underline">← back</button>
+      <GuidePicker
+        mood={feeling || null}
+        onChoose={(t) => { setGuidedTrack(t); beginWalk(t); }}
+        onSkip={() => beginWalk(null)}
+      />
+    </div>
   );
 }
 
