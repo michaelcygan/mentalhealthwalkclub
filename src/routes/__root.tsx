@@ -7,6 +7,7 @@ import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InboxBell } from "@/components/inbox-bell";
 
 function NotFoundComponent() {
   return (
@@ -141,6 +142,7 @@ function TabBar() {
         </ul>
 
         <LiveSidebarPill />
+        {user && <InboxBell variant="desktop" />}
 
         <div className="mt-auto pt-6">
           <button onClick={openWelcome} className="text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
@@ -153,7 +155,7 @@ function TabBar() {
       </aside>
 
       {/* Mobile top bar — sign in for logged-out visitors */}
-      {!user && (
+      {!user ? (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur md:hidden">
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
@@ -165,6 +167,16 @@ function TabBar() {
             <button onClick={openWelcome} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">How it works</button>
             <Button size="sm" onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Sign up</Button>
           </div>
+        </header>
+      ) : (
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2 backdrop-blur md:hidden">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
+              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="font-serif text-sm">Walk Club</span>
+          </Link>
+          <InboxBell variant="mobile" />
         </header>
       )}
     </>

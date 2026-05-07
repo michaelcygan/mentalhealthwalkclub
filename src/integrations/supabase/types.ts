@@ -508,6 +508,42 @@ export type Database = {
           },
         ]
       }
+      group_signals: {
+        Row: {
+          badge_id: string | null
+          created_at: string
+          created_day: string | null
+          group_id: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        Insert: {
+          badge_id?: string | null
+          created_at?: string
+          created_day?: string | null
+          group_id: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        Update: {
+          badge_id?: string | null
+          created_at?: string
+          created_day?: string | null
+          group_id?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          sender_user_id?: string
+        }
+        Relationships: []
+      }
       groups: {
         Row: {
           city: string | null
@@ -970,6 +1006,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          allow_group_signals: boolean
           allow_location_features: boolean
           allow_mood_insights: boolean
           allow_step_import: boolean
@@ -983,6 +1020,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allow_group_signals?: boolean
           allow_location_features?: boolean
           allow_mood_insights?: boolean
           allow_step_import?: boolean
@@ -996,6 +1034,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allow_group_signals?: boolean
           allow_location_features?: boolean
           allow_mood_insights?: boolean
           allow_step_import?: boolean

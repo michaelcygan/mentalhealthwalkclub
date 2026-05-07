@@ -1,81 +1,152 @@
+## Groups, leveled up — alive without forcing social
 
-# Groups tab — 2026 level-up
+The group page becomes a **living room, not a directory**. No member lists, no profile browsing, no chat. Instead: ambient signals of life, anonymized milestones, and two tiny private gestures (welcome, kudos) that batch into a quiet inbox.
 
-Goal: make Groups feel **alive, local, and personal** without inventing new tables. Everything below uses primitives already in the database (`groups`, `group_memberships`, `audio_rooms`, `events`, `walk_sessions`, `profiles`).
+### Principle
 
-## What changes for the user
-
-1. **Sticky search + filter chips at top** — instant client-side fuzzy match across name, description, theme, city. Chips: *Near me · Live now · Has upcoming · Quiet · Audio-friendly*.
-2. **"Pulse" hero strip** — one horizontally-scrolling row of groups that are *live right now* or *starting soon* (joins `audio_rooms` + `events` already loaded by `LiveNowStrip`'s pattern). Tap → group detail with the join CTA primed.
-3. **Your groups, redesigned** — pill row replaced with a compact carousel of "presence cards": each shows last-7-days walker count + a tiny sparkline of live activity. One-tap "Walk with this group" right from the card (reuses the same insert as `groups.$slug`).
-4. **Discover, restructured** — three calm sections instead of one long grid:
-   - **For you** (themes matching `user_preferences.preferred_themes` + city match)
-   - **Near you** (city match on profile, fallback to country)
-   - **Browse all** (collapsed by theme: Anxiety · Burnout · Grief · Chapters · Connection · Quiet · Reset)
-5. **Richer group cards** — show *N walking this week*, *next scheduled walk time*, *N live now* — all from data already fetched in one round trip. Replace solid Join button with a quieter `+ Join` ghost that becomes `✓ Joined` inline (no list reflow).
-6. **Mobile gestures** — swipe-left on a joined group card = leave (with undo toast). Long-press = preview sheet with upcoming walks. Pull-to-refresh re-runs the merged query.
-7. **Empty/seed state** — when zero groups joined, show a one-screen "pick 3 to get started" onboarding card driven by `user_preferences.preferred_themes`.
-
-## More seeded groups
-
-Add ~12 new rows to `groups` so the discover grid feels populated. All use existing themes/columns (no schema change). Examples:
-
-```text
-Morning Light       theme=reset       — "First-light walks before the day claims you."
-After Work Wind-down theme=burnout    — "Decompress on foot. 20 minutes is enough."
-New Parents Walk    theme=connection  — "Stroller-friendly. Coffee optional."
-Long-Distance Friends theme=connection — "Walk together over audio across cities."
-Sober Walkers       theme=connection  — "A community on the move, one day at a time."
-Neurodivergent Walkers theme=quiet    — "Stim-friendly, low-demand, no small talk required."
-Creative Block      theme=quiet       — "Walk it out. The idea is in your legs."
-Postpartum          theme=grief       — "For the in-between season."
-Breakup Recovery    theme=grief       — "One foot, then the other."
-Brooklyn Chapter    theme=chapter, city=Brooklyn
-LA Chapter          theme=chapter, city=Los Angeles
-London Chapter      theme=chapter, city=London
-```
-
-## Data plumbing (one query, no new tables)
-
-Replace the three sequential calls in `groups.tsx` with **one parallel batch** plus a single derived map:
-
-```ts
-const [groupsQ, mineQ, liveQ, upcomingQ, weekQ] = await Promise.all([
-  supabase.from("groups").select("...").eq("is_active", true),
-  user && supabase.from("group_memberships").select("group_id").eq("user_id", user.id),
-  supabase.from("audio_rooms").select("group_id,id").eq("status","open").gt("current_participant_count",0).is("parent_room_id", null),
-  supabase.from("events").select("group_id,starts_at,event_type").eq("status","published").gte("starts_at", nowIso).lte("starts_at", in7dIso),
-  supabase.from("walk_sessions").select("group_id,user_id").eq("status","completed").gte("started_at", weekAgoIso),
-]);
-```
-
-Build one `Map<groupId, { live, nextStart, walkersWeek }>` and render. No N+1.
-
-## Files touched
-
-- **`src/routes/groups.tsx`** — full rewrite around new layout (still ~180 LOC; trades the flat grid for three composable sub-sections that share one data hook).
-- **New `src/components/group-card.tsx`** — single source of truth for compact + expanded variants (replaces inline `<li>`s, used by Pulse strip and Discover).
-- **New `src/hooks/use-groups-feed.ts`** — the merged loader above; re-usable on home if we want a "Your groups" tile later.
-- **One migration** — `INSERT INTO groups (...) VALUES (...)` for the 12 seeds. No column changes.
-
-## Out of scope (intentionally)
-
-- No new tables, no group chat, no posts/feeds.
-- No push notifications.
-- No map view (city pill is enough; map can come once we have lat/lng on most groups).
+- Walks are the meeting. Everything else is a candle in the window.
+- Default to anonymized aggregates; named beats only with opt-in via badge sharing.
+- Every social action is **one tap, asynchronous, private, and batched** — never a chat thread, never a public wall.
 
 ---
 
-## "World class for 2026" — bigger picture (separate, optional follow-ups)
+## New page structure (`/groups/$slug`)
 
-If you later want to push beyond this pass, here's where I'd go next, in order of leverage:
+```text
+┌──────────────────────────────────────────────┐
+│  ← All groups                                │
+│                                              │
+│  [ Ambient gradient hero ]                   │
+│   theme · 1,284 walkers                      │
+│   Sunday Reset                               │
+│   short description                          │
+│                                              │
+│   ◐ 42 walking this week  ·  next: in 3h    │
+│   [ Walk now ]   [ Schedule ]  (host only)   │
+└──────────────────────────────────────────────┘
 
-1. **Presence-first home** — Replace the static "Now & next" with a single ambient *Pulse* surface: live walker count globally, a few avatars walking *right now*, the next thing you could join in one tap. Borrows the design language of Strava's *Beacon* and Apple's Live Activities.
-2. **One-tap join from anywhere** — Any group / event / audio room becomes joinable from the dock without leaving the current screen. The walk session is already the universal primitive — surface it everywhere.
-3. **Spatial audio pods** — Pods already exist; layer in WebRTC spatial audio so 6-person breakouts feel like walking three abreast. Big perceived-quality jump for ~one library swap.
-4. **AI walk companion (opt-in)** — A gentle on-device prompt every ~10 min ("notice one thing green"). Uses Lovable AI Gateway (`google/gemini-2.5-flash-lite`), no new infra.
-5. **Local rituals** — Sunday Reset, Morning Light, After-Work Wind-down become *recurring scheduled audio walks* per chapter — auto-generated via the cron we already have. Groups become living, not lists.
-6. **Quiet social graph** — Replace explicit follows with *"walked alongside"* — anyone you've shared a pod or IRL event with appears softly in your feed. No friend requests, ever.
-7. **Beautiful exports** — End-of-month "walking portrait" PDF/share card generated from existing reflection + route data. Drives organic growth without ads.
+┌── Pulse ─────────────────────────────────────┐
+│  This week, together                         │
+│  ── 84 walks · 19h 22m · 7 new members      │
+│  (animated counters, no names)              │
+└──────────────────────────────────────────────┘
 
-Want me to proceed with the Groups pass exactly as scoped above?
+┌── Welcome strip (if N≥1 new this week) ─────┐
+│  7 walkers joined this week.                 │
+│         [ Send a quiet welcome → ]           │
+│   (one tap = batched signal to all 7)        │
+└──────────────────────────────────────────────┘
+
+┌── Milestones ────────────────────────────────┐
+│  Quiet wins, last 14 days                    │
+│   • Someone earned "Walked it through"      │
+│     [ ♡ Send congrats ]                      │
+│   • Someone hit 10 walks                     │
+│     [ ♡ Send congrats ]                      │
+│   • Three people earned "Sunday Reset"      │
+│     [ ♡ Send congrats to all ]               │
+└──────────────────────────────────────────────┘
+
+┌── Upcoming walks ────────────────────────────┐
+│  (existing list, tightened cards)            │
+└──────────────────────────────────────────────┘
+
+┌── Live now (if any) ─────────────────────────┐
+│  small audio-room chips                      │
+└──────────────────────────────────────────────┘
+
+[Bottom mobile-sticky CTA: Walk now]
+```
+
+Removed: "Recently walked here" name list (privacy).
+
+---
+
+## Behavior
+
+**Welcome (batched).** New member's row in `group_memberships` is the source. Show count of joined-this-week. One tap from any existing member sends a `welcome` signal to *each* of those new members from the sender. Sender sees: "Welcomed 7 walkers." Recipient sees a single line in their inbox: *"3 people in Sunday Reset welcomed you."* (Aggregated per group per 24h.) No names of senders shown to recipient — this is by design; it's a candle, not a handshake.
+
+**Kudos.** Each milestone card represents a `user_badges` row earned in the last 14 days inside this group's walks (i.e., walks with `group_id = this`). Names are hidden by default. Tap ♡ → sends a `kudos` signal to that recipient. Recipient inbox aggregates: *"4 people congratulated you on Walked it through."*
+
+**Inbox.** Tiny bell on `__root.tsx` mobile header (or in profile route — TBD smallest change). Shows unread count. Sheet/drawer with reverse-chronological aggregated lines. Tap = mark read. No replies, no threads.
+
+**Privacy guarantees.**
+- Recipient never learns sender identity.
+- Sender never learns recipient identity for milestones (we surface "3 people earned X" — sender just sends "to whoever they are").
+- No lists of who walked, joined, or earned anything — only counts.
+- Opt-out per user via existing `user_preferences` (add boolean `allow_group_signals`, default true).
+
+---
+
+## Data — one tiny new table, nothing else
+
+```sql
+create table public.group_signals (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null,
+  sender_user_id uuid not null,
+  recipient_user_id uuid not null,
+  kind text not null,           -- 'welcome' | 'kudos'
+  badge_id uuid,                -- nullable, set for kudos
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+-- indexes on (recipient_user_id, read_at) and (group_id, kind, created_at)
+-- RLS: sender can insert as self; recipient can select+update (read_at) own rows.
+-- Unique partial index to dedupe spam: (sender_user_id, recipient_user_id, kind, badge_id) within 24h via trigger.
+```
+
+Add one column: `user_preferences.allow_group_signals boolean default true`.
+
+Everything else reuses existing tables: `walk_sessions`, `user_badges`, `group_memberships`, `audio_rooms`, `events`.
+
+---
+
+## Code surface (small, focused)
+
+- **Edit** `src/routes/groups.$slug.tsx` — replace recent-walks block with Pulse + Welcome + Milestones sections; mobile sticky CTA. ~180 LOC total.
+- **New** `src/components/group-pulse.tsx` — animated counters (CSS `@property` count-up, no library).
+- **New** `src/components/milestone-row.tsx` — anonymized badge row + ♡ button.
+- **New** `src/server/group-signals.functions.ts` — `sendWelcome(groupId)`, `sendKudos(badgeRowId)`, `getInbox()`, `markRead(ids[])`. All `requireSupabaseAuth`. Server-side aggregation + 24h dedupe.
+- **New** `src/components/inbox-bell.tsx` — bell + sheet, mounted in `__root.tsx` header (auth-only).
+- **One migration** for `group_signals` + `allow_group_signals` column + RLS.
+
+No changes to: `groups.tsx` list, `events.*`, `audio.functions.ts`, `walk-talk-dock`, schema for existing tables.
+
+---
+
+## Mobile-first details
+
+- Sticky bottom CTA bar (`Walk now` / `Schedule`) — uses safe-area-inset; appears only when scrolled past hero.
+- Pulse counters animate once on viewport-enter using `IntersectionObserver`, then settle.
+- Milestone rows use long-press (200ms) for "send congrats to all who earned this badge this week" — short tap = single.
+- Inbox sheet is bottom drawer (`<Drawer>` already in shadcn) with snap points.
+- Theme gradient hero already exists — extend with subtle `radial-gradient` "breathing" animation (2.5s ease-in-out, `prefers-reduced-motion` respected).
+
+---
+
+## Why this is "2026 best in class"
+
+- **Ambient social** instead of feed-driven. No likes count, no follower graph, no notifications begging for return engagement.
+- **Aggregated by default**, named only when the user opts in by *earning a badge*.
+- **One-tap warmth.** Welcomes and kudos take a single intent; the system handles fan-out and dedupe.
+- **Inbox is finite.** Nothing to scroll forever. Read = gone.
+- **Schema discipline.** One table, one column. Reuses badges as the milestone substrate. No chat infra debt.
+
+---
+
+## Out of scope (intentionally)
+
+- No chat, threads, replies, or DMs.
+- No member directory or profile browsing inside groups.
+- No push notifications (inbox is pull-based — can layer later).
+- No emoji reactions beyond ♡.
+- No leaderboards.
+
+---
+
+## Questions before building
+
+1. Inbox bell location — mounted in `__root.tsx` header (visible everywhere) or only on `/profile` and `/groups/*`?
+2. Should milestone congrats reveal **how many** people congratulated you, or just *"someone congratulated you"*? (Count feels warmer; absence is more anonymous.)
+3. For welcomes: surface to brand-new joiners *"7 walkers said welcome"* in their Groups tab next to the joined group, or only inside the inbox?
