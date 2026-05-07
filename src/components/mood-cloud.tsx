@@ -92,7 +92,7 @@ export function MoodCloud({ value, onChange }: Props) {
         <div className="-mx-4 space-y-2 px-4 sm:mx-0 sm:px-0">
           {rows.map((row, idx) => {
             const dir = idx % 2 === 0 ? "mood-marquee-l" : "mood-marquee-r";
-            const speed = `${55 + idx * 12}s`;
+            const speed = `${110 + idx * 25}s`;
             // Duplicate row contents for seamless loop
             const doubled = [...row, ...row];
             return (
