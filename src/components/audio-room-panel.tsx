@@ -133,7 +133,7 @@ export function AudioRoomPanel({ roomId, walkSessionId, roomTitle, capacity, onL
           <LogOut className="mr-2 h-4 w-4" />Leave audio
         </Button>
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted-foreground">Audio is peer-to-peer. Your walk continues even if you leave the room.</p>
+      <p className="mt-3 text-center text-[11px] text-muted-foreground">Audio is peer-to-peer. Your steps continue even if you leave the walk.</p>
     </div>
   );
 }
