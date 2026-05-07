@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const FEELINGS = ["anxious","lonely","overwhelmed","sad","burned out","grieving","restless","okay","hopeful","just need company","prefer not to say"];
+import { MoodCloud } from "@/components/mood-cloud";
 
 interface Props {
   moodBefore: string | null;
