@@ -205,6 +205,15 @@
 .mood-row:focus-within .mood-marquee-l, .mood-row:focus-within .mood-marquee-r,
 .mood-row.is-paused .mood-marquee-l, .mood-row.is-paused .mood-marquee-r { animation-play-state: paused; }
 
+@keyframes reflection-fade {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes reflection-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mood-drift, .mood-marquee-l, .mood-marquee-r { animation: none; }
 }

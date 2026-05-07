@@ -44,6 +44,11 @@ function ActiveWalk() {
   const points = useRef<Array<{lat:number;lng:number;t:number}>>([]);
   const watchId = useRef<number | null>(null);
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
+  const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
+  const handleSavePrompt = (text: string) => {
+    setSavedPrompts((arr) => (arr.includes(text) ? arr : [...arr, text]));
+    toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
+  };
 
   useEffect(() => {
     supabase.from("walk_sessions").select("*").eq("id", id).single().then(({ data }) => {
@@ -181,6 +186,7 @@ function ActiveWalk() {
         moodBeforeScore={session.mood_before_score}
         elapsed={elapsed}
         miles={miles}
+        savedPrompts={savedPrompts}
         onSave={endWalk}
       />
     );
@@ -238,7 +244,7 @@ function ActiveWalk() {
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
         {isAudio && (
-          <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
+          <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}
 
         {session.walk_type === "guided_solo" && session.guided_track_id && (
