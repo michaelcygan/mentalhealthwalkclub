@@ -244,7 +244,7 @@ function ActiveWalk() {
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
         {isAudio && (
-          <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
+          <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}
 
         {session.walk_type === "guided_solo" && session.guided_track_id && (
