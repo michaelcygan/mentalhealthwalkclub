@@ -258,7 +258,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
   if (phase === "retry") {
     return (
       <div className="rounded-3xl border border-clay/40 bg-card p-6 text-center shadow-soft">
-        <p className="font-serif text-lg">Couldn't find a room.</p>
+        <p className="font-serif text-lg">Couldn't find a walk.</p>
         <p className="mt-1 text-sm text-muted-foreground">The signal's quiet right now.</p>
         <Button onClick={() => runMatch()} className="mt-4 rounded-full bg-forest text-primary-foreground hover:opacity-90">
           Try again
