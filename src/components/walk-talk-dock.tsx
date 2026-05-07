@@ -409,7 +409,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
             {handsFree ? "Switch to push-to-talk" : "Switch to hands-free"}
           </button>
           <button onClick={handleLeave} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-clay/40 hover:text-foreground">
-            <LogOut className="h-3 w-3" />Leave room
+            <LogOut className="h-3 w-3" />Leave walk
           </button>
         </div>
       </div>
