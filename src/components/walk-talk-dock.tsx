@@ -30,7 +30,7 @@ function buzz(pattern: number | number[]) {
   try { (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.(pattern); } catch { /* noop */ }
 }
 
-export function WalkTalkDock({ walkSessionId, mood, hasMoved }: Props) {
+export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Props) {
   const { user } = useAuth();
   const matchFn = useServerFn(matchOrCreateAudioRoom);
   const joinFn = useServerFn(joinAudioRoom);
