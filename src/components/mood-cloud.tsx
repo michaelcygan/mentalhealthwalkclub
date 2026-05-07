@@ -28,6 +28,7 @@ const buzz = () => { try { navigator.vibrate?.(8); } catch { /* noop */ } };
 interface Props {
   value: string;
   onChange: (v: string) => void;
+  compact?: boolean;
 }
 
 function Chip({ word, selected, onClick }: { word: string; selected: boolean; onClick: () => void }) {
@@ -42,16 +43,16 @@ function Chip({ word, selected, onClick }: { word: string; selected: boolean; on
   );
 }
 
-export function MoodCloud({ value, onChange }: Props) {
+export function MoodCloud({ value, onChange, compact = false }: Props) {
   const [seed] = useState(() => Math.floor(Date.now() / 1000));
   const [query, setQuery] = useState("");
 
   const rows = useMemo(() => {
     const shuffled = shuffle(POOL, seed);
-    const n = 4;
+    const n = compact ? 2 : 4;
     const size = Math.ceil(shuffled.length / n);
     return Array.from({ length: n }, (_, i) => shuffled.slice(i * size, (i + 1) * size));
-  }, [seed]);
+  }, [seed, compact]);
 
   const q = query.trim().toLowerCase();
   const matches = useMemo(() => q ? POOL.filter(w => w.includes(q)).slice(0, 24) : [], [q]);
@@ -92,8 +93,7 @@ export function MoodCloud({ value, onChange }: Props) {
         <div className="-mx-4 space-y-2 px-4 sm:mx-0 sm:px-0">
           {rows.map((row, idx) => {
             const dir = idx % 2 === 0 ? "mood-marquee-l" : "mood-marquee-r";
-            const speed = `${110 + idx * 25}s`;
-            // Duplicate row contents for seamless loop
+            const speed = compact ? `${70 + idx * 18}s` : `${110 + idx * 25}s`;
             const doubled = [...row, ...row];
             return (
               <div key={idx} className="mood-row overflow-hidden">

@@ -1,100 +1,70 @@
-## Walk Onboarding Level-Up Pass
+## What's broken (root causes)
 
-A focused refresh of the **pre-walk flow** (the screens between "Start a walk" and the active timer). Goal: take it from "passable 2013" to a 2026 ambient, mobile-first experience — using existing primitives, motion, and a richer mood vocabulary. Plus contextualize the **Guided Walk** with pre-recorded audio tracks (no AI).
+**1. Motion never registers on iPhone in the preview.**
+The Lovable preview renders the app inside an iframe. Geolocation in iframes requires `allow="geolocation; microphone"` on the parent `<iframe>`. We can't change Lovable's preview iframe, so on the preview URL `navigator.geolocation.watchPosition` silently fails (or its permission prompt never appears). Walk & Talk currently waits on `hasMoved` to start matching, so it never matches in the preview — the user sees an empty waiting room forever. This works fine once published on a real domain.
 
----
+**2. 6 "steps" on a laptop with 0.00 mi.**
+`walk.active.$id.tsx` accepts every GPS sample and accumulates distance with no minimum-delta gate (it only filters > 200 m teleports). Desktop browsers return Wi-Fi positions that drift several meters per refresh, which slowly accumulates fake meters → `meters/0.78` rounds up to 6 steps even when the device hasn't moved.
 
-### 1. Mood picker — the marquee fix
+**3. Solo end-walk flow.**
+- Step 0 ("How are you arriving?") shows a 4-row scrolling MoodCloud — too tall/busy for an end-of-walk screen.
+- The whole flow is 4 separate screens (mood → score → reflection → ceremony) with no progress indicator, and "skip" only exists on step 0. If the user loses focus, there's no way out.
+- Saving only happens on step 3's "Save to journal" — if a user closes mid-flow, the walk is left in `active` status forever (also breaks the "Walk in progress" card on home).
 
-Currently a static 11-tag grid that wastes vertical space and looks like a 2013 form.
+**4. Walk & Talk dock.**
+- Hard-blocks on `hasMoved`. Combined with #1, this is the primary "didn't detect my motion" complaint.
+- Mic permission isn't requested up-front; user only finds out it failed after matching.
 
-**New mechanic — "Drift Cloud":**
-- Expand vocabulary to ~36 words across 3 mood-bands (heavy / tender / light), e.g. *"running on fumes," "low-grade hum," "soft," "tender," "sturdy," "quietly proud," "okay-ish," "wrung out," "static," "open," "raw," "buoyant"…*
-- Per-session shuffle: `useMemo(() => shuffle(POOL).slice(0, 14), [sessionSeed])` so the user sees a fresh palette each open. Re-roll button (`↻ shuffle`) animates a re-deal.
-- **Motion**: tags drift with subtle staggered float (`@keyframes drift` ±2px on Y, 6–10s, randomized delay/duration per tag). Selection: spring-scale to 1.06, color fill, haptic tap. Pauses motion via `prefers-reduced-motion`.
-- **Layout**: `flex-wrap` with variable pill widths and a soft radial-gradient backdrop so it reads like a word-cloud, not a form. Vertical density doubles without feeling busy.
-- **Free-typing escape hatch**: ghost input at the bottom — "or type one word…" — saves to the same `mood_before` field.
-
-### 2. Mood scale — replace the slider
-
-The native range input is the ugliest element on the screen. Replace with a **10-segment "weight bar"** — 10 thin vertical capsules, tap any to set, with a smooth fill sweep and the number counting up. Tappable on mobile (44px tall hit area), keyboard-friendly (←/→). About the same code as the current slider + accent-color hack.
-
-### 3. Step cadence — collapse to one screen
-
-Right now: feeling → score → intention. That's three taps before walking. Collapse into **one stacked card** with progressive reveal:
-- Mood word (required-ish, but skippable)
-- Weight bar fades in once a word is picked
-- Intention textarea fades in once weight is set
-- Single primary "Begin walking" CTA at the bottom; secondary "skip the rest" link
-
-Net effect: one calm screen, scrolls if needed, fewer taps. We delete `step === 1, 2, 3` branching for solo walks.
-
-### 4. Walk-type chooser — softer pre-screen
-
-When user picks "Guided" / "Walk & Talk" / "Local," we currently land on the same generic mood form. Give each mode a **30-word context preface** (one line) above the mood picker so the experience doesn't feel templated. E.g. Walk & Talk: *"You'll be matched once you start moving."*
-
-### 5. Guided Walk — contextualize with pre-recorded audio
-
-This is the missing soul of the Guided mode. Today it just routes to the same active screen. Make it real.
-
-**New table** (small, no AI):
-```sql
-guided_tracks (
-  id uuid pk,
-  title text, host text, host_role text,        -- "Maya, somatic coach"
-  duration_seconds int,
-  audio_url text,                               -- mp3/m4a in Supabase storage
-  cover_url text,
-  mood_tags text[],                             -- ["anxious","overwhelmed"]
-  category text,                                -- 'ambient' | 'breath' | 'voice' | 'music'
-  intro_seconds int default 30                  -- when voice starts; before that = ambient
-)
-```
-
-**New screen — "Choose your guide":**
-- Surfaces 4–6 tracks **filtered by the mood the user just picked** (intersect `mood_tags`).
-- Card layout: large cover (square, 1:1), title, host, duration, soft play-preview button (15s).
-- Categories shown as tabs at the top: *Ambient music · Breath · Voice · Stories*. Starts with Ambient as the lowest-friction option (works with no content yet — re-uses `AmbientPad` from Walk & Talk; just labelled "Generative ambient").
-- Empty/seed state ships with **3 generative options** (re-skinning the existing `AmbientPad` keys: morning / midday / evening) so the feature is live on day one with zero hosted audio.
-
-**Active walk integration**:
-- `walk_sessions` gets a nullable `guided_track_id`.
-- Active screen detects `walk_type === "guided_solo"` + `guided_track_id` → renders a slim audio player in the same slot the `WalkTalkDock` occupies (waveform-style scrubber, 15s skip, Now Playing on lock-screen via existing `MediaSession` plumbing).
-- Generative tracks call `AmbientPad.start(volume, key)` instead of `<audio>` — same player UI.
-
-This scales naturally: today = generative + 1 guest voice; tomorrow = podcaster partnerships, no architecture change.
-
-### 6. Polish (cheap wins)
-
-- **Haptic taps** on mood/weight selection (`navigator.vibrate(8)`).
-- **Time-of-day backdrop** for the onboarding card mirrors the home hero gradient — continuity from "How are you arriving?" into the picker.
-- **`safe-area-inset-bottom`** on the sticky CTA so it never collides with the tab bar.
-- **`prefers-reduced-motion`** kills the drift animation.
-- The same Drift Cloud component is reused in `EndWalkFlow` step 0 — one source of truth, fixes the post-walk "How are you arriving?" screen too.
+**5. Guided walk.**
+- `GuidedPlayer` autoplays audio in `useEffect` — Safari/iOS will reject this if there's been no recent user gesture between mode pick and active page mount, leaving a silent player with no visible "tap to start" affordance.
+- No progress bar / time remaining / scrubbing; `duration_seconds` is fetched but unused.
 
 ---
 
-### Net new code
+## Plan
 
-- `src/components/mood-cloud.tsx` (~80 lines) — drift cloud + weight bar, used in 3 places
-- `src/components/guide-picker.tsx` (~90 lines) — track list + preview
-- 1 migration: `guided_tracks` table + RLS read-all, plus `guided_track_id` column on `walk_sessions`
-- ~40 lines deleted from `routes/index.tsx` (collapsed steps)
-- ~25 lines added to `routes/walk.active.$id.tsx` (guided player slot)
+### A. Fix motion + step accuracy (`walk.active.$id.tsx`)
+- Add an accuracy + delta gate to `watchPosition`: drop samples with `accuracy > 30 m`; only add distance when delta is **between 2 m and 200 m** (kills Wi-Fi jitter, still kills teleports).
+- Compute steps from a rolling mean speed × time when GPS is reporting, not from total meters, so fake meters → fake steps is impossible.
+- Add a fallback "I'm walking" manual chip in the hero (small, under the timer): if no valid GPS sample arrives within 25 s, surface it. Tapping it sets `hasMoved = true` so Walk & Talk can match in environments without geolocation (preview iframe, indoor, GPS denied). This makes the preview testable without changing real-device behavior.
+- Show a tiny GPS status dot (green/amber/grey) in the hero so users can tell whether tracking is live.
 
-Roughly **+150 / −60 LOC**. No new dependencies.
+### B. Walk & Talk dock (`walk-talk-dock.tsx`)
+- Pre-warm mic permission on mount of the in-room phase (request `getUserMedia` early, surface a friendly inline error if denied — instead of silent failure).
+- Respect the new manual-walking signal from A so matching kicks off in the preview.
+- Tighten the "waiting-to-walk" card copy + add a subtle "Start anyway" link after 25 s.
 
-### Build order
+### C. Solo end-walk flow (`end-walk-flow.tsx`)
+- Collapse to **two screens** instead of four: (1) mood + weight + one-line reflection on a single scrollable card with a small progress bar, (2) ceremony + save.
+- Always render an "End now, save what I have" button — saving works at any step (mood/score/reflection all optional).
+- On unmount **without explicit save**, persist `status='completed'` with whatever fields we have so a closed tab doesn't leave an orphaned active walk. (Also fixes the "Walk in progress" stale state on Home.)
+- Use a smaller MoodCloud variant (2 marquee rows instead of 4) for the end-walk so it doesn't dominate the screen.
 
-1. `MoodCloud` component (drift + shuffle + weight bar)
-2. Collapse step 1-2-3 in `index.tsx` into one progressive card
-3. Replace `EndWalkFlow` step-0 with `MoodCloud`
-4. `guided_tracks` migration + 3 generative seeds (ambient pad keys)
-5. `GuidePicker` screen, gated behind `walk_type === "guided_solo"` after mood capture
-6. Active screen — render guided player slot
+### D. Guided player (`guided-player.tsx`)
+- Replace silent autoplay with a large central play button on first mount; only start audio after the user taps it (works on iOS).
+- Add a thin progress bar bound to `audioRef.current.currentTime` / `duration_seconds`, plus elapsed/remaining labels.
+- Pause the generative pad / audio when the parent walk is paused (currently it keeps playing).
+- When the track ends, fade to "walk continues — your guide is finished" instead of going silent.
+
+### E. Small UI tightening across all three modes
+- Unify the sticky bottom Pause/End-walk dock height to 56 px on mobile, 48 px on md+ (currently 56 everywhere — wastes vertical space on desktop).
+- Move the "Quick check-in / lighter / same / heavier" pulse card from above the dock to a slide-in toast — currently it pushes the audio dock down and feels modal.
+- Hero sparkline: only render once `points.current.length >= 2` (today it draws a spurious diagonal line from origin when there's only one point, visible in the user's screenshot).
+- `MoodCloud` end-walk variant: 2 rows, slightly faster cycle so the "after" mood feels distinct from the "before" mood.
+- Add `aria-live="polite"` to the timer so screen readers don't re-read every second; only milestones speak.
+
+### F. Verification
+- Local: open Solo walk, confirm 0 steps with no GPS movement; open the Walk tab in the preview, tap "Start anyway" after 25 s, confirm Walk & Talk progresses to "matching".
+- Browser: screenshot the active walk page on the 390×726 viewport before/after to confirm the spurious sparkline line and the cleaner pulse-as-toast.
+- Re-test the solo End walk → Save to journal happy path, plus the new "close tab mid-flow" path (expect the walk to land in Journal anyway).
 
 ### Out of scope
+- Native iOS step counting (CoreMotion) — requires a real app shell, not a PWA.
+- Real-time voice transport changes — Walk & Talk transport stays as-is; only the UX entry point changes.
 
-- Real hosted audio uploads / podcaster onboarding (table is ready, content comes later)
-- AI-generated content
-- Changes to the marketing landing
+### Files I'd touch
+- `src/routes/walk.active.$id.tsx` — GPS gate, manual-walking chip, GPS status, sparkline guard, pulse-as-toast, sticky-dock height
+- `src/components/walk-talk-dock.tsx` — mic pre-warm, "Start anyway" affordance, copy
+- `src/components/end-walk-flow.tsx` — collapse to 2 screens, autosave-on-unmount, "End now" always available
+- `src/components/mood-cloud.tsx` — add `compact` prop (2 rows) for end-walk
+- `src/components/guided-player.tsx` — gesture-gated playback, progress bar, pause sync, end state

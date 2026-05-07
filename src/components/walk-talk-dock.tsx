@@ -270,7 +270,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved }: Props) {
       <div className="overflow-hidden rounded-3xl border border-forest/20 bg-gradient-to-br from-accent/40 via-card to-card p-7 text-center shadow-soft">
         <div className="mx-auto h-2 w-2 animate-pulse rounded-full bg-forest" />
         <p className="mt-4 font-serif text-xl">A room is waiting.</p>
-        <p className="mt-1 text-sm text-muted-foreground">Take a few steps. We'll fade you in.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Take a few steps and we'll fade you in — or use "I'm walking" above if your phone can't see GPS.</p>
       </div>
     );
   }
