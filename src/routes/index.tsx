@@ -238,7 +238,7 @@ function WalkTab() {
         <MoodCloud value={feeling} onChange={setFeeling} />
 
         <div className={`transition-all duration-500 ${feeling ? "max-h-40 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel?</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel? <span className="lowercase italic tracking-normal text-muted-foreground/70">(optional)</span></p>
           <WeightBar value={moodScore} onChange={setMoodScore} />
         </div>
 
