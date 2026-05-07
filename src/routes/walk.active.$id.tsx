@@ -200,6 +200,10 @@ function ActiveWalk() {
         {isAudio && (
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
         )}
+
+        {session.walk_type === "guided_solo" && session.guided_track_id && (
+          <GuidedPlayer trackId={session.guided_track_id} />
+        )}
       </div>
 
       {/* Sticky control dock */}
