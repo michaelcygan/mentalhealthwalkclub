@@ -19,7 +19,7 @@ interface Props {
 
 const MATCH_PHRASES = [
   "listening for walkers near you…",
-  "tuning the room…",
+  "tuning the walk…",
   "almost there…",
 ];
 
@@ -196,7 +196,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     if (room) await leaveFn({ data: { roomId: room.id } }).catch(() => {});
     setRoom(null);
     setPhase("left");
-    toast.success("Left the room. Your walk continues.");
+    toast.success("Left the walk. Your steps continue.");
   };
 
   const handleSkip = async () => {
@@ -247,7 +247,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     return (
       <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-soft">
         <p className="font-serif text-lg">Walking on your own.</p>
-        <p className="mt-1 text-sm text-muted-foreground">A room is always one tap away.</p>
+        <p className="mt-1 text-sm text-muted-foreground">A walk is always one tap away.</p>
         <Button onClick={() => setPhase("waiting-to-walk")} className="mt-4 rounded-full bg-forest text-primary-foreground hover:opacity-90">
           Re-join Walk &amp; Talk
         </Button>
@@ -258,7 +258,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
   if (phase === "retry") {
     return (
       <div className="rounded-3xl border border-clay/40 bg-card p-6 text-center shadow-soft">
-        <p className="font-serif text-lg">Couldn't find a room.</p>
+        <p className="font-serif text-lg">Couldn't find a walk.</p>
         <p className="mt-1 text-sm text-muted-foreground">The signal's quiet right now.</p>
         <Button onClick={() => runMatch()} className="mt-4 rounded-full bg-forest text-primary-foreground hover:opacity-90">
           Try again
@@ -271,7 +271,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     return (
       <div className="overflow-hidden rounded-3xl border border-forest/20 bg-gradient-to-br from-accent/40 via-card to-card p-7 text-center shadow-soft">
         <div className="mx-auto h-2 w-2 animate-pulse rounded-full bg-forest" />
-        <p className="mt-4 font-serif text-xl">A room is waiting.</p>
+        <p className="mt-4 font-serif text-xl">A walk is waiting.</p>
         <p className="mt-1 text-sm text-muted-foreground">Take a few steps and we'll fade you in — or use "I'm walking" above if your phone can't see GPS.</p>
       </div>
     );
@@ -355,7 +355,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
             <Users className="h-3.5 w-3.5 text-forest/60" />
             <span className="absolute inset-0 rounded-full border border-forest/20" style={{ animation: "ripple 3s ease-out infinite" }} />
           </span>
-          <span className="font-serif italic">holding the room — someone may join</span>
+          <span className="font-serif italic">holding the walk — someone may join</span>
           <style>{`@keyframes ripple { 0% { transform: scale(.85); opacity: .9 } 100% { transform: scale(1.5); opacity: 0 } }`}</style>
         </div>
       )}
@@ -409,7 +409,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
             {handsFree ? "Switch to push-to-talk" : "Switch to hands-free"}
           </button>
           <button onClick={handleLeave} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-clay/40 hover:text-foreground">
-            <LogOut className="h-3 w-3" />Leave room
+            <LogOut className="h-3 w-3" />Leave walk
           </button>
         </div>
       </div>

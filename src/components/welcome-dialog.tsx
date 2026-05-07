@@ -37,7 +37,7 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
           <Item
             icon={Headphones}
             title="Walks that fit your day"
-            body="Walk solo. Slip into a guided Walk & Talk. Step into a live Walk & Talk room — only after you're actually moving. Or meet real people on a real sidewalk at a Local Walk."
+            body="Walk solo. Slip into a guided Walk & Talk. Step into a live Walk & Talk — only after you're actually moving. Or meet real people on a real sidewalk at a Local Walk."
           />
           <Item
             icon={MapPin}

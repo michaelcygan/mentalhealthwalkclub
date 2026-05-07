@@ -56,7 +56,7 @@ function GroupsTab() {
     <div className="space-y-7">
       <header>
         <h1 className="font-serif text-3xl">Groups</h1>
-        <p className="mt-1 text-muted-foreground">Quiet affinity tags. They surface walks and rooms that fit you.</p>
+        <p className="mt-1 text-muted-foreground">Quiet affinity tags. They surface walks that fit you.</p>
       </header>
 
       {joined.length > 0 && (
