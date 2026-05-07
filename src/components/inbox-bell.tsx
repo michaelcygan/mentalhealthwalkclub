@@ -23,16 +23,23 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
   const fetchInbox = useServerFn(getInbox);
   const markRead = useServerFn(markInboxRead);
 
-  const refresh = () => {
+  const refresh = async () => {
     if (!user) return;
-    fetchInbox().then((r) => { setItems(r.items as InboxItem[]); setUnread(r.unread); }).catch(() => {});
+    try {
+      const r = await fetchInbox();
+      setItems(Array.isArray(r?.items) ? (r.items as InboxItem[]) : []);
+      setUnread(typeof r?.unread === "number" ? r.unread : 0);
+    } catch {
+      // Likely 401 before session hydrates; ignore.
+    }
   };
 
   useEffect(() => {
     if (!user) { setItems([]); setUnread(0); return; }
-    refresh();
+    // Defer one tick so the Supabase bearer token is attached.
+    const initial = setTimeout(refresh, 400);
     const t = setInterval(refresh, 60_000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
