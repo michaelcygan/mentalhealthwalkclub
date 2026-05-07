@@ -162,7 +162,7 @@ function WalkTab() {
       "from-indigo-300/40 via-forest/40 to-forest/60";
     const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
     const quickFeel = (mood: string, score: number) => {
-      setFeeling(mood); setMoodScore(score); setWalkType("solo"); setStep(3);
+      setFeeling(mood); setMoodScore(score); setWalkType("solo"); setStep(1);
     };
     return (
       <div className="space-y-5">
