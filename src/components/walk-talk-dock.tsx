@@ -19,7 +19,7 @@ interface Props {
 
 const MATCH_PHRASES = [
   "listening for walkers near you…",
-  "tuning the room…",
+  "tuning the walk…",
   "almost there…",
 ];
 
