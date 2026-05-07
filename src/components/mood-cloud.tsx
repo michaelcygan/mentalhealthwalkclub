@@ -48,8 +48,9 @@ export function MoodCloud({ value, onChange }: Props) {
 
   const rows = useMemo(() => {
     const shuffled = shuffle(POOL, seed);
-    const third = Math.ceil(shuffled.length / 3);
-    return [shuffled.slice(0, third), shuffled.slice(third, third * 2), shuffled.slice(third * 2)];
+    const n = 4;
+    const size = Math.ceil(shuffled.length / n);
+    return Array.from({ length: n }, (_, i) => shuffled.slice(i * size, (i + 1) * size));
   }, [seed]);
 
   const q = query.trim().toLowerCase();
