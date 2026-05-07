@@ -23,18 +23,27 @@ export const sendGroupWelcome = createServerFn({ method: "POST" })
       .filter((id) => id && id !== userId);
     if (recipients.length === 0) return { sent: 0 };
 
-    const rows = recipients.map((rid) => ({
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: existing } = await supabase
+      .from("group_signals")
+      .select("recipient_user_id")
+      .eq("sender_user_id", userId)
+      .eq("group_id", data.groupId)
+      .eq("kind", "welcome")
+      .gte("created_at", today);
+    const already = new Set((existing ?? []).map((x) => x.recipient_user_id));
+    const fresh = recipients.filter((r) => !already.has(r));
+    if (fresh.length === 0) return { sent: 0 };
+
+    const rows = fresh.map((rid) => ({
       group_id: data.groupId,
       sender_user_id: userId,
       recipient_user_id: rid,
       kind: "welcome" as const,
     }));
-    // ignoreDuplicates handles same-day dedupe
-    const { error, count } = await supabase
-      .from("group_signals")
-      .upsert(rows, { onConflict: "sender_user_id,recipient_user_id,kind,badge_id,created_day", ignoreDuplicates: true, count: "exact" });
+    const { error } = await supabase.from("group_signals").insert(rows);
     if (error) throw new Error(error.message);
-    return { sent: count ?? recipients.length };
+    return { sent: fresh.length };
   });
 
 // Send kudos to a single recipient for a specific badge.
