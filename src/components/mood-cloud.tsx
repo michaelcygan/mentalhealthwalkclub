@@ -48,8 +48,9 @@ export function MoodCloud({ value, onChange }: Props) {
 
   const rows = useMemo(() => {
     const shuffled = shuffle(POOL, seed);
-    const third = Math.ceil(shuffled.length / 3);
-    return [shuffled.slice(0, third), shuffled.slice(third, third * 2), shuffled.slice(third * 2)];
+    const n = 4;
+    const size = Math.ceil(shuffled.length / n);
+    return Array.from({ length: n }, (_, i) => shuffled.slice(i * size, (i + 1) * size));
   }, [seed]);
 
   const q = query.trim().toLowerCase();
@@ -91,7 +92,7 @@ export function MoodCloud({ value, onChange }: Props) {
         <div className="-mx-4 space-y-2 px-4 sm:mx-0 sm:px-0">
           {rows.map((row, idx) => {
             const dir = idx % 2 === 0 ? "mood-marquee-l" : "mood-marquee-r";
-            const speed = `${55 + idx * 12}s`;
+            const speed = `${110 + idx * 25}s`;
             // Duplicate row contents for seamless loop
             const doubled = [...row, ...row];
             return (
