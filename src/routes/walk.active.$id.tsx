@@ -16,7 +16,7 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
-  intention: string | null; started_at: string; status: string;
+  intention: string | null; started_at: string; status: string; guided_track_id: string | null;
 }
 
 function ActiveWalk() {
