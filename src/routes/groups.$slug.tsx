@@ -28,14 +28,14 @@ function GroupDetail() {
 
   useEffect(() => {
     (async () => {
-      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme").eq("slug", slug).single();
+      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme,owner_user_id").eq("slug", slug).single();
       if (!g) return;
       setGroup(g);
       const now = new Date().toISOString();
       const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
       const [{ data: e }, { data: r }, { data: w }] = await Promise.all([
-        supabase.from("events").select("id,title,slug,starts_at,city").eq("group_id", g.id).gte("starts_at", now).order("starts_at").limit(10),
-        supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("group_id", g.id).eq("status","open"),
+        supabase.from("events").select("id,title,slug,starts_at,city,event_type").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
+        supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("group_id", g.id).eq("status","open").is("parent_room_id", null),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         supabase.from("walk_sessions").select("id,user_id,duration_seconds,started_at,profiles(display_name,city)").eq("group_id", g.id).eq("status","completed").gte("started_at", weekAgo).order("started_at",{ascending:false}).limit(20) as any,
       ]);
