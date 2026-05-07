@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, Headphones, AlertTriangle, Heart, ArrowRight } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Heart, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { AudioRoomPanel } from "@/components/audio-room-panel";
 import { RouteSparkline } from "@/components/route-sparkline";
+import { WalkTalkDock } from "@/components/walk-talk-dock";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -31,8 +31,6 @@ function ActiveWalk() {
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
   const [hasMoved, setHasMoved] = useState(false);
-  const [audioRooms, setAudioRooms] = useState<Array<{id:string;title:string;theme:string|null;current_participant_count:number;max_participants:number}>>([]);
-  const [activeRoom, setActiveRoom] = useState<{id:string;title:string;capacity:number} | null>(null);
   const [ending, setEnding] = useState(false);
   const [endStep, setEndStep] = useState<0 | 1 | 2 | 3>(0);
   const [moodAfter, setMoodAfter] = useState("");
@@ -100,12 +98,6 @@ function ActiveWalk() {
     }
   }, [elapsed, pulseHint]);
 
-  useEffect(() => {
-    if (session?.walk_type === "audio" && hasMoved) {
-      supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("status","open").limit(8)
-        .then(({ data }) => setAudioRooms(data ?? []));
-    }
-  }, [session?.walk_type, hasMoved]);
 
   const miles = meters * 0.000621371;
   const stride = 0.78;
@@ -251,38 +243,8 @@ function ActiveWalk() {
         <RouteSparkline points={points.current} key={routeTick} />
       </div>
 
-      {session.walk_type === "audio" && activeRoom && (
-        <AudioRoomPanel roomId={activeRoom.id} walkSessionId={session.id} roomTitle={activeRoom.title} capacity={activeRoom.capacity} onLeave={() => setActiveRoom(null)} />
-      )}
-
-      {session.walk_type === "audio" && !activeRoom && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-            <Headphones className="h-4 w-4 text-forest" /> Live Walk & Talks
-          </div>
-          {!hasMoved ? (
-            <div className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Confirming you're walking…</span>
-              <p className="mt-1 text-xs">A few more steps unlocks live rooms ({Math.max(0, 15 - Math.round(meters))}m to go).</p>
-            </div>
-          ) : audioRooms.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live rooms right now. Keep walking — one may open soon.</p>
-          ) : (
-            <ul className="space-y-2">
-              {audioRooms.map((r) => (
-                <li key={r.id} className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <div>
-                    <div className="text-sm font-medium">{r.title}</div>
-                    <div className="text-xs text-muted-foreground">{r.theme} · {r.current_participant_count}/{r.max_participants}</div>
-                  </div>
-                  <Button size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90" disabled={r.current_participant_count >= r.max_participants} onClick={() => setActiveRoom({ id: r.id, title: r.title, capacity: r.max_participants })}>
-                    {r.current_participant_count >= r.max_participants ? "Full" : "Join"}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {session.walk_type === "audio" && (
+        <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
       )}
 
       <div className="flex gap-3">

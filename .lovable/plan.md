@@ -1,85 +1,109 @@
-## Goal
-Another concentrated pass — unlock latent flow inside primitives we already have, modernize a few high-traffic surfaces, and use desktop space properly. No new tables. Net new code is small.
+# Walk & Talk: Always-On Mechanic
 
----
+## The vision
 
-## 1. Active Walk screen — the single most important moment
-Today the in-walk screen is a nice timer card and that's it. There's so much more we can do with data we already track.
+Walk & Talk should feel like turning on a radio that's already warm. You tap **Start a walk**, you start moving, and within 60 seconds you hear another human walking somewhere in the world — or ambient music until one arrives. Rooms are persistent and only close when the last walker leaves. No browsing. No "join room X." It just happens.
 
-- **Live mood pulse**: a gentle one-tap "how's it feeling?" chip strip that appears every 10 minutes. Stores nothing new — just the latest tap becomes the prefilled `mood_after` on the end screen, so reflection takes 1 tap instead of 3 steps.
-- **Pace + cadence**: we already accumulate distance + time. Show current pace (min/mi) and average cadence (steps/min) in the stats grid. Zero new state.
-- **Map preview**: small SVG path drawn from `points.current` (no map tile, no API). Gives tangible feedback that the walk is being captured. ~30 lines.
-- **Milestone toasts**: at 5, 10, 20, 30 min and 1 mi → a soft toast ("first mile · take a breath"). Pure client-side, uses existing `elapsed`/`meters`.
-- **Audio room discovery** is currently gated behind `hasMoved` (good) but invisible until then. Replace the "Confirming you're walking…" placeholder with a live **steps-needed indicator** + a preview list of rooms that are unlocking soon — keeps people engaged.
+This is the Strava-for-mental-health moment — the single mechanic that makes the app inevitable.
 
-## 2. Walk completion → reflection becomes a delightful moment
-Today it's three stacked inputs. Make it feel like a gift.
+## The flow (user POV)
 
-- **Three-card swipe-style step**: feeling → number → reflection, each full-bleed, with the previous mood shown as context ("You started anxious. Now…?"). Same data, better feel.
-- **Mood delta payoff**: on save, show a 2-second animated reveal — "anxious → okay · +3" in a celebration card, then route to journal. Uses existing `mood_before_score`/`mood_after_score`.
-- **Auto-suggest reflection chips** based on mood delta (e.g. positive delta → "what shifted?", negative → "what felt hard?"). Just static suggestions, no AI.
+```text
+Tap "Start a walk"
+   ↓
+"We'll find you a Walk & Talk once you're moving"  (soft pulse)
+   ↓  [walks 15m of GPS]
+"Matching you with a room…"  (breathing dot)
+   ↓  [< 2 seconds]
+Audio fades in. Soft chime.
+"Say hi to Maya and two others."
+   ↓
+Walking + talking. Mute / Skip room / End walk in a single dock.
+   ↓  [if alone > 60s]
+Ambient music fades in under the silence. "Someone will join."
+   ↓  [walker arrives]
+Music ducks. Soft chime. They hear you, you hear them.
+   ↓
+Walk ends → audio fades out → reflection flow as today
+```
 
-## 3. Desktop two-pane on Journal & Events
-The biggest wasted space on `lg+` viewports.
+## The matching rule (simple, no ML)
 
-- **Journal**: at `lg+`, walks list collapses to a left rail (320px); right pane shows the selected walk in detail (route map preview, full reflection, mood delta arc). Click a walk → updates local state, no route change.
-- **Events**: same shape. Left = grouped event cards. Right = the selected event's detail rendered inline (reuses existing detail markup as a component). Mobile keeps the route-based detail page; desktop avoids the navigation context loss.
+When a user qualifies (walking detected), pick a room in this priority:
 
-## 4. Groups detail — make it a destination
-`/groups/$slug` is currently stubby. Without adding tables:
+1. **Open room with 1 walker** in same time-of-day bucket → fill the lonely room first.
+2. **Open room with 2–3 walkers** under capacity (8) → join the warm one.
+3. **No suitable room** → spin up a new persistent room titled by time-of-day + theme ("Tuesday morning · open"), seeded with the user's `mood_before` as theme.
 
-- **"Walkers here this week"** — count of distinct `walk_sessions.user_id` with `group_id = g.id` in the last 7 days. One number, big visual impact, signals life.
-- **Recent shared walks** — last 5 `walk_sessions` with this `group_id` (anonymized: just first name + minutes + city). Builds proof.
-- **"Walk with this group"** CTA on top — starts a solo walk with `group_id` pre-attached (already a column on `walk_sessions`), so it feeds the count above. Closes the loop.
+Matching is one Supabase query. No new tables.
 
-## 5. Home — small but high-leverage tweaks
-- **Mood prompt as the entry**: replace the four mode pills' position with a one-line mood chip strip at the very top ("How are you arriving?"). Tapping a chip jumps directly into a Solo walk with mode preselected — kills the funnel for the most common path. Mode pills move below as "Other ways to walk."
-- **Time-of-day hero**: subtle background gradient that shifts by hour (dawn / day / dusk / night) using existing forest/clay/cream tokens. Zero asset cost, big "alive" feeling.
-- **Streak tile**: today the dots are subtle. Add the count ("3-day streak · keep it gentle") with a quiet flame icon — but explicitly never shame skips ("rest is part of walking").
+## Persistence (the new mechanic)
 
-## 6. Welcome / onboarding micro-improvements
-- **Skip to walking**: add "Just let me walk" link on every onboarding step. Reduces drop-off, all data is optional anyway.
-- **First-walk callout** on home for users with `walks.length === 0`: a single soft card "Your first walk is the hardest. 5 minutes counts." with a 5-min preset CTA.
+Rooms today are created per-walk. New behavior:
+- A room stays `status: 'open'` as long as ≥1 active participant.
+- When the last participant leaves OR their walk ends → room transitions to `closed`.
+- Implemented by extending `tg_audio_room_participant_count` trigger: when count hits 0, set `status='closed'`.
+- This means at any moment, the matcher sees a real, live set of warm rooms.
 
-## 7. Visual polish (focused, not sprawl)
-- **Card system pass**: standardize on three card depths — `flat` (border only), `soft` (current default), `elevated` (active/hero). Replace the ~12 ad-hoc combinations.
-- **Numeric typography**: `tabular-nums font-serif` everywhere stats appear (already partly done). Locks the visual rhythm.
-- **Empty states**: add a shared `<EmptyState icon={...} title="..." action={...} />` component. Today every empty state is a different div.
-- **Breathing animation** on the active walk's elapsed timer (subtle 4s scale 1 → 1.02). Reinforces the calm tone.
+## Ambient music when alone (free, no API key)
 
-## 8. Tiny perf + correctness wins
-- **Realtime on `audio_rooms`**: subscribe in the sidebar pill + Live Now strip so live counts update without 30s polling. Free, since the table is small.
-- **Default city on home Live Now strip**: only show events in user's city (we already have `profiles.city`).
-- **`useEffect` cleanup** on the sidebar pill — currently fine, but we should add an unsubscribe when realtime is added.
+Three options, all free:
+- **Local lo-fi loops**: Ship 3–4 short royalty-free CC0 ambient loops (e.g. from Pixabay Music or Free Music Archive) as `.mp3` in `src/assets/audio/`. Pick one based on time-of-day. ~200 KB each, lazy-loaded.
+- **Web Audio API generative pad**: ~40 lines of code generates an endless soft pad using oscillators + reverb. Zero bandwidth, infinite, never repeats. Recommended primary.
+- Fade in at 30% volume after 60s solo, duck to 5% when a walker joins.
 
----
+No new APIs. No keys. No cost.
 
-## Out of scope (call out)
-No new tables, no payments, no notifications system, no avatar uploads, no real maps. If you want any of those, that's the next plan after this one.
+## UI for 2026 (modern, motion-led)
 
----
+- **Matching state**: full-bleed soft gradient that breathes (CSS `@keyframes`), single line of text fading between "listening for walkers near you…" / "tuning the room…" / single dot pulse. No spinner.
+- **In-room dock**: floating glass pill at bottom — avatar stack (speaking ring animates), mute, skip, end. Collapses to just timer when idle, expands on tap. Uses `backdrop-blur` + `bg-card/70`.
+- **Speaking visualization**: existing `ring-forest` ring already works — keep it, add subtle scale pulse synced to amplitude.
+- **Room transitions**: 600ms `fade-in` + chime when joining, 400ms fade-out on leave. Already have `animate-in fade-in` utilities.
+- **Alone indicator**: a single, slow concentric ripple (CSS) on the avatar. Not lonely — meditative.
+- **Desktop**: dock floats bottom-center with max-w-md instead of full width; route map and ambient visualizer expand into a side panel.
 
-## Files touched (estimated)
-- `src/routes/walk.active.$id.tsx` — pulse, pace, map preview, milestones (~80 lines net).
-- `src/routes/walk.active.$id.tsx` end-screen — split into 3 micro-steps + delta reveal (~40 lines).
-- `src/routes/journal.tsx` — desktop two-pane (~30 lines).
-- `src/routes/events.tsx` + tiny detail extract — desktop two-pane (~50 lines).
-- `src/routes/groups.$slug.tsx` — walkers count + recent walks + CTA (~40 lines).
-- `src/routes/index.tsx` — mood entry strip, time-of-day hero, streak text (~30 lines).
-- `src/components/empty-state.tsx` — new, ~15 lines, used everywhere.
-- `src/components/route-sparkline.tsx` — new SVG path renderer (~25 lines).
-- `src/components/live-now-strip.tsx` — realtime subscribe (~10 lines).
+## What we already have (reuse, don't rebuild)
 
-Net: ~3 small new components, 6 route edits, no schema changes.
+- `MeshAudioTransport` — WebRTC mesh, speaking detection, mute. Keeps working.
+- `audio_rooms` table with `current_participant_count` + trigger.
+- `joinAudioRoom` / `leaveAudioRoom` server functions with capacity guards.
+- `AudioRoomPanel` component.
+- Geolocation + `hasMoved` detector on the active walk screen.
+- `live-now-strip` realtime subscription pattern.
 
----
+## What's new (small surface)
 
-## Suggested order
-1. Active walk upgrades (pulse, pace, map preview, milestones) — biggest emotional payoff.
-2. Reflection flow + delta reveal.
-3. Desktop two-pane on Journal & Events — biggest desktop win.
-4. Groups detail destination.
-5. Home entry pivot + time-of-day hero + streak text.
-6. Realtime + polish.
+| File | Purpose | ~LoC |
+|---|---|---|
+| `src/server/audio.functions.ts` (extend) | `matchOrCreateRoom({ walkSessionId, mood })` server fn | +50 |
+| Migration: extend `tg_audio_room_participant_count` | Auto-close empty rooms | +10 SQL |
+| `src/lib/audio/ambient-pad.ts` | Web Audio generative pad + fade helpers | ~80 |
+| `src/components/walk-talk-dock.tsx` | Floating glass dock, replaces inline panel during audio walks | ~150 |
+| `src/routes/walk.active.$id.tsx` (edit) | When `walk_type === "audio"` and `hasMoved`, auto-call matcher → mount dock instead of room list | ~40 changed |
 
-Proceed with all, or trim?
+No new tables. No new dependencies. No new API keys.
+
+## Edge cases
+
+- **User pauses walk**: leaves room (audio off), keeps walk open, ambient pad goes silent.
+- **GPS denied**: fall back to "tap when you're moving" button after 30s — still qualifies.
+- **Network drops**: WebRTC mesh handles peer dropouts already; matcher re-runs on reconnect.
+- **Empty room → 1 user → leaves**: room auto-closes, next user spins up a fresh one.
+- **Capacity (8) protects** mesh CPU/bandwidth; matcher will never overfill.
+
+## Build order (suggested)
+
+1. Migration: auto-close rooms at count 0.
+2. `matchOrCreateRoom` server fn.
+3. Wire into active walk: auto-match after `hasMoved`.
+4. `walk-talk-dock` component (replaces inline list for audio walks).
+5. Ambient pad + fade choreography.
+6. Polish: matching animation, chime, ripple, desktop layout.
+
+## Out of scope (deliberately)
+
+- Voice transcription / summaries.
+- Cross-room "switch room" beyond a single Skip.
+- Persistent friendships from rooms (separate future feature).
+- Paid TTS/AI voice — Web Audio pad is free and on-brand.
