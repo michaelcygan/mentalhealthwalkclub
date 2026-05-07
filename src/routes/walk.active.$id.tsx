@@ -44,6 +44,11 @@ function ActiveWalk() {
   const points = useRef<Array<{lat:number;lng:number;t:number}>>([]);
   const watchId = useRef<number | null>(null);
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
+  const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
+  const handleSavePrompt = (text: string) => {
+    setSavedPrompts((arr) => (arr.includes(text) ? arr : [...arr, text]));
+    toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
+  };
 
   useEffect(() => {
     supabase.from("walk_sessions").select("*").eq("id", id).single().then(({ data }) => {
