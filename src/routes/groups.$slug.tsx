@@ -81,20 +81,30 @@ function GroupDetail() {
         </div>
         <h1 className="mt-2 font-serif text-3xl">{group.name}</h1>
         {group.description && <p className="mt-2 max-w-2xl text-sm text-foreground/80">{group.description}</p>}
-        <Button onClick={walkWithGroup} disabled={busy} className="mt-5 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-          <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk with this group"}
-        </Button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={walkWithGroup} disabled={busy} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
+            <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk with this group"}
+          </Button>
+          {!!user && group.owner_user_id === user.id && (
+            <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm hover:border-forest/40">
+              <CalendarPlus className="h-4 w-4" /> Schedule a walk
+            </Link>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
         <section>
-          <h2 className="font-serif text-xl">Upcoming Local Walks</h2>
+          <h2 className="font-serif text-xl">Upcoming walks</h2>
           {events.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No upcoming walks tagged with this group yet.</p> : (
             <ul className="mt-3 space-y-2">
               {events.map((e) => (
                 <li key={e.id} className="rounded-2xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {e.event_type === "audio_walk" ? <><Headphones className="h-3 w-3" /> Audio</> : <><MapPin className="h-3 w-3" /> In person</>}
+                  </div>
                   <Link to={"/events/$slug" as never} params={{ slug: e.slug } as never} className="font-medium hover:text-forest">{e.title}</Link>
-                  <div className="text-xs text-muted-foreground">{new Date(e.starts_at).toLocaleString()} · {e.city}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(e.starts_at).toLocaleString()}{e.city ? ` · ${e.city}` : ""}</div>
                 </li>
               ))}
             </ul>
