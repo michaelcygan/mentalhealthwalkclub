@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
+import { GuidedPlayer } from "@/components/guided-player";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
