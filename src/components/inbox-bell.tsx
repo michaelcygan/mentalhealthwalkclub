@@ -16,7 +16,7 @@ type InboxItem = {
 };
 
 export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "desktop" }) {
-  const { user } = useAuth();
+  const { user, session, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [unread, setUnread] = useState(0);
