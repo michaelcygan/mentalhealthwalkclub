@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Shield, Pause, Play, Square, AlertTriangle, Heart, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { AudioRoomPanel } from "@/components/audio-room-panel";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 
