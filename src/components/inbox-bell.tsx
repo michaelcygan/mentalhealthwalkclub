@@ -16,7 +16,7 @@ type InboxItem = {
 };
 
 export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "desktop" }) {
-  const { user } = useAuth();
+  const { user, session, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -24,7 +24,7 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
   const markRead = useServerFn(markInboxRead);
 
   const refresh = async () => {
-    if (!user) return;
+    if (!session?.access_token) return;
     try {
       const r = await fetchInbox();
       setItems(Array.isArray(r?.items) ? (r.items as InboxItem[]) : []);
@@ -35,13 +35,13 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
   };
 
   useEffect(() => {
-    if (!user) { setItems([]); setUnread(0); return; }
-    // Defer one tick so the Supabase bearer token is attached.
-    const initial = setTimeout(refresh, 400);
+    if (loading) return;
+    if (!session?.access_token) { setItems([]); setUnread(0); return; }
+    refresh();
     const t = setInterval(refresh, 60_000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => { clearInterval(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [loading, session?.access_token]);
 
   const onOpenChange = (o: boolean) => {
     setOpen(o);
