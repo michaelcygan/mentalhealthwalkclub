@@ -37,25 +37,27 @@ export function GroupCard({
   const next = describeNext(pulse?.nextStart ?? null);
 
   if (variant === "pulse") {
+    const isLive = !!pulse?.live;
     return (
       <Link
         to={"/groups/$slug" as never}
         params={{ slug: group.slug } as never}
-        className={`min-w-[220px] shrink-0 rounded-2xl border border-forest/30 bg-gradient-to-br ${tint} to-card p-4 shadow-soft transition hover:-translate-y-px`}
+        className={`group/pill inline-flex h-9 shrink-0 items-center gap-2 rounded-full border ${isLive ? "border-forest/40 bg-forest/8" : "border-border bg-card"} px-3 text-xs shadow-soft/50 transition hover:-translate-y-px hover:border-forest/50`}
       >
-        <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-forest">
-          {pulse?.live ? (
-            <>
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
-              </span>
-              {pulse.live} live
-            </>
-          ) : next ? (<><Calendar className="h-3 w-3" /> {next}</>) : (<><Radio className="h-3 w-3" /> active</>)}
-        </div>
-        <div className="mt-1 line-clamp-1 font-serif text-base">{group.name}</div>
-        {group.description && <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{group.description}</div>}
+        {isLive ? (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-forest" />
+          </span>
+        ) : next ? (
+          <Calendar className="h-3 w-3 text-forest/80" />
+        ) : (
+          <Radio className="h-3 w-3 text-forest/70" />
+        )}
+        <span className="max-w-[140px] truncate font-serif text-[13px] text-foreground">{group.name}</span>
+        <span className="rounded-full bg-card/80 px-1.5 py-0.5 text-[10px] font-medium text-forest/80">
+          {isLive ? `${pulse!.live} live` : next ?? "active"}
+        </span>
       </Link>
     );
   }
