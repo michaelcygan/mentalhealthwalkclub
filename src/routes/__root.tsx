@@ -142,6 +142,7 @@ function TabBar() {
         </ul>
 
         <LiveSidebarPill />
+        {user && <InboxBell variant="desktop" />}
 
         <div className="mt-auto pt-6">
           <button onClick={openWelcome} className="text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
