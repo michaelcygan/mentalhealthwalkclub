@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, Headphones, AlertTriangle, Heart, ArrowRight } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Heart, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { AudioRoomPanel } from "@/components/audio-room-panel";
 import { RouteSparkline } from "@/components/route-sparkline";
