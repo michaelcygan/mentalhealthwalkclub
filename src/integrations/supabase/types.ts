@@ -571,6 +571,60 @@ export type Database = {
           },
         ]
       }
+      guided_tracks: {
+        Row: {
+          audio_url: string | null
+          category: string
+          cover_url: string | null
+          created_at: string
+          duration_seconds: number
+          generative_key: string | null
+          host: string | null
+          host_role: string | null
+          id: string
+          intro_seconds: number
+          is_active: boolean
+          mood_tags: string[]
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          duration_seconds?: number
+          generative_key?: string | null
+          host?: string | null
+          host_role?: string | null
+          id?: string
+          intro_seconds?: number
+          is_active?: boolean
+          mood_tags?: string[]
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          duration_seconds?: number
+          generative_key?: string | null
+          host?: string | null
+          host_role?: string | null
+          id?: string
+          intro_seconds?: number
+          is_active?: boolean
+          mood_tags?: string[]
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       impact_donations: {
         Row: {
           created_at: string
@@ -1023,6 +1077,7 @@ export type Database = {
           ended_at: string | null
           event_id: string | null
           group_id: string | null
+          guided_track_id: string | null
           id: string
           intention: string | null
           mood_after: string | null
@@ -1046,6 +1101,7 @@ export type Database = {
           ended_at?: string | null
           event_id?: string | null
           group_id?: string | null
+          guided_track_id?: string | null
           id?: string
           intention?: string | null
           mood_after?: string | null
@@ -1069,6 +1125,7 @@ export type Database = {
           ended_at?: string | null
           event_id?: string | null
           group_id?: string | null
+          guided_track_id?: string | null
           id?: string
           intention?: string | null
           mood_after?: string | null
@@ -1104,6 +1161,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_sessions_guided_track_id_fkey"
+            columns: ["guided_track_id"]
+            isOneToOne: false
+            referencedRelation: "guided_tracks"
             referencedColumns: ["id"]
           },
           {
