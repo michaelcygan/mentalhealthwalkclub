@@ -52,8 +52,8 @@ export function MoodCloud({ value, onChange, count = 14 }: Props) {
             <button
               key={w}
               onClick={() => { onChange(w); buzz(); }}
-              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all duration-200 motion-safe:[animation:drift_var(--d)_ease-in-out_var(--dl)_infinite] ${selected ? "scale-[1.06] border-forest bg-forest text-primary-foreground shadow-soft" : "border-border bg-card/80 backdrop-blur-sm hover:-translate-y-px hover:border-forest/50"}`}
-              style={{ ["--d" as string]: `${dur}s`, ["--dl" as string]: `${delay}s` }}
+              className={`mood-drift rounded-full border px-3.5 py-1.5 text-sm transition-colors duration-200 ${selected ? "border-forest bg-forest text-primary-foreground shadow-soft" : "border-border bg-card/80 backdrop-blur-sm hover:border-forest/50"}`}
+              style={{ ["--d" as string]: `${dur}s`, ["--dl" as string]: `-${delay}s`, transform: selected ? "scale(1.06)" : undefined }}
             >
               {w}
             </button>
