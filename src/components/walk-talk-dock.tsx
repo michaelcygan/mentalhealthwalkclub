@@ -196,7 +196,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     if (room) await leaveFn({ data: { roomId: room.id } }).catch(() => {});
     setRoom(null);
     setPhase("left");
-    toast.success("Left the room. Your walk continues.");
+    toast.success("Left the walk. Your steps continue.");
   };
 
   const handleSkip = async () => {
