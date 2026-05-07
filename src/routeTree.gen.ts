@@ -20,6 +20,8 @@ import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
+import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
+import { Route as ApiPublicHooksOpenDueRoomsRouteImport } from './routes/api/public/hooks/open-due-rooms'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -76,6 +78,18 @@ const WalkActiveIdRoute = WalkActiveIdRouteImport.update({
   path: '/walk/active/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRotatePodsRoute =
+  ApiPublicHooksRotatePodsRouteImport.update({
+    id: '/api/public/hooks/rotate-pods',
+    path: '/api/public/hooks/rotate-pods',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksOpenDueRoomsRoute =
+  ApiPublicHooksOpenDueRoomsRouteImport.update({
+    id: '/api/public/hooks/open-due-rooms',
+    path: '/api/public/hooks/open-due-rooms',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +103,8 @@ export interface FileRoutesByFullPath {
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +118,8 @@ export interface FileRoutesByTo {
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +134,8 @@ export interface FileRoutesById {
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +151,8 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
+    | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-pods'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +166,8 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
+    | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-pods'
   id:
     | '__root__'
     | '/'
@@ -157,6 +181,8 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/groups/$slug'
     | '/walk/active/$id'
+    | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-pods'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -168,6 +194,8 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   WelcomeRoute: typeof WelcomeRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
+  ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
+  ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -249,6 +277,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkActiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/rotate-pods': {
+      id: '/api/public/hooks/rotate-pods'
+      path: '/api/public/hooks/rotate-pods'
+      fullPath: '/api/public/hooks/rotate-pods'
+      preLoaderRoute: typeof ApiPublicHooksRotatePodsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/open-due-rooms': {
+      id: '/api/public/hooks/open-due-rooms'
+      path: '/api/public/hooks/open-due-rooms'
+      fullPath: '/api/public/hooks/open-due-rooms'
+      preLoaderRoute: typeof ApiPublicHooksOpenDueRoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -285,6 +327,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   WelcomeRoute: WelcomeRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
+  ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
+  ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

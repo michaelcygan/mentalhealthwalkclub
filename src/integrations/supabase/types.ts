@@ -84,8 +84,11 @@ export type Database = {
           host_user_id: string | null
           id: string
           max_participants: number
+          parent_room_id: string | null
+          pod_index: number | null
           requires_active_walk: boolean
           room_type: string
+          scheduled_event_id: string | null
           starts_at: string | null
           status: string
           theme: string | null
@@ -103,8 +106,11 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           max_participants?: number
+          parent_room_id?: string | null
+          pod_index?: number | null
           requires_active_walk?: boolean
           room_type?: string
+          scheduled_event_id?: string | null
           starts_at?: string | null
           status?: string
           theme?: string | null
@@ -122,8 +128,11 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           max_participants?: number
+          parent_room_id?: string | null
+          pod_index?: number | null
           requires_active_walk?: boolean
           room_type?: string
+          scheduled_event_id?: string | null
           starts_at?: string | null
           status?: string
           theme?: string | null
@@ -273,6 +282,9 @@ export type Database = {
           accessibility_notes: string | null
           address: string | null
           attendee_count: number
+          audio_room_id: string | null
+          breakout_rotate_minutes: number | null
+          breakout_size: number
           capacity: number | null
           city: string | null
           country: string | null
@@ -287,6 +299,7 @@ export type Database = {
           host_user_id: string | null
           id: string
           image_url: string | null
+          last_pod_rotation_at: string | null
           lat: number | null
           lng: number | null
           location_label: string | null
@@ -310,6 +323,9 @@ export type Database = {
           accessibility_notes?: string | null
           address?: string | null
           attendee_count?: number
+          audio_room_id?: string | null
+          breakout_rotate_minutes?: number | null
+          breakout_size?: number
           capacity?: number | null
           city?: string | null
           country?: string | null
@@ -324,6 +340,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
@@ -347,6 +364,9 @@ export type Database = {
           accessibility_notes?: string | null
           address?: string | null
           attendee_count?: number
+          audio_room_id?: string | null
+          breakout_rotate_minutes?: number | null
+          breakout_size?: number
           capacity?: number | null
           city?: string | null
           country?: string | null
@@ -361,6 +381,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
