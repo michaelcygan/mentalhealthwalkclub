@@ -355,7 +355,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
             <Users className="h-3.5 w-3.5 text-forest/60" />
             <span className="absolute inset-0 rounded-full border border-forest/20" style={{ animation: "ripple 3s ease-out infinite" }} />
           </span>
-          <span className="font-serif italic">holding the room — someone may join</span>
+          <span className="font-serif italic">holding the walk — someone may join</span>
           <style>{`@keyframes ripple { 0% { transform: scale(.85); opacity: .9 } 100% { transform: scale(1.5); opacity: 0 } }`}</style>
         </div>
       )}
