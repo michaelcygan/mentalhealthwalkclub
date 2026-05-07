@@ -4,13 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { Footprints, Users } from "lucide-react";
+import { Footprints, Users, CalendarPlus, Headphones, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/groups/$slug")({ component: GroupDetail });
 
-interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; }
-interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; }
+interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
+interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; }
 interface Room { id: string; title: string; theme: string | null; current_participant_count: number; max_participants: number; }
 interface RecentWalk { id: string; user_id: string; duration_seconds: number | null; started_at: string; profiles?: { display_name: string | null; city: string | null } | null }
 
