@@ -10,13 +10,20 @@ import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
 import { LiveNowStrip } from "@/components/live-now-strip";
 import { WeeklyRing } from "@/components/weekly-ring";
+import { MoodCloud, WeightBar } from "@/components/mood-cloud";
+import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
   head: () => ({ meta: [{ title: "Walk — Mental Health Walk Club" }] }),
 });
 
-const FEELINGS = ["anxious","lonely","overwhelmed","sad","burned out","grieving","restless","okay","hopeful","just need company","prefer not to say"];
+const MODE_PREFACE: Record<string, string> = {
+  solo: "Walking alone still counts.",
+  guided_solo: "A gentle voice in your ear — pick one after this.",
+  audio: "You'll be matched once you start moving.",
+  irl_event: "Real people, real sidewalks.",
+};
 
 function WalkTab() {
   const { user } = useAuth();
