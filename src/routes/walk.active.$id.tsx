@@ -32,8 +32,6 @@ function ActiveWalk() {
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
   const [hasMoved, setHasMoved] = useState(false);
-  const [audioRooms, setAudioRooms] = useState<Array<{id:string;title:string;theme:string|null;current_participant_count:number;max_participants:number}>>([]);
-  const [activeRoom, setActiveRoom] = useState<{id:string;title:string;capacity:number} | null>(null);
   const [ending, setEnding] = useState(false);
   const [endStep, setEndStep] = useState<0 | 1 | 2 | 3>(0);
   const [moodAfter, setMoodAfter] = useState("");
