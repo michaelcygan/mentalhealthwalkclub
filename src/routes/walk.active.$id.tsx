@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Heart } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
@@ -20,6 +20,8 @@ interface Session {
   intention: string | null; started_at: string; status: string; guided_track_id: string | null;
 }
 
+type GpsState = "idle" | "live" | "weak" | "denied";
+
 function ActiveWalk() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
@@ -33,9 +35,11 @@ function ActiveWalk() {
   const [meters, setMeters] = useState(0);
   const [hasMoved, setHasMoved] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [pulseHint, setPulseHint] = useState<string | null>(null);
   const [routeTick, setRouteTick] = useState(0);
+  const [gps, setGps] = useState<GpsState>("idle");
+  const [showManualStart, setShowManualStart] = useState(false);
   const milestonesHit = useRef<Set<string>>(new Set());
+  const pulseHit = useRef<Set<number>>(new Set());
   const lastPos = useRef<{lat:number;lng:number;t:number} | null>(null);
   const points = useRef<Array<{lat:number;lng:number;t:number}>>([]);
   const watchId = useRef<number | null>(null);
@@ -55,19 +59,38 @@ function ActiveWalk() {
   }, [session, paused]);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) { setGps("denied"); return; }
     watchId.current = navigator.geolocation.watchPosition((pos) => {
+      const acc = pos.coords.accuracy ?? 999;
+      // Drop low-confidence fixes that cause Wi-Fi drift on desktop
+      if (acc > 30) { setGps((g) => g === "live" ? "live" : "weak"); return; }
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
-      points.current.push(p);
-      setRouteTick((x) => x + 1);
       if (lastPos.current) {
         const d = haversine(lastPos.current, p);
-        if (d < 200) setMeters((m) => m + d);
+        // Min 2m delta kills jitter; max 200m kills teleports
+        if (d >= 2 && d < 200) {
+          setMeters((m) => m + d);
+          points.current.push(p);
+          setRouteTick((x) => x + 1);
+          lastPos.current = p;
+          setGps("live");
+        }
+      } else {
+        lastPos.current = p;
+        points.current.push(p);
+        setGps("live");
       }
-      lastPos.current = p;
-    }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }, (err) => {
+      setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
     return () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
   }, []);
+
+  // Manual "I'm walking" affordance after 25s if we never got a confident fix
+  useEffect(() => {
+    const t = setTimeout(() => { if (!hasMoved) setShowManualStart(true); }, 25_000);
+    return () => clearTimeout(t);
+  }, [hasMoved]);
 
   useEffect(() => { if (meters > 15) setHasMoved(true); }, [meters]);
 
@@ -96,24 +119,7 @@ function ActiveWalk() {
     if (meters >= 1609) fire("1mi", "First mile · proud of you");
   }, [elapsed, meters]);
 
-  // Mood pulse every 10 minutes
-  useEffect(() => {
-    const mins = Math.floor(elapsed / 60);
-    if (mins > 0 && mins % 10 === 0 && elapsed % 60 === 0 && !pulseHint) {
-      setPulseHint("ask");
-      const t = setTimeout(() => setPulseHint((h) => (h === "ask" ? null : h)), 60_000);
-      return () => clearTimeout(t);
-    }
-  }, [elapsed, pulseHint]);
-
-  const miles = meters * 0.000621371;
-  const stride = 0.78;
-  const steps = Math.round(meters / stride);
-  const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
-  const cadence = elapsed > 30 ? Math.round((steps / elapsed) * 60) : 0;
-
   const recordPulse = (label: string) => {
-    setPulseHint(null);
     const map: Record<string, { mood: string; score: number }> = {
       lighter: { mood: "hopeful", score: Math.min(10, (session?.mood_before_score ?? 5) + 2) },
       same: { mood: session?.mood_before ?? "okay", score: session?.mood_before_score ?? 5 },
@@ -122,6 +128,30 @@ function ActiveWalk() {
     pulseRecord.current = map[label];
     toast(`Noted · feeling ${label}`);
   };
+
+  // Pulse check-in as a toast every 10 minutes (no longer pushing layout)
+  useEffect(() => {
+    const mins = Math.floor(elapsed / 60);
+    if (mins > 0 && mins % 10 === 0 && elapsed % 60 === 0 && !pulseHit.current.has(mins)) {
+      pulseHit.current.add(mins);
+      toast.custom((t) => (
+        <div className="flex items-center gap-2 rounded-2xl border border-forest/30 bg-card/95 p-3 shadow-elevated backdrop-blur">
+          <span className="text-xs font-medium text-forest">Quick check-in</span>
+          {PULSE_FEELINGS.map((f) => (
+            <button key={f} onClick={() => { recordPulse(f); toast.dismiss(t); }} className="rounded-full border border-border bg-background px-2.5 py-1 text-xs hover:border-forest/40">
+              {f}
+            </button>
+          ))}
+        </div>
+      ), { duration: 30_000 });
+    }
+  }, [elapsed]);
+
+  const miles = meters * 0.000621371;
+  const stride = 0.78;
+  const steps = Math.round(meters / stride);
+  const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
+  const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
 
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
@@ -157,15 +187,18 @@ function ActiveWalk() {
   }
 
   const isAudio = session.walk_type === "audio";
+  const gpsDot = gps === "live" ? "bg-forest" : gps === "weak" ? "bg-amber-400" : gps === "denied" ? "bg-muted-foreground/40" : "bg-muted-foreground/40";
+  const gpsLabel = gps === "live" ? "GPS live" : gps === "weak" ? "GPS searching" : gps === "denied" ? "GPS off" : "GPS waking";
 
   return (
     <div className="-mx-4 md:mx-0">
-      {/* Hero — full-bleed gradient with breathing timer */}
+      {/* Hero */}
       <section className="relative overflow-hidden gradient-forest px-5 pb-8 pt-7 text-primary-foreground md:rounded-3xl md:px-7 md:pt-8 md:shadow-elevated">
-        {/* sparkline overlay behind everything */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 opacity-20">
-          <RouteSparkline points={points.current} key={routeTick} />
-        </div>
+        {points.current.length >= 2 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 opacity-20">
+            <RouteSparkline points={points.current} key={routeTick} />
+          </div>
+        )}
 
         <div className="relative flex items-start justify-between">
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
@@ -173,9 +206,27 @@ function ActiveWalk() {
         </div>
 
         <div className="relative mt-8 text-center">
-          <div className="font-serif text-7xl tabular-nums tracking-tight" style={{ animation: paused ? "none" : "breathe 4s ease-in-out infinite" }}>{fmt(elapsed)}</div>
-          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] opacity-80">{paused ? "paused" : "elapsed"}</div>
+          <div aria-live="off" className="font-serif text-7xl tabular-nums tracking-tight" style={{ animation: paused ? "none" : "breathe 4s ease-in-out infinite" }}>{fmt(elapsed)}</div>
+          <div className="mt-1 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.22em] opacity-80">
+            <span>{paused ? "paused" : "elapsed"}</span>
+            <span aria-hidden className="opacity-50">·</span>
+            <span className="inline-flex items-center gap-1">
+              <span className={`h-1.5 w-1.5 rounded-full ${gpsDot} ${gps === "live" ? "animate-pulse" : ""}`} />
+              {gpsLabel}
+            </span>
+          </div>
         </div>
+
+        {showManualStart && !hasMoved && (
+          <div className="relative mt-5 flex justify-center">
+            <button
+              onClick={() => { setHasMoved(true); setShowManualStart(false); toast("On your feet — counting you in."); }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
+            >
+              <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
+            </button>
+          </div>
+        )}
 
         <div className="relative mt-7 grid grid-cols-4 gap-2 text-center">
           <Mini label="mi" value={miles.toFixed(2)} />
@@ -186,33 +237,22 @@ function ActiveWalk() {
       </section>
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
-        {pulseHint === "ask" && (
-          <div className="animate-in fade-in slide-in-from-top-2 rounded-2xl border border-forest/30 bg-accent/40 p-4">
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-forest"><Heart className="h-3.5 w-3.5" /> Quick check-in</div>
-            <div className="flex gap-2">
-              {PULSE_FEELINGS.map((f) => (
-                <button key={f} onClick={() => recordPulse(f)} className="flex-1 rounded-full border border-border bg-card px-3 py-2 text-sm hover:border-forest/40">{f}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {isAudio && (
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
         )}
 
         {session.walk_type === "guided_solo" && session.guided_track_id && (
-          <GuidedPlayer trackId={session.guided_track_id} />
+          <GuidedPlayer trackId={session.guided_track_id} paused={paused} />
         )}
       </div>
 
       {/* Sticky control dock */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border bg-card/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mt-6 md:border-0 md:bg-transparent md:p-0">
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setPaused((p) => !p)} className="h-14 flex-1 rounded-2xl touch-manipulation">
+          <Button variant="outline" onClick={() => setPaused((p) => !p)} className="h-14 flex-1 rounded-2xl touch-manipulation md:h-12">
             {paused ? <><Play className="mr-2 h-4 w-4" />Resume</> : <><Pause className="mr-2 h-4 w-4" />Pause</>}
           </Button>
-          <Button onClick={() => setEnding(true)} className="h-14 flex-1 rounded-2xl bg-clay text-primary-foreground touch-manipulation hover:opacity-90">
+          <Button onClick={() => setEnding(true)} className="h-14 flex-1 rounded-2xl bg-clay text-primary-foreground touch-manipulation hover:opacity-90 md:h-12">
             <Square className="mr-2 h-4 w-4" />End walk
           </Button>
         </div>
