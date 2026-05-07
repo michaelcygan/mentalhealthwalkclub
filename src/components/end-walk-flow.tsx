@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const FEELINGS = ["anxious","lonely","overwhelmed","sad","burned out","grieving","restless","okay","hopeful","just need company","prefer not to say"];
+import { MoodCloud } from "@/components/mood-cloud";
 
 interface Props {
   moodBefore: string | null;
@@ -31,11 +30,7 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, onSav
             <p className="font-serif text-xs italic text-muted-foreground">You started {moodBefore ?? "the walk"}.</p>
             <h2 className="mt-1 font-serif text-3xl">How are you arriving?</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {FEELINGS.map((f) => (
-              <button key={f} onClick={() => { setMoodAfter(f); setStep(1); }} className={`rounded-full border px-4 py-2 text-sm transition ${moodAfter === f ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:border-forest/40"}`}>{f}</button>
-            ))}
-          </div>
+          <MoodCloud value={moodAfter} onChange={(v) => { setMoodAfter(v); setTimeout(() => setStep(1), 250); }} />
           <button onClick={() => setStep(1)} className="text-xs text-muted-foreground underline">skip</button>
         </>
       )}

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
+import { GuidedPlayer } from "@/components/guided-player";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -16,7 +17,7 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
-  intention: string | null; started_at: string; status: string;
+  intention: string | null; started_at: string; status: string; guided_track_id: string | null;
 }
 
 function ActiveWalk() {
@@ -198,6 +199,10 @@ function ActiveWalk() {
 
         {isAudio && (
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} />
+        )}
+
+        {session.walk_type === "guided_solo" && session.guided_track_id && (
+          <GuidedPlayer trackId={session.guided_track_id} />
         )}
       </div>
 

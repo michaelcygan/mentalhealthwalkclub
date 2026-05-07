@@ -1,147 +1,100 @@
+## Walk Onboarding Level-Up Pass
 
-# Walk & Talk · Level-Up Pass
-
-A focused pass on the active-walk loop. No new tables, no new dependencies, no new APIs. Everything below leans on what already exists: `MeshAudioTransport`, `AmbientPad`, `WalkTalkDock`, `audio_rooms` realtime, `walk_sessions`, geolocation, the design tokens in `styles.css`.
-
-The goal: when someone taps **Start a walk**, the next 30 minutes should feel like the most thoughtful, mobile-native audio product they've used this year.
+A focused refresh of the **pre-walk flow** (the screens between "Start a walk" and the active timer). Goal: take it from "passable 2013" to a 2026 ambient, mobile-first experience — using existing primitives, motion, and a richer mood vocabulary. Plus contextualize the **Guided Walk** with pre-recorded audio tracks (no AI).
 
 ---
 
-## 1. The active walk becomes one immersive surface
+### 1. Mood picker — the marquee fix
 
-Today the screen is three stacked cards (gradient header → path card → dock → buttons). On a 390px viewport that means tap-scroll-tap. We collapse it into a single full-bleed canvas with a sticky bottom dock — the WhatsApp-call / Strava-record feel.
+Currently a static 11-tag grid that wastes vertical space and looks like a 2013 form.
 
-```text
-┌────────────────────────────┐
-│  gradient-forest, full-bleed
-│  safety · timer · haptic dot
-│
-│  06:42 (breathing)
-│  1.2 mi · 1,540 steps · 16'12"
-│
-│  ─ path sparkline (inline,
-│     overlaid on gradient,
-│     low-opacity) ─
-│
-│         (alone ripple OR
-│          avatar constellation,
-│          centered, large)
-│
-├────────────────────────────┤  ← sticky dock, glass
-│ 🎙 hold to talk    ⏸  ⏹    │
-└────────────────────────────┘
+**New mechanic — "Drift Cloud":**
+- Expand vocabulary to ~36 words across 3 mood-bands (heavy / tender / light), e.g. *"running on fumes," "low-grade hum," "soft," "tender," "sturdy," "quietly proud," "okay-ish," "wrung out," "static," "open," "raw," "buoyant"…*
+- Per-session shuffle: `useMemo(() => shuffle(POOL).slice(0, 14), [sessionSeed])` so the user sees a fresh palette each open. Re-roll button (`↻ shuffle`) animates a re-deal.
+- **Motion**: tags drift with subtle staggered float (`@keyframes drift` ±2px on Y, 6–10s, randomized delay/duration per tag). Selection: spring-scale to 1.06, color fill, haptic tap. Pauses motion via `prefers-reduced-motion`.
+- **Layout**: `flex-wrap` with variable pill widths and a soft radial-gradient backdrop so it reads like a word-cloud, not a form. Vertical density doubles without feeling busy.
+- **Free-typing escape hatch**: ghost input at the bottom — "or type one word…" — saves to the same `mood_before` field.
+
+### 2. Mood scale — replace the slider
+
+The native range input is the ugliest element on the screen. Replace with a **10-segment "weight bar"** — 10 thin vertical capsules, tap any to set, with a smooth fill sweep and the number counting up. Tappable on mobile (44px tall hit area), keyboard-friendly (←/→). About the same code as the current slider + accent-color hack.
+
+### 3. Step cadence — collapse to one screen
+
+Right now: feeling → score → intention. That's three taps before walking. Collapse into **one stacked card** with progressive reveal:
+- Mood word (required-ish, but skippable)
+- Weight bar fades in once a word is picked
+- Intention textarea fades in once weight is set
+- Single primary "Begin walking" CTA at the bottom; secondary "skip the rest" link
+
+Net effect: one calm screen, scrolls if needed, fewer taps. We delete `step === 1, 2, 3` branching for solo walks.
+
+### 4. Walk-type chooser — softer pre-screen
+
+When user picks "Guided" / "Walk & Talk" / "Local," we currently land on the same generic mood form. Give each mode a **30-word context preface** (one line) above the mood picker so the experience doesn't feel templated. E.g. Walk & Talk: *"You'll be matched once you start moving."*
+
+### 5. Guided Walk — contextualize with pre-recorded audio
+
+This is the missing soul of the Guided mode. Today it just routes to the same active screen. Make it real.
+
+**New table** (small, no AI):
+```sql
+guided_tracks (
+  id uuid pk,
+  title text, host text, host_role text,        -- "Maya, somatic coach"
+  duration_seconds int,
+  audio_url text,                               -- mp3/m4a in Supabase storage
+  cover_url text,
+  mood_tags text[],                             -- ["anxious","overwhelmed"]
+  category text,                                -- 'ambient' | 'breath' | 'voice' | 'music'
+  intro_seconds int default 30                  -- when voice starts; before that = ambient
+)
 ```
 
-Concretely in `walk.active.$id.tsx`:
-- One outer `<section>` with `min-h-[calc(100dvh-…)]` and the existing `gradient-forest`.
-- Header (intention + safety) shrinks on scroll using `sticky top-0 backdrop-blur` — no new lib, just CSS.
-- Stats row collapses into a single line under the timer when `walk_type === "audio"` so the room takes the spotlight.
-- Sparkline rendered as an SVG overlay at `opacity-25` behind the avatars instead of in its own card. Same `RouteSparkline` component, just sized full-width.
-- Pause/End move into a sticky bottom dock with `safe-area-inset-bottom` padding (currently we ignore the iOS home indicator).
+**New screen — "Choose your guide":**
+- Surfaces 4–6 tracks **filtered by the mood the user just picked** (intersect `mood_tags`).
+- Card layout: large cover (square, 1:1), title, host, duration, soft play-preview button (15s).
+- Categories shown as tabs at the top: *Ambient music · Breath · Voice · Stories*. Starts with Ambient as the lowest-friction option (works with no content yet — re-uses `AmbientPad` from Walk & Talk; just labelled "Generative ambient").
+- Empty/seed state ships with **3 generative options** (re-skinning the existing `AmbientPad` keys: morning / midday / evening) so the feature is live on day one with zero hosted audio.
 
-This is mostly CSS reshuffling in one route file (~80 lines edited, ~0 added).
+**Active walk integration**:
+- `walk_sessions` gets a nullable `guided_track_id`.
+- Active screen detects `walk_type === "guided_solo"` + `guided_track_id` → renders a slim audio player in the same slot the `WalkTalkDock` occupies (waveform-style scrubber, 15s skip, Now Playing on lock-screen via existing `MediaSession` plumbing).
+- Generative tracks call `AmbientPad.start(volume, key)` instead of `<audio>` — same player UI.
 
----
+This scales naturally: today = generative + 1 guest voice; tomorrow = podcaster partnerships, no architecture change.
 
-## 2. The dock becomes the cockpit
+### 6. Polish (cheap wins)
 
-Right now the dock has Mute / Skip / Leave. We turn it into a real audio cockpit while keeping the same component file:
-
-- **Push-to-talk** (long-press on the mic button, mobile-first). Default state is muted; pressing-and-holding broadcasts. This is the single biggest unlock for "pick up a phone and walk" — it means users join silent rooms without anxiety. Implemented as `onPointerDown/Up` calling existing `setMuted(false/true)`. No transport change.
-- **Toggle for hands-free mode** (current behavior) for users who want it. State stored in `localStorage`.
-- **Haptic taps** on join chime, on a walker arriving, and on push-to-talk press — `navigator.vibrate(8)` / `vibrate([6,40,6])`. Free, mobile-only, silently no-ops on desktop.
-- **Avatar constellation**: replace the wrap-row of avatars with a circular arrangement around the timer. Uses `transform: rotate()` math, ~15 lines. Speaking ring becomes an outward pulse synced to amplitude. Reuses the existing `speaking` boolean from `MeshAudioTransport`.
-- **Skip becomes a swipe**: `Skip` button gets a small "← swipe" affordance using a `Sheet` or simple touch handler — feels less like leaving, more like changing channels.
-
----
-
-## 3. Smarter alone-state choreography
-
-The ambient pad already exists. We use it more deliberately:
-
-- **Time-of-day theming**: pad's base frequencies and LFO speed shift by the same `timeOfDayBucket` the matcher uses. Morning = brighter (A minor), night = lower (D minor). Two extra lines in `ambient-pad.ts` accepting `{ key }`.
-- **Heartbeat tell when someone joins**: existing `playJoinChime` + `vibrate([6,40,6])` + a 600ms `animate-in fade-in` on the new walker's avatar. Already 90% built — we just wire the chime to the participant-count delta instead of the alone→not-alone delta, so it fires for every arrival, not just the first.
-- **"Stay with the silence" affordance**: after 30s alone, instead of jumping straight to ambient pad at 60s, show a single line: *"Want company or quiet?"* with two pills — Quiet (delays pad indefinitely) / Music (starts now). Tiny addition, big mood-respect.
+- **Haptic taps** on mood/weight selection (`navigator.vibrate(8)`).
+- **Time-of-day backdrop** for the onboarding card mirrors the home hero gradient — continuity from "How are you arriving?" into the picker.
+- **`safe-area-inset-bottom`** on the sticky CTA so it never collides with the tab bar.
+- **`prefers-reduced-motion`** kills the drift animation.
+- The same Drift Cloud component is reused in `EndWalkFlow` step 0 — one source of truth, fixes the post-walk "How are you arriving?" screen too.
 
 ---
 
-## 4. Live presence beyond the room
+### Net new code
 
-Two micro-features that use the existing realtime channel and `walk_sessions` table — no new schema:
+- `src/components/mood-cloud.tsx` (~80 lines) — drift cloud + weight bar, used in 3 places
+- `src/components/guide-picker.tsx` (~90 lines) — track list + preview
+- 1 migration: `guided_tracks` table + RLS read-all, plus `guided_track_id` column on `walk_sessions`
+- ~40 lines deleted from `routes/index.tsx` (collapsed steps)
+- ~25 lines added to `routes/walk.active.$id.tsx` (guided player slot)
 
-- **"Two others starting nearby"** banner during the matching phase. Reads `walk_sessions` where `status='active'` and `started_at > now() - 2 min`. Filtered by `audio` walk-type. Subscribes via the existing realtime pattern in `live-now-strip.tsx`. Makes the matching state feel populated even before the room fills.
-- **Continuity ring**: in the in-room view, show a tiny "12 min walking · 0.8 mi" under each remote walker's avatar, pulled from their `walk_sessions` row. Makes the room feel embodied — you know the person you're talking to has been on their feet for 20 minutes.
+Roughly **+150 / −60 LOC**. No new dependencies.
 
-Both reuse `supabase.channel('public:walk_sessions')` already in the codebase.
+### Build order
 
----
+1. `MoodCloud` component (drift + shuffle + weight bar)
+2. Collapse step 1-2-3 in `index.tsx` into one progressive card
+3. Replace `EndWalkFlow` step-0 with `MoodCloud`
+4. `guided_tracks` migration + 3 generative seeds (ambient pad keys)
+5. `GuidePicker` screen, gated behind `walk_type === "guided_solo"` after mood capture
+6. Active screen — render guided player slot
 
-## 5. Mobile capabilities we're under-using
+### Out of scope
 
-- **Wake Lock API** (free, web-standard): keep the screen on during an audio walk so the dock stays visible. `navigator.wakeLock.request('screen')` gated to audio walks. ~10 lines, released on unmount.
-- **Media Session API**: set `navigator.mediaSession.metadata` with the room title and `setActionHandler('togglemicrophone')`. Then the iOS/Android lock-screen and Bluetooth headphone button can mute/unmute the room. This is the single most "premium" mobile touch — it makes the app a proper audio citizen.
-- **Visibility-aware ambient pad**: when the tab backgrounds (user pockets phone, common for walking) the pad already keeps playing via Web Audio — but we duck it 50% to save battery. `document.visibilitychange` → `pad.duck()`.
-- **Safe-area insets**: dock uses `pb-[env(safe-area-inset-bottom)]`. Currently we don't.
-- **Larger tap targets in the dock**: bump to `h-14` and use `touch-manipulation` to kill 300ms tap delay.
-
----
-
-## 6. Tightening existing code
-
-While we're in there:
-
-- **`walk.active.$id.tsx`**: extract the reflection flow (currently 60 lines of nested ternaries) into `<EndWalkFlow />` so the active screen file stays readable. Net code: ~0 (move, not add).
-- **`walk-talk-dock.tsx`**: collapse the four `phase` returns into one render with conditional regions — saves ~30 lines and eliminates duplicate gradient containers.
-- **Match retry**: today if `matchOrCreateAudioRoom` fails the user is dropped to "waiting-to-walk" forever. Add a soft 3-attempt retry with 1s/3s/8s backoff, then a clear "tap to retry" pill. ~12 lines.
-- **Persist mute preference**: read `localStorage.walkAndTalk.handsFree` on mount so users who like push-to-talk always get it.
-
----
-
-## What stays the same (deliberately)
-
-- Matching logic (already loneliest-first, already correct).
-- WebRTC mesh transport.
-- Auto-close empty rooms trigger.
-- Reflection flow content/copy.
-- Safety sheet.
-- All schemas and server functions.
-
----
-
-## File budget
-
-| File | Change | Approx LoC |
-|---|---|---|
-| `src/routes/walk.active.$id.tsx` | Reflow to immersive layout, extract EndWalkFlow, wake-lock, media-session, safe-area | +40 / −60 net |
-| `src/components/walk-talk-dock.tsx` | Push-to-talk, constellation, haptics, retry, swipe-skip, collapse phases | +60 / −40 net |
-| `src/lib/audio/ambient-pad.ts` | Time-of-day key param, visibility-aware duck | +20 |
-| `src/components/end-walk-flow.tsx` (new, extracted) | Pure UI extraction | +120 (moved) |
-| `src/components/nearby-starting.tsx` (new, tiny) | Realtime banner during matching | +35 |
-
-**Net new code: ~120 lines.** Most of the heft is moving the reflection flow into its own file.
-
----
-
-## Build order
-
-1. Extract `EndWalkFlow` (zero behavior change, pure refactor).
-2. Reflow active-walk layout to full-bleed + sticky dock + safe-area.
-3. Push-to-talk + hands-free toggle + haptics.
-4. Wake Lock + Media Session + visibility-aware pad.
-5. Avatar constellation + per-walker continuity ring.
-6. Time-of-day pad keys.
-7. Nearby-starting banner during matching.
-8. Match retry with backoff.
-
-Each step is independently shippable; nothing in step N depends on step N+1.
-
----
-
-## Out of scope (on purpose)
-
-- Voice transcription / saved snippets.
-- Friend system from rooms.
-- Group walks scheduled in advance (already a separate feature).
-- Native app shell — everything proposed is web-standard and works in Mobile Safari today.
-
-Once you approve, I'll execute in the order above and stop after each phase if you want a pause.
+- Real hosted audio uploads / podcaster onboarding (table is ready, content comes later)
+- AI-generated content
+- Changes to the marketing landing
