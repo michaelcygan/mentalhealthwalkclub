@@ -378,8 +378,47 @@
 }
 .heart-beat { animation: heart-beat 1.6s ease-in-out infinite; transform-origin: center; will-change: transform; }
 
+/* Pin-drop — soft hop with squish, long rest between */
+@keyframes pin-drop {
+  0%, 78%, 100% { transform: translateY(0) scaleY(1); }
+  84%           { transform: translateY(-3px) scaleY(1.04); }
+  92%           { transform: translateY(0) scaleY(0.92); }
+  96%           { transform: translateY(0) scaleY(1.02); }
+}
+.pin-drop { animation: pin-drop 5.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; transform-origin: center bottom; will-change: transform; }
+
+/* Sparkle-twinkle — gentle wink + tilt */
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 1;    transform: rotate(-4deg) scale(1); }
+  50%      { opacity: 0.55; transform: rotate(6deg)  scale(1.10); }
+}
+.sparkle-twinkle { animation: sparkle-twinkle 2.6s ease-in-out infinite; transform-origin: center; will-change: transform, opacity; }
+
+/* Headphones-bob — small head-nod */
+@keyframes headphones-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(-1.5px) rotate(-2deg); }
+}
+.headphones-bob { animation: headphones-bob 2.8s ease-in-out infinite; transform-origin: center; will-change: transform; }
+
+/* Compass-spin — slow drift then plateau (finds north, drifts) */
+@keyframes compass-spin {
+  0%       { transform: rotate(0deg); }
+  45%      { transform: rotate(360deg); }
+  100%     { transform: rotate(360deg); }
+}
+.compass-spin { animation: compass-spin 9s cubic-bezier(0.65, 0, 0.35, 1) infinite; transform-origin: center; will-change: transform; }
+
+/* Moon-glow — soft halo breathing */
+@keyframes moon-glow {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 0 hsl(var(--forest) / 0)); }
+  50%      { opacity: 1;    filter: drop-shadow(0 0 4px hsl(var(--forest) / 0.45)); }
+}
+.moon-glow { animation: moon-glow 3.2s ease-in-out infinite; transform-origin: center; will-change: opacity, filter; }
+
 @media (prefers-reduced-motion: reduce) {
   .ken-burns, .glyph-float, .city-pulse-ring, .card-in,
   .eyebrow-rise, .focus-hue-drift, .ember-spark,
-  .live-pulse, .heart-beat { animation: none !important; }
+  .live-pulse, .heart-beat,
+  .pin-drop, .sparkle-twinkle, .headphones-bob, .compass-spin, .moon-glow { animation: none !important; }
 }
