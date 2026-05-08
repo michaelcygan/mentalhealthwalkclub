@@ -49,6 +49,26 @@ function JournalTab() {
     });
   }, [user]);
 
+  // Bulk-sign snapshot URLs for the list thumbnails
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const need = walks.filter((w) => w.route_snapshot_path && !snapshotUrls[w.id]);
+      if (need.length === 0) return;
+      const entries = await Promise.all(need.map(async (w) => {
+        const { data } = await supabase.storage.from("walk-snapshots").createSignedUrl(w.route_snapshot_path!, 3600);
+        return [w.id, data?.signedUrl] as const;
+      }));
+      if (cancelled) return;
+      setSnapshotUrls((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of entries) if (url) next[id] = url;
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [walks]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
 
