@@ -13,6 +13,7 @@ export interface Group {
   state: string | null;
   country: string | null;
   location_label: string | null;
+  cover_set: string | null;
 }
 
 export interface GroupPulse {
