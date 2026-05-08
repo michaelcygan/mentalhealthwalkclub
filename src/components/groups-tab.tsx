@@ -208,7 +208,7 @@ export function GroupsTab() {
           {pulseGroups.length > 0 && (
             <section className="space-y-2">
               <div className="flex items-center gap-2">
-                <Radio className="h-3.5 w-3.5 text-forest" />
+                <Radio className="h-3.5 w-3.5 text-forest live-pulse" />
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
               </div>
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
