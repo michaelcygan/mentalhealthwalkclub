@@ -367,6 +367,13 @@ function ActiveWalk() {
         />
       )}
 
+      {/* Ambient music pill — only when there's a track playing and this walk doesn't own the audio */}
+      {!(session.walk_type === "audio" || session.guided_track_id) && (
+        <div className="px-4 pt-4 md:px-0">
+          <AmbientPill />
+        </div>
+      )}
+
       {/* Sticky control dock */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border glass px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 md:static md:mt-6 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex gap-3">
