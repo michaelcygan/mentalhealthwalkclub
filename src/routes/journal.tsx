@@ -419,17 +419,24 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
     if (!snapshotUrl || !walk) return;
     haptics.tap();
     try {
-      const res = await fetch(snapshotUrl);
-      const blob = await res.blob();
+      const date = new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const mins = Math.round((walk.duration_seconds ?? 0) / 60);
+      const miles = ((walk.distance_meters ?? 0) * 0.000621371).toFixed(2);
+      const blob = await bakeShareCard(snapshotUrl, {
+        miles, minutes: mins, steps: walk.steps, date,
+        intention: walk.intention, moodBefore: walk.mood_before, moodAfter: walk.mood_after, walkType: walk.walk_type,
+      });
+      if (!blob) throw new Error("bake failed");
       const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });
       const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
       if (nav.canShare?.({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title: "My walk", text: "Walked it through 🌿" });
         return;
       }
-      // Fallback: download
-      const a = document.createElement("a"); a.href = snapshotUrl; a.download = file.name; a.click();
-    } catch { /* user cancel */ }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = file.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch { /* user cancel or render fail */ }
   };
 
   if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
