@@ -42,7 +42,17 @@ const FLAG: Record<string, string> = {
   NL: "🇳🇱", FR: "🇫🇷", ES: "🇪🇸", AU: "🇦🇺", NZ: "🇳🇿", JP: "🇯🇵", SG: "🇸🇬",
 };
 
-export type GroupCardVariant = "tile" | "pulse" | "mini" | "rail" | "gallery";
+export type GroupCardVariant = "tile" | "pulse" | "mini" | "rail" | "gallery" | "niche";
+
+const NICHE_EMOJI: Record<string, string> = {
+  "five-am-club": "☕", "sunrise-club": "🌅", "sunset-chasers": "🌇", "night-owls": "🌙",
+  "lunchbreak-walkers": "🥪", "dog-parents": "🐕", "stroller-crew": "👶", "empty-nesters": "🪺",
+  "solo-travelers": "🧭", "remote-workers": "💻", "shift-workers": "🌗", "grad-school": "🎓",
+  "first-year-teachers": "📚", "healthcare-workers": "🩺", "founders-walk": "🚀", "caregivers": "🤲",
+  "walk-instead-of-doomscroll": "📵", "phone-free-walkers": "🤫", "one-podcast-one-walk": "🎧",
+  "audiobook-walkers": "📖", "hot-girl-walk": "👟", "silent-walking": "🤍", "rage-walk": "🔥",
+  "gratitude-walk": "🙏", "walk-and-pray": "✨", "rainy-day-walkers": "🌧",
+};
 
 export function GroupCard({
   group, pulse, joined, onToggle, variant = "tile",
