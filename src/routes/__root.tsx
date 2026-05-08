@@ -114,35 +114,12 @@ function TabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const { openAuth, openWelcome } = useAuthPrompt();
-  const scrollDir = useScrollDirection();
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
-  const hidden = scrollDir === "down";
 
   return (
     <>
-      {/* Mobile bottom tab bar — hides on scroll-down to free vertical space */}
-      <nav
-        className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur transition-transform duration-300 md:hidden ${hidden ? "translate-y-full" : "translate-y-0"}`}
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
-      >
-        <ul className="grid grid-cols-5">
-          {TABS.map(({ to, label, icon: Icon, exact }) => {
-            const active = isActive(to, exact);
-            return (
-              <li key={to}>
-                <Link
-                  to={to as never}
-                  onClick={() => haptics.tap()}
-                  className={`flex flex-col items-center gap-1 py-2.5 text-[11px] transition ${active ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
-                  <span className={active ? "font-medium" : ""}>{label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* Mobile bottom command bar */}
+      <MobileTabBar />
 
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
