@@ -6,8 +6,8 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee } from "@/server/walks.functions";
-import { joinScheduledWalk, openScheduledRoom, reshufflePods } from "@/server/audio.functions";
+import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee, rsvpToEvent } from "@/server/walks.functions";
+import { joinScheduledWalk, openScheduledRoom, reshufflePods, endScheduledWalk } from "@/server/audio.functions";
 import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users } from "lucide-react";
 
 export const Route = createFileRoute("/events/$slug")({ component: EventDetail });
