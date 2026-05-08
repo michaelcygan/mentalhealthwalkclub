@@ -186,7 +186,7 @@ function GroupDetail() {
       {hasCity && (
         <Link to={"/events/new" as never} search={{ group: group.id, mode: "irl" } as never}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40 hover:text-forest transition">
-          <MapPin className="h-3.5 w-3.5" /> In person
+          <MapPin className="h-3.5 w-3.5 pin-drop" /> In person
         </Link>
       )}
       <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never}
