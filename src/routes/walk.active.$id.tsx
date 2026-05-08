@@ -259,7 +259,7 @@ function ActiveWalk() {
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
       reflection_note: merged || null,
-      weather_at_end: weatherSnap,
+      weather_at_end: weatherSnap as never,
     }).eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
