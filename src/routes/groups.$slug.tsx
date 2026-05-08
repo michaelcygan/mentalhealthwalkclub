@@ -47,14 +47,14 @@ function GroupDetail() {
       const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
       const dayIso = startOfDay.toISOString();
-      const [{ data: e }, { data: r }, { data: w }, { data: nm }, { data: act }, { data: today }, mem] = await Promise.all([
+      const [{ data: e }, { data: r }, { data: w }, { data: nm }, { count: actCount }, { count: todayCount }, mem] = await Promise.all([
         supabase.from("events").select("id,title,slug,starts_at,city,event_type").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
         supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("group_id", g.id).eq("status","open").is("parent_room_id", null),
         supabase.from("walk_sessions").select("user_id,duration_seconds").eq("group_id", g.id).eq("status","completed").gte("started_at", weekAgo),
         supabase.from("group_memberships").select("user_id").eq("group_id", g.id).gte("joined_at", weekAgo),
         supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("group_id", g.id).eq("status", "active"),
         supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("group_id", g.id).eq("status", "completed").gte("started_at", dayIso),
-        user ? supabase.from("group_memberships").select("id").eq("group_id", g.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+        user ? supabase.from("group_memberships").select("id").eq("group_id", g.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as { data: unknown }),
       ]);
       if (cancel) return;
       setEvents(e ?? []);
@@ -64,9 +64,9 @@ function GroupDetail() {
       setMinutesWeek(Math.round(walks.reduce((s, x) => s + (x.duration_seconds ?? 0), 0) / 60));
       setWalkersWeek(new Set(walks.map((x) => x.user_id)).size);
       setNewMembers((nm ?? []).length);
-      setActiveNow((act as { count: number | null } | null)?.count ?? 0);
-      setWalksToday((today as { count: number | null } | null)?.count ?? 0);
-      setIsMember(!!(mem as { data: unknown } | null)?.data);
+      setActiveNow(actCount ?? 0);
+      setWalksToday(todayCount ?? 0);
+      setIsMember(!!mem?.data);
 
       // Realtime: refresh ambient counts on walk_sessions changes for this group
       const channel = supabase
