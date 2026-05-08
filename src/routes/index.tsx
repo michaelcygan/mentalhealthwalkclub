@@ -11,6 +11,8 @@ import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
 import { NowAndNext } from "@/components/now-and-next";
 import { WeeklyRing } from "@/components/weekly-ring";
+import { WeekInReview } from "@/components/week-in-review";
+import { ComebackNudge } from "@/components/comeback-nudge";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
@@ -235,7 +237,11 @@ function WalkTab() {
           </Link>
         )}
 
+        <ComebackNudge userId={user.id} onStart={() => openSheet("solo")} />
+
         <StartCta onStart={() => openSheet("solo")} />
+
+        <WeekInReview userId={user.id} />
 
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
