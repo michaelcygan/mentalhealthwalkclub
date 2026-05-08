@@ -377,6 +377,16 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
         </button>
       </div>
 
+      {facilitatorBanner && (
+        <div className="mb-3 animate-in fade-in slide-in-from-top-2 rounded-2xl border border-clay/30 bg-clay/10 px-3 py-2 text-xs">
+          {facilitatorBanner.joined ? (
+            <span><strong>{facilitatorBanner.name}</strong>, a facilitator, has joined to listen in.</span>
+          ) : (
+            <span>The facilitator stepped away. The walk continues.</span>
+          )}
+        </div>
+      )}
+
       {/* Constellation — full size when others present, compact badge when alone */}
       {!alone ? (
         <div className="relative mx-auto mb-5 grid h-44 w-44 place-items-center">
@@ -384,23 +394,26 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
             const profile = profiles[p.userId];
             const name = profile?.display_name ?? (p.userId === user?.id ? "you" : "walker");
             const initial = (name?.[0] ?? "•").toUpperCase();
+            const isFacilitator = p.userId === facilitatorId;
             return (
               <div
                 key={p.userId}
                 className="absolute flex flex-col items-center gap-1 transition-transform duration-700 animate-in fade-in zoom-in"
                 style={{ transform: `translate(${p.x}px, ${p.y}px)` }}
               >
-                <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card" : ""}`}>
+                <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card" : ""} ${isFacilitator ? "ring-2 ring-clay ring-offset-2 ring-offset-card" : ""}`}>
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                   ) : <span>{initial}</span>}
-                  {p.muted && (
+                  {p.muted && !isFacilitator && (
                     <div className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-muted-foreground text-background">
                       <MicOff className="h-3 w-3" />
                     </div>
                   )}
                 </div>
-                <div className="max-w-[70px] truncate text-[10px] text-muted-foreground">{name}</div>
+                <div className="max-w-[70px] truncate text-[10px] text-muted-foreground">
+                  {isFacilitator ? `${name} · facilitator` : name}
+                </div>
               </div>
             );
           })}
