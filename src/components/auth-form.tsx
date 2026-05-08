@@ -9,9 +9,11 @@ import { useNavigate } from "@tanstack/react-router";
 interface Props {
   defaultMode?: "signin" | "signup";
   onSuccess?: (mode: "signin" | "signup") => void;
+  /** When true, skip the default navigate-to-/welcome on signup success. */
+  suppressRedirect?: boolean;
 }
 
-export function AuthForm({ defaultMode = "signup", onSuccess }: Props) {
+export function AuthForm({ defaultMode = "signup", onSuccess, suppressRedirect = false }: Props) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const [email, setEmail] = useState("");
