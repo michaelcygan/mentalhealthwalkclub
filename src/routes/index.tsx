@@ -9,7 +9,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, Play } from "lucide-react";
 import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
-import { NowAndNext } from "@/components/now-and-next";
+import { LiveNowStrip } from "@/components/live-now-strip";
+import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
 import { WeeklyRing } from "@/components/weekly-ring";
 import { WeekInReview } from "@/components/week-in-review";
 import { ComebackNudge } from "@/components/comeback-nudge";
@@ -17,8 +18,15 @@ import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
 import { HeroGradient } from "@/components/hero-gradient";
+import { HeroBand } from "@/components/home/hero-band";
+import { WeatherModule } from "@/components/home/weather-module";
+import { StickyWeekBar } from "@/components/home/sticky-week-bar";
+import { WeatherPill } from "@/components/weather-pill";
+import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useProfileStats } from "@/hooks/use-profile-stats";
 import { useAmbient } from "@/lib/ambient-context";
 
 export const Route = createFileRoute("/")({
@@ -42,7 +50,6 @@ function WalkTab() {
   const ambient = useAmbient();
   const beganWalkRef = useRef(false);
 
-  // Pre-walk state lives in the bottom sheet now, not as a step machine.
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pickGuide, setPickGuide] = useState(false);
   const [walkType, setWalkType] = useState<WalkType>("solo");
@@ -51,22 +58,21 @@ function WalkTab() {
   const [intention, setIntention] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Home state
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
   const [totalWalks, setTotalWalks] = useState<number | null>(null);
   const [lastReflection, setLastReflection] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const stats = useProfileStats(user?.id);
 
   // Web Share Target → ?intention=… seeds the next walk
   useEffect(() => {
     if (typeof window === "undefined") return;
     const u = new URL(window.location.href);
     const seed = u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title");
-    if (seed) {
-      setIntention(seed.slice(0, 280));
-      setSheetOpen(true);
-    }
+    if (seed) { setIntention(seed.slice(0, 280)); setSheetOpen(true); }
     if (u.searchParams.get("start") === "1") setSheetOpen(true);
   }, []);
 
@@ -94,7 +100,16 @@ function WalkTab() {
             .then(({ data: a }) => setActiveWalkId(a?.id ?? null));
         } else setActiveWalkId(null);
       });
-  }, [user]);
+  }, [user, refreshTick]);
+
+  const { pull, refreshing } = usePullToRefresh({
+    enabled: !!user,
+    onRefresh: async () => {
+      haptics.soft();
+      setRefreshTick(t => t + 1);
+      await new Promise(r => setTimeout(r, 600));
+    },
+  });
 
   const beginWalk = async (track?: GuidedTrack | null) => {
     if (!user) return;
@@ -110,16 +125,13 @@ function WalkTab() {
         guided_track_id: track?.id ?? null,
       }).select("id").single();
       if (error) throw error;
-      // If this walk owns the audio channel, stop ambient. Otherwise, let it ride.
       const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && track?.id);
       if (ownsAudio) ambient.stop(400);
       beganWalkRef.current = true;
       navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't start walk");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const openSheet = (type: WalkType) => requireAuth(() => {
@@ -128,19 +140,13 @@ function WalkTab() {
     setPickGuide(false);
     beganWalkRef.current = false;
     setSheetOpen(true);
-    // Ease-in: start ambient music when the pre-walk drawer opens, but only
-    // for walk types that don't own the audio channel.
-    if (type !== "audio") {
-      // Fire and forget; first audio play needs the user-gesture chain from openSheet.
-      void ambient.start();
-    }
+    if (type !== "audio") void ambient.start();
   });
 
   const handleSheetChange = (v: boolean) => {
     setSheetOpen(v);
     if (!v) {
       setPickGuide(false);
-      // Closed without starting a walk → fade music out
       if (!beganWalkRef.current) ambient.stop(600);
     }
   };
@@ -160,7 +166,7 @@ function WalkTab() {
           <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground md:p-10">
             <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
             <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight text-balance md:text-5xl">Take the walk. Let it count.</h1>
-            <p className="mt-3 max-w-md text-sm opacity-90 text-pretty md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk & Talk, or Local — never alone.</p>
+            <p className="mt-3 max-w-md text-sm opacity-90 text-pretty md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk &amp; Talk, or Local — never alone.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button onClick={() => requireAuth(() => openSheet("solo"))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
                 <Footprints className="mr-2 h-4 w-4" /> Start a walk
@@ -205,10 +211,12 @@ function WalkTab() {
     );
   }
 
-  // ───────────────────────── Logged-in: one calm scroll ─────────────────────────
+  // ───────────────────────── Logged-in: composable module feed ─────────────────────────
   const hour = new Date().getHours();
   const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
+  const initials = (user.user_metadata?.display_name as string | undefined)?.charAt(0).toUpperCase()
+    || user.email?.charAt(0).toUpperCase() || "?";
   const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
   const microState = (() => {
     if (totalWalks === 0) return "Your first walk is the hardest. Five minutes around the block counts.";
@@ -220,12 +228,28 @@ function WalkTab() {
 
   return (
     <>
+      {/* Pull-to-refresh indicator */}
+      {(pull > 0 || refreshing) && (
+        <div className="pointer-events-none fixed inset-x-0 top-12 z-30 flex justify-center">
+          <div
+            className="rounded-full bg-card/90 px-3 py-1 text-[11px] font-medium text-forest shadow-soft backdrop-blur transition"
+            style={{ transform: `translateY(${Math.min(24, pull * 24)}px)`, opacity: refreshing ? 1 : Math.min(1, pull) }}
+          >
+            {refreshing ? "refreshing…" : pull >= 1 ? "release" : "pull"}
+          </div>
+        </div>
+      )}
+
+      <StickyWeekBar minutes={weeklyMinutes} goal={90} watchId="weekly-card" />
+
       <div className="space-y-5">
-        <HeroGradient className="p-6 md:p-8">
-          <p className="font-serif text-xs italic text-foreground/70">Come as you are. Walk at your pace.</p>
-          <h1 className="mt-1 font-serif text-2xl leading-tight text-balance md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
-          <p className="mt-2 max-w-md font-serif text-sm italic text-foreground/75 text-pretty">{microState}</p>
-        </HeroGradient>
+        <HeroBand
+          greeting={greet}
+          name={name}
+          microState={microState}
+          level={stats.loading ? null : stats.level}
+          initials={initials}
+        />
 
         {activeWalkId && (
           <Link to={"/walk/active/$id" as never} params={{ id: activeWalkId } as never} className="flex items-center justify-between gap-3 rounded-2xl border border-forest/40 bg-accent/40 p-4 transition hover:-translate-y-px">
@@ -239,29 +263,47 @@ function WalkTab() {
 
         <ComebackNudge userId={user.id} onStart={() => openSheet("solo")} />
 
-        <StartCta onStart={() => openSheet("solo")} />
+        <StartCta onStart={() => openSheet("solo")} onLongPress={() => openSheet("solo")} />
 
-        <WeekInReview userId={user.id} />
-
+        {/* Other ways to walk — snap-scroll chip row */}
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:px-0">
             <ModePill icon={Sparkles} label="Guided" onClick={() => openSheet("guided_solo")} />
             <ModePill icon={Headphones} label="Walk & Talk" onClick={() => openSheet("audio")} />
             <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
           </div>
         </div>
 
-        <NowAndNext />
+        <UpcomingFriendWalks />
 
-        <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
-          <WeeklyRing minutes={weeklyMinutes} dots={weeklyDots} />
-          {streak > 0 && (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              <span className="font-medium text-forest tabular-nums">{streak}-day</span> streak · rest is part of walking.
-            </p>
-          )}
+        <LiveNowStrip
+          onJoinAudio={() => openSheet("audio")}
+          onStartAudio={() => openSheet("audio")}
+        />
+
+        <Card id="weekly-card" className="rounded-2xl border-border bg-card p-5 shadow-soft">
+          <WeeklyRing
+            minutes={weeklyMinutes}
+            dots={weeklyDots}
+            footerSlot={
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {streak > 0 ? (
+                    <><span className="font-medium text-forest tabular-nums">{streak}-day</span> streak · rest is part of walking.</>
+                  ) : (
+                    <>Rest is part of walking.</>
+                  )}
+                </span>
+                <InlineWeatherChip />
+              </div>
+            }
+          />
         </Card>
+
+        <WeatherModule />
+
+        <WeekInReview userId={user.id} />
 
         {lastReflection && (
           <figure className="px-1 pt-1">
@@ -289,6 +331,26 @@ function WalkTab() {
         onSkipGuide={() => beginWalk(null)}
       />
     </>
+  );
+}
+
+/** Tiny weather chip embedded in the This-Week card. Tap → scroll to full module. */
+function InlineWeatherChip() {
+  const { coords } = useGeolocation({ autoRequest: false, ipFallback: true });
+  const { data } = useCurrentWeather(coords);
+  if (!data) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptics.tap();
+        document.getElementById("weather-module")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }}
+      className="shrink-0 transition active:scale-95"
+      aria-label="See weather"
+    >
+      <WeatherPill tempF={data.tempF} label={data.label} tone={data.tone} isDay={data.isDay} />
+    </button>
   );
 }
 
@@ -329,7 +391,6 @@ function PreWalkSheet({
         ) : (
           <>
             <div className="space-y-5 overflow-y-auto px-4 pb-3">
-              {/* Quick mode swap inside the sheet */}
               <div className="flex flex-wrap gap-1.5">
                 {(["solo","guided_solo","audio"] as WalkType[]).map((t) => (
                   <button key={t} onClick={() => setWalkType(t)} className={`rounded-full border px-3 py-1 text-xs transition ${walkType === t ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>
@@ -369,20 +430,41 @@ function PreWalkSheet({
 
 function ModePill({ icon: Icon, label, onClick }: { icon: typeof Footprints; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/50">
+    <button onClick={onClick} className="flex shrink-0 snap-start items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-sm shadow-soft transition active:scale-95 hover:-translate-y-px hover:border-forest/50">
       <Icon className="h-4 w-4 text-forest" />
       {label}
     </button>
   );
 }
 
-function StartCta({ onStart }: { onStart: () => void }) {
+function StartCta({ onStart, onLongPress }: { onStart: () => void; onLongPress?: () => void }) {
   const live = useLiveCount();
+  const timer = useRef<number | null>(null);
+  const fired = useRef(false);
+
+  const onPressDown = () => {
+    fired.current = false;
+    if (!onLongPress) return;
+    timer.current = window.setTimeout(() => {
+      fired.current = true;
+      haptics.success();
+      onLongPress();
+    }, 480);
+  };
+  const onPressUp = () => {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+  };
+  const onClick = () => { if (!fired.current) onStart(); };
+
   return (
     <div className="relative">
       <Button
-        onClick={onStart}
-        className="breathe relative h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.99] hover:opacity-90"
+        onClick={onClick}
+        onPointerDown={onPressDown}
+        onPointerUp={onPressUp}
+        onPointerLeave={onPressUp}
+        onPointerCancel={onPressUp}
+        className="breathe relative h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
       >
         <Footprints className="mr-2 h-5 w-5" /> Start a walk
       </Button>
@@ -392,7 +474,7 @@ function StartCta({ onStart }: { onStart: () => void }) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
           </span>
-          <span><span className="font-medium text-forest tabular-nums">{live}</span> walking & talking now</span>
+          <span><span className="font-medium text-forest tabular-nums">{live}</span> walking &amp; talking now</span>
         </div>
       )}
     </div>
