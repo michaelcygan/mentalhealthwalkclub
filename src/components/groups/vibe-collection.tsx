@@ -48,8 +48,10 @@ export function VibeCollection({ eyebrow, title, blurb, icon: Icon, groups, puls
       </div>
       <div className="relative -mx-4 px-4">
         <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
-          {featured.map((g) => (
-            <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="rail" />
+          {featured.map((g, i) => (
+            <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
+              <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="rail" />
+            </div>
           ))}
         </ul>
         <div className="pointer-events-none absolute right-0 top-0 bottom-1.5 w-8 bg-gradient-to-l from-background to-transparent" />
