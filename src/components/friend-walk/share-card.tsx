@@ -36,10 +36,13 @@ export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUr
   const onShare = async () => {
     haptics.tap();
     const ok = await share({
-      title: `${hostName} is on a walk`,
-      text: `i'm out walking — come walk with me 🌿`,
+      title: whenLabel ? `${hostName} · walk on ${whenLabel}` : `${hostName} is on a walk`,
+      text: whenLabel ? `walk with me — ${whenLabel.toLowerCase()} 🌿` : `i'm out walking — come walk with me 🌿`,
       url,
     });
+    if (ok) toast("link shared");
+  };
+
     if (ok) toast("link shared");
   };
 
