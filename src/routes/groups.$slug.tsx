@@ -28,7 +28,7 @@ export const Route = createFileRoute("/groups/$slug")({
 });
 
 interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
-interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; }
+interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; attendee_count: number; host: { display_name: string | null } | null; }
 interface Room { id: string; title: string; theme: string | null; current_participant_count: number; max_participants: number; }
 interface Milestone { badgeId: string; name: string; description: string | null; icon: string | null; key: string; recipients: { userId: string; awardId: string }[] }
 
@@ -63,7 +63,7 @@ function GroupDetail() {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
       const dayIso = startOfDay.toISOString();
       const [{ data: e }, { data: r }, { data: w }, { data: nm }, { count: actCount }, { count: todayCount }, mem] = await Promise.all([
-        supabase.from("events").select("id,title,slug,starts_at,city,event_type").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
+        supabase.from("events").select("id,title,slug,starts_at,city,event_type,attendee_count,host:profiles!events_host_user_id_fkey(display_name)").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
         supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("group_id", g.id).eq("status","open").is("parent_room_id", null),
         supabase.from("walk_sessions").select("user_id,duration_seconds").eq("group_id", g.id).eq("status","completed").gte("started_at", weekAgo),
         supabase.from("group_memberships").select("user_id").eq("group_id", g.id).gte("joined_at", weekAgo),
