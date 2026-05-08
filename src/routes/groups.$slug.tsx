@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 import { share, haptics } from "@/lib/device";
+import { GroupRoutesMosaic } from "@/components/group-routes-mosaic";
 
 const GroupLiveMap = lazy(() => import("@/components/group-live-map"));
 
@@ -252,6 +253,8 @@ function GroupDetail() {
       <Suspense fallback={<div className="h-64 animate-pulse rounded-3xl bg-secondary/60" />}>
         <GroupLiveMap groupId={group.id} onStartWalk={() => startSoloWalk(group)} />
       </Suspense>
+
+      <GroupRoutesMosaic groupId={group.id} />
 
       <GroupPulse walks={walksWeek} minutes={minutesWeek} newMembers={newMembers} />
 

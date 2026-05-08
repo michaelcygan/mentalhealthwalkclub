@@ -346,6 +346,10 @@ function EventDetail() {
         </Suspense>
       )}
 
+      {completed && !isAudio && (
+        <EventHostRoute eventId={event.id} />
+      )}
+
       {/* Action area */}
       {!completed && memberGated && (
         <div className="rounded-2xl border border-forest/20 bg-accent/40 p-5 text-center">
@@ -459,5 +463,50 @@ function Row({ label, value }: { label: string; value: string | null | undefined
       <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
       <span className="text-right">{value}</span>
     </div>
+  );
+}
+
+function EventHostRoute({ eventId }: { eventId: string }) {
+  const [snap, setSnap] = useState<{ url: string; mins: number; miles: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("walk_sessions")
+        .select("route_snapshot_path,duration_seconds,distance_meters")
+        .eq("event_id", eventId)
+        .eq("status", "completed")
+        .eq("privacy", "public")
+        .eq("share_map", true)
+        .not("route_snapshot_path", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!data || cancelled) return;
+      const { data: s } = await supabase.storage.from("walk-snapshots").createSignedUrl(data.route_snapshot_path!, 3600);
+      if (s?.signedUrl && !cancelled) {
+        setSnap({
+          url: s.signedUrl,
+          mins: Math.round((data.duration_seconds ?? 0) / 60),
+          miles: ((data.distance_meters ?? 0) * 0.000621371).toFixed(2),
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [eventId]);
+  if (!snap) return null;
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
+        <MapPin className="h-3 w-3" /> Where they walked
+      </div>
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-secondary/40 shadow-soft">
+        <img src={snap.url} alt="Walked route" loading="lazy" className="aspect-square w-full object-cover" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/55 via-foreground/15 to-transparent p-3 text-primary-foreground">
+          <div className="font-serif text-xl tabular-nums leading-none">{snap.miles} mi · {snap.mins} min</div>
+          <div className="mt-0.5 text-[11px] opacity-90">Endpoints trimmed for privacy.</div>
+        </div>
+      </div>
+    </section>
   );
 }
