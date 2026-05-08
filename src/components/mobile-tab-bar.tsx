@@ -75,7 +75,7 @@ export function MobileTabBar() {
         aria-label="Primary"
       >
         {/* Translucent floor */}
-        <div className="relative border-t border-border bg-card/95 backdrop-blur">
+        <div className="relative border-t border-border/60 glass">
           <ul className="grid grid-cols-5 items-end">
             {/* Left two */}
             {SIDE_TABS.slice(0, 2).map(({ to, label, icon: Icon, exact }) => (
