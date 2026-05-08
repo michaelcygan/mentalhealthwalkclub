@@ -310,3 +310,34 @@
   transition: transform 0.2s ease;
 }
 .group-walker-marker:hover, .group-walker-marker:focus { transform: scale(1.08); outline: none; }
+
+/* ── Groups polish: city tile motion ── */
+@keyframes ken-burns {
+  0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.07) translate3d(-1%, -1%, 0); }
+  100% { transform: scale(1.02) translate3d(0, 0, 0); }
+}
+.ken-burns { animation: ken-burns 18s ease-in-out infinite; will-change: transform; }
+
+@keyframes glyph-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -2px, 0); }
+}
+.glyph-float { animation: glyph-float 6s ease-in-out infinite; }
+
+@keyframes city-pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  80%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.city-pulse-ring { animation: city-pulse-ring 2s ease-out infinite; }
+
+@keyframes card-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.card-in { animation: card-in 360ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ken-burns, .glyph-float, .city-pulse-ring, .card-in { animation: none !important; }
+}
