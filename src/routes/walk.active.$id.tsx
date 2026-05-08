@@ -227,6 +227,8 @@ function ActiveWalk() {
 
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
+    const notesBlock = notesToJournalBlock(walkNotes);
+    const merged = [out.reflection?.trim(), notesBlock].filter(Boolean).join("\n\n");
     await supabase.from("walk_sessions").update({
       status: "completed",
       ended_at: new Date().toISOString(),
@@ -235,11 +237,12 @@ function ActiveWalk() {
       steps,
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
-      reflection_note: out.reflection || null,
+      reflection_note: merged || null,
     }).eq("id", session.id);
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
     }
+    try { sessionStorage.removeItem(`walk-notes:${session.id}`); } catch {}
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
