@@ -24,11 +24,21 @@ export function NowAndNext() {
 }
 
 function WeatherInline() {
-  const coords = useGeolocation({ autoRequest: false });
+  const { coords, requestPrecise } = useGeolocation({ autoRequest: false, ipFallback: true });
   const { data: now } = useCurrentWeather(coords);
   const hours = useHourlyForecast(coords, 6);
   const [open, setOpen] = useState(false);
-  if (!now) return null;
+  if (!now) {
+    return (
+      <button
+        type="button"
+        onClick={() => requestPrecise()}
+        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+      >
+        Show local weather
+      </button>
+    );
+  }
   const hint = friendlyHint(now.tone, now.tempF);
   return (
     <div className="space-y-2">
