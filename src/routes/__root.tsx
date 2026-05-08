@@ -213,7 +213,10 @@ function TabBar() {
             </div>
             <span className="font-serif text-sm">Walk Club</span>
           </Link>
-          <InboxBell variant="mobile" />
+          <div className="flex items-center gap-2">
+            <ModeToggle compact />
+            <InboxBell variant="mobile" />
+          </div>
         </header>
       )}
     </>
