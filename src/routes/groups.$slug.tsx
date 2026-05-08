@@ -254,6 +254,8 @@ function GroupDetail() {
         <GroupLiveMap groupId={group.id} onStartWalk={() => startSoloWalk(group)} />
       </Suspense>
 
+      <GroupRoutesMosaic groupId={group.id} />
+
       <GroupPulse walks={walksWeek} minutes={minutesWeek} newMembers={newMembers} />
 
       {newMembers > 0 && (
