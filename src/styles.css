@@ -216,4 +216,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mood-drift, .mood-marquee-l, .mood-marquee-r { animation: none; }
+  /* Calm ambient ping/pulse motion for vestibular safety */
+  .animate-ping, .animate-pulse, .animate-bounce { animation: none !important; }
 }
+
