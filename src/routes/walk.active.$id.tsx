@@ -374,6 +374,49 @@ function ActiveWalk() {
       </section>
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
+        {/* Live map — collapsible, lazy. Visible to walker only; opt-in to broadcast. */}
+        <section className="rounded-2xl border border-border bg-card p-3 shadow-soft">
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <button
+              type="button"
+              onClick={() => setShowMap((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
+              aria-expanded={showMap}
+            >
+              <MapIcon className="h-3.5 w-3.5" /> {showMap ? "Hide map" : "Show map"}
+            </button>
+            {session.privacy === "public" && session.group_id && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const next = !shareMap;
+                  setShareMap(next);
+                  haptics.tap();
+                  const { error } = await supabase.from("walk_sessions").update({ share_map: next }).eq("id", session.id);
+                  if (error) { setShareMap(!next); toast.error("Couldn't update sharing"); return; }
+                  toast(next ? "Visible on group map" : "Hidden from group map");
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition ${shareMap ? "bg-forest text-primary-foreground" : "border border-border bg-background text-muted-foreground"}`}
+              >
+                {shareMap ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                {shareMap ? "On group map" : "Private"}
+              </button>
+            )}
+          </div>
+          {showMap && (
+            <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-secondary/60" />}>
+              <WalkLiveMap
+                points={points.current}
+                walkSessionId={session.id}
+                userId={user?.id ?? null}
+                groupId={session.group_id}
+                shareToGroup={shareMap}
+                key={routeTick === 0 ? "init" : "live"}
+              />
+            </Suspense>
+          )}
+        </section>
+
         {isAudio && (
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}
