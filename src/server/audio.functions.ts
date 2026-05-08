@@ -304,10 +304,31 @@ export const joinScheduledWalk = createServerFn({ method: "POST" })
 
     const { data: ev } = await supabase
       .from("events")
-      .select("id,audio_room_id,breakout_size,starts_at,status")
+      .select("id,audio_room_id,breakout_size,starts_at,status,group_id,visibility")
       .eq("id", data.eventId)
       .single();
     if (!ev || !ev.audio_room_id) throw new Error("Audio walk not found");
+
+    // Group-only gate
+    if (ev.visibility === "group" && ev.group_id) {
+      const { data: mem } = await supabase
+        .from("group_memberships")
+        .select("id,status")
+        .eq("group_id", ev.group_id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!mem) {
+        const { data: g } = await supabase
+          .from("groups").select("name,slug").eq("id", ev.group_id).single();
+        return {
+          requiresJoin: true as const,
+          groupId: ev.group_id,
+          groupName: g?.name ?? "the group",
+          groupSlug: g?.slug ?? null,
+        };
+      }
+    }
 
     // Auto-open if start time has passed and still scheduled
     const startMs = new Date(ev.starts_at).getTime();
