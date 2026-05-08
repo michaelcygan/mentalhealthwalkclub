@@ -37,6 +37,8 @@ function WalkTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { requireAuth, openWelcome } = useAuthPrompt();
+  const ambient = useAmbient();
+  const beganWalkRef = useRef(false);
 
   // Pre-walk state lives in the bottom sheet now, not as a step machine.
   const [sheetOpen, setSheetOpen] = useState(false);
