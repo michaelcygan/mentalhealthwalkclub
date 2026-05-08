@@ -272,14 +272,7 @@ function RootComponent() {
 }
 
 function LiveSidebarPill() {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    const load = () => supabase.from("audio_rooms").select("current_participant_count").eq("status", "open").gt("current_participant_count", 0)
-      .then(({ data }) => setCount((data ?? []).reduce((s, r) => s + (r.current_participant_count ?? 0), 0)));
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, []);
+  const count = useLiveCount();
   if (count === 0) return null;
   return (
     <Link to="/" className="mt-4 flex items-center gap-2 rounded-full border border-forest/30 bg-accent/40 px-3 py-1.5 text-xs text-forest hover:bg-accent/60">
