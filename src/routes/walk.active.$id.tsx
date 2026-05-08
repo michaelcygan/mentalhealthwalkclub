@@ -27,7 +27,7 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
   intention: string | null; started_at: string; status: string; guided_track_id: string | null;
-  audio_room_id: string | null;
+  audio_room_id: string | null; group_id: string | null; privacy: string; share_map: boolean;
 }
 interface FriendRoom { id: string; share_code: string | null; host_user_id: string | null; }
 
