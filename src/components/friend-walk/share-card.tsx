@@ -157,11 +157,11 @@ async function renderCard(
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.stroke();
 
-  // Pulse hint
+  // Status / time hint
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = "500 38px -apple-system, system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("LIVE  ·  walking now", cx, cy + r + 80);
+  ctx.fillText(opts.whenLabel ? `SCHEDULED  ·  ${opts.whenLabel}` : "LIVE  ·  walking now", cx, cy + r + 80);
 
   // Name
   ctx.fillStyle = "#f7f1e3";
@@ -171,7 +171,7 @@ async function renderCard(
   // Sub
   ctx.fillStyle = "rgba(247,241,227,0.78)";
   ctx.font = "44px -apple-system, system-ui, sans-serif";
-  ctx.fillText("come walk with me", cx, H * 0.65);
+  ctx.fillText(opts.whenLabel ? "save the time — walk with me" : "come walk with me", cx, H * 0.65);
 
   // URL pill
   const pillW = 760, pillH = 130, px = (W - pillW) / 2, py = H * 0.78;
