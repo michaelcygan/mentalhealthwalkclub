@@ -121,6 +121,59 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     });
   }, [ids, profiles]);
 
+  // Facilitator awareness — subscribe to room changes
+  const [facilitatorId, setFacilitatorId] = useState<string | null>(null);
+  const [facilitatorBanner, setFacilitatorBanner] = useState<{ name: string; joined: boolean } | null>(null);
+  useEffect(() => {
+    if (phase !== "in-room" || !room) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase.from("audio_rooms").select("facilitator_user_id,status").eq("id", room.id).single();
+      if (cancelled) return;
+      if (data?.status === "closed") {
+        toast("This walk was ended by the facilitator.");
+        handleLeave();
+      }
+      setFacilitatorId(data?.facilitator_user_id ?? null);
+    };
+    load();
+    const ch = supabase
+      .channel(`walker-room-${room.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "audio_rooms", filter: `id=eq.${room.id}` },
+        async (payload) => {
+          const next = payload.new as { facilitator_user_id: string | null; status: string };
+          const prev = payload.old as { facilitator_user_id: string | null };
+          if (next.status === "closed") {
+            toast("This walk was ended by the facilitator.");
+            handleLeave();
+            return;
+          }
+          if (next.facilitator_user_id !== prev?.facilitator_user_id) {
+            setFacilitatorId(next.facilitator_user_id);
+            if (next.facilitator_user_id) {
+              const { data: prof } = await supabase
+                .from("profiles").select("display_name").eq("id", next.facilitator_user_id).single();
+              const name = prof?.display_name ?? "A facilitator";
+              setFacilitatorBanner({ name, joined: true });
+              try { playJoinChime(); buzz([6, 40, 6]); } catch { /* noop */ }
+              window.setTimeout(() => setFacilitatorBanner(null), 6000);
+            } else {
+              setFacilitatorBanner({ name: "Facilitator", joined: false });
+              window.setTimeout(() => setFacilitatorBanner(null), 4000);
+            }
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, room?.id]);
+
   const others = participants.filter((p) => p.userId !== user?.id);
   const alone = phase === "in-room" && others.length === 0;
 
