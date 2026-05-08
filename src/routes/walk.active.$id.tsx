@@ -394,6 +394,67 @@ function SafetyButton({ walkSessionId }: { walkSessionId: string }) {
   );
 }
 
+/**
+ * Press-and-hold (700ms) end button. The fill animates to 100% so the user
+ * sees the commitment building. Tap-only triggers a soft hint instead of ending.
+ */
+function LongPressEndButton({ onEnd }: { onEnd: () => void }) {
+  const [progress, setProgress] = useState(0);
+  const raf = useRef<number | null>(null);
+  const start = useRef<number>(0);
+  const fired = useRef(false);
+  const HOLD = 700;
+
+  const begin = () => {
+    fired.current = false;
+    start.current = performance.now();
+    haptics.tap();
+    const tick = () => {
+      const p = Math.min(1, (performance.now() - start.current) / HOLD);
+      setProgress(p);
+      if (p >= 1 && !fired.current) {
+        fired.current = true;
+        haptics.success();
+        onEnd();
+        return;
+      }
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+  const cancel = () => {
+    if (raf.current !== null) cancelAnimationFrame(raf.current);
+    raf.current = null;
+    if (!fired.current && progress > 0 && progress < 1) {
+      // Tap with no hold — gentle nudge
+      toast("Hold to end the walk");
+    }
+    setProgress(0);
+  };
+
+  return (
+    <button
+      type="button"
+      onPointerDown={begin}
+      onPointerUp={cancel}
+      onPointerLeave={cancel}
+      onPointerCancel={cancel}
+      className="relative h-14 flex-1 overflow-hidden rounded-2xl bg-clay text-primary-foreground touch-manipulation md:h-12"
+      aria-label="Hold to end walk"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 bg-primary-foreground/20 transition-[width] duration-75"
+        style={{ width: `${progress * 100}%` }}
+      />
+      <span className="relative flex items-center justify-center text-sm font-medium">
+        <Square className="mr-2 h-4 w-4" />
+        {progress > 0 ? "Hold…" : "End walk"}
+      </span>
+    </button>
+  );
+}
+
 function fmt(s: number) {
   const m = Math.floor(s / 60); const sec = s % 60;
   return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
