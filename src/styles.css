@@ -449,3 +449,21 @@
   .live-pulse, .heart-beat, .niche-grid-fade,
   .pin-drop, .sparkle-twinkle, .headphones-bob, .compass-spin, .moon-glow { animation: none !important; }
 }
+
+/* Mood thumbnail crossfade (3 stacked imgs, opacity-cycled) */
+@keyframes mood-fade {
+  0%, 28%, 100% { opacity: 1; }
+  33%, 95%      { opacity: 0; }
+}
+.mood-fade { opacity: 0; animation-name: mood-fade; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+
+/* Soft top/bottom mask for in-place scrollable lists */
+.scroll-soft-mask {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mood-fade { animation: none !important; opacity: 1 !important; }
+  .mood-fade:not(:first-of-type) { display: none; }
+}
