@@ -267,7 +267,7 @@ function WalkTab() {
 
       <PreWalkSheet
         open={sheetOpen}
-        onOpenChange={(v) => { setSheetOpen(v); if (!v) setPickGuide(false); }}
+        onOpenChange={handleSheetChange}
         walkType={walkType}
         setWalkType={setWalkType}
         feeling={feeling}
