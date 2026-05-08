@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { Search, Radio, MapPin, Sparkles, Headphones, X } from "lucide-react";
+import { Search, Radio, MapPin, Sparkles, Headphones, X, Flame, Heart, Compass, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
-import { SectionHeading } from "@/components/section-heading";
 import { GroupCard } from "@/components/group-card";
+import { VibeCollection } from "@/components/groups/vibe-collection";
+import { CityGallery } from "@/components/groups/city-gallery";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
 
@@ -18,11 +19,11 @@ const CHIPS: { id: Chip; label: string; icon: React.ComponentType<{ className?: 
   { id: "audio", label: "Audio-friendly", icon: Headphones },
 ];
 
-const THEME_GROUPS: { key: string; label: string; themes: string[] }[] = [
-  { key: "support", label: "Quiet support", themes: ["anxiety", "burnout", "grief", "depression", "loneliness"] },
-  { key: "rituals", label: "Rituals & resets", themes: ["reset", "quiet"] },
-  { key: "connection", label: "Gentle connection", themes: ["connection"] },
-  { key: "chapters", label: "City chapters", themes: ["chapter"] },
+const VIBES: { key: string; eyebrow: string; title: string; blurb: string; icon: React.ComponentType<{ className?: string }>; themes: string[]; nameMatch?: RegExp }[] = [
+  { key: "support", eyebrow: "Quiet support", title: "When it's heavy", blurb: "Anxiety, burnout, grief, the in-between days.", icon: Heart, themes: ["anxiety", "burnout", "grief", "depression", "loneliness"] },
+  { key: "rituals", eyebrow: "Rituals & resets", title: "Daily resets", blurb: "Sunrise, sunset, lunchbreak, after-work wind-down.", icon: Sparkles, themes: ["reset"] },
+  { key: "quiet", eyebrow: "Quiet practice", title: "Slow & silent", blurb: "Phone-free, audiobook, walk & pray, silent walking.", icon: Moon, themes: ["quiet"] },
+  { key: "connection", eyebrow: "Find your people", title: "With others", blurb: "Dog parents, stroller crew, sober walkers, new friends.", icon: Compass, themes: ["connection"] },
 ];
 
 export function GroupsTab() {
@@ -47,11 +48,13 @@ export function GroupsTab() {
     refresh();
   });
 
+  // ─── Search/filter mode (flattens to results grid) ───
+  const isFiltering = q.trim() !== "" || active.size > 0;
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return groups.filter((g) => {
       if (needle) {
-        const hay = `${g.name} ${g.description ?? ""} ${g.theme ?? ""} ${g.city ?? ""}`.toLowerCase();
+        const hay = `${g.name} ${g.description ?? ""} ${g.theme ?? ""} ${g.city ?? ""} ${g.location_label ?? ""}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       const p = pulse.get(g.id);
@@ -64,19 +67,16 @@ export function GroupsTab() {
     });
   }, [groups, pulse, q, active, myCity]);
 
-  const joined = filtered.filter((g) => mine.has(g.id));
-  const discover = filtered.filter((g) => !mine.has(g.id));
+  // ─── Module data ───
+  const yours = useMemo(() => groups.filter((g) => mine.has(g.id)), [groups, mine]);
+  const discover = useMemo(() => groups.filter((g) => !mine.has(g.id)), [groups, mine]);
 
-  // Pulse strip = anything live or starting soon (across ALL groups, ignoring filters)
-  const pulseGroups = useMemo(() => {
-    return groups
-      .map((g) => ({ g, p: pulse.get(g.id) }))
-      .filter(({ p }) => p && (p.live > 0 || p.nextStart))
-      .sort((a, b) => (b.p!.live - a.p!.live) || ((a.p!.nextStart ?? "z").localeCompare(b.p!.nextStart ?? "z")))
-      .slice(0, 8);
-  }, [groups, pulse]);
+  const pulseGroups = useMemo(() => groups
+    .map((g) => ({ g, p: pulse.get(g.id) }))
+    .filter(({ p }) => p && (p.live > 0 || p.nextStart))
+    .sort((a, b) => (b.p!.live - a.p!.live) || ((a.p!.nextStart ?? "z").localeCompare(b.p!.nextStart ?? "z")))
+    .slice(0, 8), [groups, pulse]);
 
-  // For You = themes intersect preferred OR city match
   const forYou = useMemo(() => {
     if (!user) return [];
     return discover.filter((g) =>
@@ -84,8 +84,26 @@ export function GroupsTab() {
     ).slice(0, 6);
   }, [discover, myThemes, myCity, user]);
 
-  const forYouIds = new Set(forYou.map((g) => g.id));
-  const browseRest = discover.filter((g) => !forYouIds.has(g.id));
+  const nearYou = useMemo(() => {
+    if (!myCity) return [];
+    return discover.filter((g) => g.theme === "chapter" && (g.city === myCity || g.location_label?.includes(myCity))).slice(0, 6);
+  }, [discover, myCity]);
+
+  const trending = useMemo(() => discover
+    .filter((g) => (pulse.get(g.id)?.walkersWeek ?? 0) > 0)
+    .sort((a, b) => (pulse.get(b.id)?.walkersWeek ?? 0) - (pulse.get(a.id)?.walkersWeek ?? 0))
+    .slice(0, 8), [discover, pulse]);
+
+  // Niches = anything not chapter/connection/support that's quirky → use group_type-ish heuristic via name patterns
+  const NICHE_KEYS = new Set([
+    "five-am-club","sunrise-club","sunset-chasers","night-owls","lunchbreak-walkers",
+    "dog-parents","stroller-crew","empty-nesters","solo-travelers","remote-workers",
+    "shift-workers","grad-school","first-year-teachers","healthcare-workers","founders-walk",
+    "caregivers","walk-instead-of-doomscroll","phone-free-walkers","one-podcast-one-walk",
+    "audiobook-walkers","hot-girl-walk","silent-walking","rage-walk","gratitude-walk",
+    "walk-and-pray","rainy-day-walkers",
+  ]);
+  const niches = useMemo(() => discover.filter((g) => NICHE_KEYS.has(g.slug)), [discover]);
 
   return (
     <div className="space-y-7">
@@ -95,7 +113,6 @@ export function GroupsTab() {
           <p className="mt-1 text-muted-foreground">Quiet affinity tags. They surface walks that fit you.</p>
         </div>
 
-        {/* Search */}
         <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -104,7 +121,7 @@ export function GroupsTab() {
               onChange={(e) => setQ(e.target.value)}
               inputMode="search"
               enterKeyHint="search"
-              placeholder="Search groups, cities, themes…"
+              placeholder="Search 100+ groups…"
               className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40 focus:ring-2 focus:ring-forest/15"
             />
             {q && (
@@ -131,91 +148,167 @@ export function GroupsTab() {
                 </button>
               );
             })}
+            {(active.size > 0 || q) && (
+              <button
+                onClick={() => { setActive(new Set()); setQ(""); }}
+                className="inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" /> Clear
+              </button>
+            )}
           </div>
         </div>
       </header>
-
-      {/* Pulse strip */}
-      {pulseGroups.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Radio className="h-3.5 w-3.5 text-forest" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening in groups</span>
-          </div>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-            {pulseGroups.map(({ g, p }) => (
-              <GroupCard key={g.id} group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
-            ))}
-          </div>
-        </section>
-      )}
 
       {loading && groups.length === 0 && (
         <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-secondary/60" />)}</div>
       )}
 
-      {/* Your groups */}
-      {joined.length > 0 && (
+      {/* ─── Filter / search results ─── */}
+      {isFiltering ? (
         <section className="space-y-3">
-          <SectionHeading eyebrow="Yours" title="Your groups" />
-          <ul className="grid gap-3 md:grid-cols-2">
-            {joined.map((g) => (
-              <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined onToggle={() => toggleJoin(g)} />
-            ))}
-          </ul>
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            {filtered.length} {filtered.length === 1 ? "group" : "groups"}
+          </div>
+          {filtered.length > 0 ? (
+            <ul className="grid gap-3 md:grid-cols-2">
+              {filtered.map((g) => (
+                <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} />
+              ))}
+            </ul>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              No groups match. Try clearing filters or a different word.
+            </div>
+          )}
         </section>
-      )}
+      ) : (
+        <>
+          {/* ─── Pulse strip ─── */}
+          {pulseGroups.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Radio className="h-3.5 w-3.5 text-forest" />
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
+              </div>
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+                {pulseGroups.map(({ g, p }) => (
+                  <GroupCard key={g.id} group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
+                ))}
+              </div>
+            </section>
+          )}
 
-      {/* For you */}
-      {forYou.length > 0 && (
-        <section className="space-y-3">
-          <SectionHeading eyebrow="For you" title="Likely fits" />
-          <ul className="grid gap-3 md:grid-cols-2">
-            {forYou.map((g) => (
-              <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={false} onToggle={() => toggleJoin(g)} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Browse by theme */}
-      <section className="space-y-5">
-        <SectionHeading eyebrow="Discover" title={joined.length > 0 ? "More to wander into" : "Browse groups"} />
-        {THEME_GROUPS.map(({ key, label, themes }) => {
-          const items = browseRest.filter((g) => g.theme && themes.includes(g.theme));
-          if (items.length === 0) return null;
-          return (
-            <div key={key} className="space-y-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-              <ul className="grid gap-3 md:grid-cols-2">
-                {items.map((g) => (
-                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={false} onToggle={() => toggleJoin(g)} />
+          {/* ─── Your groups (mini grid) ─── */}
+          {yours.length > 0 && (
+            <section className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Yours</div>
+                  <h2 className="font-serif text-xl">Your groups</h2>
+                </div>
+                <span className="text-xs text-muted-foreground">{yours.length}</span>
+              </div>
+              <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3">
+                {yours.map((g) => (
+                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined onToggle={() => toggleJoin(g)} variant="mini" />
                 ))}
               </ul>
-            </div>
-          );
-        })}
-        {(() => {
-          const themed = new Set(THEME_GROUPS.flatMap((t) => t.themes));
-          const other = browseRest.filter((g) => !g.theme || !themed.has(g.theme));
-          if (other.length === 0) return null;
-          return (
-            <div className="space-y-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Everything else</div>
-              <ul className="grid gap-3 md:grid-cols-2">
-                {other.map((g) => (
-                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={false} onToggle={() => toggleJoin(g)} />
+            </section>
+          )}
+
+          {/* ─── For you ─── */}
+          {forYou.length > 0 && (
+            <section className="space-y-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
+                <Sparkles className="h-3 w-3" /> Picked for you
+              </div>
+              <div className="relative -mx-4 px-4">
+                <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
+                  {forYou.map((g) => (
+                    <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={false} onToggle={() => toggleJoin(g)} variant="rail" />
+                  ))}
+                </ul>
+                <div className="pointer-events-none absolute right-0 top-0 bottom-1.5 w-8 bg-gradient-to-l from-background to-transparent" />
+              </div>
+            </section>
+          )}
+
+          {/* ─── Near you ─── */}
+          {nearYou.length > 0 && (
+            <section className="space-y-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
+                <MapPin className="h-3 w-3" /> Near you · {myCity}
+              </div>
+              <div className="relative -mx-4 px-4">
+                <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
+                  {nearYou.map((g) => (
+                    <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="rail" />
+                  ))}
+                </ul>
+                <div className="pointer-events-none absolute right-0 top-0 bottom-1.5 w-8 bg-gradient-to-l from-background to-transparent" />
+              </div>
+            </section>
+          )}
+
+          {/* ─── Trending ─── */}
+          {trending.length > 0 && (
+            <section className="space-y-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
+                <Flame className="h-3 w-3" /> Trending this week
+              </div>
+              <div className="relative -mx-4 px-4">
+                <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
+                  {trending.map((g) => (
+                    <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="rail" />
+                  ))}
+                </ul>
+                <div className="pointer-events-none absolute right-0 top-0 bottom-1.5 w-8 bg-gradient-to-l from-background to-transparent" />
+              </div>
+            </section>
+          )}
+
+          {/* ─── Vibes (theme collections) ─── */}
+          {VIBES.map((v) => {
+            const items = discover.filter((g) => g.theme && v.themes.includes(g.theme));
+            return (
+              <VibeCollection
+                key={v.key}
+                eyebrow={v.eyebrow}
+                title={v.title}
+                blurb={v.blurb}
+                icon={v.icon}
+                groups={items}
+                pulse={pulse}
+                mine={mine}
+                onToggle={toggleJoin}
+              />
+            );
+          })}
+
+          {/* ─── Niches ─── */}
+          {niches.length > 0 && (
+            <section className="space-y-2.5">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
+                    <Sparkles className="h-3 w-3" /> Niches
+                  </div>
+                  <h2 className="mt-0.5 font-serif text-xl">Find your tribe</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">The weirdly specific ones. They tend to hit hardest.</p>
+                </div>
+              </div>
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                {niches.map((g) => (
+                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="gallery" />
                 ))}
               </ul>
-            </div>
-          );
-        })()}
-      </section>
+            </section>
+          )}
 
-      {!loading && filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No groups match. Try clearing filters or a different word.
-        </div>
+          {/* ─── Browse by city ─── */}
+          <CityGallery groups={discover} pulse={pulse} mine={mine} onToggle={toggleJoin} />
+        </>
       )}
     </div>
   );
