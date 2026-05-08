@@ -230,9 +230,20 @@ function ActiveWalk() {
           </div>
         )}
 
-        <div className="relative flex items-start justify-between">
+        <div className="relative flex items-start justify-between gap-2">
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
-          <SafetyButton walkSessionId={session.id} />
+          <div className="flex items-center gap-2">
+            {friendRoom?.share_code && (
+              <button
+                onClick={() => setFriendShareOpen(true)}
+                className="flex items-center gap-1.5 rounded-full bg-cream/20 px-3 py-1.5 text-xs backdrop-blur transition active:scale-95"
+                aria-label="Share friend walk link"
+              >
+                <Share2 className="h-3.5 w-3.5" /> Invite
+              </button>
+            )}
+            <SafetyButton walkSessionId={session.id} />
+          </div>
         </div>
 
         <div className="relative mt-8 text-center">
