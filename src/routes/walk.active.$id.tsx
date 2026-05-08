@@ -356,17 +356,6 @@ function ActiveWalk() {
           </Button>
         </div>
       </div>
-
-      <style>{`@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.018); } }`}</style>
-    </div>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="font-serif text-xl tabular-nums leading-none">{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-wider opacity-75">{label}</div>
     </div>
   );
 }
