@@ -75,7 +75,7 @@ export function NowPlayingBar() {
     <Link
       to={"/walk/active/$id" as never}
       params={{ id: active.walkId } as never}
-      className="sticky top-0 z-30 mx-auto flex items-center gap-3 border-b border-forest/30 bg-gradient-to-r from-forest/95 to-forest px-4 py-2 text-primary-foreground shadow-soft transition active:opacity-90"
+      className="mx-auto -mt-5 mb-3 flex items-center gap-3 rounded-2xl border border-forest/30 bg-gradient-to-r from-forest/95 to-forest px-4 py-2.5 text-primary-foreground shadow-soft transition active:scale-[0.99] active:opacity-90 md:-mt-6"
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />

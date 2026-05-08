@@ -265,8 +265,10 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <NowPlayingBar />
-        <div className="mx-auto max-w-5xl px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-10">{children}</div>
+        <div className="mx-auto max-w-5xl px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-10">
+          <NowPlayingBar />
+          {children}
+        </div>
       </main>
     </div>
   );
