@@ -44,9 +44,9 @@ export function GroupPulse({ walks, minutes, newMembers }: { walks: number; minu
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return (
-    <section className="rounded-3xl border border-border bg-card/70 p-5 shadow-soft">
-      <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">This week, together</div>
-      <div className="mt-3 grid grid-cols-3 gap-4">
+    <section className="relative rounded-3xl border border-border bg-card/70 p-4 shadow-soft">
+      <div className="absolute right-4 top-3 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">This week</div>
+      <div className="grid grid-cols-3 gap-4">
         <Stat value={walks} label="Walks" />
         <div className="flex flex-col items-start">
           <span className="font-serif text-2xl tabular-nums leading-none">

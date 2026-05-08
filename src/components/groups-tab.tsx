@@ -113,7 +113,7 @@ export function GroupsTab() {
               </button>
             )}
           </div>
-          <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
             {CHIPS.map(({ id, label, icon: Icon }) => {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
@@ -122,7 +122,7 @@ export function GroupsTab() {
                   key={id}
                   disabled={dim}
                   onClick={() => toggleChip(id)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
+                  className={`inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                     on ? "border-forest bg-forest text-primary-foreground"
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
