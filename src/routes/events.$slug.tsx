@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee, rsvpToEvent } from "@/server/walks.functions";
 import { joinScheduledWalk, openScheduledRoom, reshufflePods, endScheduledWalk } from "@/server/audio.functions";
-import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users } from "lucide-react";
+import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users, Share2 } from "lucide-react";
+import { share, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/events/$slug")({
   component: EventDetail,
@@ -290,7 +291,25 @@ function EventDetail() {
             </Link>
           )}
         </div>
-        <h1 className="mt-1 font-serif text-3xl">{event.title}</h1>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <h1 className="font-serif text-3xl tracking-tight">{event.title}</h1>
+          <button
+            onClick={async () => {
+              haptics.tap();
+              const when = new Date(event.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+              const ok = await share({
+                title: `${event.title} — Walk Club`,
+                text: `${isAudio ? "Walk & Talk" : "Local walk"} · ${when}${!isAudio && locationDisplay ? ` · ${locationDisplay}` : ""}`,
+                url: typeof window !== "undefined" ? window.location.href : undefined,
+              });
+              if (ok) toast("Invite ready to share.");
+            }}
+            aria-label="Share event"
+            className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground/80 transition hover:border-forest/40 hover:text-forest"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+        </div>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
           {new Date(event.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
           {!isAudio && locationDisplay && ` · ${locationDisplay}`}
