@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { haptics } from "@/lib/device";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { createFriendWalk } from "@/lib/friend-walk.functions";
+import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
+import { toast } from "sonner";
 
 const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
   { to: "/groups", label: "Groups", icon: Users },
@@ -48,6 +54,30 @@ export function MobileTabBar() {
   };
 
   const walkActive = isActive("/", true);
+
+  // Friend Walk: create + open share card
+  const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
+  const navigate = useNavigate();
+  const createFriend = useServerFn(createFriendWalk);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string } | null>(null);
+  const [friendBusy, setFriendBusy] = useState(false);
+
+  const startFriendWalk = () =>
+    requireAuth(async () => {
+      setFriendBusy(true);
+      try {
+        const r = await createFriend();
+        setFriendInfo({ code: r.code, walkId: r.walkId });
+        setSheetOpen(false);
+        setShareOpen(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "couldn't start walk");
+      } finally {
+        setFriendBusy(false);
+      }
+    });
 
   return (
     <>
@@ -111,9 +141,40 @@ export function MobileTabBar() {
             <ModeButton to="/" icon={Headphones} title="Walk & Talk" sub="Match into a live pod" onTap={() => setSheetOpen(false)} />
             <ModeButton to="/" icon={Sparkles} title="Guided" sub="A voice in your ear" onTap={() => setSheetOpen(false)} />
             <ModeButton to="/events" icon={MapPin} title="Local Walk" sub="Real sidewalks nearby" onTap={() => setSheetOpen(false)} />
+            <button
+              type="button"
+              onClick={() => { haptics.tap(); startFriendWalk(); }}
+              disabled={friendBusy}
+              className="col-span-2 flex items-center gap-3 rounded-2xl border border-clay/40 bg-gradient-to-br from-clay/15 to-cream/30 p-4 text-left transition active:scale-[0.98] hover:border-clay/60 disabled:opacity-60"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-clay/20">
+                <Heart className="h-4 w-4 text-clay" />
+              </span>
+              <div className="flex-1">
+                <div className="font-serif text-base">Friend Walk · share a link</div>
+                <div className="text-[11px] text-muted-foreground">spin up a private room — drop the link in your story</div>
+              </div>
+              <span className="rounded-full bg-clay/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-clay">new</span>
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
+
+      {friendInfo && (
+        <FriendWalkShareCard
+          open={shareOpen}
+          onOpenChange={(v) => {
+            setShareOpen(v);
+            if (!v && friendInfo) {
+              navigate({ to: "/walk/active/$id" as never, params: { id: friendInfo.walkId } as never });
+              setFriendInfo(null);
+            }
+          }}
+          hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "you"}
+          hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
+          shareCode={friendInfo.code}
+        />
+      )}
     </>
   );
 }

@@ -1,161 +1,82 @@
-## Walk Club — World-Class Pass (2026)
+# Friend Walk — viral, link-gated walk & talk
 
-Goal: take what already works and make it feel inevitable. No new tables, no new big features — re-use existing primitives (walks, audio rooms, facilitator visits, groups, events, badges, signals, mood, reflections) and unlock more flow with smaller, sharper UI.
+A user spins up a **Friend Walk** from their profile / FAB. They get a beautiful share card + short link they can drop into Instagram Stories, iMessage, etc. Anyone with the link can hop in. The room stays open as long as the host keeps it live (auto-closes after inactivity). Up to **4 active speakers**; everyone else lands as a **Listener** in a waitlist pool with a one-tap "Ask to speak" / "Join walk" toggle.
 
-Principle: *less surface, more depth.* Every screen earns its space. Mobile-first, gesture-first, calm-by-default.
-
----
-
-### 1. The Home Tab becomes a "Now" surface
-
-Today `/` is a stack of cards. Make it a single, breathing dashboard tuned to the moment of opening the app.
-
-- **Time-aware hero** — one ambient gradient that shifts dawn / day / dusk / night using existing CSS tokens. One sentence ("a kind morning to walk"), one primary action that adapts: solo · join live · join scheduled.
-- **Live-now strip** becomes horizontally scroll-snapped pods (`snap-x snap-mandatory`) with avatar stacks pulled from existing `audio_room_participants` — tap to drop in. Hides itself when empty (re-uses existing query).
-- **Weekly ring + mood cloud** collapse into one compact "this week" row (ring left, mood dots right). Tap → expands into a sheet with the existing components (no new code, just composition).
-- **Reflection drift** moves below the fold as a quiet, single-line journal entry preview.
-
-Net change: trim ~60 lines on `/` by composing existing components into a tighter layout. Adds a single `useTimeOfDay()` hook.
+This is genuinely viral: every shared link is an invitation that demonstrates the product in 5 seconds.
 
 ---
 
-### 2. Walk & Talk dock → mobile-native call surface
+## UX flow
 
-The dock is great. Push it to feel like FaceTime + Calm.
-
-- **Drag-to-expand**: bottom dock becomes a `Drawer` (already in shadcn) with a snap-point at peek (current dock) and full ("on the trail" full-screen state). Swipe down to peek.
-- **Active-speaker ring**: re-use the existing per-participant audio level we already pipe through `use-audio-room` to glow the current speaker's avatar (CSS animation only, no new state).
-- **Haptics**: 10ms `navigator.vibrate` on join / mute / facilitator arrives. Tiny helper in `src/lib/haptics.ts`.
-- **Live captions toggle (browser-native)**: a 1-line button using `webkitSpeechRecognition` for personal accessibility — no server cost, falls back gracefully. Off by default.
-- **Pinned context**: while in a pod, a sticky thin bar at the top of every screen (`<NowPlayingBar/>`) shows "you're walking with 3 · 12:04" so users can browse Groups/Journal without losing the call. Re-uses existing dock state.
-
-Net change: refactor dock into a Drawer (replaces ~80 lines, adds ~30). Adds `now-playing-bar.tsx` (~40 lines), `haptics.ts` (~10 lines).
-
----
-
-### 3. Bottom nav → adaptive command bar
-
-Five static tabs is fine. Make the center tab dynamic.
-
-- The middle slot is contextual: when no walk → big **Walk** FAB (forest disc, slight elevation, haptic). During a walk → mic mute toggle. While a Walk & Talk is live somewhere → pulsing "Live" with count. For facilitators on shift → "Next pod ↗".
-- Long-press on **Walk** opens a radial-style action sheet (Drawer): Solo · Guided · Walk & Talk · Local Walk. Reuses existing routes.
-- Hide the bar on scroll-down, show on scroll-up (single `useScrollDirection` hook). Modern, more vertical room on mobile.
-
-Net change: ~50 lines in `__root.tsx`, one new hook.
+1. **Start** — From the mobile FAB long-press menu, add a "Friend Walk" mode (alongside Solo / Walk & Talk / Guided / Local). Tapping it instantly creates the room and opens the share sheet.
+2. **Share card** — A generated 1080×1920 SVG/Canvas graphic with the host's name, avatar, soft gradient, and the short link (`/w/{code}`). One tap → native Web Share API → IG / iMessage / WhatsApp. Fallback: copy link + download image.
+3. **Join via link** — `/w/{code}` resolves to the active room. Auth-gated (sign in or quick magic-link). Joiner picks **Speak** or **Listen** at the door.
+4. **In-room** — Same `walk-talk-dock` UI, with two new affordances:
+   - **Speakers rail** (≤4 avatars, glow on speaking) — existing dock.
+   - **Listener pool** — horizontal avatar strip below, with count ("+7 listening"). Each listener has a "Raise hand" toggle. When a speaker leaves, the oldest raised hand auto-promotes (or host taps to admit).
+5. **Persistence** — Room stays "open" while ≥1 participant is present. Empty for >5 min → auto-close. Host can re-open the same code within 24h (link stays alive in their Story).
+6. **End** — Host taps "End Friend Walk" → all participants get a soft "thanks for walking" toast + CTA to start their own.
 
 ---
 
-### 4. Guided audio + ambient pad — finally fused
+## Technical plan (lean, reuses everything)
 
-Right now `guided-player`, `audio/ambient-pad`, and `guided-tracks` live in parallel. Unify behind a single `<AudioStage/>` primitive that:
+### Data
+Reuse `audio_rooms` — add 3 columns via migration:
+- `room_type` already exists; add value `'friend'`.
+- `share_code text unique` — short 8-char nanoid for the URL.
+- `host_user_id` already exists.
+- `max_speakers int default 4` (rename of `max_participants` semantics for friend rooms; no schema change needed, just reuse `max_participants`).
+- `listener_mode boolean default true` — when true, participants beyond `max_participants` join as listeners.
 
-- Shows the current ambient layer (track or generative pad) as a calm visualizer (CSS conic-gradient driven by the existing analyser node — no canvas).
-- Cross-fades between tracks (already supported by `mesh-transport`).
-- Powers solo guided walks AND the "no one's here yet" state of a Walk & Talk.
+Reuse `audio_room_participants` — add 1 column:
+- `participant_role text default 'speaker'` — `'speaker' | 'listener' | 'raised_hand'`.
 
-Net change: collapses two components into one; ~40-line reduction overall.
+RLS stays the same (room is selectable by anyone authenticated; the link itself is the "permission" — knowing the code = invited).
 
----
+### Routes
+- `src/routes/w.$code.tsx` — short public landing → resolves code → redirects to `/walk/active/{walk_session_id}` after creating a participant row. Includes a "Speak or Listen" door step.
+- Reuse `src/routes/walk.active.$id.tsx` — branch UI when `room_type='friend'` to show listener pool.
 
-### 5. Facilitator surface gets two power-ups (no schema changes)
+### Components
+- `src/components/friend-walk/share-card.tsx` — Canvas-rendered 1080×1920 PNG with host avatar, name, gradient, short link, and a soft "Tap to walk with me" caption. Uses `share()` from `lib/device.ts`.
+- `src/components/friend-walk/listener-pool.tsx` — Horizontal scroll of listener avatars with "Raise hand" toggle and host-side admit.
+- Extend `src/components/mobile-tab-bar.tsx` radial menu with "Friend Walk" option.
 
-- **Glanceable queue**: in the "searching" state, show 3 ghost cards of the *next likely pods* (highest score) so facilitators feel routed, not idle. Pulled from the same `nextPodForFacilitator` query (already exists), just returning top-N.
-- **Whisper prompts**: the existing `prompt-drawer` becomes a dismissible toast that softly surfaces *one* prompt every 90s while in-pod, instead of a manual drawer. Reuses `facilitatorPrompts`.
-- **Haptic at 60s remaining + 0**: gentle wrap-up cue.
+### Server functions
+- `src/lib/friend-walk.functions.ts`:
+  - `createFriendWalk()` — inserts `audio_rooms` with `room_type='friend'`, generates `share_code`, creates host's `walk_session`, returns `{ code, walkId }`.
+  - `joinFriendWalk({ code, asListener })` — resolves code → upserts participant with role → returns `walkId`.
+  - `raiseHand({ roomId })` / `admitListener({ roomId, userId })`.
 
-Net change: small; ~30 lines, removes the manual drawer toggle.
+### Realtime
+Reuse the existing `audio_room_participants` realtime channel. Listener-pool component subscribes to inserts/updates filtered by `audio_room_id`.
 
----
-
-### 6. Journal becomes a memory ribbon
-
-Today journal is a list. Make it horizontally scroll-snapped "cards of a week" — each card a compact mini-spread (mood arc · steps · one line of reflection · badge earned). Vertical list still available behind a toggle.
-
-- Pull-to-refresh feels handled by browser, but add a subtle `overscroll-behavior: contain` and a snap to "today."
-- Long-press a card → share-as-image (uses `html-to-image` only if requested — otherwise the Web Share API with a text summary, zero new deps).
-
-Net change: rewrite of one page (~150 lines), no schema changes.
-
----
-
-### 7. Groups tab → "where you'd belong"
-
-- Replace today's flat list with a single **For You** rail (top 3 groups based on existing location + theme overlap, no new data) and an **All groups** grid below. The matching is a one-line scoring function over fields we already store (`city`, `country`, `theme`, `preferred_themes`).
-- Each group card shows a live pulse dot if anyone from that group is currently in a Walk & Talk (re-uses `audio_rooms` with `group_id`).
-- Tap-and-hold a card → quick-join sheet with a one-tap "Walk with this group right now" (creates a spontaneous room scoped to the group — already supported).
-
-Net change: ~80 lines, no new tables.
+### Auto-close
+A lightweight check inside `tg_audio_room_participant_count` already closes rooms when count hits 0. For friend rooms add a 5-min grace via the existing `rotate-pods` cron route or a new `close-stale-friend-rooms` cron.
 
 ---
 
-### 8. Mobile capability menu — quietly powerful
+## Files to create / edit
 
-One `src/lib/device.ts` exposing safe wrappers; everything else taps in:
+**New**
+- `supabase/migrations/...` — add `share_code` + `participant_role` columns, unique index on `share_code`.
+- `src/lib/friend-walk.functions.ts` — server fns.
+- `src/routes/w.$code.tsx` — short link landing.
+- `src/components/friend-walk/share-card.tsx` — canvas share image + share sheet.
+- `src/components/friend-walk/listener-pool.tsx` — listener UI.
 
-- `vibrate(pattern)` — haptics on join, mute, badge earned, walk end.
-- `share(payload)` — Web Share API for "share my walk" / event invite / group invite (replaces 3 ad-hoc copy-link buttons).
-- `wakeLock()` — keep screen on during active walk. Released on end. Single hook in `walk.active.$id.tsx`.
-- `requestPermission()` for notifications — only asked on first explicit "remind me" click (no top-of-funnel friction).
-- Pull-to-refresh → use `overscroll-behavior` + a tiny `useRefresh()` hook tied to `react-query` invalidation where present (no new deps).
-- Install prompt (PWA): listen for `beforeinstallprompt`, surface as a one-time gentle banner after the 3rd walk completes. Manifest already implied.
-
-Net change: one ~80-line `device.ts` enables six features with one-liners across the app.
-
----
-
-### 9. Visual language tightening
-
-Without rewriting the design system:
-
-- **Type**: lock the serif (`Fraunces`) to display only; bump headings to `tracking-tight`; ensure body uses `Inter` consistently. Audit ~10 files where serif crept into UI labels.
-- **Cards**: standardize on three radii (`rounded-2xl` content, `rounded-3xl` heroes, `rounded-full` pills). Currently mixed.
-- **Color**: introduce two semantic tokens already implied — `--surface-elevated` and `--surface-warm` (pre-blended, no new oklch math) and replace ad-hoc gradients in 6 files.
-- **Motion**: add a `prefers-reduced-motion` guard around the breathing/pulse animations. Adds ~5 lines, big inclusivity win.
-- **Iconography**: keep Lucide; just standardize stroke width (1.8 default, 2.4 active) — already partially done in nav.
-
-Net change: token additions in `styles.css` and ~12 small file edits.
+**Edited**
+- `src/components/mobile-tab-bar.tsx` — add "Friend Walk" radial option.
+- `src/routes/walk.active.$id.tsx` — render listener pool + share button when `room_type='friend'`.
+- `src/routes/api/public/hooks/rotate-pods.ts` — add stale friend-room sweep (or new cron).
 
 ---
 
-### 10. SEO & shareability (root-level only)
+## Why this is the right viral loop
+- **Zero friction**: one tap to create, one tap to share, one tap to join.
+- **Demonstrates product in the share itself**: the graphic shows the host's face mid-walk — every story is an ad.
+- **Low-pressure**: listeners can lurk, lowering join anxiety.
+- **Genuine social behavior**: "I'm walking, come walk with me" is a real thing people say.
 
-- Per-route `head()` already mostly there; tighten `og:title`/`og:description` on `events.$slug.tsx`, `groups.$slug.tsx`, and `welcome.tsx` so a Walk & Talk link previews beautifully when shared in DMs (the dominant share path).
-- Add a tiny dynamic OG image route that composes existing tokens (text + gradient) — only if we keep it server-rendered and free.
-
-Net change: 4 files, 2-line edits each. OG image is optional; only if cheap.
-
----
-
-### What we are explicitly *not* adding
-
-- No new tables, no new edge functions, no new external services.
-- No notifications backend (browser-only opt-in remind-me).
-- No video. No chat. No DMs. The product is voice + presence.
-- No AI features beyond what already exists in `lovable-ai`. (We can wire AI prompts for the facilitator drawer in a *separate* small pass.)
-
----
-
-### Sequencing (each step is shippable on its own)
-
-```text
-Step 1   Now-surface Home  (composition only, biggest perceived win)
-Step 2   AudioStage unification + visualizer
-Step 3   Walk & Talk dock → Drawer + active speaker + NowPlayingBar
-Step 4   device.ts (haptics, share, wake-lock) wired into 5 spots
-Step 5   Adaptive bottom command bar
-Step 6   Facilitator: queue preview + whisper prompts
-Step 7   Journal memory ribbon
-Step 8   Groups "for you" rail + live pulse
-Step 9   Visual tightening + reduced-motion
-Step 10  SEO/share polish
-```
-
-Estimated net code change across the whole pass: roughly **−400 lines after composition, +600 sharper lines** = small footprint, big leap in feel.
-
-### Why this makes it world-class
-
-- Everything we add is presence-aware, gesture-aware, and momentary — the qualities premium 2026 mobile apps share (Linear Mobile, Granola, Arc Search, Calm).
-- We don't compete by adding features; we win by removing seams between features that already exist.
-- The facilitator/walker/audio system becomes a single fabric with one consistent live-bar, one consistent sheet pattern, one consistent haptic vocabulary.
-
-Want me to start at **Step 1 (Now-surface Home)** and **Step 4 (device.ts)** in parallel? Those two unlock the most perceived quality with the least code.
+Shall I build it?

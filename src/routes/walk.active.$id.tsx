@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { GuidedPlayer } from "@/components/guided-player";
+import { ListenerPool } from "@/components/friend-walk/listener-pool";
+import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock } from "@/lib/device";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
@@ -19,7 +21,9 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
   intention: string | null; started_at: string; status: string; guided_track_id: string | null;
+  audio_room_id: string | null;
 }
+interface FriendRoom { id: string; share_code: string | null; host_user_id: string | null; }
 
 type GpsState = "idle" | "live" | "weak" | "denied";
 
@@ -58,9 +62,21 @@ function ActiveWalk() {
     toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
   };
 
+  const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
+  const [friendShareOpen, setFriendShareOpen] = useState(false);
+
   useEffect(() => {
-    supabase.from("walk_sessions").select("*").eq("id", id).single().then(({ data }) => {
-      if (data) setSession(data as Session);
+    supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
+      if (!data) return;
+      setSession(data as Session);
+      if (data.audio_room_id) {
+        const { data: room } = await supabase
+          .from("audio_rooms")
+          .select("id, share_code, host_user_id, room_type")
+          .eq("id", data.audio_room_id)
+          .maybeSingle();
+        if (room && room.room_type === "friend") setFriendRoom(room);
+      }
     });
   }, [id]);
 
@@ -214,9 +230,20 @@ function ActiveWalk() {
           </div>
         )}
 
-        <div className="relative flex items-start justify-between">
+        <div className="relative flex items-start justify-between gap-2">
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
-          <SafetyButton walkSessionId={session.id} />
+          <div className="flex items-center gap-2">
+            {friendRoom?.share_code && (
+              <button
+                onClick={() => setFriendShareOpen(true)}
+                className="flex items-center gap-1.5 rounded-full bg-cream/20 px-3 py-1.5 text-xs backdrop-blur transition active:scale-95"
+                aria-label="Share friend walk link"
+              >
+                <Share2 className="h-3.5 w-3.5" /> Invite
+              </button>
+            )}
+            <SafetyButton walkSessionId={session.id} />
+          </div>
         </div>
 
         <div className="relative mt-8 text-center">
@@ -255,10 +282,24 @@ function ActiveWalk() {
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}
 
+        {friendRoom && (
+          <ListenerPool roomId={friendRoom.id} isHost={friendRoom.host_user_id === user?.id} />
+        )}
+
         {session.walk_type === "guided_solo" && session.guided_track_id && (
           <GuidedPlayer trackId={session.guided_track_id} paused={paused} />
         )}
       </div>
+
+      {friendRoom?.share_code && (
+        <FriendWalkShareCard
+          open={friendShareOpen}
+          onOpenChange={setFriendShareOpen}
+          hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "a friend"}
+          hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
+          shareCode={friendRoom.share_code}
+        />
+      )}
 
       {/* Sticky control dock */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border bg-card/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mt-6 md:border-0 md:bg-transparent md:p-0">
