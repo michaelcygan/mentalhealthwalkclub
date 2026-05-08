@@ -450,20 +450,34 @@
   .pin-drop, .sparkle-twinkle, .headphones-bob, .compass-spin, .moon-glow { animation: none !important; }
 }
 
-/* Mood thumbnail crossfade (3 stacked imgs, opacity-cycled) */
+/* Mood thumbnail overlay crossfade — overlays on top of a steady base image.
+   Each overlay sits at opacity 0 most of the cycle, breathes to 1 briefly. */
 @keyframes mood-fade {
-  0%, 28%, 100% { opacity: 1; }
-  33%, 95%      { opacity: 0; }
+  0%, 100%   { opacity: 0; }
+  8%, 22%    { opacity: 1; }
 }
-.mood-fade { opacity: 0; animation-name: mood-fade; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.mood-fade {
+  opacity: 0;
+  animation-name: mood-fade;
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  will-change: opacity;
+}
 
 /* Soft top/bottom mask for in-place scrollable lists */
 .scroll-soft-mask {
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
-          mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
 }
 
+/* Slide-up + fade for tab-switched lists. */
+@keyframes list-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-slide-in { animation: list-slide-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .mood-fade { animation: none !important; opacity: 1 !important; }
-  .mood-fade:not(:first-of-type) { display: none; }
+  .mood-fade { animation: none !important; opacity: 0 !important; }
+  .list-slide-in { animation: none !important; }
 }
