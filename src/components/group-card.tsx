@@ -80,7 +80,7 @@ export function GroupCard({
       >
         {isLive ? (
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+            <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-forest" />
           </span>
         ) : next ? (
