@@ -318,31 +318,40 @@ export function GroupsTab() {
 
           {/* ─── Niches ─── */}
           {niches.length > 0 && (
-            <section className="space-y-2.5">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                    <Sparkles className="h-3 w-3 sparkle-twinkle" /> Niches
-                  </div>
-                  <h2 className="mt-0.5 font-serif text-xl">Find your tribe</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">The weirdly specific ones. They tend to hit hardest.</p>
-                </div>
-              </div>
-              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {niches.map((g, i) => (
-                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}>
-                    <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="niche" />
-                  </div>
-                ))}
-              </ul>
-            </section>
+            <div className="cv-auto">
+              <NicheCollection groups={niches} pulse={pulse} mine={mine} />
+            </div>
           )}
 
           {/* ─── Browse by city ─── */}
           <div aria-hidden className="mx-auto h-px w-12 bg-border/60" />
-          <CityGallery groups={discover} pulse={pulse} mine={mine} onToggle={toggleJoin} />
+          <div className="cv-auto">
+            <CityGallery groups={discover} pulse={pulse} mine={mine} onToggle={toggleJoin} />
+          </div>
         </>
       )}
     </div>
   );
+}
+
+/** Smooth count-up for live numbers — rAF, ~600ms, no deps. */
+function useCountUp(target: number, duration = 600): number {
+  const [value, setValue] = useState(target);
+  const fromRef = useRef(target);
+  useEffect(() => {
+    const from = fromRef.current;
+    if (from === target) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
 }
