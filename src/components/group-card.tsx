@@ -63,19 +63,23 @@ export function GroupCard({
   }
 
   return (
-    <li className={`flex flex-col rounded-2xl border border-border bg-gradient-to-br ${tint} to-card p-5 shadow-soft transition hover:-translate-y-px hover:border-forest/40`}>
-      <div className="flex items-start justify-between gap-2">
-        <Link to={"/groups/$slug" as never} params={{ slug: group.slug } as never} className="font-serif text-xl hover:text-forest">
-          {group.name}
-        </Link>
+    <li className={`group/card relative flex flex-col rounded-2xl border border-border bg-gradient-to-br ${tint} to-card p-5 shadow-soft transition hover:-translate-y-px hover:border-forest/40`}>
+      <Link
+        to={"/groups/$slug" as never}
+        params={{ slug: group.slug } as never}
+        aria-label={`Open ${group.name}`}
+        className="absolute inset-0 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest/50"
+      />
+      <div className="relative flex items-start justify-between gap-2 pointer-events-none">
+        <span className="font-serif text-xl group-hover/card:text-forest">{group.name}</span>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {pulse?.live ? <span className="rounded-full bg-forest/15 px-2 py-0.5 text-[10px] font-medium text-forest">● {pulse.live} live</span> : null}
           {!pulse?.live && next ? <span className="rounded-full bg-card/70 px-2 py-0.5 text-[10px] font-medium text-foreground/70">{next}</span> : null}
         </div>
       </div>
-      {group.description && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{group.description}</p>}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {group.description && <p className="relative mt-1 text-sm text-muted-foreground line-clamp-2 pointer-events-none">{group.description}</p>}
+      <div className="relative mt-3 flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pointer-events-none">
           <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{group.member_count}</span>
           {pulse?.walkersWeek ? <span className="text-forest/80">· {pulse.walkersWeek} this week</span> : null}
           {group.city ? <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{group.city}</span> : null}
@@ -83,8 +87,8 @@ export function GroupCard({
         <Button
           size="sm"
           variant={joined ? "outline" : "default"}
-          onClick={onToggle}
-          className={joined ? "h-7 rounded-full border-forest/30 px-2.5 text-xs text-forest hover:bg-forest/5" : "h-7 rounded-full bg-forest px-2.5 text-xs text-primary-foreground hover:opacity-90"}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+          className={`relative ${joined ? "h-7 rounded-full border-forest/30 px-2.5 text-xs text-forest hover:bg-forest/5" : "h-7 rounded-full bg-forest px-2.5 text-xs text-primary-foreground hover:opacity-90"}`}
         >
           {joined ? (<><Check className="mr-1 h-3 w-3" />Joined</>) : (<><Plus className="mr-1 h-3 w-3" />Join</>)}
         </Button>
