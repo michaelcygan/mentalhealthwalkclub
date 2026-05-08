@@ -82,6 +82,26 @@ function EventDetail() {
       const walkers = list.reduce((s, p) => s + (p.current_participant_count ?? 0), 0);
       setLivePodCount({ pods: data.breakout_size > 0 ? list.length : 1, walkers });
     }
+    // Group info + membership
+    if (data.visibility === "group" && data.group_id) {
+      const { data: g } = await supabase.from("groups").select("name,slug").eq("id", data.group_id).single();
+      setGroupInfo(g ?? null);
+      if (user) {
+        const { data: mem } = await supabase
+          .from("group_memberships")
+          .select("id")
+          .eq("group_id", data.group_id)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+        setIsMember(!!mem);
+      } else {
+        setIsMember(false);
+      }
+    } else {
+      setGroupInfo(null);
+      setIsMember(true);
+    }
   };
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, user]);
 
@@ -95,16 +115,30 @@ function EventDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.audio_room_id]);
 
+  const joinGroup = async () => {
+    if (!user || !event?.group_id) return;
+    await supabase.from("group_memberships").insert({ group_id: event.group_id, user_id: user.id });
+    toast.success(`Joined ${groupInfo?.name ?? "the group"}.`);
+    await refresh();
+  };
+
   const goRSVP = () => requireAuth(async () => {
     if (!user || !event) return;
     if (rsvp) {
       await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", user.id);
       toast("RSVP removed");
-    } else {
-      await supabase.from("event_rsvps").insert({ event_id: event.id, user_id: user.id, status: "going" });
-      toast.success("You're going. We'll save you a spot.");
+      refresh();
+      return;
     }
-    refresh();
+    try {
+      const res = await rsvpFn({ data: { event_id: event.id } });
+      if (!res.ok && res.requiresJoin) {
+        toast(`${res.groupName} members only — join to RSVP.`);
+        return;
+      }
+      toast.success("You're going. We'll save you a spot.");
+      refresh();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Couldn't RSVP"); }
   });
 
   const startWalk = async () => {
