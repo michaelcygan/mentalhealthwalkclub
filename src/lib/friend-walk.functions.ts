@@ -1,0 +1,136 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+// short, URL-friendly, unambiguous (no 0/O/1/l)
+const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+function makeCode(len = 6) {
+  let s = "";
+  for (let i = 0; i < len; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  return s;
+}
+
+/** Create a Friend Walk: room + walk_session + host participant. Returns share code + walk id. */
+export const createFriendWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    // Get a unique code (retry up to 5x)
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      const c = makeCode();
+      const { data: existing } = await supabase.from("audio_rooms").select("id").eq("share_code", c).maybeSingle();
+      if (!existing) { code = c; break; }
+    }
+    if (!code) throw new Error("couldn't mint a share code");
+
+    // Display name for room title
+    const { data: profile } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
+    const name = profile?.display_name || profile?.username || "a friend";
+
+    const { data: room, error: roomErr } = await supabase
+      .from("audio_rooms")
+      .insert({
+        title: `${name}'s walk`,
+        room_type: "friend",
+        host_user_id: userId,
+        max_participants: 4,
+        requires_active_walk: false,
+        share_code: code,
+        status: "open",
+      })
+      .select("id")
+      .single();
+    if (roomErr || !room) throw new Error(roomErr?.message ?? "couldn't open room");
+
+    const { data: walk, error: walkErr } = await supabase
+      .from("walk_sessions")
+      .insert({ user_id: userId, walk_type: "audio", status: "active", audio_room_id: room.id })
+      .select("id")
+      .single();
+    if (walkErr || !walk) throw new Error(walkErr?.message ?? "couldn't start walk");
+
+    await supabase.from("audio_room_participants").insert({
+      audio_room_id: room.id,
+      walk_session_id: walk.id,
+      user_id: userId,
+      role: "host",
+      participant_role: "speaker",
+      status: "active",
+    });
+
+    return { code, walkId: walk.id, roomId: room.id };
+  });
+
+/** Join an existing Friend Walk by share code. Returns walk id to navigate to. */
+export const joinFriendWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ code: z.string().min(3).max(16), asListener: z.boolean().optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: room } = await supabase
+      .from("audio_rooms")
+      .select("id, status, max_participants, host_user_id, current_participant_count")
+      .eq("share_code", data.code.toLowerCase())
+      .maybeSingle();
+    if (!room) throw new Error("walk not found");
+    if (room.status !== "open") throw new Error("this walk has ended");
+
+    // Auto-listener if room is at speaker capacity
+    const speakerCount = room.current_participant_count ?? 0;
+    const forceListener = data.asListener || speakerCount >= (room.max_participants ?? 4);
+    const participantRole = forceListener ? "listener" : "speaker";
+
+    // Create a fresh walk_session for this joiner
+    const { data: walk, error: walkErr } = await supabase
+      .from("walk_sessions")
+      .insert({ user_id: userId, walk_type: "audio", status: "active", audio_room_id: room.id })
+      .select("id")
+      .single();
+    if (walkErr || !walk) throw new Error(walkErr?.message ?? "couldn't start walk");
+
+    await supabase.from("audio_room_participants").insert({
+      audio_room_id: room.id,
+      walk_session_id: walk.id,
+      user_id: userId,
+      role: room.host_user_id === userId ? "host" : "participant",
+      participant_role: participantRole,
+      status: "active",
+    });
+
+    return { walkId: walk.id, roomId: room.id, asListener: forceListener };
+  });
+
+/** Toggle hand-raise / lower for the current user in a room. */
+export const toggleRaiseHand = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ roomId: z.string().uuid(), raised: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await supabase
+      .from("audio_room_participants")
+      .update({ participant_role: data.raised ? "raised_hand" : "listener" })
+      .eq("audio_room_id", data.roomId)
+      .eq("user_id", userId)
+      .eq("status", "active");
+    return { ok: true };
+  });
+
+/** Host promotes a listener (or raised hand) to speaker. */
+export const promoteToSpeaker = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ roomId: z.string().uuid(), userId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: room } = await supabase.from("audio_rooms").select("host_user_id").eq("id", data.roomId).maybeSingle();
+    if (!room || room.host_user_id !== userId) throw new Error("only the host can promote");
+    await supabase
+      .from("audio_room_participants")
+      .update({ participant_role: "speaker" })
+      .eq("audio_room_id", data.roomId)
+      .eq("user_id", data.userId)
+      .eq("status", "active");
+    return { ok: true };
+  });
