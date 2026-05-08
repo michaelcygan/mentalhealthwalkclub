@@ -365,6 +365,7 @@ export type Database = {
           host_user_id: string | null
           id: string
           image_url: string | null
+          is_seed: boolean
           last_pod_rotation_at: string | null
           lat: number | null
           lng: number | null
@@ -406,6 +407,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          is_seed?: boolean
           last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
@@ -447,6 +449,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          is_seed?: boolean
           last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
@@ -610,6 +613,56 @@ export type Database = {
           },
         ]
       }
+      ghost_host_assignments: {
+        Row: {
+          created_at: string
+          group_id: string
+          host_user_id: string
+          id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          host_user_id: string
+          id?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          host_user_id?: string
+          id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghost_host_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghost_walk_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string
@@ -731,10 +784,12 @@ export type Database = {
       }
       groups: {
         Row: {
+          auto_join: boolean
           city: string | null
           country: string | null
           created_at: string
           description: string | null
+          ghost_cadence_override: number | null
           group_type: string | null
           id: string
           image_url: string | null
@@ -753,10 +808,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_join?: boolean
           city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          ghost_cadence_override?: number | null
           group_type?: string | null
           id?: string
           image_url?: string | null
@@ -775,10 +832,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_join?: boolean
           city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          ghost_cadence_override?: number | null
           group_type?: string | null
           id?: string
           image_url?: string | null
@@ -1010,6 +1069,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_host_account: boolean
           is_private: boolean
           lat: number | null
           lng: number | null
@@ -1027,6 +1087,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          is_host_account?: boolean
           is_private?: boolean
           lat?: number | null
           lng?: number | null
@@ -1044,6 +1105,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_host_account?: boolean
           is_private?: boolean
           lat?: number | null
           lng?: number | null
@@ -1555,6 +1617,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      walk_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          length_minutes: number
+          theme: string
+          title_pattern: string
+          vibe: string | null
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          length_minutes?: number
+          theme: string
+          title_pattern: string
+          vibe?: string | null
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          length_minutes?: number
+          theme?: string
+          title_pattern?: string
+          vibe?: string | null
+          weight?: number
+        }
+        Relationships: []
       }
     }
     Views: {
