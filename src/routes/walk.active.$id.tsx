@@ -321,6 +321,7 @@ function ActiveWalk() {
         <div className={`relative flex items-start justify-between gap-2 transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}>
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
           <div className="flex items-center gap-2">
+            <WalkWeatherChip coords={walkerCoords} />
             {friendRoom?.share_code && (
               <button
                 onClick={() => setFriendShareOpen(true)}
