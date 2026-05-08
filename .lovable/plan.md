@@ -1,97 +1,80 @@
-# Groups Pass 5 — Living icons, drifting Pulse, photos everywhere
+# Groups — Pass 6: Niches reimagined + 2026 polish
 
-Three additive layers. No schema or data hook changes; same perf budget.
+Two main moves: (1) shrink and segment **Find your tribe** while giving every niche real photographic life through staggered crossfading slideshows, and (2) layer in cutting-edge details that make the whole page feel alive without ever shouting.
 
-## 1. Icon micro-motion (global)
+## 1. "Find your tribe" — segmented & dense
 
-Add four new keyframes in `src/styles.css`, sibling to the existing `live-pulse` and `heart-beat`:
+**Current state:** 26 niches as huge 2-col emoji tiles dump ~13 rows of vertical real estate. They dominate the page and feel taller than the city tiles above them.
 
-- `pin-drop` — for `MapPin` (Drop pin): 1.6s loop, `translateY -2px → 0` with a tiny squish at the bottom, ease-out-back; ~6s pause between cycles via `cubic-bezier` plateau.
-- `sparkle-twinkle` — for `Sparkles`: 2.4s loop, opacity 1 → 0.55 → 1 plus `rotate(-6deg → 6deg)` and `scale(1 → 1.08)`; staggered with `animation-delay` on instances.
-- `headphones-bob` — for `Headphones`: 2.8s loop, `translateY 0 → -1.5px` with subtle `rotate(-2deg)` — feels like a head nod, not a bounce.
-- `compass-spin` — for `Compass`: 8s loop, `rotate(0 → 360deg)`, ease-in-out, with a 5s plateau every cycle (looks like it's "finding north" then drifting).
-- `moon-glow` — for `Moon`: 3.2s loop, `filter: drop-shadow(0 0 0 →  4px hsl(var(--forest)/0.45))` plus opacity 0.85 → 1.
+**New layout (`src/components/groups/niche-collection.tsx`)**:
 
-All wrapped in `@media (prefers-reduced-motion: reduce) { animation: none; }`. Each becomes a utility class (`.pin-drop`, `.sparkle-twinkle`, `.headphones-bob`, `.compass-spin`, `.moon-glow`) so we can sprinkle without touching component layout.
+- A single section: eyebrow + serif title + sub. Below it, a thin pill-tab strip:
+  - `All · Time of day · With others · Phone-free · Work & life · Mood`
+- Tile sizing tightened from 2/3/4-col to **3/4/6-col** (`grid-cols-3 sm:grid-cols-4 md:grid-cols-6`), with smaller padding. Cuts vertical footprint roughly in half.
+- Inactive tabs are crossfaded out with a 200ms fade so the niches feel like a single living surface rather than a jumpy filter.
+- A subtle **auto-drift horizontal scroll** kicks in only when the active tab has more than fits the row(s); pauses on hover/touch (reuse PulseRail's rAF pattern). Default tab is "All" with vertical wrap.
+- **Tab classification map** (deterministic, by slug):
+  - Time: 5am, sunrise, sunset, night-owls, lunchbreak, shift, rainy
+  - With others: dog-parents, stroller, empty-nesters, solo-travelers, caregivers, healthcare, teachers, founders
+  - Phone-free: doomscroll, phone-free, silent, walk-and-pray, gratitude
+  - Audio: one-podcast, audiobook
+  - Mood: rage, hot-girl, gratitude
 
-Apply in:
-- `groups-tab.tsx` chip icons (`MapPin`, `Sparkles`, `Headphones`) — only when chip is **inactive** (active state stays calm, like the Live icon convention).
-- Vibe collection eyebrow icons (`Sparkles`, `Moon`, `Compass`).
-- Niches section eyebrow `Sparkles`.
-- City Gallery `Globe` eyebrow → already covered by existing `compass-spin` reuse on `Compass`; Globe gets a one-shot `eyebrow-rise` only.
-- `groups.$slug.tsx` cover band & header icons where these appear (audit during implementation: any `MapPin`, `Headphones`, `Moon`, `Compass`, `Sparkles`).
+## 2. Niche tiles get photos — staggered crossfade slideshow
 
-Keep amplitudes tiny — the rule is "you notice it on the second look, not the first."
+Each niche gets **4 thematically-tuned photos** that crossfade on a slow, randomized cadence so the page reads like a quietly breathing wall of imagery (not a flashing ad).
 
-## 2. Pulse strip — slow auto-drift with smart ranking
+**Asset pipeline:**
+- New folder: `public/niche-covers/<slug>/{1..4}.webp`, plus `lqip` blur entries.
+- Generate via `imagegen` (fast tier) at 768×768, with prompts engineered per niche (e.g. dog-parents → "soft morning light, two friends walking dogs through brownstone street, candid, film grain, no faces visible"). Faceless / from-behind / atmospheric framing across the board to keep tone calm and inclusive.
+- Compress with a sibling of `scripts/compress-covers.mjs` → `scripts/compress-niches.mjs`. WebP q60, generate base64 LQIP for blur-up.
+- Registry: `src/data/niche-covers.ts` exporting `NICHE_COVERS: Record<slug, { blur: string[]; count: number }>` and a `nicheUrl(slug, i)` helper.
 
-Refactor the Pulse strip in `groups-tab.tsx` into a new `<PulseRail>` component (`src/components/groups/pulse-rail.tsx`) so the logic stays contained:
+**Slideshow component (`src/components/groups/niche-tile.tsx`)**:
+- Replaces the emoji-only `variant="niche"` rendering inside `GroupCard` (or wrapped in the niche collection directly).
+- 4 stacked `<img>` layers with `opacity-0/100` + `transition-opacity duration-[1400ms]`.
+- Crossfade interval **6–9s, randomized per tile**, plus a per-tile **start delay (0–4s)** so neighbors never flip at the same instant. Zero coordinated rhythm = the elegant "slowly refreshing tiles" feel the user described.
+- IntersectionObserver pauses the timer when the tile leaves the viewport and on `prefers-reduced-motion` (then it just shows photo #1).
+- `document.visibilityState !== 'visible'` also pauses (saves CPU on backgrounded tabs).
+- LQIP blur as background; first photo `loading="eager"`, rest `loading="lazy"` + `decoding="async"`.
+- Foreground content stays: emoji glyph (smaller, top-left, soft white pill), bottom gradient, serif name, live/week count. Joined check pill top-right.
 
-**Motion**
-- Continuous horizontal scroll at ~22 px/sec via `requestAnimationFrame`, advancing `scrollLeft`.
-- Track is duplicated once in the DOM (`items + items`) so when `scrollLeft` reaches half the track width, we wrap to 0 — seamless infinite loop.
-- Pause when:
-  - `:hover` on the rail
-  - `pointermove`/`touchstart` (with 1.5s cooldown after last interaction)
-  - `document.visibilitychange` → hidden
-  - `prefers-reduced-motion: reduce` → never animates; behaves as a normal scroller
-- Edge fades reuse existing `fade-edge-x` so the loop seam is invisible.
+## 3. 2026 cutting-edge polish
 
-**Ranking** — compose the rail items from three pools, then interleave so participation needs aren't ghettoized:
-1. **Live now** (live > 0), sorted by participants desc.
-2. **Needs participants** — upcoming walks where `nextStart` is within 90 min and the audio room has < 3 participants (or `pulse.walkersWeek == 0` for that group). These get a subtle `needsCompany` flag passed to `GroupCard pulse` variant — small "Needs walkers" eyebrow chip on the card.
-3. **Trending** — high `walkersWeek`, no live session.
+Small, deliberate moves — no novelty for novelty's sake.
 
-Interleave pattern: `live, needs, trending, live, needs, trending, …`. Cap at 12 items (24 in the looped track). If a pool is empty, fall through to the next.
+- **Spring-feel chip taps**: replace `tap-press` on the chip row with a CSS view-transition-friendly scale+blur micro-bounce; respects reduced-motion.
+- **Scroll-linked eyebrow reveal**: section eyebrows (NICHES, TRENDING, etc.) animate in via `animation-timeline: view()` where supported, falling back to existing `card-in`. ~6 lines in `styles.css`, progressively enhanced.
+- **Color-aware live dot**: the live pulse ring picks up `--forest` via `color-mix` so it threads consistently in light/dark.
+- **Section spacers**: tighten `space-y-7` → `space-y-6` and add a hairline divider only between Niches and CityGallery (others rely on eyebrow rhythm). Cuts ~80px of dead air.
+- **CityGallery featured count**: bump from 9 → 10 on md+ to fill the row evenly; tighten gap from 2 → 1.5.
+- **Header micro-stat ticker**: the "X walking right now" number gets a subtle 600ms count-up when it changes (rAF, no library), so the page feels live without distracting.
+- **Pulse rail respects pointer-coarse**: on touch, swap auto-drift speed from 18px/s → 12px/s — feels less anxious on phones.
+- **Prefetch on hover**: niche/city/rail cards call `router.preloadRoute({ to: '/groups/$slug', params })` on `pointerenter`. Detail sheet snaps open instantly.
+- **`content-visibility: auto`** on the four large below-the-fold sections (Trending, Vibes, Niches, CityGallery). Free paint perf, especially on low-end Android.
+- **Focus ring polish**: unify to `focus-visible:outline-forest/50` everywhere (audit GroupCard variants — currently consistent, but the new NicheTile must match).
 
-**GroupCard `pulse` variant** — add tiny "Needs walkers" eyebrow when `pulse.needsCompany` is truthy. Existing pulse styling otherwise untouched.
+## Technical notes
 
-## 3. Photos for the remaining cities
+- Niche photo generation runs as a one-time script. Budget: 26 slugs × 4 = 104 images, ~1.4MB total after WebP. Acceptable.
+- Slideshow timer uses a single `setTimeout` per tile (not `setInterval`) so jitter accumulates differently per tile and the offset stays organic across hours.
+- Tab state lives in `useState` inside the new niche component — no URL sync (these are browse helpers, not deep links).
+- No DB / RLS / auth changes. No new packages. No edge functions.
 
-Currently 8 cities have real photo sets; the other ~68 fall back to procedural CSS gradients. Generate photo sets for the **next 24 highest-priority chapters** in this pass — a multi-pass effort, this batch covers the visible-most metros.
-
-**Priority list (24)** — chosen by member-count weight + visual variety + global coverage:
-- US: Brooklyn, DC, Philly, Atlanta, Austin, Denver, Portland, Phoenix, San Diego, Twin Cities, Nashville, New Orleans, Detroit, Houston, Dallas, Vegas
-- Canada: Toronto, Vancouver, Montreal
-- Europe: Paris, Berlin, Amsterdam, Dublin
-- APAC: Sydney
-
-**Pipeline** — extend `scripts/compress-covers.mjs`:
-- Input: source JPGs placed in `/dev-server/public/city-covers/<slug>/<state>.jpg` for `dawn|day|golden|night`.
-- For this pass, generate sources via `imagegen--generate_image` with the `fast` tier at 768×960 (4:5), prompt template:
-  > "<City landmark or skyline>, photographed at <state>, bright optimistic palette, no people in foreground, no text, no logos, photorealistic, wide shot, soft natural light"
-  with state-specific lighting cues ("warm pink dawn light", "midday clear sky", "golden hour amber sun low", "blue-hour with city lights, deep navy sky").
-- Each landmark choice is hand-picked per city (e.g., Toronto = CN Tower across Lake Ontario; Paris = Seine + Eiffel from Trocadéro; Sydney = Opera House from Mrs Macquarie's; Austin = downtown from Lady Bird Lake).
-- Compression: same `sharp.resize(480, 600).webp({ quality: 60, effort: 6 })` → ~30 KB each. 24 cities × 4 states = 96 files ≈ 2.9 MB total. Plus 24-px LQIPs base64-inlined into `city-covers.ts` (≈ 250 B each).
-- Auto-append entries to `src/data/city-covers.ts` from the script's output.
-
-After this pass, `CITY_COVERS` (real photos) has 32 cities; `CITY_PROCEDURAL` (gradients) covers the long tail. `CityTile` already prefers photo over procedural — no component change needed.
-
-**Performance guardrails**
-- Total added bundle weight: ~3 MB across `public/city-covers/**` (already lazy-loaded by `<img loading="lazy">`).
-- LQIPs add ~6 KB to `city-covers.ts` — fine.
-- No new runtime work; Ken-Burns already pause-on-offscreen.
-
-## Files
+## Files touched
 
 **New**
-- `src/components/groups/pulse-rail.tsx`
+- `src/components/groups/niche-collection.tsx` (tabs + grid + auto-drift)
+- `src/components/groups/niche-tile.tsx` (crossfading photo tile)
+- `src/data/niche-covers.ts` (registry + LQIP)
+- `scripts/compress-niches.mjs` (sharp pipeline)
+- 104 × `public/niche-covers/<slug>/<n>.webp`
 
 **Edited**
-- `src/styles.css` — 5 new keyframes + utility classes
-- `src/components/groups-tab.tsx` — replace inline pulse strip with `<PulseRail>`, sprinkle icon classes
-- `src/components/groups/vibe-collection.tsx` — eyebrow icon classes
-- `src/components/group-card.tsx` — `pulse` variant: tiny "Needs walkers" eyebrow when flagged
-- `src/routes/groups.$slug.tsx` — icon classes where Compass/Moon/Headphones/MapPin appear
-- `src/components/groups/city-gallery.tsx` — Globe eyebrow stays static; one-shot rise only
-- `scripts/compress-covers.mjs` — generation + LQIP + auto-emit `city-covers.ts` block
-- `src/data/city-covers.ts` — 24 new entries appended
+- `src/components/groups-tab.tsx` — swap inline niche grid for `<NicheCollection>`; tighten spacing; header count-up.
+- `src/components/group-card.tsx` — niche variant delegates to `NicheTile` when covers exist.
+- `src/styles.css` — view-timeline eyebrow, refined tap-press, niche crossfade keyframe (defensive fallback).
 
-**Untouched**
-- All hooks, server functions, RLS, schema, routing, audio, ghost walks
-- Procedural city tile path remains the long-tail fallback
-
-## Out of scope (next pass)
-- Photo sets for the remaining ~44 chapters
-- User-submitted photo flow + photo-credit overlay (deferred per earlier note)
-- Per-tile parallax on Pulse cards
+## Out of scope
+- Niche detail page redesign (its hero would benefit from these photos too — flag for next pass).
+- Any backend / data shape changes.
