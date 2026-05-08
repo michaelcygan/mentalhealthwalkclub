@@ -123,7 +123,7 @@ function GroupDetail() {
           </div>
           <h1 className="mt-2 font-serif text-3xl leading-tight">{group.name}</h1>
           {group.description && <p className="mt-2 max-w-2xl text-sm text-foreground/80">{group.description}</p>}
-          <div className="mt-5 hidden flex-wrap gap-2 md:flex">
+          <div className="mt-5 flex flex-wrap gap-2">
             <Button onClick={walkWithGroup} disabled={busy} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
               <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk with this group"}
             </Button>
