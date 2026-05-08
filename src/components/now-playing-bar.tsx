@@ -68,6 +68,18 @@ export function NowPlayingBar() {
     return () => clearInterval(i);
   }, [active]);
 
+  // Swipe-up to expand details (intention/elapsed); tap still navigates.
+  const [expanded, setExpanded] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+    if (dy > 28) setExpanded(true);
+    else if (dy < -28) setExpanded(false);
+    touchStartY.current = null;
+  };
+
   // Hide while user is on the live walk surface (the dock is right there)
   if (!active || path.startsWith("/walk/active/")) return null;
 
@@ -75,23 +87,35 @@ export function NowPlayingBar() {
     <Link
       to={"/walk/active/$id" as never}
       params={{ id: active.walkId } as never}
-      className="mx-auto -mt-5 mb-3 flex items-center gap-3 rounded-2xl border border-forest/30 bg-gradient-to-r from-forest/95 to-forest px-4 py-2.5 text-primary-foreground shadow-soft transition active:scale-[0.99] active:opacity-90 md:-mt-6"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      className="mx-auto -mt-5 mb-3 block rounded-2xl border border-forest/30 glass-dark px-4 py-2.5 text-primary-foreground shadow-soft transition active:scale-[0.99] active:opacity-90 md:-mt-6"
     >
-      <span className="relative flex h-2 w-2 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-cream" />
-      </span>
-      <Radio className="h-3.5 w-3.5 shrink-0 opacity-80" />
-      <div className="min-w-0 flex-1 text-xs leading-tight">
-        <div className="truncate font-medium">{active.roomTitle}</div>
-        <div className="flex items-center gap-1.5 opacity-80">
-          <Users className="h-2.5 w-2.5" />
-          <span className="tabular-nums">{active.participantCount}</span>
-          <span>·</span>
-          <span className="tabular-nums">{elapsed}</span>
+      <div className="flex items-center gap-3">
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-cream" />
+        </span>
+        <Radio className="h-3.5 w-3.5 shrink-0 opacity-80" />
+        <div className="min-w-0 flex-1 text-xs leading-tight">
+          <div className="truncate font-medium">{active.roomTitle}</div>
+          <div className="flex items-center gap-1.5 opacity-80">
+            <Users className="h-2.5 w-2.5" />
+            <span className="tabular-nums">{active.participantCount}</span>
+            <span>·</span>
+            <span className="tabular-nums">{elapsed}</span>
+          </div>
+        </div>
+        <span className="rounded-full bg-cream/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider">tap to return</span>
+      </div>
+      <div className={`grid transition-[grid-template-rows,opacity] duration-300 ${expanded ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+        <div className="overflow-hidden">
+          <p className="font-serif text-xs italic opacity-90">
+            Walk in progress · {elapsed} on your feet. Tap to return, swipe down to dismiss.
+          </p>
         </div>
       </div>
-      <span className="rounded-full bg-cream/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider">tap to return</span>
+      <div aria-hidden className="mx-auto mt-1 h-0.5 w-8 rounded-full bg-cream/40 md:hidden" />
     </Link>
   );
 }
