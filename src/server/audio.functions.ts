@@ -24,20 +24,27 @@ export const joinAudioRoom = createServerFn({ method: "POST" })
 
     const { data: room, error: roomErr } = await supabase
       .from("audio_rooms")
-      .select("id,max_participants,status")
+      .select("id,max_participants,status,facilitator_seat_reserved")
       .eq("id", data.roomId)
       .single();
     if (roomErr || !room) throw new Error("Walk & Talk not found");
     if (room.status !== "open") throw new Error("This walk is closed");
 
-    const { count } = await supabase
+    // Walker cap = total seats minus the reserved facilitator seat (if any)
+    const walkerCap = Math.max(
+      1,
+      room.max_participants - (room.facilitator_seat_reserved ? 1 : 0),
+    );
+
+    const { count: walkerCount } = await supabase
       .from("audio_room_participants")
       .select("id", { count: "exact", head: true })
       .eq("audio_room_id", data.roomId)
-      .eq("status", "active");
+      .eq("status", "active")
+      .neq("role", "facilitator");
 
-    if ((count ?? 0) >= room.max_participants) {
-      throw new Error(`This walk is full (${room.max_participants} of ${room.max_participants})`);
+    if ((walkerCount ?? 0) >= walkerCap) {
+      throw new Error(`This pod is full (${walkerCap} of ${walkerCap})`);
     }
 
     const { data: existing } = await supabase
@@ -57,7 +64,7 @@ export const joinAudioRoom = createServerFn({ method: "POST" })
       if (insertErr) throw new Error(insertErr.message);
     }
 
-    return { ok: true, capacity: room.max_participants, current: (count ?? 0) + (existing ? 0 : 1) };
+    return { ok: true, capacity: walkerCap, current: (walkerCount ?? 0) + (existing ? 0 : 1) };
   });
 
 const MatchSchema = z.object({
