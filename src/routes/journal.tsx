@@ -173,10 +173,16 @@ function JournalTab() {
               ))}
             </div>
           </div>
-        </div>
+        {moodAvg !== null && (
+          <div className="mt-5 border-t border-border pt-4">
+            <div className="flex items-baseline justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">Mood arc · 30 days</div>
+              <div className="font-serif text-sm text-muted-foreground"><span className="text-foreground tabular-nums">{moodAvg.toFixed(1)}</span> avg after</div>
+            </div>
+            <MoodArc points={moodArc.map((d) => d.score)} />
+          </div>
+        )}
       </div>
-
-      {/* Memory ribbon — horizontally scroll-snapped weeks */}
       {walks.length > 0 && (
         <section className="space-y-2">
           <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Memory ribbon</div>
