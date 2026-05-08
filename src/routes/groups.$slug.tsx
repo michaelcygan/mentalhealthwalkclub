@@ -54,7 +54,41 @@ function GroupDetail() {
       setWalkersWeek(new Set(walks.map((x) => x.user_id)).size);
       setNewMembers((nm ?? []).length);
 
-      try { const m = await callMilestones({ data: { groupId: g.id } }); setMilestones(m.milestones as Milestone[]); } catch {/* anon ok */}
+      // Milestones: badges earned in walks tagged to this group in last 14 days
+      try {
+        const since = new Date(Date.now() - 14 * 86400_000).toISOString();
+        const { data: gw } = await supabase
+          .from("walk_sessions")
+          .select("id,user_id")
+          .eq("group_id", g.id)
+          .eq("status", "completed")
+          .gte("started_at", since);
+        const wIds = (gw ?? []).map((x) => x.id);
+        if (wIds.length) {
+          const { data: ub } = await supabase
+            .from("user_badges")
+            .select("id,user_id,badge_id,earned_at,walk_session_id")
+            .in("walk_session_id", wIds)
+            .order("earned_at", { ascending: false });
+          const byBadge = new Map<string, { badgeId: string; recipients: { userId: string; awardId: string }[] }>();
+          (ub ?? []).forEach((b) => {
+            const v = byBadge.get(b.badge_id) ?? { badgeId: b.badge_id, recipients: [] };
+            if (!v.recipients.find((r) => r.userId === b.user_id)) v.recipients.push({ userId: b.user_id, awardId: b.id });
+            byBadge.set(b.badge_id, v);
+          });
+          const bIds = Array.from(byBadge.keys());
+          if (bIds.length) {
+            const { data: defs } = await supabase
+              .from("badge_definitions")
+              .select("id,name,description,icon,key")
+              .in("id", bIds);
+            setMilestones(((defs ?? []) as { id: string; name: string; description: string | null; icon: string | null; key: string }[]).map((d) => {
+              const v = byBadge.get(d.id)!;
+              return { badgeId: d.id, name: d.name, description: d.description, icon: d.icon, key: d.key, recipients: v.recipients };
+            }));
+          }
+        }
+      } catch {/* anon ok */}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
