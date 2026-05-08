@@ -15,7 +15,7 @@ import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
-import { WalkNotesPill, loadStoredNotes, notesToJournalBlock, type WalkNote } from "@/components/walk-notes-sheet";
+import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -70,6 +70,7 @@ function ActiveWalk() {
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
   const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
   const [walkNotes, setWalkNotes] = useState<WalkNote[]>(() => loadStoredNotes(id));
+  const [walkPhotos, setWalkPhotos] = useState<WalkPhoto[]>(() => loadStoredPhotos(id));
   const handleSavePrompt = (text: string) => {
     setSavedPrompts((arr) => (arr.includes(text) ? arr : [...arr, text]));
     toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
@@ -242,7 +243,11 @@ function ActiveWalk() {
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
     }
-    try { sessionStorage.removeItem(`walk-notes:${session.id}`); } catch {}
+    if (walkPhotos.length > 0) {
+      try { await uploadWalkPhotos({ supabase, userId: user.id, walkSessionId: session.id, photos: walkPhotos }); }
+      catch { toast.error("Some photos couldn't upload"); }
+    }
+    clearWalkCaptures(session.id);
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
@@ -374,7 +379,7 @@ function ActiveWalk() {
 
       {/* In-walk utility row: private notes + ambient music pill */}
       <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 md:px-0">
-        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} onChange={setWalkNotes} />
+        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} photos={walkPhotos} onChangeNotes={setWalkNotes} onChangePhotos={setWalkPhotos} />
         {!(session.walk_type === "audio" || session.guided_track_id) && (
           <AmbientPill />
         )}
