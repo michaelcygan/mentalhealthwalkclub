@@ -1462,6 +1462,7 @@ export type Database = {
           updated_at: string
           user_id: string
           walk_type: string
+          weather_at_end: Json | null
         }
         Insert: {
           audio_room_id?: string | null
@@ -1488,6 +1489,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           walk_type?: string
+          weather_at_end?: Json | null
         }
         Update: {
           audio_room_id?: string | null
@@ -1514,6 +1516,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           walk_type?: string
+          weather_at_end?: Json | null
         }
         Relationships: [
           {
