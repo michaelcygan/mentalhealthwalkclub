@@ -292,8 +292,7 @@ function JournalTab() {
                   </ul>
                 </div>
               ))}
-          </div>
-        </div>
+            </div>
 
             <aside className="hidden lg:block">
               <div className="sticky top-4">
