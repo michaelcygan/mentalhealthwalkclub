@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { GuidedPlayer } from "@/components/guided-player";
+import { ListenerPool } from "@/components/friend-walk/listener-pool";
+import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock } from "@/lib/device";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
