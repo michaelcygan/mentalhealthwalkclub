@@ -226,7 +226,7 @@ export function GroupsTab() {
             <section className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Yours</div>
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">You</div>
                   <h2 className="font-serif text-xl">Your groups</h2>
                 </div>
                 <span className="text-xs text-muted-foreground">{yours.length}</span>
