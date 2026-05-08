@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { BookHeart, Award, Footprints } from "lucide-react";
+import { BookHeart, Award, Footprints, Share2 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
+import { share, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
