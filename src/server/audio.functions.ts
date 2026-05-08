@@ -138,6 +138,25 @@ export const leaveAudioRoom = createServerFn({ method: "POST" })
       .eq("audio_room_id", data.roomId)
       .eq("user_id", userId)
       .eq("status", "active");
+
+    // If this was a breakout pod, consolidate remaining pods so nobody
+    // gets stranded alone before the host closes the walk.
+    const { data: room } = await supabase
+      .from("audio_rooms")
+      .select("parent_room_id,scheduled_event_id")
+      .eq("id", data.roomId)
+      .single();
+    const parentId = room?.parent_room_id;
+    if (parentId) {
+      const { data: parent } = await supabase
+        .from("audio_rooms")
+        .select("scheduled_event_id")
+        .eq("id", parentId)
+        .single();
+      if (parent?.scheduled_event_id) {
+        await consolidatePodsImpl(supabase, parent.scheduled_event_id).catch(() => {});
+      }
+    }
     return { ok: true };
   });
 
