@@ -20,7 +20,8 @@ interface Walk {
   id: string; started_at: string; duration_seconds: number | null; distance_meters: number | null;
   steps: number | null; mood_before: string | null; mood_after: string | null;
   mood_before_score: number | null; mood_after_score: number | null;
-  reflection_note: string | null; walk_type: string;
+  reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
+  privacy: string; share_map: boolean | null; intention: string | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
 
