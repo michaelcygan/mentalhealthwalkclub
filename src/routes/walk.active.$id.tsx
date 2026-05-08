@@ -17,6 +17,10 @@ import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
 import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
+import { WeatherPill } from "@/components/weather-pill";
+import { RainSoonBanner } from "@/components/rain-soon-banner";
+import { useCurrentWeather } from "@/hooks/use-weather";
+import { getNow as getWeatherNow } from "@/lib/weather";
 
 const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
 
@@ -60,6 +64,7 @@ function ActiveWalk() {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
+  const [walkerCoords, setWalkerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [hasMoved, setHasMoved] = useState(false);
   const [ending, setEnding] = useState(false);
   const [routeTick, setRouteTick] = useState(0);
@@ -128,6 +133,7 @@ function ActiveWalk() {
         lastPos.current = p;
         points.current.push(p);
         setGps("live");
+        setWalkerCoords({ lat: p.lat, lng: p.lng });
       }
     }, (err) => {
       setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
@@ -236,6 +242,14 @@ function ActiveWalk() {
     if (!user || !session) return;
     const notesBlock = notesToJournalBlock(walkNotes);
     const merged = [out.reflection?.trim(), notesBlock].filter(Boolean).join("\n\n");
+    let weatherSnap: Record<string, unknown> | null = null;
+    const last = lastPos.current;
+    if (last) {
+      try {
+        const w = await getWeatherNow(last.lat, last.lng);
+        if (w) weatherSnap = w as unknown as Record<string, unknown>;
+      } catch { /* best-effort */ }
+    }
     await supabase.from("walk_sessions").update({
       status: "completed",
       ended_at: new Date().toISOString(),
@@ -245,6 +259,7 @@ function ActiveWalk() {
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
       reflection_note: merged || null,
+      weather_at_end: weatherSnap as never,
     }).eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
@@ -315,6 +330,7 @@ function ActiveWalk() {
         <div className={`relative flex items-start justify-between gap-2 transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}>
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
           <div className="flex items-center gap-2">
+            <WalkWeatherChip coords={walkerCoords} />
             {friendRoom?.share_code && (
               <button
                 onClick={() => setFriendShareOpen(true)}
@@ -374,6 +390,7 @@ function ActiveWalk() {
       </section>
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
+        <RainSoonBanner coords={walkerCoords} active={!paused} currentlyRaining={false} />
         {/* Live map — collapsible, lazy. Visible to walker only; opt-in to broadcast. */}
         <section className="rounded-2xl border border-border bg-card p-3 shadow-soft">
           <div className="flex items-center justify-between gap-2 pb-2">
@@ -557,4 +574,14 @@ function haversine(a: {lat:number;lng:number}, b: {lat:number;lng:number}) {
   const dLat = toRad(b.lat - a.lat); const dLng = toRad(b.lng - a.lng);
   const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+function WalkWeatherChip({ coords }: { coords: { lat: number; lng: number } | null }) {
+  const { data } = useCurrentWeather(coords);
+  if (!data) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs backdrop-blur">
+      <WeatherPill tempF={data.tempF} tone={data.tone} isDay={data.isDay} className="bg-transparent px-0 py-0" />
+    </span>
+  );
 }

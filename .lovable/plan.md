@@ -1,126 +1,100 @@
-# Maps on Walking Platform — Implementation Plan
+## Weather across the platform — implementation plan
 
-Goal: bring real, beautiful maps into the product without bloating the bundle or compromising privacy. Three surfaces benefit most:
+### API choice — Open-Meteo (free, no key)
 
-1. **Active walk** — live, Strava-style tracking on a map.
-2. **Journal entry** — persistent route snapshot baked over a basemap, plus a shareable post-walk card.
-3. **Group page** — a live map of group members currently on public walks.
+Open-Meteo (`https://api.open-meteo.com`) covers everything we need with no API key, no signup, and a generous public quota (~10k req/day). It returns:
 
----
+- **Current conditions** — temperature, apparent temp, wind, weather code, is_day
+- **Hourly forecast** — temp + precipitation + wind for the next 12–24h
+- **Minutely_15 precipitation** — 15-minute precipitation outlook for the next 1–3h (the "about to rain" signal)
+- **Air quality** companion endpoint at `air-quality-api.open-meteo.com` if we ever want pollen/AQI
 
-## Tech choice
+All requests are pure `GET` with `latitude`, `longitude`, plus a comma list of fields. CORS is open, so we call it from the browser — no server route, no secret, no Lovable Cloud touch.
 
-- **MapLibre GL JS** (open-source, no token, WebGL, smooth on mobile) as the renderer.
-- **Tiles**: free **Protomaps** style + a CartoDB Positron fallback. No API key, no per-tile billing. We swap to Mapbox/Stadia later if branding demands.
-- **Static snapshots** for journal/share cards: render client-side via MapLibre's `map.getCanvas().toDataURL()` after the route is drawn, then upload as PNG to Supabase storage. No server-side rendering needed (works in the Cloudflare Worker constraint).
-- Lazy-load MapLibre only on routes that use it (`React.lazy` + dynamic import) so it never lands in the homepage bundle.
+### Shared foundation
 
----
+Create three small files, used everywhere weather appears:
 
-## Data model changes
+- `src/lib/weather.ts` — typed fetcher with two entry points:
+  - `getNow(lat, lng)` → current conditions
+  - `getForecastWindow(lat, lng, hoursAhead)` → 1–24h slice with precipitation, used for both event scheduling and the "rain soon" warning
+  - In-memory cache keyed by `lat,lng` rounded to 2 decimals + 10-minute TTL so we don't hammer the API or rerender churn
+  - Maps WMO weather codes → `{label, icon, tone}` (sun, cloud, drizzle, rain, snow, fog, thunder)
+- `src/lib/weather-icons.tsx` — tiny inline SVGs (sun, partly-cloudy, cloud, rain, drizzle, snow, fog, storm) so we don't drag in another icon set; respects `currentColor`
+- `src/hooks/use-weather.ts` — `useCurrentWeather(coords)` + `useForecast(coords, hoursAhead)` thin wrappers over the lib, with `loading` / `error` / `data`. Coords come from the user's profile (`profiles.lat/lng`) or `navigator.geolocation` as a fallback (cached in localStorage so we don't re-prompt).
 
-We already have `walk_routes(points jsonb)` and `walk_sessions.privacy`. Small additions:
+Privacy: we never log, store, or send coordinates anywhere except the Open-Meteo request. No new tables. No secrets.
 
-- **`walk_sessions`**: add `share_map boolean default false` (separate consent from `privacy`, so a public walk can still opt out of route map sharing).
-- **`walk_sessions`**: add `route_snapshot_path text` for the baked PNG used in journals + share cards.
-- **New `walk_live_pings` table** for the group live map:
-  - `walk_session_id`, `user_id`, `group_id`, `lat`, `lng`, `heading`, `pinged_at`, expires after ~2 min.
-  - RLS: insert by self only; select where the walk is `status='active'`, `privacy='public'`, `share_map=true`, and the viewer is a member of the same group (or it's tagged to that group).
-  - Realtime publication enabled so group page subscribers get pings live.
+### Surface 1 — Homepage / Now & Next (light touch)
 
-No changes to `walk_routes` — existing point storage is reused for the final route.
+In `src/components/now-and-next.tsx` (or its container on `index.tsx`), add a single inline pill: `☁︎ 58° · breezy` with a one-liner like "Good walking weather." or "Light rain at 4pm — earlier might be kinder." Tap → expands to a 6-hour mini-strip (icon + temp + raindrop %). Skipped entirely if no coords yet (no permission prompt on the home page — opt-in feels cleaner).
 
----
+### Surface 2 — Walk scheduling flow (`events.new.tsx`)
 
-## Surface 1 — Active walk live map
+When the user picks a date+time and a city/coords:
+- Show a forecast row directly under the time picker: weather icon, temp, precipitation %, wind for that exact hour
+- Quiet inline hint when it matters:
+  - `"Forecast: light rain at 5pm — consider 6pm or earlier"` (with a "shift 1h earlier" / "shift 1h later" quick-action chip if a drier hour exists ±2h)
+  - `"Cold (38°) — remind attendees to bundle up?"` toggle that appends a line to the description
+- Open-Meteo supports forecasts up to 16 days, so this works for any reasonable scheduling horizon. Beyond 7 days we soften the language to "early outlook."
 
-`src/routes/walk.active.$id.tsx` already runs `watchPosition` and feeds `RouteSparkline`. Replace the sparkline area with a collapsible **"Live map"** card:
+### Surface 3 — Active walk (`walk.active.$id.tsx`)
 
-- Component: `src/components/walk-live-map.tsx` (lazy).
-- Renders MapLibre canvas, tracks the user's blue dot, draws the polyline as it grows.
-- "Recenter" pill, "follow me" auto-pan toggle, tap-to-expand to fullscreen sheet.
-- For public walks, every ~15s upserts a row into `walk_live_pings` (debounced; only if user moved >10m).
-- Battery-conscious: pause map rendering when tab hidden; reuse the `gps` state already wired.
+Two pieces:
 
-Privacy: a small toggle row above the map — **Visible on map** (off by default; on auto-enables when `privacy='public'`). Stored in the session row.
+- **Header weather chip** — same compact icon+temp pill near the timer, glanceable
+- **"Rain soon" warning** — poll `minutely_15` precipitation every 5 minutes during the walk:
+  - If precipitation > 0.2mm forecast within the next 20 min and current is dry → show a soft amber banner: `"Rain likely in ~12 min. Loop back?"` with a haptic tap and an "OK, noticed" dismiss
+  - Only fires once per session; never nags
+  - If user is already in rain, switch to a different banner: `"Walking in the rain — proud of you. End early?"`
 
----
+Battery: we already throttle GPS; weather is a tiny 1–2KB GET every 5 min and only while the walk is active and tab is visible.
 
-## Surface 2 — Journal route snapshot + share card
+### Surface 4 — Journal (`journal.tsx`) — capture conditions per walk
 
-Two pieces, both built on the same map snapshot:
+Conditions become part of the walk's memory. Two parts:
 
-**On walk end** (in existing `endWalk` flow):
-- After `walk_routes` saves, render an offscreen MapLibre map at 1080×1080 (square) and 1080×1350 (story).
-- Draw the route polyline with a soft glow, pin start/end, light Positron basemap, app watermark.
-- `canvas.toBlob()` → upload to a new private `walk-snapshots` bucket → save `route_snapshot_path` on the session.
+- **Capture at end-of-walk**: when finalizing a session, fetch current weather for the last GPS point and store a tiny snapshot on the walk row
+- **Display in journal**: a small chip on each entry card and in the detail pane — `🌧 52° · light rain` — and bake the same chip into the share-card overlay we shipped, so the conditions live on the share image too
+- **Journal aggregate insight**: a one-liner like "You've walked through rain 4 times this month." in the existing insights area
 
-**Journal display** (`src/routes/journal.tsx` `WalkDetailPane`):
-- Show the snapshot at the top of the entry (signed URL, 1h). Tap to open an interactive MapLibre view that replays the route with a small scrubber that moves a dot along the polyline (uses indexed timestamps already in `walk_routes.points`).
-- Photos pinned at their `taken_at_seconds` along the route as small thumbnails on the interactive view.
+### Database — single small migration
 
-**Share card** (new `src/components/walk-share-card.tsx`):
-- Reuses the snapshot, layers stats (distance, time, mood lift, intention) in the existing design tokens.
-- "Save image" + Web Share API (`navigator.share` with the file blob — already a mobile primitive we're not using yet).
-- Available from journal detail and from the post-walk completion screen.
+Add a JSONB column to `walk_sessions`:
 
----
+```text
+weather_at_end jsonb       -- { tempF, code, label, windMph, precipMm, isDay, capturedAt }
+```
 
-## Surface 3 — Group live map
+JSONB keeps it flexible without a schema change later (adds humidity, AQI, etc. without migrations). No new RLS — inherits walk_sessions own/group policies. Already-existing routes that read walks will get this for free; the share-card baker reads it from the walk row.
 
-On `src/routes/groups.$slug.tsx`, add a **"Walking now"** map card above the events list:
+### Files to add / edit
 
-- Subscribes to `walk_live_pings` filtered by `group_id` via Supabase Realtime.
-- Renders one avatar marker per active walker (their last ping). Tapping opens a small bottom-sheet with the walker's display name, intention, and an "applaud" button (reuses `group_signals`).
-- If no one is walking, the card collapses to a one-line "No one out right now — be the first?" CTA that deep-links to the start-walk flow with `group_id` prefilled.
-- Auto-prunes markers when last ping > 2 min old.
+```text
+src/lib/weather.ts                  (new)  — typed fetcher + WMO map + cache
+src/lib/weather-icons.tsx           (new)  — inline SVG set
+src/hooks/use-weather.ts            (new)  — useCurrentWeather, useForecast
+src/components/weather-pill.tsx     (new)  — compact icon+temp+label
+src/components/weather-strip.tsx    (new)  — 6h hourly strip (homepage expand, scheduler)
+src/components/rain-soon-banner.tsx (new)  — active-walk amber/blue banner
+src/components/now-and-next.tsx     (edit) — slot WeatherPill
+src/routes/events.new.tsx           (edit) — forecast row + nudges under time picker
+src/routes/walk.active.$id.tsx      (edit) — header pill + minutely poll + banner + capture on end
+src/routes/journal.tsx              (edit) — chip on list rows + detail pane
+src/lib/share-card.ts               (edit) — paint weather chip onto the bottom of the card
+supabase/migration                  (new)  — add walk_sessions.weather_at_end jsonb
+```
 
-Optional polish: a heatmap layer showing aggregated past public routes for the group (built once a day from `walk_routes` into a precomputed GeoJSON in storage). Out of scope for v1.
+### Rollout order
 
----
+1. Foundation lib + hook + pill (no UI placement yet)
+2. Homepage Now & Next pill (smallest blast radius, validates the API)
+3. Active walk header chip + capture-on-end + journal chip + share-card chip
+4. Rain-soon banner during active walks
+5. Scheduler forecast row + nudges
 
-## Other surfaces that benefit (light touches)
+Each step ships independently and degrades gracefully — if Open-Meteo is unreachable, every weather UI just renders nothing rather than blocking the surface.
 
-- **Events** (`events.$slug.tsx`, `events.tsx`): tiny static map preview using the same MapLibre snapshot helper, centered on `events.lat/lng` with a single pin. Replaces the current text-only `MapPin` icon row.
-- **Profile**: a quiet "recent routes" mosaic of snapshots (only those marked `share_map`).
-- **Live now strip**: existing `live-now-strip.tsx` gets an optional map peek per item.
+### Tone
 
----
-
-## Privacy & safety (non-negotiable)
-
-- Default: **private**. Maps stored, never shared, no group map ping.
-- "Public" requires explicit toggle per walk; group ping requires public + share_map.
-- All ping coords are **fuzzed** by ~50–100m before insert (so live map shows neighborhood, not doorstep).
-- Snapshots crop the **first 150m and last 150m** of every route to obscure home/work locations — same trick Strava added after the heatmap incident.
-- Block list (`blocks` table) is honored when rendering group map markers.
-
----
-
-## Performance budget
-
-- MapLibre GL ~200KB gz; loaded only on `/walk/active/*`, `/journal`, `/groups/$slug`. Homepage and tab bar untouched.
-- Tile cache via service worker (already a Vite-friendly pattern).
-- One realtime channel per group page, unsubscribed on unmount.
-
----
-
-## Rollout order
-
-1. Migration (`share_map`, `route_snapshot_path`, `walk_live_pings` + RLS + realtime + `walk-snapshots` bucket).
-2. `walk-live-map.tsx` + integration into active walk (replaces sparkline, adds privacy toggle).
-3. End-of-walk snapshot generation + journal display.
-4. Share card + Web Share API.
-5. Group live map card + ping fan-out.
-6. Event/profile/live-now polish.
-
-Each step ships independently and degrades gracefully if maps fail to load (we keep `RouteSparkline` as the fallback).
-
----
-
-## Technical notes
-
-- Lazy import: `const Map = React.lazy(() => import("@/components/walk-live-map"))`, wrapped in `<Suspense>` with the existing skeleton.
-- Snapshots run on the main thread but during the existing "saving your walk" screen, so latency is hidden.
-- `walk_live_pings` cleanup: a tiny `pg_cron`-style scheduled function, or just a `WHERE pinged_at > now() - interval '2 minutes'` filter on the read side — we'll do the latter to avoid extra infra.
-- No new secrets needed. No paid services.
+Weather copy is gentle, never alarming: "Light rain coming in 12 min — loop back?" not "WARNING: PRECIPITATION DETECTED." The point is care, not alerts.

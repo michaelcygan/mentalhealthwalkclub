@@ -12,6 +12,7 @@ import { share, haptics } from "@/lib/device";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { bakeShareCard } from "@/lib/share-card";
 import { toast } from "sonner";
+import { WeatherPill } from "@/components/weather-pill";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -24,6 +25,7 @@ interface Walk {
   mood_before_score: number | null; mood_after_score: number | null;
   reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
   privacy: string; share_map: boolean | null; intention: string | null;
+  weather_at_end: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
 
@@ -39,12 +41,12 @@ function JournalTab() {
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     Promise.all([
-      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention")
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention,weather_at_end")
         .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
     ]).then(([w, b]) => {
-      setWalks(w.data ?? []);
+      setWalks((w.data ?? []) as unknown as Walk[]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBadges((b.data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at })));
       setLoading(false);
@@ -112,6 +114,7 @@ function JournalTab() {
         const blob = await bakeShareCard(snapUrl, {
           miles, minutes: mins, steps: w.steps, date,
           intention: w.intention, moodBefore: w.mood_before, moodAfter: w.mood_after, walkType: w.walk_type,
+          weather: w.weather_at_end ? { tempF: w.weather_at_end.tempF, label: w.weather_at_end.label } : null,
         });
         if (blob) {
           const file = new File([blob], `walk-${w.id.slice(0, 8)}.png`, { type: "image/png" });
@@ -316,8 +319,11 @@ function JournalTab() {
                                 <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
                                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
                               </div>
-                              <div className="mt-1 text-xs text-muted-foreground">
-                                {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span>{Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps</span>
+                                {w.weather_at_end?.tempF != null && (
+                                  <WeatherPill tempF={w.weather_at_end.tempF} label={w.weather_at_end.label} tone={(w.weather_at_end.tone as never) || "cloud"} isDay={w.weather_at_end.isDay} />
+                                )}
                               </div>
                               {(w.mood_before || w.mood_after) && (
                                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -425,6 +431,7 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
       const blob = await bakeShareCard(snapshotUrl, {
         miles, minutes: mins, steps: walk.steps, date,
         intention: walk.intention, moodBefore: walk.mood_before, moodAfter: walk.mood_after, walkType: walk.walk_type,
+        weather: walk.weather_at_end ? { tempF: walk.weather_at_end.tempF, label: walk.weather_at_end.label } : null,
       });
       if (!blob) throw new Error("bake failed");
       const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });

@@ -1,0 +1,1 @@
+ALTER TABLE public.walk_sessions ADD COLUMN IF NOT EXISTS weather_at_end jsonb;

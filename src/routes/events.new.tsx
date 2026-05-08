@@ -10,6 +10,8 @@ import { createLocalWalk } from "@/server/walks.functions";
 import { scheduleAudioWalk } from "@/server/audio.functions";
 import { toast } from "sonner";
 import { MapPin, Headphones, Shuffle } from "lucide-react";
+import { useForecastAt } from "@/hooks/use-weather";
+import { WeatherPill } from "@/components/weather-pill";
 
 type SearchParams = { group?: string; mode?: "irl" | "audio" };
 
@@ -155,6 +157,21 @@ function NewWalk() {
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
+        {mode === "irl" && location?.lat != null && location?.lng != null && date && time && (
+          <ForecastForSchedule
+            lat={location.lat}
+            lng={location.lng}
+            iso={new Date(`${date}T${time}`).toISOString()}
+            onShift={(deltaH) => {
+              const d = new Date(`${date}T${time}`);
+              d.setHours(d.getHours() + deltaH);
+              const hh = String(d.getHours()).padStart(2, "0");
+              const mm = String(d.getMinutes()).padStart(2, "0");
+              setTime(`${hh}:${mm}`);
+              setDate(d.toISOString().slice(0, 10));
+            }}
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Duration (min)</Label>
@@ -253,6 +270,36 @@ function NewWalk() {
           {busy ? "Scheduling…" : mode === "audio" ? "Open the Walk & Talk" : "Schedule walk"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ForecastForSchedule({ lat, lng, iso, onShift }: { lat: number; lng: number; iso: string; onShift: (deltaH: number) => void }) {
+  const fc = useForecastAt({ lat, lng }, iso);
+  if (!fc) return null;
+  const wet = fc.precipProb >= 50 || fc.tone === "rain" || fc.tone === "drizzle" || fc.tone === "storm";
+  const cold = fc.tempF <= 38;
+  const hot = fc.tempF >= 88;
+  return (
+    <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Forecast for that hour:</span>
+        <WeatherPill tempF={fc.tempF} label={fc.label} tone={fc.tone} />
+        {fc.precipProb > 0 && <span className="text-xs text-muted-foreground">{fc.precipProb}% rain · {fc.windMph} mph wind</span>}
+      </div>
+      {(wet || cold || hot) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {wet && <span>Could be wet — try a different hour?</span>}
+          {cold && !wet && <span>It will be cold — remind folks to bundle up.</span>}
+          {hot && !wet && <span>It will be warm — water and shade.</span>}
+          {wet && (
+            <>
+              <button type="button" onClick={() => onShift(-1)} className="rounded-full border border-border bg-card px-2 py-1 hover:bg-secondary">1h earlier</button>
+              <button type="button" onClick={() => onShift(1)} className="rounded-full border border-border bg-card px-2 py-1 hover:bg-secondary">1h later</button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
