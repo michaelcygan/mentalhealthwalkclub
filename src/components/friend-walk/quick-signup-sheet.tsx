@@ -21,6 +21,7 @@ export function QuickSignupSheet({ open, onOpenChange, onSuccess, reason }: Prop
         <div className="mt-4">
           <AuthForm
             defaultMode="signup"
+            suppressRedirect
             onSuccess={() => { onOpenChange(false); onSuccess?.(); }}
           />
         </div>
