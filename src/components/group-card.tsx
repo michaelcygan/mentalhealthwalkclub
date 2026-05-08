@@ -135,37 +135,42 @@ export function GroupCard({
   // ─────── RAIL card (snap carousel) ───────
   if (variant === "rail") {
     return (
-      <li className="group/rail relative flex w-[220px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-px hover:border-forest/40">
+      <li
+        className={`group/rail relative flex w-[170px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-gradient-to-br ${tint} to-card shadow-soft transition hover:-translate-y-px hover:border-forest/40`}
+        style={{ scrollSnapStop: "always" }}
+      >
         <Link
           to={"/groups/$slug" as never}
           params={{ slug: group.slug } as never}
           aria-label={`Open ${group.name}`}
           className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest/50"
         />
-        <div className={`relative h-2 ${band}`} />
-        <div className="relative flex flex-1 flex-col gap-1.5 p-3.5">
-          <div className="font-serif text-base leading-tight line-clamp-2">{group.name}</div>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className={`relative h-1.5 ${band}`} />
+        <div className="relative flex flex-1 flex-col gap-1 p-2.5">
+          <div className="font-serif text-[13px] leading-tight line-clamp-2 min-h-[2.4em]">{group.name}</div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             {live > 0 ? (
-              <span className="inline-flex items-center gap-1 text-forest">
+              <span className="inline-flex items-center gap-1 text-forest font-medium">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+                  <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
                 </span>
                 {live} live
               </span>
+            ) : next ? (
+              <span className="text-foreground/70">{next}</span>
             ) : week > 0 ? (
-              <span>{week} this week</span>
+              <span>{week}/wk</span>
             ) : (
-              <span>{group.member_count.toLocaleString()} walkers</span>
+              <span>{group.member_count.toLocaleString()}</span>
             )}
-            {next && !live && <span className="opacity-50">· {next}</span>}
           </div>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-            className={`relative mt-auto self-start inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition ${joined ? "border border-forest/30 text-forest" : "bg-forest text-primary-foreground hover:opacity-90"}`}
+            aria-label={joined ? "Leave" : "Join"}
+            className={`relative mt-auto self-start inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition ${joined ? "border border-forest/30 text-forest bg-card/50" : "bg-forest text-primary-foreground hover:opacity-90"}`}
           >
-            {joined ? <><Check className="h-3 w-3" />Joined</> : <><Plus className="h-3 w-3" />Join</>}
+            {joined ? <><Check className="h-2.5 w-2.5" />Joined</> : <><Plus className="h-2.5 w-2.5" />Join</>}
           </button>
         </div>
       </li>

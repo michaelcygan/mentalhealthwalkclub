@@ -1,80 +1,100 @@
-# Groups — Pass 6: Niches reimagined + 2026 polish
+# Groups — Pass 7: density, surface consolidation, mobile-native
 
-Two main moves: (1) shrink and segment **Find your tribe** while giving every niche real photographic life through staggered crossfading slideshows, and (2) layer in cutting-edge details that make the whole page feel alive without ever shouting.
+The page works. It just sprawls. We have **4 Vibe sections** + **Yours / For you / Near you / Trending** = 8 stacked horizontal rails, each with its own eyebrow, title, blurb, "See all" button, and a row of 220px cards where mobile sees ~2 at a time. That's the screenshot's core problem: enormous chrome-to-content ratio.
 
-## 1. "Find your tribe" — segmented & dense
+Two structural collapses, one new mode, and a tight set of mobile-native primitives — almost entirely reusing existing components.
 
-**Current state:** 26 niches as huge 2-col emoji tiles dump ~13 rows of vertical real estate. They dominate the page and feel taller than the city tiles above them.
+## 1. Collapse "Today for you" — fold 4 sections into 1 stacked surface
 
-**New layout (`src/components/groups/niche-collection.tsx`)**:
+**New: `src/components/groups/today-panel.tsx`** (replaces inline Yours / For you / Near you / Trending blocks in `groups-tab.tsx`).
 
-- A single section: eyebrow + serif title + sub. Below it, a thin pill-tab strip:
-  - `All · Time of day · With others · Phone-free · Work & life · Mood`
-- Tile sizing tightened from 2/3/4-col to **3/4/6-col** (`grid-cols-3 sm:grid-cols-4 md:grid-cols-6`), with smaller padding. Cuts vertical footprint roughly in half.
-- Inactive tabs are crossfaded out with a 200ms fade so the niches feel like a single living surface rather than a jumpy filter.
-- A subtle **auto-drift horizontal scroll** kicks in only when the active tab has more than fits the row(s); pauses on hover/touch (reuse PulseRail's rAF pattern). Default tab is "All" with vertical wrap.
-- **Tab classification map** (deterministic, by slug):
-  - Time: 5am, sunrise, sunset, night-owls, lunchbreak, shift, rainy
-  - With others: dog-parents, stroller, empty-nesters, solo-travelers, caregivers, healthcare, teachers, founders
-  - Phone-free: doomscroll, phone-free, silent, walk-and-pray, gratitude
-  - Audio: one-podcast, audiobook
-  - Mood: rage, hot-girl, gratitude
+A single section titled **"Today"** with a **segmented control** (sister of NicheCollection's tabs):
 
-## 2. Niche tiles get photos — staggered crossfade slideshow
+`Yours · For you · Near you · Trending`
 
-Each niche gets **4 thematically-tuned photos** that crossfade on a slow, randomized cadence so the page reads like a quietly breathing wall of imagery (not a flashing ad).
+- Tabs only render if their bucket is non-empty; default is whichever has the most weight (Yours > For you > Near > Trending).
+- Body is the existing `variant="rail"` carousel — but rail cards get tightened from `w-[220px]` → `w-[176px]` and gain a **route sparkline thumbnail** (reuses `route-sparkline.tsx`) + tiny weather glyph when relevant. Same primitive, denser surface.
+- A small "See all →" link beside the segmented control opens the existing VibeCollection-style bottom sheet for the active tab.
+- **Net win:** 4 sections × (eyebrow + h2 + carousel ≈ 180px) → 1 section ≈ 220px. ~500px reclaimed, no info lost.
 
-**Asset pipeline:**
-- New folder: `public/niche-covers/<slug>/{1..4}.webp`, plus `lqip` blur entries.
-- Generate via `imagegen` (fast tier) at 768×768, with prompts engineered per niche (e.g. dog-parents → "soft morning light, two friends walking dogs through brownstone street, candid, film grain, no faces visible"). Faceless / from-behind / atmospheric framing across the board to keep tone calm and inclusive.
-- Compress with a sibling of `scripts/compress-covers.mjs` → `scripts/compress-niches.mjs`. WebP q60, generate base64 LQIP for blur-up.
-- Registry: `src/data/niche-covers.ts` exporting `NICHE_COVERS: Record<slug, { blur: string[]; count: number }>` and a `nicheUrl(slug, i)` helper.
+## 2. Collapse the 4 Vibe sections into 1 "Moods" surface
 
-**Slideshow component (`src/components/groups/niche-tile.tsx`)**:
-- Replaces the emoji-only `variant="niche"` rendering inside `GroupCard` (or wrapped in the niche collection directly).
-- 4 stacked `<img>` layers with `opacity-0/100` + `transition-opacity duration-[1400ms]`.
-- Crossfade interval **6–9s, randomized per tile**, plus a per-tile **start delay (0–4s)** so neighbors never flip at the same instant. Zero coordinated rhythm = the elegant "slowly refreshing tiles" feel the user described.
-- IntersectionObserver pauses the timer when the tile leaves the viewport and on `prefers-reduced-motion` (then it just shows photo #1).
-- `document.visibilityState !== 'visible'` also pauses (saves CPU on backgrounded tabs).
-- LQIP blur as background; first photo `loading="eager"`, rest `loading="lazy"` + `decoding="async"`.
-- Foreground content stays: emoji glyph (smaller, top-left, soft white pill), bottom gradient, serif name, live/week count. Joined check pill top-right.
+**New: `src/components/groups/moods-collection.tsx`** — same shape as `NicheCollection`, replacing the four `<VibeCollection />` calls in `groups-tab.tsx`.
 
-## 3. 2026 cutting-edge polish
+- One section: eyebrow `MOODS` + serif title "By how it feels" + segmented strip:  
+  `When it's heavy · Daily resets · Slow & silent · With others`
+- Body: a 2-col grid of **horizontal mini cards** (reuse `variant="mini"`) so mobile shows 6+ groups at a glance instead of 2 rail cards. Density ~3×.
+- Active tab persists in `useState` (no URL sync). Tab swap uses the same 200ms crossfade (`niche-grid-fade` keyframe already exists).
+- Keeps the 4-vibe taxonomy intact in a single section instead of four. **Saves ~700px** on mobile.
 
-Small, deliberate moves — no novelty for novelty's sake.
+## 3. New mode: **Map view toggle** at the header
 
-- **Spring-feel chip taps**: replace `tap-press` on the chip row with a CSS view-transition-friendly scale+blur micro-bounce; respects reduced-motion.
-- **Scroll-linked eyebrow reveal**: section eyebrows (NICHES, TRENDING, etc.) animate in via `animation-timeline: view()` where supported, falling back to existing `card-in`. ~6 lines in `styles.css`, progressively enhanced.
-- **Color-aware live dot**: the live pulse ring picks up `--forest` via `color-mix` so it threads consistently in light/dark.
-- **Section spacers**: tighten `space-y-7` → `space-y-6` and add a hairline divider only between Niches and CityGallery (others rely on eyebrow rhythm). Cuts ~80px of dead air.
-- **CityGallery featured count**: bump from 9 → 10 on md+ to fill the row evenly; tighten gap from 2 → 1.5.
-- **Header micro-stat ticker**: the "X walking right now" number gets a subtle 600ms count-up when it changes (rAF, no library), so the page feels live without distracting.
-- **Pulse rail respects pointer-coarse**: on touch, swap auto-drift speed from 18px/s → 12px/s — feels less anxious on phones.
-- **Prefetch on hover**: niche/city/rail cards call `router.preloadRoute({ to: '/groups/$slug', params })` on `pointerenter`. Detail sheet snaps open instantly.
-- **`content-visibility: auto`** on the four large below-the-fold sections (Trending, Vibes, Niches, CityGallery). Free paint perf, especially on low-end Android.
-- **Focus ring polish**: unify to `focus-visible:outline-forest/50` everywhere (audit GroupCard variants — currently consistent, but the new NicheTile must match).
+A two-pill segmented in the sticky filter row: `Feed · Map`. (Reuses existing `group-live-map.tsx` primitive — already in-repo.)
 
-## Technical notes
+- Map mode renders a single full-width `GroupLiveMap` showing every group with `live > 0` or `nextStart < 90 min` as pins, sized by `walkersWeek`. Tap a pin → bottom-sheet `GroupCard` (mini variant) with Join + Open.
+- Feed mode = current page.
+- State is local; toggle pill uses the same `chip-spring` micro-bounce.
+- Lets the user *spatially* browse what's happening — a 2026-feel move that costs ~30 lines because the map and pulse data already exist.
 
-- Niche photo generation runs as a one-time script. Budget: 26 slugs × 4 = 104 images, ~1.4MB total after WebP. Acceptable.
-- Slideshow timer uses a single `setTimeout` per tile (not `setInterval`) so jitter accumulates differently per tile and the offset stays organic across hours.
-- Tab state lives in `useState` inside the new niche component — no URL sync (these are browse helpers, not deep links).
-- No DB / RLS / auth changes. No new packages. No edge functions.
+## 4. Mobile-native primitives (small, surgical)
 
-## Files touched
+A new helper `src/lib/mobile.ts` exporting:
+
+```ts
+export const haptic = (ms = 8) => navigator.vibrate?.(ms);
+export const share = (data: ShareData) => navigator.share?.(data) ?? Promise.reject();
+```
+
+Wired in:
+- **Haptic on Join/Leave** — `useGroupActions.toggleJoin` triggers an 8ms tick on success. iOS Safari ignores `vibrate` (no penalty), Android responds.
+- **Native share** on group cards — long-press a card on touch (≥500ms via `pointerdown`/`pointerup` + timeout) opens `navigator.share` with `{ title, text, url: /groups/<slug> }`. Falls back to copy-link toast.
+- **Long-press peek** — same long-press on niche/rail cards (when not sharing) opens a tiny popover sheet (reuse `Sheet` side="bottom" snap) showing description + Join/Open. Avoids navigation for browse-y taps.
+- **Pull-to-refresh** — `use-pull-to-refresh.ts` already exists; wire into `groups-tab.tsx` calling `refresh()` from `useGroupsFeed`. Visible chevron + haptic on threshold.
+- **Scroll-driven section eyebrows** — already partially in via `eyebrow-rise`; extend to all section eyebrows with `animation-timeline: view()` (progressive enhancement, ~6 lines in `styles.css`).
+
+## 5. Header & search — tighter, more alive
+
+- Header collapses to a single line on scroll (`use-scroll-direction.ts` is already in-repo): "Groups · {totalWalkers} · {liveDisplay} live" with the search bar staying sticky. Saves ~80px once scrolled.
+- Search bar gains an inline **"Try:" rotator** showing one of `quiet · sunrise · dog parents · phone-free · {myCity}` every 4s as a placeholder hint when the input is empty. Reduces decision paralysis; zero net height.
+- Filter chips get a leading **count badge** when active (`Live now · 3`) so users see what they've narrowed to without re-reading.
+
+## 6. Rail card upgrade — same primitive, more signal
+
+Edit `variant="rail"` in `group-card.tsx`:
+- Width: `w-[220px]` → `w-[176px]`.
+- Add a 38px-tall thumbnail strip at the top: route sparkline if available, else theme-tinted gradient with the city/niche emoji floating bottom-right.
+- Keep the join button — but make the whole card a single tap target with a separate Join chip (12px tall, top-right).
+- Live ring ticks visually at 1.2s intervals (`city-pulse-ring` exists).
+
+## 7. 2026 polish (tiny moves, big feel)
+
+- **View Transitions API** on tab swaps in TodayPanel/MoodsCollection/NicheCollection — wraps `setTab` in `document.startViewTransition` when supported. Section content morphs instead of flickers.
+- **`color-mix`** for live ring opacity by tab age — older tabs fade their ring tone slightly.
+- **`@container` queries** on the MoodsCollection grid → switches to 3-col on tablets without a media query.
+- **`scroll-snap-stop: always`** on the Pulse rail so swipes settle on the next pill, not coast past it.
+- **Prefetch on `pointerenter`** already added in NicheTile; extend to TodayPanel rail cards (one-line addition).
+- **`text-wrap: balance`** on all serif h2s.
+
+## File map
 
 **New**
-- `src/components/groups/niche-collection.tsx` (tabs + grid + auto-drift)
-- `src/components/groups/niche-tile.tsx` (crossfading photo tile)
-- `src/data/niche-covers.ts` (registry + LQIP)
-- `scripts/compress-niches.mjs` (sharp pipeline)
-- 104 × `public/niche-covers/<slug>/<n>.webp`
+- `src/components/groups/today-panel.tsx` — segmented "Today" surface
+- `src/components/groups/moods-collection.tsx` — segmented "Moods" surface
+- `src/components/groups/groups-map-view.tsx` — wraps existing GroupLiveMap with bottom-sheet card peek
+- `src/lib/mobile.ts` — `haptic` + `share` (~10 lines)
 
 **Edited**
-- `src/components/groups-tab.tsx` — swap inline niche grid for `<NicheCollection>`; tighten spacing; header count-up.
-- `src/components/group-card.tsx` — niche variant delegates to `NicheTile` when covers exist.
-- `src/styles.css` — view-timeline eyebrow, refined tap-press, niche crossfade keyframe (defensive fallback).
+- `src/components/groups-tab.tsx` — replace 4 vibes + 4 for-you blocks with the two new surfaces; add Feed/Map toggle; sticky-collapse header; PTR wiring
+- `src/components/group-card.tsx` — rail variant tightening + thumbnail; long-press handler in tile/rail
+- `src/components/groups/pulse-rail.tsx` — `scroll-snap-stop: always`
+- `src/hooks/use-group-actions.ts` — haptic on join/leave success
+- `src/styles.css` — view-timeline eyebrow extension, container query helper
 
 ## Out of scope
-- Niche detail page redesign (its hero would benefit from these photos too — flag for next pass).
-- Any backend / data shape changes.
+- Backend / RLS / data shape changes
+- Group detail route (already polished this pass)
+- New imagery (we have niche + city covers already)
+- Removing primitives — every change reuses existing variants/components
+
+## Net effect on the screenshot's pain
+Two side-by-side rail cards per section × 4 sections becomes **one segmented surface with 6+ visible cards**. Page length on mobile drops by an estimated 35–40%, and the surfaces that remain feel intentional rather than repetitive.
