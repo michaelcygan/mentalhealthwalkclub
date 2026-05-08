@@ -195,15 +195,14 @@ export const joinFriendWalk = createServerFn({ method: "POST" })
     // Scheduled flow: host opens it on first join; others must wait until start time.
     if (room.status === "scheduled") {
       const startMs = room.starts_at ? new Date(room.starts_at).getTime() : 0;
-      const isHost = room.host_user_id === userId;
       if (!isHost && startMs > Date.now()) throw new Error("this walk hasn't started yet");
       await supabase.from("audio_rooms").update({ status: "open" }).eq("id", room.id);
     }
 
-    // Auto-listener if room is at speaker capacity
+    // Speakers stay capped at 4. Anyone over that joins the lobby (signed-in listener pool).
     const speakerCount = room.current_participant_count ?? 0;
     const forceListener = data.asListener || speakerCount >= (room.max_participants ?? 4);
-    const participantRole = forceListener ? "listener" : "speaker";
+    const participantRole = forceListener ? "lobby" : "speaker";
 
     // Create a fresh walk_session for this joiner
     const { data: walk, error: walkErr } = await supabase
