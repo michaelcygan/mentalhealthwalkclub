@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search, Radio, MapPin, Sparkles, Headphones, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,11 +7,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { GroupCard } from "@/components/group-card";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
-
-export const Route = createFileRoute("/groups/")({
-  component: GroupsTab,
-  head: () => ({ meta: [{ title: "Groups — Walk Club" }] }),
-});
 
 type Chip = "near" | "live" | "upcoming" | "quiet" | "audio";
 
