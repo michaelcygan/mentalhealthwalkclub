@@ -9,7 +9,7 @@ import { GroupCard } from "@/components/group-card";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/groups")({
+export const Route = createFileRoute("/groups/")({
   component: GroupsTab,
   head: () => ({ meta: [{ title: "Groups — Walk Club" }] }),
 });

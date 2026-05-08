@@ -12,10 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as JournalRouteImport } from './routes/journal'
-import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GroupsIndexRouteImport } from './routes/groups.index'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
@@ -38,11 +38,6 @@ const JournalRoute = JournalRouteImport.update({
   path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GroupsRoute = GroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -58,10 +53,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsIndexRoute = GroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GroupsSlugRoute = GroupsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => GroupsRoute,
+  id: '/groups/$slug',
+  path: '/groups/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsNewRoute = EventsNewRouteImport.update({
   id: '/new',
@@ -95,13 +95,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/groups/': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -110,13 +110,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/groups': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -126,13 +126,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/groups/': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -143,13 +143,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
-    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/groups/'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -158,13 +158,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
-    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/groups'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -173,13 +173,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
-    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/groups/'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -189,10 +189,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
-  GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
   ProfileRoute: typeof ProfileRoute
   WelcomeRoute: typeof WelcomeRoute
+  GroupsSlugRoute: typeof GroupsSlugRoute
+  GroupsIndexRoute: typeof GroupsIndexRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
   ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
@@ -221,13 +222,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/groups': {
-      id: '/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof GroupsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/events': {
       id: '/events'
       path: '/events'
@@ -249,12 +243,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups/': {
+      id: '/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof GroupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/groups/$slug': {
       id: '/groups/$slug'
-      path: '/$slug'
+      path: '/groups/$slug'
       fullPath: '/groups/$slug'
       preLoaderRoute: typeof GroupsSlugRouteImport
-      parentRoute: typeof GroupsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/events/new': {
       id: '/events/new'
@@ -307,25 +308,15 @@ const EventsRouteChildren: EventsRouteChildren = {
 const EventsRouteWithChildren =
   EventsRoute._addFileChildren(EventsRouteChildren)
 
-interface GroupsRouteChildren {
-  GroupsSlugRoute: typeof GroupsSlugRoute
-}
-
-const GroupsRouteChildren: GroupsRouteChildren = {
-  GroupsSlugRoute: GroupsSlugRoute,
-}
-
-const GroupsRouteWithChildren =
-  GroupsRoute._addFileChildren(GroupsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
-  GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
   ProfileRoute: ProfileRoute,
   WelcomeRoute: WelcomeRoute,
+  GroupsSlugRoute: GroupsSlugRoute,
+  GroupsIndexRoute: GroupsIndexRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
   ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
