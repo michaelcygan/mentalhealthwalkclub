@@ -20,6 +20,7 @@ interface EventRow {
   attendee_count: number; donation_note: string | null; vibe: string | null; event_type: string;
   status: string; host_user_id: string | null; started_at: string | null; ended_at: string | null;
   audio_room_id: string | null; breakout_size: number; breakout_rotate_minutes: number | null;
+  visibility: string; group_id: string | null;
 }
 
 interface Attendee { user_id: string; status: string; checked_in_at: string | null; profiles?: { display_name: string | null } | null }
