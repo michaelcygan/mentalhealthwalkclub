@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { ChevronRight, Search, X, Heart, Radio } from "lucide-react";
+import { ChevronRight, Search, X, Heart, Radio, Sparkles, Moon, Compass } from "lucide-react";
 import { GroupCard } from "@/components/group-card";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
 
