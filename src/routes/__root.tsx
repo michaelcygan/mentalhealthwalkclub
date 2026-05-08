@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 import { NowPlayingBar } from "@/components/now-playing-bar";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { useLiveCount } from "@/hooks/use-live-count";
 
 function NotFoundComponent() {
   return (
@@ -40,9 +41,15 @@ export const Route = createRootRoute({
       { property: "og:description", content: "You don't have to walk through it alone." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#2c5340" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Walk Club" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" },
@@ -266,14 +273,7 @@ function RootComponent() {
 }
 
 function LiveSidebarPill() {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    const load = () => supabase.from("audio_rooms").select("current_participant_count").eq("status", "open").gt("current_participant_count", 0)
-      .then(({ data }) => setCount((data ?? []).reduce((s, r) => s + (r.current_participant_count ?? 0), 0)));
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, []);
+  const count = useLiveCount();
   if (count === 0) return null;
   return (
     <Link to="/" className="mt-4 flex items-center gap-2 rounded-full border border-forest/30 bg-accent/40 px-3 py-1.5 text-xs text-forest hover:bg-accent/60">

@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { BookHeart, Award, Footprints } from "lucide-react";
+import { BookHeart, Award, Footprints, Share2 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
+import { share, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -60,6 +61,43 @@ function JournalTab() {
     return weeks;
   }, [walks]);
   const maxWk = Math.max(1, ...weeklyMins);
+
+  // 30-day mood arc — average mood_after_score per day, smoothed sparkline
+  const moodArc = useMemo(() => {
+    const days: { score: number | null }[] = Array.from({ length: 30 }, () => ({ score: null }));
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const buckets = new Map<number, number[]>();
+    walks.forEach((w) => {
+      if (w.mood_after_score == null) return;
+      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 30) return;
+      const k = 29 - diffDays;
+      const arr = buckets.get(k) ?? [];
+      arr.push(w.mood_after_score);
+      buckets.set(k, arr);
+    });
+    buckets.forEach((arr, k) => { days[k] = { score: arr.reduce((s, n) => s + n, 0) / arr.length }; });
+    return days;
+  }, [walks]);
+  const moodAvg = useMemo(() => {
+    const vals = moodArc.map((d) => d.score).filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : null;
+  }, [moodArc]);
+
+  const onShareEntry = async (w: Walk) => {
+    haptics.tap();
+    const mins = Math.round((w.duration_seconds ?? 0) / 60);
+    const miles = ((w.distance_meters ?? 0) * 0.000621371).toFixed(2);
+    const date = new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const moodLine = w.mood_before && w.mood_after ? `${w.mood_before} → ${w.mood_after}` : (w.mood_after ?? "");
+    const lines = [
+      `🌿 ${date} — ${mins} min walk · ${miles} mi`,
+      moodLine && `mood: ${moodLine}`,
+      w.reflection_note && `“${w.reflection_note}”`,
+      "— shared from Walk Club",
+    ].filter(Boolean) as string[];
+    await share({ title: "A walk worth remembering", text: lines.join("\n") });
+  };
 
   // Memory ribbon — group walks into 8 most-recent weeks for a horizontal "cards of a week" scroll
   const ribbonWeeks = useMemo(() => {
@@ -136,9 +174,16 @@ function JournalTab() {
             </div>
           </div>
         </div>
+        {moodAvg !== null && (
+          <div className="mt-5 border-t border-border pt-4">
+            <div className="flex items-baseline justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">Mood arc · 30 days</div>
+              <div className="font-serif text-sm text-muted-foreground"><span className="text-foreground tabular-nums">{moodAvg.toFixed(1)}</span> avg after</div>
+            </div>
+            <MoodArc points={moodArc.map((d) => d.score)} />
+          </div>
+        )}
       </div>
-
-      {/* Memory ribbon — horizontally scroll-snapped weeks */}
       {walks.length > 0 && (
         <section className="space-y-2">
           <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Memory ribbon</div>
@@ -220,8 +265,8 @@ function JournalTab() {
                       const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
                       const active = selectedId === w.id;
                       return (
-                        <li key={w.id}>
-                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
+                        <li key={w.id} className="relative">
+                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 pr-12 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
                               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
@@ -240,6 +285,13 @@ function JournalTab() {
                               </div>
                             )}
                             {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onShareEntry(w); }}
+                            aria-label="Share walk"
+                            className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-accent/60 hover:text-forest"
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
                           </button>
                         </li>
                       );
@@ -306,5 +358,36 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
         </div>
       )}
     </div>
+  );
+}
+
+function MoodArc({ points }: { points: (number | null)[] }) {
+  const W = 320, H = 56, pad = 4;
+  const min = 1, max = 10;
+  const xs = points.map((_, i) => pad + (i * (W - pad * 2)) / (points.length - 1));
+  const ys = points.map((v) => v == null ? null : H - pad - ((v - min) / (max - min)) * (H - pad * 2));
+  // Build polyline through known points only
+  let d = "";
+  let started = false;
+  ys.forEach((y, i) => {
+    if (y == null) return;
+    d += (started ? " L " : "M ") + xs[i].toFixed(1) + " " + y.toFixed(1);
+    started = true;
+  });
+  const last = [...ys].reverse().find((y) => y != null);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 h-14 w-full" preserveAspectRatio="none" aria-hidden>
+      <defs>
+        <linearGradient id="moodArcStroke" x1="0" x2="1">
+          <stop offset="0%" stopColor="oklch(0.65 0.11 45)" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="oklch(0.36 0.05 155)" />
+        </linearGradient>
+      </defs>
+      {d && <path d={d} fill="none" stroke="url(#moodArcStroke)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />}
+      {points.map((v, i) => v != null ? (
+        <circle key={i} cx={xs[i]} cy={ys[i] ?? 0} r={1.6} fill="oklch(0.36 0.05 155)" opacity={0.7} />
+      ) : null)}
+      {last != null && <circle cx={xs[xs.length - 1]} cy={last} r={3} fill="oklch(0.36 0.05 155)" />}
+    </svg>
   );
 }

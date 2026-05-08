@@ -14,6 +14,8 @@ import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
 import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
+import { HeroGradient } from "@/components/hero-gradient";
+import { useLiveCount } from "@/hooks/use-live-count";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
@@ -155,13 +157,6 @@ function WalkTab() {
     const hour = new Date().getHours();
     const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
-    // Time-of-day hero gradient
-    const heroGrad =
-      hour < 5 ? "from-slate-700/90 via-forest/60 to-forest" :
-      hour < 9 ? "from-amber-200/70 via-rose-200/40 to-cream" :
-      hour < 17 ? "from-sage/60 via-cream to-cream" :
-      hour < 20 ? "from-clay/60 via-amber-200/40 to-cream" :
-      "from-indigo-300/40 via-forest/40 to-forest/60";
     const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
     const quickFeel = (mood: string, score: number) => {
       haptics.tap();
@@ -169,7 +164,7 @@ function WalkTab() {
     };
     return (
       <div className="space-y-5">
-        <header className={`overflow-hidden rounded-3xl bg-gradient-to-br ${heroGrad} p-6 shadow-soft md:p-8`}>
+        <HeroGradient className="p-6 md:p-8">
           <p className="font-serif text-xs italic text-foreground/70">Come as you are. Walk at your pace.</p>
           <h1 className="mt-1 font-serif text-2xl leading-tight md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
           <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-forest/80">How are you arriving?</p>
@@ -182,7 +177,7 @@ function WalkTab() {
               </button>
             ))}
           </div>
-        </header>
+        </HeroGradient>
 
         {activeWalkId && (
           <Link to={"/walk/active/$id" as never} params={{ id: activeWalkId } as never} className="flex items-center justify-between gap-3 rounded-2xl border border-forest/40 bg-accent/40 p-4 transition hover:-translate-y-px">
@@ -201,9 +196,7 @@ function WalkTab() {
           </div>
         )}
 
-        <Button onClick={() => { haptics.soft(); setWalkType("solo"); setStep(1); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.99] hover:opacity-90">
-          <Footprints className="mr-2 h-5 w-5" /> Start a walk
-        </Button>
+        <StartCta onStart={() => { haptics.soft(); setWalkType("solo"); setStep(1); }} />
 
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
@@ -280,6 +273,29 @@ function ModePill({ icon: Icon, label, onClick }: { icon: typeof Footprints; lab
       <Icon className="h-4 w-4 text-forest" />
       {label}
     </button>
+  );
+}
+
+function StartCta({ onStart }: { onStart: () => void }) {
+  const live = useLiveCount();
+  return (
+    <div className="relative">
+      <Button
+        onClick={onStart}
+        className="breathe relative h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.99] hover:opacity-90"
+      >
+        <Footprints className="mr-2 h-5 w-5" /> Start a walk
+      </Button>
+      {live > 0 && (
+        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
+          </span>
+          <span><span className="font-medium text-forest tabular-nums">{live}</span> walking & talking now</span>
+        </div>
+      )}
+    </div>
   );
 }
 

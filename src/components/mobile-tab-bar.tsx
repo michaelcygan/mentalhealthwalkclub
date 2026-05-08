@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock, DownloadCloud } from "lucide-react";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { useLiveCount } from "@/hooks/use-live-count";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -28,6 +29,7 @@ export function MobileTabBar() {
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
   const liveCount = useLiveCount();
+  const pwa = usePwaInstall();
 
   // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -147,7 +149,23 @@ export function MobileTabBar() {
               <div className="flex-1">
                 <div className="font-serif text-base">Schedule a Friend Walk</div>
                 <div className="text-[11px] text-muted-foreground">pick a time later this week — share the invite now</div>
-              </div>
+            {pwa.canInstall && (
+              <button
+                type="button"
+                onClick={async () => { haptics.tap(); const ok = await pwa.install(); if (ok) { setSheetOpen(false); toast("Added to your home screen"); } }}
+                className="col-span-2 flex items-center gap-3 rounded-2xl border border-forest/30 bg-accent/20 p-3 text-left transition active:scale-[0.98] hover:border-forest/50"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-forest/15">
+                  <DownloadCloud className="h-4 w-4 text-forest" />
+                </span>
+                <div className="flex-1">
+                  <div className="font-serif text-sm">Add to home screen</div>
+                  <div className="text-[11px] text-muted-foreground">one-tap launch, no app store</div>
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-forest">Install</span>
+              </button>
+            )}
+          </div>
             </button>
           </div>
         </DrawerContent>
