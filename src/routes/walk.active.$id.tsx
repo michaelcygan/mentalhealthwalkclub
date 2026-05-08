@@ -21,7 +21,9 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
   intention: string | null; started_at: string; status: string; guided_track_id: string | null;
+  audio_room_id: string | null;
 }
+interface FriendRoom { id: string; share_code: string | null; host_user_id: string | null; }
 
 type GpsState = "idle" | "live" | "weak" | "denied";
 
