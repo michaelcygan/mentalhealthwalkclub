@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 import { share, haptics } from "@/lib/device";
+
+const GroupLiveMap = lazy(() => import("@/components/group-live-map"));
 
 export const Route = createFileRoute("/groups/$slug")({
   component: GroupDetail,
