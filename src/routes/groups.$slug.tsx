@@ -278,7 +278,7 @@ function GroupDetail() {
           </div>
           {isMember ? (
             <Button size="sm" onClick={onWelcome} disabled={welcomedKey === group.id} className="shrink-0 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />{welcomedKey === group.id ? "Sent" : "Welcome"}
+              <Sparkles className="mr-1.5 h-3.5 w-3.5 sparkle-twinkle" />{welcomedKey === group.id ? "Sent" : "Welcome"}
             </Button>
           ) : (
             <Button size="sm" onClick={() => toggleJoin(group, false, () => setIsMember(true))} className="shrink-0 rounded-full bg-forest text-primary-foreground hover:opacity-90">Join</Button>
