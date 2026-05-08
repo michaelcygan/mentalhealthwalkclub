@@ -366,6 +366,7 @@ function FacilitatePage() {
             <TimerRing
               startSeconds={visitDuration}
               onZero={() => setTimerDone(true)}
+              onTick={setElapsed}
             />
           </div>
         </div>
@@ -412,7 +413,7 @@ function FacilitatePage() {
         )}
       </div>
 
-      <PromptDrawer />
+      <WhisperPrompts elapsedSeconds={elapsed} totalSeconds={visitDuration} paused={showReport} />
 
       {showReport && visit && sessionId && (
         <ReportDialog
