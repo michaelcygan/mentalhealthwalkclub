@@ -399,9 +399,13 @@ export const joinScheduledWalk = createServerFn({ method: "POST" })
         user_id: userId,
         walk_session_id: walkSessionId,
       });
+      // Re-balance after late joins
+      if (ev.breakout_size > 0) {
+        await consolidatePodsImpl(supabase, ev.id).catch(() => {});
+      }
     }
 
-    return { roomId: targetRoomId, walkSessionId, podIndex, podCount };
+    return { requiresJoin: false as const, roomId: targetRoomId, walkSessionId, podIndex, podCount };
   });
 
 const ReshuffleSchema = z.object({ eventId: z.string().uuid() });
