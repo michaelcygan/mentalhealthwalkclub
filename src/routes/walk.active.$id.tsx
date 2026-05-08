@@ -13,6 +13,8 @@ import { GuidedPlayer } from "@/components/guided-player";
 import { ListenerPool } from "@/components/friend-walk/listener-pool";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
+import { AmbientPill } from "@/components/ambient-pill";
+import { useAmbient } from "@/lib/ambient-context";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
