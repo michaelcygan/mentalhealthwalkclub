@@ -97,7 +97,7 @@ export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUr
 
 async function renderCard(
   canvas: HTMLCanvasElement | null,
-  opts: { hostName: string; hostAvatarUrl?: string | null; url: string; code: string }
+  opts: { hostName: string; hostAvatarUrl?: string | null; url: string; code: string; whenLabel?: string | null }
 ): Promise<string> {
   if (!canvas) return "";
   const ctx = canvas.getContext("2d");
