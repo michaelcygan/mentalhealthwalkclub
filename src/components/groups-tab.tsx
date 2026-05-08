@@ -143,28 +143,29 @@ export function GroupsTab() {
               </button>
             )}
           </div>
-          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
+          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {CHIPS.map(({ id, label, icon: Icon }) => {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
+              const isLive = id === "live";
               return (
                 <button
                   key={id}
                   disabled={dim}
                   onClick={() => toggleChip(id)}
-                  className={`tap-press inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
+                  className={`tap-press inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                     on ? "border-forest bg-forest text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
                 >
-                  <Icon className="h-3 w-3" />{label}
+                  <Icon className={`h-3 w-3 ${isLive && !on ? "live-pulse text-forest" : ""}`} />{label}
                 </button>
               );
             })}
             {(active.size > 0 || q) && (
               <button
                 onClick={() => { setActive(new Set()); setQ(""); }}
-                className="tap-press inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="tap-press inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3" /> Clear
               </button>
