@@ -346,6 +346,10 @@ function EventDetail() {
         </Suspense>
       )}
 
+      {completed && !isAudio && (
+        <EventHostRoute eventId={event.id} />
+      )}
+
       {/* Action area */}
       {!completed && memberGated && (
         <div className="rounded-2xl border border-forest/20 bg-accent/40 p-5 text-center">
