@@ -21,9 +21,7 @@ function AuthPage() {
     <div className="min-h-screen gradient-warm">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-forest shadow-soft">
-            <Footprints className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <LogoStamp tone="dark" size={44} />
           <div>
             <h1 className="font-serif text-2xl leading-tight text-foreground">Mental Health Walk Club</h1>
             <p className="text-xs text-muted-foreground">You don't have to walk through it alone.</p>
