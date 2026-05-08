@@ -77,6 +77,9 @@ export type Database = {
       }
       audio_rooms: {
         Row: {
+          allow_guest_listeners: boolean
+          audience_count: number
+          audience_mode: string
           created_at: string
           current_participant_count: number
           ends_at: string | null
@@ -88,9 +91,12 @@ export type Database = {
           group_id: string | null
           host_user_id: string | null
           id: string
+          is_locked: boolean
+          lobby_capacity: number
           max_participants: number
           parent_room_id: string | null
           pod_index: number | null
+          reactions_enabled: boolean
           requires_active_walk: boolean
           room_type: string
           scheduled_event_id: string | null
@@ -102,6 +108,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_guest_listeners?: boolean
+          audience_count?: number
+          audience_mode?: string
           created_at?: string
           current_participant_count?: number
           ends_at?: string | null
@@ -113,9 +122,12 @@ export type Database = {
           group_id?: string | null
           host_user_id?: string | null
           id?: string
+          is_locked?: boolean
+          lobby_capacity?: number
           max_participants?: number
           parent_room_id?: string | null
           pod_index?: number | null
+          reactions_enabled?: boolean
           requires_active_walk?: boolean
           room_type?: string
           scheduled_event_id?: string | null
@@ -127,6 +139,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_guest_listeners?: boolean
+          audience_count?: number
+          audience_mode?: string
           created_at?: string
           current_participant_count?: number
           ends_at?: string | null
@@ -138,9 +153,12 @@ export type Database = {
           group_id?: string | null
           host_user_id?: string | null
           id?: string
+          is_locked?: boolean
+          lobby_capacity?: number
           max_participants?: number
           parent_room_id?: string | null
           pod_index?: number | null
+          reactions_enabled?: boolean
           requires_active_walk?: boolean
           room_type?: string
           scheduled_event_id?: string | null
@@ -998,6 +1016,57 @@ export type Database = {
           state?: string | null
           updated_at?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      room_audience_presence: {
+        Row: {
+          audio_room_id: string
+          guest_id: string | null
+          id: string
+          last_seen_at: string
+          user_id: string | null
+        }
+        Insert: {
+          audio_room_id: string
+          guest_id?: string | null
+          id?: string
+          last_seen_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          audio_room_id?: string
+          guest_id?: string | null
+          id?: string
+          last_seen_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      room_reactions: {
+        Row: {
+          audio_room_id: string
+          created_at: string
+          guest_id: string | null
+          id: string
+          kind: string
+          user_id: string | null
+        }
+        Insert: {
+          audio_room_id: string
+          created_at?: string
+          guest_id?: string | null
+          id?: string
+          kind: string
+          user_id?: string | null
+        }
+        Update: {
+          audio_room_id?: string
+          created_at?: string
+          guest_id?: string | null
+          id?: string
+          kind?: string
+          user_id?: string | null
         }
         Relationships: []
       }
