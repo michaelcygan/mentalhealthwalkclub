@@ -181,7 +181,8 @@ function FriendWalkLanding() {
 
         {ended && (
           <div className="mt-10 space-y-4">
-            <p className="font-serif text-lg italic">this walk has wrapped.</p>
+            <p className="font-serif text-lg italic">{wasCanceled ? "this walk was called off." : "this walk has wrapped."}</p>
+            {wasCanceled && <p className="text-xs opacity-75">Catch them next time. 🌿</p>}
             <Link to="/" className="inline-block rounded-full bg-cream px-5 py-2.5 text-xs font-medium text-forest">start your own</Link>
           </div>
         )}
