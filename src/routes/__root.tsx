@@ -12,6 +12,7 @@ import { InboxBell } from "@/components/inbox-bell";
 import { NowPlayingBar } from "@/components/now-playing-bar";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { useLiveCount } from "@/hooks/use-live-count";
+import { LogoStamp } from "@/components/logo-stamp";
 
 function NotFoundComponent() {
   return (
@@ -44,7 +45,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#2c5340" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Walk Club" },
+      { name: "apple-mobile-web-app-title", content: "MH Walk Club" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -131,11 +132,9 @@ function TabBar() {
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
         <Link to="/" className="mb-8 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-forest">
-            <Footprints className="h-4.5 w-4.5 text-primary-foreground" />
-          </div>
-          <span className="font-serif text-lg leading-tight text-sidebar-foreground">
-            Walk Club
+          <LogoStamp tone="dark" size={36} />
+          <span className="font-serif text-[15px] leading-tight text-sidebar-foreground">
+            Mental Health<br />Walk Club
           </span>
         </Link>
 
@@ -186,11 +185,8 @@ function TabBar() {
       {/* Mobile top bar — sign in for logged-out visitors */}
       {!user ? (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
-              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-serif text-sm">Walk Club</span>
+          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={32} />
           </Link>
           <div className="flex items-center gap-1">
             <button onClick={openWelcome} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">How it works</button>
@@ -199,11 +195,8 @@ function TabBar() {
         </header>
       ) : (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
-              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-serif text-sm">Walk Club</span>
+          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={32} />
           </Link>
           <div className="flex items-center gap-2">
             <ModeToggle compact />

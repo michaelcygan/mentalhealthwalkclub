@@ -19,7 +19,7 @@ import { useLiveCount } from "@/hooks/use-live-count";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
-  head: () => ({ meta: [{ title: "Walk — Mental Health Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Walk — Mental Health Mental Health Walk Club" }] }),
 });
 
 const MODE_PREFACE: Record<string, string> = {

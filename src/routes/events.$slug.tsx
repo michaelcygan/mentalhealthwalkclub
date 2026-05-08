@@ -15,10 +15,10 @@ export const Route = createFileRoute("/events/$slug")({
   component: EventDetail,
   head: ({ params }) => ({
     meta: [
-      { title: `Walk together — ${params.slug.replace(/-/g, " ")} · Walk Club` },
-      { name: "description", content: "Join this Walk Club gathering — a gentle walk, in-person or by audio. Real people, real sidewalks." },
+      { title: `Walk together — ${params.slug.replace(/-/g, " ")} · Mental Health Walk Club` },
+      { name: "description", content: "Join this Mental Health Walk Club gathering — a gentle walk, in-person or by audio. Real people, real sidewalks." },
       { property: "og:title", content: "You're invited to a walk." },
-      { property: "og:description", content: "A small, peer-supported walk on Walk Club. Tap to RSVP." },
+      { property: "og:description", content: "A small, peer-supported walk on Mental Health Walk Club. Tap to RSVP." },
       { property: "og:type", content: "event" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -298,7 +298,7 @@ function EventDetail() {
               haptics.tap();
               const when = new Date(event.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
               const ok = await share({
-                title: `${event.title} — Walk Club`,
+                title: `${event.title} — Mental Health Walk Club`,
                 text: `${isAudio ? "Walk & Talk" : "Local walk"} · ${when}${!isAudio && locationDisplay ? ` · ${locationDisplay}` : ""}`,
                 url: typeof window !== "undefined" ? window.location.href : undefined,
               });

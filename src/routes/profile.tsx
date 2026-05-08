@@ -13,7 +13,7 @@ import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
-  head: () => ({ meta: [{ title: "Profile — Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Profile — Mental Health Walk Club" }] }),
 });
 
 interface Profile {

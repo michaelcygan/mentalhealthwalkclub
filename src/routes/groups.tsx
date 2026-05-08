@@ -5,7 +5,7 @@ import { GroupsTab } from "@/components/groups-tab";
 
 export const Route = createFileRoute("/groups")({
   component: GroupsLayout,
-  head: () => ({ meta: [{ title: "Groups — Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Groups — Mental Health Walk Club" }] }),
 });
 
 function GroupsLayout() {

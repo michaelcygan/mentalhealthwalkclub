@@ -10,9 +10,9 @@ export const Route = createFileRoute("/welcome")({
   component: Welcome,
   head: () => ({
     meta: [
-      { title: "Welcome — Walk Club" },
+      { title: "Welcome — Mental Health Walk Club" },
       { name: "description", content: "A warmer way to walk through it. Solo, Walk & Talk, or Local — never alone." },
-      { property: "og:title", content: "Welcome to Walk Club" },
+      { property: "og:title", content: "Welcome to Mental Health Walk Club" },
       { property: "og:description", content: "You don't have to walk through it alone." },
     ],
   }),

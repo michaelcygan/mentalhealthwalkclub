@@ -12,7 +12,7 @@ import { share, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
-  head: () => ({ meta: [{ title: "Journal — Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Journal — Mental Health Walk Club" }] }),
 });
 
 interface Walk {
@@ -94,7 +94,7 @@ function JournalTab() {
       `🌿 ${date} — ${mins} min walk · ${miles} mi`,
       moodLine && `mood: ${moodLine}`,
       w.reflection_note && `“${w.reflection_note}”`,
-      "— shared from Walk Club",
+      "— shared from Mental Health Walk Club",
     ].filter(Boolean) as string[];
     await share({ title: "A walk worth remembering", text: lines.join("\n") });
   };

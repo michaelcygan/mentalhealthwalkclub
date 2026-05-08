@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 
 export const Route = createFileRoute("/events")({
   component: EventsTab,
-  head: () => ({ meta: [{ title: "Local Walks — Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Local Walks — Mental Health Walk Club" }] }),
 });
 
 interface Event {

@@ -1,6 +1,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Footprints, Headphones, MapPin, Lock, HeartHandshake } from "lucide-react";
+import { Headphones, MapPin, Lock, HeartHandshake, Footprints } from "lucide-react";
+import { LogoStamp } from "@/components/logo-stamp";
 
 interface Props {
   open: boolean;
@@ -15,9 +16,7 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
       <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border-border bg-card p-0 sm:max-w-lg">
         <div className="gradient-warm rounded-t-3xl px-7 py-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-forest shadow-soft">
-              <Footprints className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <LogoStamp tone="dark" size={44} />
             <div>
               <h2 className="font-serif text-2xl leading-tight text-foreground">Mental Health Walk Club</h2>
               <p className="text-xs text-muted-foreground">You don't have to walk through it alone.</p>
