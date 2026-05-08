@@ -11,21 +11,27 @@ interface Props {
   hostName: string;
   hostAvatarUrl?: string | null;
   shareCode: string;
+  /** ISO start time — when present, card renders as scheduled invite. */
+  startsAt?: string | null;
 }
 
 /** Renders a 1080×1920 IG-Story-ready share card to canvas + native share sheet. */
-export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUrl, shareCode }: Props) {
+export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUrl, shareCode, startsAt }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const url = typeof window !== "undefined" ? `${window.location.origin}/w/${shareCode}` : `/w/${shareCode}`;
+  const whenLabel = startsAt
+    ? new Date(startsAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
 
   useEffect(() => {
     if (!open) return;
-    void renderCard(canvasRef.current, { hostName, hostAvatarUrl, url, code: shareCode })
+    void renderCard(canvasRef.current, { hostName, hostAvatarUrl, url, code: shareCode, whenLabel })
       .then((dataUrl) => setPreviewUrl(dataUrl));
-  }, [open, hostName, hostAvatarUrl, url, shareCode]);
+  }, [open, hostName, hostAvatarUrl, url, shareCode, whenLabel]);
+
 
   const onShare = async () => {
     haptics.tap();
