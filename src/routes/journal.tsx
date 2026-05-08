@@ -431,6 +431,7 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
       const blob = await bakeShareCard(snapshotUrl, {
         miles, minutes: mins, steps: walk.steps, date,
         intention: walk.intention, moodBefore: walk.mood_before, moodAfter: walk.mood_after, walkType: walk.walk_type,
+        weather: walk.weather_at_end ? { tempF: walk.weather_at_end.tempF, label: walk.weather_at_end.label } : null,
       });
       if (!blob) throw new Error("bake failed");
       const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });
