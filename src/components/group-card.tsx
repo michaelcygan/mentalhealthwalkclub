@@ -113,7 +113,7 @@ export function GroupCard({
           aria-label={`Open ${group.name}`}
           className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest/50"
         />
-        <MoodThumb theme={group.theme} groupId={group.id} fallbackBand={band} size={36} />
+        <MoodThumb slug={group.slug} theme={group.theme} groupId={group.id} fallbackBand={band} size={40} />
         <div className="relative min-w-0 flex-1">
           <div className="truncate font-serif text-sm leading-tight">{group.name}</div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
