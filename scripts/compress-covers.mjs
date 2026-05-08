@@ -14,6 +14,22 @@ const TZ = {
   'chapter-austin': 'America/Chicago',
   'chapter-vancouver': 'America/Vancouver',
   'chapter-berlin': 'Europe/Berlin',
+  'chapter-philly': 'America/New_York',
+  'chapter-atlanta': 'America/New_York',
+  'chapter-denver': 'America/Denver',
+  'chapter-portland': 'America/Los_Angeles',
+  'chapter-phoenix': 'America/Phoenix',
+  'chapter-san-diego': 'America/Los_Angeles',
+  'chapter-twin-cities': 'America/Chicago',
+  'chapter-nashville': 'America/Chicago',
+  'chapter-nola': 'America/Chicago',
+  'chapter-detroit': 'America/Detroit',
+  'chapter-houston': 'America/Chicago',
+  'chapter-dfw': 'America/Chicago',
+  'chapter-vegas': 'America/Los_Angeles',
+  'chapter-montreal': 'America/Toronto',
+  'chapter-amsterdam': 'Europe/Amsterdam',
+  'chapter-dublin': 'Europe/Dublin',
 };
 
 const cities = readdirSync(ROOT).filter(d => {
