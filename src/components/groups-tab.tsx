@@ -190,8 +190,14 @@ export function GroupsTab() {
               ))}
             </ul>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              No groups match. Try clearing filters or a different word.
+            <div className="rounded-2xl border border-forest/20 bg-accent/30 p-8 text-center">
+              <div className="font-serif text-base text-foreground">Nothing matches that yet.</div>
+              <p className="mt-1 text-xs text-muted-foreground">Try a softer word, or open the door wider.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                <button onClick={() => { setQ("quiet"); setActive(new Set()); }} className="tap-press rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Try <span className="italic">quiet</span></button>
+                {myCity && <button onClick={() => { setQ(""); setActive(new Set(["near"] as Chip[])); }} className="tap-press rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Near {myCity}</button>}
+                <button onClick={() => { setQ(""); setActive(new Set()); }} className="tap-press rounded-full bg-forest px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90">Show all</button>
+              </div>
             </div>
           )}
         </section>
