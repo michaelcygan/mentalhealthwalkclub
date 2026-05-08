@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 import { share, haptics } from "@/lib/device";
+import { GroupRoutesMosaic } from "@/components/group-routes-mosaic";
 
 const GroupLiveMap = lazy(() => import("@/components/group-live-map"));
 
