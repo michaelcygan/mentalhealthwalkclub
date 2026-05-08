@@ -200,7 +200,7 @@ function SectionHeader({ liveCount, soonCount }: { liveCount: number; soonCount:
   return (
     <div className="flex items-baseline justify-between">
       <div className="flex items-center gap-2">
-        <Radio className={`h-3.5 w-3.5 ${liveCount > 0 ? "text-forest" : "text-muted-foreground"}`} />
+        <Radio className={`h-3.5 w-3.5 ${liveCount > 0 ? "text-forest live-pulse" : "text-muted-foreground"}`} />
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Happening now</span>
       </div>
       <span className="text-[10px] tabular-nums text-muted-foreground">{sub}</span>
