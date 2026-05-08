@@ -120,11 +120,19 @@ export const joinFriendWalk = createServerFn({ method: "POST" })
 
     const { data: room } = await supabase
       .from("audio_rooms")
-      .select("id, status, max_participants, host_user_id, current_participant_count")
+      .select("id, status, max_participants, host_user_id, current_participant_count, starts_at")
       .eq("share_code", data.code.toLowerCase())
       .maybeSingle();
     if (!room) throw new Error("walk not found");
-    if (room.status !== "open") throw new Error("this walk has ended");
+    if (room.status === "closed") throw new Error("this walk has ended");
+
+    // Scheduled flow: host opens it on first join; others must wait until start time.
+    if (room.status === "scheduled") {
+      const startMs = room.starts_at ? new Date(room.starts_at).getTime() : 0;
+      const isHost = room.host_user_id === userId;
+      if (!isHost && startMs > Date.now()) throw new Error("this walk hasn't started yet");
+      await supabase.from("audio_rooms").update({ status: "open" }).eq("id", room.id);
+    }
 
     // Auto-listener if room is at speaker capacity
     const speakerCount = room.current_participant_count ?? 0;
