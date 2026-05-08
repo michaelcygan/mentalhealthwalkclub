@@ -81,6 +81,8 @@ function ActiveWalk() {
 
   const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
   const [friendShareOpen, setFriendShareOpen] = useState(false);
+  const [shareMap, setShareMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
 
   useEffect(() => {
     supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
