@@ -360,3 +360,34 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
     </div>
   );
 }
+
+function MoodArc({ points }: { points: (number | null)[] }) {
+  const W = 320, H = 56, pad = 4;
+  const min = 1, max = 10;
+  const xs = points.map((_, i) => pad + (i * (W - pad * 2)) / (points.length - 1));
+  const ys = points.map((v) => v == null ? null : H - pad - ((v - min) / (max - min)) * (H - pad * 2));
+  // Build polyline through known points only
+  let d = "";
+  let started = false;
+  ys.forEach((y, i) => {
+    if (y == null) return;
+    d += (started ? " L " : "M ") + xs[i].toFixed(1) + " " + y.toFixed(1);
+    started = true;
+  });
+  const last = [...ys].reverse().find((y) => y != null);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 h-14 w-full" preserveAspectRatio="none" aria-hidden>
+      <defs>
+        <linearGradient id="moodArcStroke" x1="0" x2="1">
+          <stop offset="0%" stopColor="oklch(0.65 0.11 45)" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="oklch(0.36 0.05 155)" />
+        </linearGradient>
+      </defs>
+      {d && <path d={d} fill="none" stroke="url(#moodArcStroke)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />}
+      {points.map((v, i) => v != null ? (
+        <circle key={i} cx={xs[i]} cy={ys[i] ?? 0} r={1.6} fill="oklch(0.36 0.05 155)" opacity={0.7} />
+      ) : null)}
+      {last != null && <circle cx={xs[xs.length - 1]} cy={last} r={3} fill="oklch(0.36 0.05 155)" />}
+    </svg>
+  );
+}
