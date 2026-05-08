@@ -1,129 +1,103 @@
-# Groups Tab — World-Class Polish (Pass 1 of N)
+# Groups Polish — Pass 3
 
-Three pillars: **time-aware city imagery**, **refined motion**, **strict perf budget**. Multi-pass — this pass ships the foundation + top cities; later passes expand coverage and add user submissions.
-
----
-
-## 1. Time-of-day city imagery
-
-### Style
-**Bright, optimistic, hopeful.** Parks, skylines, waterfronts, leafy streets — never moody, never empty. Shot at the named hour of day so the page literally tracks the sun across the world.
-
-### Day-state model (per city, per viewer)
-Each city has up to **4 cover variants**: `dawn`, `day`, `golden`, `night`. The variant shown is computed from the **city's local time**, not the viewer's — so a New Yorker browsing at noon sees Tokyo glowing at midnight while London is golden, giving genuine sense of place.
-
-```text
-00:00–05:30 → night
-05:30–07:30 → dawn
-07:30–17:00 → day
-17:00–19:30 → golden
-19:30–24:00 → night
-```
-
-City → IANA timezone resolved via a small static map (`src/data/city-tz.ts`, ~80 entries covering all chapters). Hour computed client-side with `Intl.DateTimeFormat(tz)` — no server work, no extra requests.
-
-### Pipeline (build script, dev-only)
-`scripts/fetch-city-covers.ts`:
-
-1. For each of the top **24 chapter cities** (this pass), fetch 4 hand-picked Unsplash photos (one per day-state) — Unsplash License = free commercial, no attribution required.
-2. Pipe through `sharp`:
-   - Resize **480×600** (aspect-[4/5], matches gallery tile).
-   - **WebP, q60, effort 6** → ~18–28 KB each.
-   - Emit a 24×30 base64 LQIP blur (~400 B) inlined in the manifest.
-3. Output → `public/city-covers/{slug}/{state}.webp` + generated `src/data/city-covers.ts` mapping `{slug → {tz, variants: {dawn, day, golden, night}, blur}}`.
-
-**Pass 1 weight:** 24 cities × 4 variants × ~24 KB = **~2.3 MB on disk**, but only the visible 9 tiles × 1 variant = **~220 KB** above the fold. Lazy + IntersectionObserver for the rest.
-
-### Future passes (queued, not now)
-- Expand 24 → 80 cities (same script, more curation).
-- Per-city user submissions with credit overlay (your future feature — slot reserved in schema via nullable `cover_credit` column added now).
-- Weather-aware variant (rain/snow overlay).
-- Seasonal variants (autumn foliage in Boston, cherry blossoms in Tokyo).
-
-### Schema
-Migration adds to `groups`:
-- `cover_set TEXT NULL` — slug into `city-covers` manifest (matches group slug for now).
-- `cover_credit TEXT NULL` — reserved for user submissions later.
-
-Backfilled for the 24 seeded cities.
-
-### Render
-- New `<CityTile>` component (extracted from `GroupCard` gallery variant).
-- Picks variant from `city-covers.ts` by current local hour, re-checks every 5 min via a single shared `useCityHour(tz)` hook (cached per tz).
-- `<img loading="lazy" decoding="async">` over a `background-image: url({blur})` CSS layer → instant paint, no flash.
-- Bottom gradient overlay for label legibility, top-right shows tiny **sun/moon glyph** indicating local time-of-day (subtle, 12px).
-- Cities **without** a cover_set fall back to the existing themed gradient + monogram — graceful, never broken.
+The bones are strong. This pass tightens **rhythm, hierarchy, and the detail page hero** — and fixes small things that keep it from feeling truly world-class. No new dependencies, no schema changes, no backend touches.
 
 ---
 
-## 2. Motion — alive, not busy
+## 1. Tab page — quieter, more confident
 
-CSS-only. **No framer-motion.** `prefers-reduced-motion` disables everything except opacity transitions.
+### a. Header rework
+- Drop the muted-foreground subtitle. Replace with a single live counter line: *"42,318 walkers across 64 cities · 7 walking right now"* (data from existing `groups`/`pulse` — already in memory, no extra query). Fades in when numbers resolve.
+- H1 stays serif `text-3xl`. Add subtle 600ms eyebrow fade-up.
 
-### a. Entrance choreography
-- Section eyebrow + title: 200ms fade-up on scroll-into-view (one-shot, IntersectionObserver).
-- Card rails & gallery: **staggered** fade-up (40ms per item, capped at first 6) via CSS `animation-delay`.
+### b. Search + chip bar
+- Convert the chip row into a **fade-edged scroller** (matching rails) — current row clips abruptly on the right at narrow widths.
+- Active chip gets a soft inset shadow (`shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]`) — feels pressed, not just tinted.
+- Add 80ms scale-down tap state (`active:scale-[0.97]`).
+- Search input: focus ring uses the existing `hue-drift` keyframe (already in CSS) for the 6s slow drift.
 
-### b. City tiles — slow Ken Burns
-14s `scale(1) → scale(1.06)` loop on the image, **only while in viewport**. Pauses off-screen via class toggle → near-zero CPU when scrolled past.
+### c. Section spacing rhythm
+- Current `space-y-7` is uniform → flat. Replace with deliberate cadence:
+  - Header → Pulse: `mt-5`
+  - Pulse → Yours: `mt-8`
+  - Between discover sections: `mt-7`
+  - Before City Gallery (the visual climax): `mt-10`
+- Add a hairline divider (`<div className="mx-auto h-px w-12 bg-border/60" />`) before City Gallery to mark the shift from "people" to "places".
 
-### c. Time-of-day glyph drift
-The little sun/moon glyph has a 6s ambient float (translate ±2px). Sells "alive" without distracting.
+### d. Pulse strip refinement
+- Currently the live pill's `animate-ping` is a single ring. Switch to the new `city-pulse-ring` double-ring (already defined) for consistency with city tiles.
+- Add a tiny **time-of-day glyph** to live pills when the group has a `cover_set` (reuses `useCityHour` + `STATE_GLYPH`) — sells the world-map feel even in the pulse strip.
+- First pulse pill gets `animation-delay: 0ms`; stagger 50ms each (capped at 6).
 
-### d. Live pulse refinement
-Current "Live" dot becomes a **double-ring pulse**: solid ember dot + outer ring `scale(1)→scale(1.8)` + fade, 2s loop. Renders only when `pulse.live > 0`.
+### e. Empty filter state
+Replace the dashed-border block with a warmer compose:
+- Faint forest-tinted card, serif "Nothing matches that yet."
+- Suggestion chips below: "Try *quiet*", "Try your city", "Show all" — one-tap to clear.
 
-### e. Join button micro-interaction
-On tap: 120ms `scale(0.96)` + 240ms radial ember glow behind the button. CSS only.
+### f. Vibe collection eyebrow
+The current eyebrow icon is 12px; titles compete. Bump eyebrow to a small uppercase **with a leading 8px square** in the theme tint — gives each section a visual chord (anxiety = sky, grief = violet…). Reuses `themeBand` map.
 
-### f. Rail polish
-`scroll-behavior: smooth`, existing edge-fade gradient preserved, drag cursor on desktop.
-
-### g. Search focus
-Soft 6s hue-drift on the focus ring (3° max within forest tones) — barely perceptible signal of life.
+### g. Niches grid
+Currently same `gallery` variant as cities → looks identical. Niches deserve their own treatment:
+- New `variant="niche"` on `GroupCard`: square tile, **emoji-led** (auto-derived from slug: 🌅 sunrise-club, 🌙 night-owls, 🐕 dog-parents, 👟 hot-girl-walk, 🌧 rainy-day-walkers, 🤫 silent-walking, 📚 audiobook-walkers, ☕ five-am-club, etc. — local map in component).
+- Theme-tinted gradient (existing `themeTint`), serif name, tiny live/week sub.
+- 70ms staggered entrance.
 
 ---
 
-## 3. Performance discipline
+## 2. Detail page — hero & rhythm
 
-| Risk | Mitigation |
-|---|---|
-| Image weight | WebP q60, 480×600, lazy + LQIP blur, ~220 KB above fold |
-| Layout shift | Fixed `aspect-[4/5]` on every tile slot |
-| Animation cost | Pure CSS transforms/opacity; `will-change` only on actively-animating elements; IntersectionObserver pauses off-screen |
-| Reduced motion | `@media (prefers-reduced-motion: reduce)` disables Ken Burns, pulse ring, drift, glow |
-| Bundle size | No new runtime deps. `sharp` is dev-only. `city-covers.ts` is ~3 KB gzipped |
-| Re-renders | `useCityHour(tz)` ticks every 5 min, memoized per tz; cover lookup is a static `Map` |
-| TZ DB | Hand-curated `city-tz.ts` for chapters only, ~80 entries; no `moment-timezone` needed |
+### a. Hero
+- Add an **ambient cover band** at the top (h-40) when `group.cover_set` is set: same time-aware webp from `CITY_COVERS`, blurred + dim overlay so text legibility is perfect. Falls back gracefully to the existing themed gradient.
+- The header card becomes 12px shorter and overlays the cover band with `-mt-12 mx-2 backdrop-blur-md bg-card/80` for a Apple-Music style hero. Pure CSS.
+- Move the "X walkers · Y this week" metadata up; reduce `text-3xl` H1 → `text-[28px]` to leave breathing room.
+
+### b. Sticky action bar
+- Currently looks identical to background when scrolled. Add a subtle 1px bottom hairline only after `scrollY > 80` (CSS `box-shadow` triggered by adding `data-scrolled` via single rAF listener).
+- "Walk now" gets the existing ember-spark glow on tap (already in CSS).
+
+### c. Quiet wins
+- Section eyebrow + title cadence to match tab page (uppercase + 8px theme square).
+- Cards get the staggered `card-in` entrance.
 
 ---
 
-## Files
+## 3. Motion — one new keyframe, taste only
 
-**New**
-- `scripts/fetch-city-covers.ts` — dev-only build script (sharp + curated photo URLs)
-- `src/data/city-tz.ts` — `{ slug → IANA tz }` for chapter cities
-- `src/data/city-covers.ts` — generated manifest `{slug → {tz, variants, blur}}`
-- `public/city-covers/{slug}/{dawn,day,golden,night}.webp` — 24 cities × 4 = 96 images
-- `src/components/groups/city-tile.tsx` — gallery tile w/ time-aware image, LQIP, Ken Burns, glyph
-- `src/hooks/use-city-hour.ts` — shared per-tz hour ticker
+Add to `src/styles.css`:
+- `eyebrow-rise` — 240ms, 8px translateY + opacity 0→1 (used by section headers via IntersectionObserver one-shot, already wired pattern).
+- `tap-press` utility — `active:scale-[0.97] transition-transform duration-100`.
+
+All others reuse existing keyframes (`card-in`, `ken-burns`, `glyph-float`, `city-pulse-ring`, `hue-drift`, `ember-spark`). No new framer-motion. Reduced-motion guards already in place.
+
+---
+
+## 4. Performance discipline (unchanged budget)
+
+- Hero cover band reuses an already-loaded webp (no new network).
+- Niche emoji map is a static const ~30 entries.
+- No changes to data hooks or queries — all derived from existing `useGroupsFeed` + the detail page's existing fetches.
+- IntersectionObserver only added once for header eyebrows (single observer, observe → unobserve on first hit).
+
+---
+
+## Files touched
 
 **Modified**
-- `src/components/group-card.tsx` — gallery variant delegates to `<CityTile>`; live double-ring pulse; join ember spark
-- `src/components/groups/city-gallery.tsx` — staggered entrance, smooth scroll
-- `src/components/groups/vibe-collection.tsx` — staggered rail entrance
-- `src/components/groups-tab.tsx` — section header fade-up
-- `src/styles.css` — keyframes: `card-in`, `pulse-ring`, `ken-burns`, `ember-spark`, `glyph-float`, `hue-drift`; reduced-motion guards
-- Migration: add `cover_set TEXT`, `cover_credit TEXT` to `groups`; backfill 24 cities
+- `src/components/groups-tab.tsx` — header line, spacing rhythm, divider, fade-edge chip scroller, empty-state warmth
+- `src/components/group-card.tsx` — new `niche` variant, gallery eyebrow square, pulse pill double-ring + glyph
+- `src/components/groups/vibe-collection.tsx` — eyebrow square, staggered entrance
+- `src/components/groups/city-gallery.tsx` — hairline divider before, deeper stagger
+- `src/routes/groups.$slug.tsx` — ambient cover band hero, sticky-bar shadow on scroll, eyebrow rises
+- `src/styles.css` — `eyebrow-rise` keyframe, `tap-press` utility
 
-**Untouched** — `useGroupsFeed`, ghost-walk system, RLS, audio rooms, all backend logic.
+**Untouched** — schema, hooks, data, ghost-walk, audio, RLS, edge functions, cover script.
 
 ---
 
-## What's intentionally deferred (future passes)
+## Deferred (future passes)
 
-- User-submitted covers + credit overlay
-- Cities 25–80
-- Weather-state and seasonal variants
-- Per-tile parallax on scroll
-- Vibe-collection card imagery (typography-led for now — covers shine where they matter most: places)
+- Per-group cover bands for non-chapter groups (need curated assets).
+- Parallax on cover band scroll.
+- Member avatar stack on detail hero.
+- Live-now mini-map on tab page above Pulse strip.

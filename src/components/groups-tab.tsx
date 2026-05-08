@@ -105,16 +105,29 @@ export function GroupsTab() {
   ]);
   const niches = useMemo(() => discover.filter((g) => NICHE_KEYS.has(g.slug)), [discover]);
 
+  // Aggregate live counter for header
+  const totalWalkers = useMemo(() => groups.reduce((s, g) => s + (g.member_count || 0), 0), [groups]);
+  const cityCount = useMemo(() => new Set(groups.filter((g) => g.theme === "chapter" && g.city).map((g) => g.city)).size, [groups]);
+  const liveNow = useMemo(() => Array.from(pulse.values()).reduce((s, p) => s + (p.live || 0), 0), [pulse]);
+
   return (
     <div className="space-y-7">
       <header className="space-y-3">
-        <div>
+        <div className="eyebrow-rise">
           <h1 className="font-serif text-3xl">Groups</h1>
-          <p className="mt-1 text-muted-foreground">Quiet affinity tags. They surface walks that fit you.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {totalWalkers > 0 ? (
+              <>
+                <span className="text-foreground">{totalWalkers.toLocaleString()}</span> walkers
+                {cityCount > 0 && <> across <span className="text-foreground">{cityCount}</span> {cityCount === 1 ? "city" : "cities"}</>}
+                {liveNow > 0 && <> · <span className="text-forest">{liveNow} walking right now</span></>}
+              </>
+            ) : "Quiet affinity tags. They surface walks that fit you."}
+          </p>
         </div>
 
         <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-          <div className="relative">
+          <div className="relative focus-hue-drift rounded-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
@@ -122,7 +135,7 @@ export function GroupsTab() {
               inputMode="search"
               enterKeyHint="search"
               placeholder="Search 100+ groups…"
-              className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40 focus:ring-2 focus:ring-forest/15"
+              className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40"
             />
             {q && (
               <button onClick={() => setQ("")} aria-label="Clear" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary">
@@ -130,7 +143,7 @@ export function GroupsTab() {
               </button>
             )}
           </div>
-          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
             {CHIPS.map(({ id, label, icon: Icon }) => {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
@@ -139,8 +152,8 @@ export function GroupsTab() {
                   key={id}
                   disabled={dim}
                   onClick={() => toggleChip(id)}
-                  className={`inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
-                    on ? "border-forest bg-forest text-primary-foreground"
+                  className={`tap-press inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
+                    on ? "border-forest bg-forest text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
                 >
@@ -151,7 +164,7 @@ export function GroupsTab() {
             {(active.size > 0 || q) && (
               <button
                 onClick={() => { setActive(new Set()); setQ(""); }}
-                className="inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="tap-press inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3" /> Clear
               </button>
@@ -177,8 +190,14 @@ export function GroupsTab() {
               ))}
             </ul>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              No groups match. Try clearing filters or a different word.
+            <div className="rounded-2xl border border-forest/20 bg-accent/30 p-8 text-center">
+              <div className="font-serif text-base text-foreground">Nothing matches that yet.</div>
+              <p className="mt-1 text-xs text-muted-foreground">Try a softer word, or open the door wider.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                <button onClick={() => { setQ("quiet"); setActive(new Set()); }} className="tap-press rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Try <span className="italic">quiet</span></button>
+                {myCity && <button onClick={() => { setQ(""); setActive(new Set(["near"] as Chip[])); }} className="tap-press rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Near {myCity}</button>}
+                <button onClick={() => { setQ(""); setActive(new Set()); }} className="tap-press rounded-full bg-forest px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90">Show all</button>
+              </div>
             </div>
           )}
         </section>
@@ -191,9 +210,11 @@ export function GroupsTab() {
                 <Radio className="h-3.5 w-3.5 text-forest" />
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
               </div>
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-                {pulseGroups.map(({ g, p }) => (
-                  <GroupCard key={g.id} group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
+                {pulseGroups.map(({ g, p }, i) => (
+                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
+                    <GroupCard group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
+                  </div>
                 ))}
               </div>
             </section>
@@ -299,14 +320,17 @@ export function GroupsTab() {
                 </div>
               </div>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {niches.map((g) => (
-                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="gallery" />
+                {niches.map((g, i) => (
+                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}>
+                    <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="niche" />
+                  </div>
                 ))}
               </ul>
             </section>
           )}
 
           {/* ─── Browse by city ─── */}
+          <div aria-hidden className="mx-auto h-px w-12 bg-border/60" />
           <CityGallery groups={discover} pulse={pulse} mine={mine} onToggle={toggleJoin} />
         </>
       )}

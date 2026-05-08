@@ -11,6 +11,8 @@ import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 import { share, haptics } from "@/lib/device";
 import { GroupRoutesMosaic } from "@/components/group-routes-mosaic";
+import { CITY_COVERS, coverUrl, dayStateFromHour } from "@/data/city-covers";
+import { useCityHour } from "@/hooks/use-city-hour";
 
 const GroupLiveMap = lazy(() => import("@/components/group-live-map"));
 
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/groups/$slug")({
   }),
 });
 
-interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
+interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; cover_set: string | null; }
 interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; attendee_count: number; host_user_id: string | null; host_name?: string | null; }
 interface Room { id: string; title: string; theme: string | null; current_participant_count: number; max_participants: number; }
 interface Milestone { badgeId: string; name: string; description: string | null; icon: string | null; key: string; recipients: { userId: string; awardId: string }[] }
@@ -55,7 +57,7 @@ function GroupDetail() {
     let cancel = false;
     let cleanup: (() => void) | undefined;
     (async () => {
-      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme,owner_user_id").eq("slug", slug).single();
+      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme,owner_user_id,cover_set").eq("slug", slug).single();
       if (!g || cancel) return;
       setGroup(g);
       const now = new Date().toISOString();
@@ -196,7 +198,8 @@ function GroupDetail() {
 
   return (
     <div className="space-y-5">
-      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6`}>
+      <CoverBand cover_set={group.cover_set} />
+      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6 ${group.cover_set ? "-mt-10 backdrop-blur-md bg-card/80" : ""}`}>
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-card/30 blur-3xl animate-pulse [animation-duration:6s]" />
         <div className="relative">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
@@ -204,7 +207,7 @@ function GroupDetail() {
             {walkersWeek > 0 && <> · {walkersWeek} this week</>}
           </div>
           <div className="flex items-start justify-between gap-3">
-            <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">{group.name}</h1>
+            <h1 className="mt-2 font-serif text-[28px] leading-tight tracking-tight md:text-3xl">{group.name}</h1>
             <button
               onClick={async () => {
                 haptics.tap();
@@ -216,7 +219,7 @@ function GroupDetail() {
                 if (ok) toast("Invite ready to share.");
               }}
               aria-label="Share group"
-              className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur transition hover:border-forest/40 hover:text-forest"
+              className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur transition hover:border-forest/40 hover:text-forest tap-press"
             >
               <Share2 className="h-4 w-4" />
             </button>
@@ -227,7 +230,7 @@ function GroupDetail() {
 
       {/* Sticky inline action bar */}
       <div className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border/60 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:rounded-2xl md:border md:bg-card/60 md:px-3">
-        <Button onClick={() => startSoloWalk(group)} disabled={busy} size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
+        <Button onClick={() => startSoloWalk(group)} disabled={busy} size="sm" className="ember-spark tap-press rounded-full bg-forest text-primary-foreground hover:opacity-90">
           <Footprints className="mr-1.5 h-4 w-4" /> {busy ? "Starting…" : "Walk now"}
         </Button>
         <Popover>
@@ -387,6 +390,26 @@ function GroupDetail() {
           </ul>
         </section>
       )}
+    </div>
+  );
+}
+
+function CoverBand({ cover_set }: { cover_set: string | null }) {
+  const cover = cover_set ? CITY_COVERS[cover_set] : null;
+  const hour = useCityHour(cover?.tz);
+  if (!cover || !cover_set) return null;
+  const state = dayStateFromHour(hour);
+  return (
+    <div aria-hidden className="relative -mx-4 -mt-2 mb-0 h-40 overflow-hidden md:-mx-6 md:rounded-b-3xl">
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${cover.blur[state]})` }} />
+      <img
+        src={coverUrl(cover_set, state)}
+        alt=""
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover ken-burns"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-background/40 to-background" />
     </div>
   );
 }

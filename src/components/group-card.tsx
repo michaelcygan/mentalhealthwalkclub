@@ -42,7 +42,17 @@ const FLAG: Record<string, string> = {
   NL: "🇳🇱", FR: "🇫🇷", ES: "🇪🇸", AU: "🇦🇺", NZ: "🇳🇿", JP: "🇯🇵", SG: "🇸🇬",
 };
 
-export type GroupCardVariant = "tile" | "pulse" | "mini" | "rail" | "gallery";
+export type GroupCardVariant = "tile" | "pulse" | "mini" | "rail" | "gallery" | "niche";
+
+const NICHE_EMOJI: Record<string, string> = {
+  "five-am-club": "☕", "sunrise-club": "🌅", "sunset-chasers": "🌇", "night-owls": "🌙",
+  "lunchbreak-walkers": "🥪", "dog-parents": "🐕", "stroller-crew": "👶", "empty-nesters": "🪺",
+  "solo-travelers": "🧭", "remote-workers": "💻", "shift-workers": "🌗", "grad-school": "🎓",
+  "first-year-teachers": "📚", "healthcare-workers": "🩺", "founders-walk": "🚀", "caregivers": "🤲",
+  "walk-instead-of-doomscroll": "📵", "phone-free-walkers": "🤫", "one-podcast-one-walk": "🎧",
+  "audiobook-walkers": "📖", "hot-girl-walk": "👟", "silent-walking": "🤍", "rage-walk": "🔥",
+  "gratitude-walk": "🙏", "walk-and-pray": "✨", "rainy-day-walkers": "🌧",
+};
 
 export function GroupCard({
   group, pulse, joined, onToggle, variant = "tile",
@@ -70,7 +80,7 @@ export function GroupCard({
       >
         {isLive ? (
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+            <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-forest" />
           </span>
         ) : next ? (
@@ -151,6 +161,37 @@ export function GroupCard({
           >
             {joined ? <><Check className="h-3 w-3" />Joined</> : <><Plus className="h-3 w-3" />Join</>}
           </button>
+        </div>
+      </li>
+    );
+  }
+
+  // ─────── NICHE tile (emoji-led square) ───────
+  if (variant === "niche") {
+    const emoji = NICHE_EMOJI[group.slug] ?? "✦";
+    return (
+      <li className={`group/niche relative aspect-square overflow-hidden rounded-2xl border border-border bg-gradient-to-br ${tint} to-card p-3 shadow-soft transition hover:-translate-y-px hover:border-forest/40 tap-press`}>
+        <Link
+          to={"/groups/$slug" as never}
+          params={{ slug: group.slug } as never}
+          aria-label={`Open ${group.name}`}
+          className="absolute inset-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest/50"
+        />
+        <div className="pointer-events-none relative flex h-full flex-col">
+          <div className="text-3xl leading-none drop-shadow-sm">{emoji}</div>
+          <div className="mt-auto">
+            <div className="font-serif text-[15px] leading-tight line-clamp-2">{group.name}</div>
+            <div className="mt-0.5 text-[10px] text-muted-foreground">
+              {live > 0 ? <span className="text-forest">● {live} live</span>
+                : week > 0 ? <span>{week}/wk</span>
+                : <span>{group.member_count.toLocaleString()}</span>}
+            </div>
+          </div>
+          {joined && !live && (
+            <div className="absolute right-0 top-0">
+              <span className="rounded-full bg-card/80 px-1.5 py-0.5 text-[9px] text-forest"><Check className="inline h-2.5 w-2.5" /></span>
+            </div>
+          )}
         </div>
       </li>
     );

@@ -338,6 +338,32 @@
 }
 .card-in { animation: card-in 360ms ease-out both; }
 
+@keyframes eyebrow-rise {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.eyebrow-rise { animation: eyebrow-rise 420ms ease-out both; }
+
+@keyframes hue-drift {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--forest) 12%, transparent); }
+  50%      { box-shadow: 0 0 0 3px color-mix(in oklab, var(--forest) 22%, transparent); }
+}
+.focus-hue-drift:focus-within { animation: hue-drift 6s ease-in-out infinite; }
+
+@keyframes ember-spark {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 45%, transparent); }
+  60%  { box-shadow: 0 0 0 14px color-mix(in oklab, var(--forest) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 0%, transparent); }
+}
+.ember-spark:active { animation: ember-spark 480ms ease-out; }
+
+.tap-press { transition: transform 100ms ease; }
+.tap-press:active { transform: scale(0.97); }
+
+/* Fade-edge horizontal scroller */
+.fade-edge-x { mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%); }
+
 @media (prefers-reduced-motion: reduce) {
-  .ken-burns, .glyph-float, .city-pulse-ring, .card-in { animation: none !important; }
+  .ken-burns, .glyph-float, .city-pulse-ring, .card-in,
+  .eyebrow-rise, .focus-hue-drift, .ember-spark { animation: none !important; }
 }
