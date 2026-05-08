@@ -221,7 +221,7 @@ export const scheduleAudioWalk = createServerFn({ method: "POST" })
         group_id: data.groupId ?? null,
         event_type: "audio_walk",
         status: "published",
-        visibility: "public",
+        visibility: data.groupId ? "group" : "public",
         vibe: data.theme ?? null,
         audio_room_id: room.id,
         breakout_size: data.breakoutSize,
