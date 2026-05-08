@@ -249,6 +249,10 @@ function GroupDetail() {
         )}
       </div>
 
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-3xl bg-secondary/60" />}>
+        <GroupLiveMap groupId={group.id} onStartWalk={() => startSoloWalk(group)} />
+      </Suspense>
+
       <GroupPulse walks={walksWeek} minutes={minutesWeek} newMembers={newMembers} />
 
       {newMembers > 0 && (
