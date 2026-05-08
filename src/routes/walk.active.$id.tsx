@@ -70,6 +70,7 @@ function ActiveWalk() {
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
   const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
   const [walkNotes, setWalkNotes] = useState<WalkNote[]>(() => loadStoredNotes(id));
+  const [walkPhotos, setWalkPhotos] = useState<WalkPhoto[]>(() => loadStoredPhotos(id));
   const handleSavePrompt = (text: string) => {
     setSavedPrompts((arr) => (arr.includes(text) ? arr : [...arr, text]));
     toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
