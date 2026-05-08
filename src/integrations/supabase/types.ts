@@ -80,6 +80,8 @@ export type Database = {
           event_id: string | null
           external_room_name: string | null
           external_room_url: string | null
+          facilitator_seat_reserved: boolean
+          facilitator_user_id: string | null
           group_id: string | null
           host_user_id: string | null
           id: string
@@ -102,6 +104,8 @@ export type Database = {
           event_id?: string | null
           external_room_name?: string | null
           external_room_url?: string | null
+          facilitator_seat_reserved?: boolean
+          facilitator_user_id?: string | null
           group_id?: string | null
           host_user_id?: string | null
           id?: string
@@ -124,6 +128,8 @@ export type Database = {
           event_id?: string | null
           external_room_name?: string | null
           external_room_url?: string | null
+          facilitator_seat_reserved?: boolean
+          facilitator_user_id?: string | null
           group_id?: string | null
           host_user_id?: string | null
           id?: string

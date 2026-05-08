@@ -1,135 +1,64 @@
-# Group-Scoped Walk & Talks (with adaptive consolidation)
+## Walk & Talk pod sizing: 4 + facilitator seat
 
-Make Walk & Talks scheduled from a Group act like a private dinner party for that group: only members can RSVP and join, the room count adapts to who actually shows up, and rooms quietly consolidate as people leave so nobody ends up alone before the host closes the walk.
+Set the conversational pod target to **4 walkers**, with a reserved **5th seat** for a future Facilitator role (drop-in therapist). No facilitator logic yet — just the structural seat and the consolidation math that respects it.
 
-This is a small mechanic on top of existing primitives (`events`, `event_rsvps`, `audio_rooms`, `audio_room_participants`) — no new tables.
+### 1. Constants & schema
 
----
+**`audio_rooms`** — change defaults, add reserved seat:
+- `max_participants` default: `8` → `5` (4 walkers + 1 facilitator)
+- Add column `facilitator_seat_reserved boolean NOT NULL DEFAULT true`
+- Add column `facilitator_user_id uuid` (nullable, populated when a facilitator joins)
 
-## 1. Group-only access
+**`events`** — pod sizing:
+- `breakout_size` default: `0` → `4`
+- Backfill existing scheduled walks where `breakout_size = 0` to `4`
 
-When a Walk & Talk is scheduled with a `group_id`, treat it as members-only.
+**`audio_room_participants`** — role values:
+- Existing `role` text already supports `'participant' | 'host'`. Add convention for `'facilitator'` (no enum change needed; it's a free text column).
 
-- **Schedule:** in `scheduleAudioWalk`, when `groupId` is set, store `events.visibility = 'group'` (we already have the column; today it's hardcoded `'public'`). The `audio_rooms` row is unchanged structurally — `group_id` already lives on it.
-- **RSVP gate (server fn `rsvpToEvent`, new):** any RSVP for an event with `visibility='group'` requires an active `group_memberships` row. Fail with a typed `{ requiresJoin: true, groupId, groupName, groupSlug }` payload (not a thrown error) so the UI can offer one-tap join → retry RSVP.
-- **Join gate (`joinScheduledWalk`):** same membership check up front. Same typed `requiresJoin` response.
-- **Discovery:** the Groups page already filters `events` by `group_id`. The Events tab list query gets `visibility != 'group' OR user is member` — one extra clause via two queries OR'd in the client (no RLS change required since the existing select policy already returns the row to anyone authenticated; we filter in the query).
-- **Detail page (`/events/$slug`):** when `visibility='group'` and the viewer is not a member, replace the RSVP button with a soft "{Group} members only · Join group to RSVP" button that joins → re-renders → reveals RSVP.
+### 2. Server logic (`src/server/audio.functions.ts`)
 
-We deliberately do **not** tighten RLS to fully hide the event row — keeping it visible lets shared links act as join invitations. Privacy of who's RSVP'd is already protected by `event_rsvps_select_own_or_host`.
-
-## 2. RSVP-driven pod count (replace capacity-driven pods)
-
-Today `openScheduledRoomImpl` pre-creates `ceil(capacity / breakout_size)` pods regardless of who actually shows up. For group walks this leaves empty rooms.
-
-Change for **all** scheduled audio walks (group or not) when `breakout_size > 0`:
-
-- At open time, count `event_rsvps` with `status='going'` (call it `N`).
-- `podCount = max(1, ceil(N / breakout_size))`.
-- If `N === 0`, still create 1 pod so a walk-up host isn't blocked.
-- Pods are created exactly as today (`parent_room_id`, `pod_index`, `requires_active_walk: true`).
-
-This is a one-line change inside `openScheduledRoomImpl`.
-
-`joinScheduledWalk` already lazily opens the room when start time is near — same flow continues to work for late joiners (matched into the least-full pod).
-
-## 3. Adaptive consolidation as people leave
-
-This is the key mechanic the user described: as participants drop, merge under-filled pods so nobody is left alone until the host closes the walk.
-
-### Trigger
-
-Add a small server fn `consolidatePods(eventId)` invoked at three moments:
-
-1. From the **client** inside `walk-talk-dock` after a user successfully calls `leaveAudioRoom` for a pod whose parent has `breakout_size > 0`. Fire-and-forget.
-2. At the **end** of `joinScheduledWalk` (cheap idempotent check; ensures a late joiner's pod count is sane).
-3. Optional: from `reshufflePods` so a host-initiated mix also consolidates first.
-
-### Algorithm (single pass, deterministic, runs in one transaction-ish sequence)
-
+**Pod scaling (`openScheduledRoomImpl`)**
 ```
-P = open pods for event, ordered by current_participant_count asc, then pod_index asc
-B = breakout_size
-
-while there exist two open pods A, B in P with countA + countB <= B:
-  pick A = least-full open pod
-  pick B = next least-full open pod (different from A)
-  move all active participants from A → B   (UPDATE audio_room_participants SET audio_room_id = B.id)
-  mark A: status = 'closed', ends_at = now()
-  refresh P from DB
-
-# Floor case — never strand a single person:
-if exactly one pod remains with one participant AND there is another open pod with room:
-  move that lone person into the other pod and close the now-empty pod.
-
-# Last person standing:
-# Do NOT auto-close the final pod when it has 1 person — the user explicitly
-# wants "down to the last person until they close the walk." Closing happens
-# only when the host ends the event OR that last participant calls leave
-# (existing tg_audio_room_participant_count trigger handles auto-close when
-# the participant count hits 0).
+walkerCap = breakout_size              // 4
+podCount  = max(1, ceil(rsvps / walkerCap))
 ```
+Rooms still created with `max_participants = walkerCap + 1` to hold the facilitator seat.
 
-Notes:
-- Existing trigger `tg_audio_room_participant_count` already decrements counts and closes a room when count hits 0 — perfect, we let it do its job for the truly-final empty pod.
-- We never touch the umbrella `parent_room_id` row; it stays open as the event's anchor.
-- All pod moves preserve `walk_session_id` on the participant row, so the user's walk session is uninterrupted.
-- We do **not** kick anyone or interrupt audio — the dock subscribes to its own `audio_room_id`; when it changes mid-call, the dock seamlessly reconnects (it already supports this for `reshufflePods`).
-- Race protection: wrap in advisory locking via a single `select … for update` on the parent room, or accept best-effort with idempotent re-runs (cheaper). We'll go with idempotent re-runs — the algorithm is safe to call repeatedly.
+**Join gating (`joinScheduledWalk` / open Walk & Talk join)**
+- Count active participants where `role <> 'facilitator'`.
+- Reject join if `walker_count >= breakout_size` (4), even if total seats remain — the 5th is reserved.
+- Facilitators bypass this check; they fill the reserved seat.
 
-### When `breakout_size === 0` (one circle)
+**Consolidation (`consolidatePodsImpl`)** — math uses walker counts only:
+- Smallest pod A merges into target B when `walkers_A + walkers_B ≤ 4`.
+- Facilitators are NOT moved by consolidation (they choose which pod to drop into). When A closes, if it had a facilitator, mark them as detached so they can rejoin elsewhere.
 
-No pods exist; consolidation is a no-op. The single umbrella room behaves exactly as today and closes naturally when empty.
+**Solo grace + ambient (lightweight, no new tables)**
+- When a pod drops to 1 walker, set a 60s grace timer client-side before the dock attempts a merge call. During grace, dock shows ambient state ("Walking with you — others joining in a moment").
+- Never auto-close the last walker mid-event; pod stays open with ambient music until host ends the walk.
 
-## 4. Host close
+### 3. UI surfacing
 
-Add a small "End walk" affordance on `/events/$slug` for the host once the event has started:
+- **Schedule form** (`events.new.tsx`): show "Pods of 4 · 1 facilitator seat reserved" as a static helper line under the audio walk option. No user-facing config yet.
+- **Event detail** (`events.$slug.tsx`): pod count chip reads `4 walkers per pod` instead of generic "breakout size."
+- **walk-talk-dock**: when alone, swap "Waiting for others" copy → "Walking with you" + subtle ambient pulse. When pod has 4, show "Full pod" badge (facilitator slot still open and invisible to walkers — no need to advertise the empty seat yet).
 
-- Server fn `endScheduledWalk(eventId)` (host only): set parent room and any open pods → `status='closed', ends_at=now()`, set `events.ended_at=now()`.
-- The dock observes the room status and shows a calm "Walk ended — thanks for being here" curtain (already a similar pattern when a room closes).
+### 4. Out of scope (next pass — Facilitator)
+- Facilitator app role (`app_role` enum addition: `'facilitator'`)
+- Facilitator dashboard listing live group walks
+- "Drop in" flow that joins a pod in the reserved seat
+- Therapist verification + scheduling availability
+- Post-walk facilitator notes
 
-This gives the host the "until they close the walk" termination the user described, instead of relying solely on the natural empty-room close.
+### Files to change
+- `supabase/migrations/<new>` — `max_participants` default, `facilitator_seat_reserved`, `facilitator_user_id`, `breakout_size` default + backfill
+- `src/server/audio.functions.ts` — pod scaling, walker-only join gate, consolidation walker math, facilitator detach on close
+- `src/components/walk-talk-dock.tsx` — solo grace + ambient copy, full-pod badge
+- `src/routes/events.new.tsx` — helper copy
+- `src/routes/events.$slug.tsx` — pod label copy
 
-## 5. UI surface (small)
-
-- **Groups page → Upcoming walks card:** if event is `visibility='group'`, add a tiny "Members only" eyebrow above the title.
-- **Event detail (`/events/$slug`):** non-member sees the "Join {group} to RSVP" button described in §1. Member sees today's RSVP/join flow.
-- **Groups page schedule pill:** unchanged — still says "Walk & Talk." We just default `visibility='group'` server-side when a `groupId` is present.
-- **Host control:** "End walk" pill in the host's RSVP/host area, only when room is open. Reuses existing button styles.
-
-No new design tokens, no new components beyond a tiny `EndWalkButton`.
-
-## 6. Files touched
-
-- **`src/server/audio.functions.ts`**
-  - `scheduleAudioWalk`: set `visibility = groupId ? 'group' : 'public'`.
-  - `openScheduledRoomImpl`: derive `podCount` from RSVP count, not capacity.
-  - `joinScheduledWalk`: add membership check for group-scoped events; return `requiresJoin` payload; call `consolidatePodsImpl` after insert.
-  - **New** `consolidatePodsImpl` + `consolidatePods` server fn (host or trigger-callable).
-  - **New** `endScheduledWalk` server fn (host only).
-- **`src/server/events.functions.ts`** (or wherever RSVP lives — verify; if RSVP is currently a direct supabase call from the client, move the create-RSVP path through a new `rsvpToGroupEvent` server fn so the membership gate is server-side. The delete path can stay client-side since RLS already restricts it to `user_id = auth.uid()`).
-- **`src/routes/events.$slug.tsx`**: non-member CTA, host "End walk" button, surface `requiresJoin` join → retry flow.
-- **`src/routes/groups.$slug.tsx`**: "Members only" eyebrow on group-scoped event cards.
-- **`src/components/walk-talk-dock.tsx`**: fire `consolidatePods(eventId)` after a successful `leaveAudioRoom` when there's a `parent_room_id`.
-
-No DB migration required — every column we touch (`events.visibility`, `audio_rooms.status`, `audio_room_participants.audio_room_id`) already exists.
-
-## 7. Out of scope
-
-- No new RLS-level hiding of group events from non-members (kept visible so shared links act as invites).
-- No DM/chat inside pods.
-- No persistent "pod history" — moves overwrite `audio_room_id` on the participant row; the room's lifecycle (`status='closed'`, `ends_at`) is the audit trail.
-- No across-event matchmaking; consolidation only merges pods that share a `parent_room_id`.
-
-## 8. Edge cases & how the plan handles them
-
-| Case | Behavior |
-| --- | --- |
-| Host RSVPs 12, only 4 show up, breakout_size=3 | At open: `ceil(4/3)=2` pods (not 4). |
-| 6 people in 3 pods of 2 each, one leaves | Two pods at 2 + one pod at 1 → merge the 1-pod into the smallest 2-pod (would be 3 ≤ size 3) → 2 pods of 3 and 2. |
-| Pods at 3,3,3 (size=3), one leaves → 3,3,2 | No merge possible (3+2 > 3). Stays as is. |
-| Late joiner arrives | `joinScheduledWalk` puts them in least-full pod, then consolidates (might not merge anything; cheap). |
-| Last person standing | Pod stays open with 1 person; their dock continues; when they leave, existing trigger auto-closes that pod. The umbrella event also closes if host calls `endScheduledWalk`. |
-| Non-member with a shared link | Sees event detail, sees "Join {group} to RSVP" button — one tap joins, then RSVP flows normally. |
-| User RSVPs then leaves the group | Their RSVP row remains; on join, the membership check fails with `requiresJoin`. They can re-join the group to enter. |
-| Two consolidations race (two leaves at once) | Both runs are idempotent — second pass either finds nothing to merge or merges what's still mergeable. Worst case: one extra UPDATE statement. |
+### Why these specific numbers
+- 4 walkers = Dunbar conversational ceiling for audio without video
+- Consolidation cleanly resolves: 2+2→4, 3+1→4, 1+1→2 (waits for next merge)
+- Reserved 5th seat means facilitators never get rejected by full pods and never displace a walker
