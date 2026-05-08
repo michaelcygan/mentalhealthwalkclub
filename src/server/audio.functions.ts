@@ -456,3 +456,113 @@ export const reshufflePods = createServerFn({ method: "POST" })
     if (!ev || ev.host_user_id !== userId) throw new Error("Only the host can reshuffle");
     return reshufflePodsImpl(supabase, data.eventId);
   });
+
+// ─────────────────────────────────────────────────────────────────────
+// Adaptive consolidation: merge under-filled pods so nobody is stranded
+// ─────────────────────────────────────────────────────────────────────
+
+export async function consolidatePodsImpl(supabase: any, eventId: string) {
+  const { data: ev } = await supabase
+    .from("events")
+    .select("id,audio_room_id,breakout_size")
+    .eq("id", eventId)
+    .single();
+  if (!ev?.audio_room_id || !ev.breakout_size || ev.breakout_size < 1) {
+    return { ok: true, merged: 0 };
+  }
+  const B: number = ev.breakout_size;
+
+  let merged = 0;
+  // bounded loop — protects against any quirk
+  for (let pass = 0; pass < 16; pass++) {
+    const { data: pods } = await supabase
+      .from("audio_rooms")
+      .select("id,current_participant_count")
+      .eq("parent_room_id", ev.audio_room_id)
+      .eq("status", "open")
+      .order("current_participant_count", { ascending: true });
+    const list = (pods ?? []).filter((p: any) => (p.current_participant_count ?? 0) >= 0);
+    if (list.length < 2) break;
+
+    const A = list[0];
+    // find the smallest other pod that fits A's people
+    const target = list.slice(1).find(
+      (p: any) => (A.current_participant_count ?? 0) + (p.current_participant_count ?? 0) <= B,
+    );
+    if (!target) break;
+
+    // move A's active participants → target
+    const { error: moveErr } = await supabase
+      .from("audio_room_participants")
+      .update({ audio_room_id: target.id })
+      .eq("audio_room_id", A.id)
+      .eq("status", "active");
+    if (moveErr) break;
+
+    // close A (the trigger also closes a room when count hits 0; this is explicit)
+    await supabase
+      .from("audio_rooms")
+      .update({ status: "closed", ends_at: new Date().toISOString() })
+      .eq("id", A.id);
+    merged++;
+  }
+  return { ok: true, merged };
+}
+
+const ConsolidateSchema = z.object({ eventId: z.string().uuid() });
+
+export const consolidatePods = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => ConsolidateSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    return consolidatePodsImpl(context.supabase, data.eventId);
+  });
+
+// ─────────────────────────────────────────────────────────────────────
+// Host: end the scheduled walk
+// ─────────────────────────────────────────────────────────────────────
+
+const EndScheduledSchema = z.object({ eventId: z.string().uuid() });
+
+export const endScheduledWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => EndScheduledSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ev } = await supabase
+      .from("events")
+      .select("id,host_user_id,audio_room_id,status")
+      .eq("id", data.eventId)
+      .single();
+    if (!ev) throw new Error("Walk not found");
+    if (ev.host_user_id !== userId) throw new Error("Only the host can end this walk");
+    if (ev.status === "completed") return { ok: true };
+
+    const now = new Date().toISOString();
+    if (ev.audio_room_id) {
+      // Close umbrella + all open pods
+      await supabase
+        .from("audio_rooms")
+        .update({ status: "closed", ends_at: now })
+        .or(`id.eq.${ev.audio_room_id},parent_room_id.eq.${ev.audio_room_id}`)
+        .neq("status", "closed");
+      // Mark active participants as left
+      const { data: rooms } = await supabase
+        .from("audio_rooms")
+        .select("id")
+        .or(`id.eq.${ev.audio_room_id},parent_room_id.eq.${ev.audio_room_id}`);
+      const ids = (rooms ?? []).map((r: any) => r.id);
+      if (ids.length) {
+        await supabase
+          .from("audio_room_participants")
+          .update({ status: "left", left_at: now })
+          .in("audio_room_id", ids)
+          .eq("status", "active");
+      }
+    }
+    await supabase
+      .from("events")
+      .update({ status: "completed", ended_at: now })
+      .eq("id", data.eventId);
+    return { ok: true };
+  });
