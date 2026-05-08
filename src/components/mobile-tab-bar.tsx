@@ -29,6 +29,7 @@ export function MobileTabBar() {
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
   const liveCount = useLiveCount();
+  const pwa = usePwaInstall();
 
   // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
