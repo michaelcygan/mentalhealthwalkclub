@@ -127,7 +127,7 @@ export function GroupsTab() {
         </div>
 
         <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-          <div className="relative">
+          <div className="relative focus-hue-drift rounded-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
@@ -135,7 +135,7 @@ export function GroupsTab() {
               inputMode="search"
               enterKeyHint="search"
               placeholder="Search 100+ groups…"
-              className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40 focus:ring-2 focus:ring-forest/15"
+              className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40"
             />
             {q && (
               <button onClick={() => setQ("")} aria-label="Clear" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary">
@@ -143,7 +143,7 @@ export function GroupsTab() {
               </button>
             )}
           </div>
-          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
             {CHIPS.map(({ id, label, icon: Icon }) => {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
@@ -152,8 +152,8 @@ export function GroupsTab() {
                   key={id}
                   disabled={dim}
                   onClick={() => toggleChip(id)}
-                  className={`inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
-                    on ? "border-forest bg-forest text-primary-foreground"
+                  className={`tap-press inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
+                    on ? "border-forest bg-forest text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
                 >
@@ -164,7 +164,7 @@ export function GroupsTab() {
             {(active.size > 0 || q) && (
               <button
                 onClick={() => { setActive(new Set()); setQ(""); }}
-                className="inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="tap-press inline-flex shrink-0 snap-start items-center gap-1 rounded-full border border-dashed border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3" /> Clear
               </button>
