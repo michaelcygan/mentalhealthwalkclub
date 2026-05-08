@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { haptics } from "@/lib/device";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { createFriendWalk } from "@/lib/friend-walk.functions";
+import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
+import { toast } from "sonner";
 
 const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
   { to: "/groups", label: "Groups", icon: Users },

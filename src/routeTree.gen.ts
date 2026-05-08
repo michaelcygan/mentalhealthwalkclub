@@ -17,6 +17,7 @@ import { Route as FacilitateRouteImport } from './routes/facilitate'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
@@ -64,6 +65,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WCodeRoute = WCodeRouteImport.update({
+  id: '/w/$code',
+  path: '/w/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GroupsSlugRoute = GroupsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
+  '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/w/$code'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/w/$code'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
+    | '/w/$code'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -206,6 +218,7 @@ export interface RootRouteChildren {
   JournalRoute: typeof JournalRoute
   ProfileRoute: typeof ProfileRoute
   WelcomeRoute: typeof WelcomeRoute
+  WCodeRoute: typeof WCodeRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
   ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/w/$code': {
+      id: '/w/$code'
+      path: '/w/$code'
+      fullPath: '/w/$code'
+      preLoaderRoute: typeof WCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/groups/$slug': {
@@ -347,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   JournalRoute: JournalRoute,
   ProfileRoute: ProfileRoute,
   WelcomeRoute: WelcomeRoute,
+  WCodeRoute: WCodeRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
   ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
