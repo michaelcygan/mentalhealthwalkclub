@@ -112,7 +112,11 @@ export function PulseRail({ groups, pulse, mine, onToggle }: Props) {
         style={{ scrollBehavior: "auto" }}
       >
         {doubled.map(({ g, p }, i) => (
-          <div key={`${g.id}-${i}`} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
+          <div
+            key={`${g.id}-${i}`}
+            className="card-in snap-start"
+            style={{ animationDelay: `${Math.min(i, 6) * 50}ms`, scrollSnapStop: "always" }}
+          >
             <GroupCard group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="pulse" />
           </div>
         ))}

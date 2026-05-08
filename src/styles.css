@@ -430,6 +430,19 @@
 /* content-visibility hint for heavy below-the-fold sections */
 .cv-auto { content-visibility: auto; contain-intrinsic-size: 1px 600px; }
 
+/* Header sticky-collapse: tightens vertical when scrolled */
+.header-collapse { transition: max-height 360ms ease, opacity 240ms ease, margin 240ms ease; }
+.header-collapse[data-collapsed="true"] { max-height: 0; opacity: 0; margin-top: -4px; pointer-events: none; overflow: hidden; }
+.header-collapse[data-collapsed="false"] { max-height: 120px; opacity: 1; }
+
+/* View transition — section content morph */
+@supports (view-transition-name: auto) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; }
+}
+
+/* Search placeholder rotator (visual hint, no extra height) */
+.placeholder-rotate::placeholder { transition: opacity 360ms ease; }
+
 @media (prefers-reduced-motion: reduce) {
   .ken-burns, .glyph-float, .city-pulse-ring, .card-in,
   .eyebrow-rise, .focus-hue-drift, .ember-spark,
