@@ -31,7 +31,7 @@ const THEME_GROUPS: { key: string; label: string; themes: string[] }[] = [
   { key: "chapters", label: "City chapters", themes: ["chapter"] },
 ];
 
-function GroupsTab() {
+export function GroupsTab() {
   const { user } = useAuth();
   const { requireAuth } = useAuthPrompt();
   const { groups, mine, pulse, myCity, myThemes, loading, refresh } = useGroupsFeed();
