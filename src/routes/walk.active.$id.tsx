@@ -133,13 +133,14 @@ function ActiveWalk() {
     return () => { lock?.release().catch(() => {}); };
   }, [session]);
 
-  // Milestone toasts
+  // Milestone toasts + soft haptic so phones in pockets still register
   useEffect(() => {
     const mins = Math.floor(elapsed / 60);
     const fire = (k: string, msg: string) => {
       if (milestonesHit.current.has(k)) return;
       milestonesHit.current.add(k);
       toast(msg, { duration: 3500 });
+      haptics.soft();
     };
     if (mins >= 5) fire("5m", "5 minutes in · let your shoulders drop");
     if (mins >= 10) fire("10m", "10 minutes · this is the hard part");
