@@ -1565,6 +1565,27 @@ export type Database = {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
       }
+      get_leaderboard: {
+        Args: { _group_id?: string; _period?: string }
+        Returns: {
+          avatar_url: string
+          badge_count: number
+          city: string
+          display_name: string
+          rank: number
+          total_minutes: number
+          total_walks: number
+          user_id: string
+        }[]
+      }
+      get_my_rank: {
+        Args: { _group_id?: string; _period?: string }
+        Returns: {
+          next_rank_minutes: number
+          rank: number
+          total_minutes: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
