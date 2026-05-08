@@ -62,9 +62,21 @@ function ActiveWalk() {
     toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
   };
 
+  const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
+  const [friendShareOpen, setFriendShareOpen] = useState(false);
+
   useEffect(() => {
-    supabase.from("walk_sessions").select("*").eq("id", id).single().then(({ data }) => {
-      if (data) setSession(data as Session);
+    supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
+      if (!data) return;
+      setSession(data as Session);
+      if (data.audio_room_id) {
+        const { data: room } = await supabase
+          .from("audio_rooms")
+          .select("id, share_code, host_user_id, room_type")
+          .eq("id", data.audio_room_id)
+          .maybeSingle();
+        if (room && room.room_type === "friend") setFriendRoom(room);
+      }
     });
   }, [id]);
 
