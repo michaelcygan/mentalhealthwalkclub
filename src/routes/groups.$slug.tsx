@@ -108,20 +108,43 @@ function GroupDetail() {
   });
 
   const onWelcome = () => requireAuth(async () => {
-    if (!group) return;
+    if (!group || !user) return;
     try {
-      const r = await callWelcome({ data: { groupId: group.id } });
+      const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const { data: nm } = await supabase
+        .from("group_memberships")
+        .select("user_id")
+        .eq("group_id", group.id)
+        .gte("joined_at", since);
+      const recipients = (nm ?? []).map((r) => r.user_id).filter((id) => id && id !== user.id);
+      if (recipients.length === 0) { toast("No new walkers this week"); return; }
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: existing } = await supabase
+        .from("group_signals")
+        .select("recipient_user_id")
+        .eq("sender_user_id", user.id)
+        .eq("group_id", group.id)
+        .eq("kind", "welcome")
+        .gte("created_at", today);
+      const already = new Set((existing ?? []).map((x) => x.recipient_user_id));
+      const fresh = recipients.filter((r) => !already.has(r));
+      if (fresh.length === 0) { setWelcomedKey(group.id); toast("Already sent today"); return; }
+      const rows = fresh.map((rid) => ({ group_id: group.id, sender_user_id: user.id, recipient_user_id: rid, kind: "welcome" as const }));
+      const { error } = await supabase.from("group_signals").insert(rows);
+      if (error) throw error;
       setWelcomedKey(group.id);
-      toast(r.sent > 0 ? `Welcomed ${r.sent} ${r.sent === 1 ? "walker" : "walkers"}` : "Already sent today");
+      toast(`Welcomed ${fresh.length} ${fresh.length === 1 ? "walker" : "walkers"}`);
     } catch { toast.error("Couldn't send"); }
   });
 
   const onKudos = (m: Milestone) => requireAuth(async () => {
-    if (!group) return;
-    const others = m.recipients.filter((r) => r.userId !== user?.id);
+    if (!group || !user) return;
+    const others = m.recipients.filter((r) => r.userId !== user.id);
     if (others.length === 0) return;
     try {
-      await Promise.all(others.map((r) => callKudos({ data: { groupId: group.id, recipientUserId: r.userId, badgeId: m.badgeId } })));
+      const rows = others.map((r) => ({ group_id: group.id, sender_user_id: user.id, recipient_user_id: r.userId, kind: "kudos" as const, badge_id: m.badgeId }));
+      const { error } = await supabase.from("group_signals").insert(rows);
+      if (error && !/duplicate key/i.test(error.message)) throw error;
       const next = new Set(kudosSent); next.add(m.badgeId); setKudosSent(next);
       toast(`♡ Sent to ${others.length} ${others.length === 1 ? "person" : "people"}`);
     } catch { toast.error("Couldn't send"); }
