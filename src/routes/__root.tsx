@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { ViewModeProvider, useViewMode } from "@/lib/view-mode";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, Headphones, ArrowLeftRight } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 
