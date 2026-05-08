@@ -375,7 +375,7 @@ function ActiveWalk() {
 
       {/* In-walk utility row: private notes + ambient music pill */}
       <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 md:px-0">
-        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} onChange={setWalkNotes} />
+        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} photos={walkPhotos} onChangeNotes={setWalkNotes} onChangePhotos={setWalkPhotos} />
         {!(session.walk_type === "audio" || session.guided_track_id) && (
           <AmbientPill />
         )}
