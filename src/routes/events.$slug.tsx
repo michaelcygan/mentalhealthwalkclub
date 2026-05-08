@@ -10,6 +10,8 @@ import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee, 
 import { joinScheduledWalk, openScheduledRoom, reshufflePods, endScheduledWalk } from "@/server/audio.functions";
 import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users, Share2 } from "lucide-react";
 import { share, haptics } from "@/lib/device";
+import { lazy, Suspense } from "react";
+const StaticLocationMap = lazy(() => import("@/components/static-location-map"));
 
 export const Route = createFileRoute("/events/$slug")({
   component: EventDetail,
