@@ -40,6 +40,9 @@ export const createFriendWalk = createServerFn({ method: "POST" })
         requires_active_walk: false,
         share_code: code,
         status: "open",
+        audience_mode: "broadcast",
+        allow_guest_listeners: true,
+        reactions_enabled: true,
       })
       .select("id")
       .single();
