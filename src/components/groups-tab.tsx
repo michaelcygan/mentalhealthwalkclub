@@ -113,7 +113,7 @@ export function GroupsTab() {
               </button>
             )}
           </div>
-          <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+          <div className="-mx-4 mt-2 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
             {CHIPS.map(({ id, label, icon: Icon }) => {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
