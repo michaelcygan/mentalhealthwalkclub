@@ -88,6 +88,7 @@ function ActiveWalk() {
     supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
       if (!data) return;
       setSession(data as Session);
+      setShareMap(!!(data as Session).share_map);
       if (data.audio_room_id) {
         const { data: room } = await supabase
           .from("audio_rooms")
