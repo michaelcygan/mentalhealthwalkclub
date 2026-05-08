@@ -14,6 +14,8 @@ import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
 import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
+import { HeroGradient } from "@/components/hero-gradient";
+import { useLiveCount } from "@/hooks/use-live-count";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
