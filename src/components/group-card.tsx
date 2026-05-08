@@ -158,6 +158,9 @@ export function GroupCard({
 
   // ─────── GALLERY tile (square) ───────
   if (variant === "gallery") {
+    if (group.cover_set) {
+      return <CityTile group={group} pulse={pulse} joined={joined} onToggle={onToggle} />;
+    }
     const flag = group.country ? FLAG[group.country] : null;
     const sub = group.location_label ?? group.city ?? group.theme;
     return (
