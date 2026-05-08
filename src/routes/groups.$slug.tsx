@@ -27,7 +27,7 @@ export const Route = createFileRoute("/groups/$slug")({
   }),
 });
 
-interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
+interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; cover_set: string | null; }
 interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; attendee_count: number; host_user_id: string | null; host_name?: string | null; }
 interface Room { id: string; title: string; theme: string | null; current_participant_count: number; max_participants: number; }
 interface Milestone { badgeId: string; name: string; description: string | null; icon: string | null; key: string; recipients: { userId: string; awardId: string }[] }
