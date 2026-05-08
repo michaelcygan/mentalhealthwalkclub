@@ -325,15 +325,14 @@ function GroupDetail() {
           <h2 className="font-serif text-xl">Live now</h2>
           <ul className="mt-3 flex flex-wrap gap-2">
             {rooms.map((r) => (
-              <Link key={r.id} to={"/events/$slug" as never} params={{ slug: r.id } as never}
-                className="inline-flex items-center gap-2 rounded-full border border-forest/30 bg-forest/8 px-3 py-1.5 text-xs transition hover:-translate-y-0.5 hover:border-forest/60">
+              <li key={r.id} className="inline-flex items-center gap-2 rounded-full border border-forest/30 bg-forest/8 px-3 py-1.5 text-xs">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
                 </span>
                 <span className="font-medium">{r.title}</span>
                 <span className="text-forest/70">{r.current_participant_count}/{r.max_participants}</span>
-              </Link>
+              </li>
             ))}
           </ul>
         </section>
