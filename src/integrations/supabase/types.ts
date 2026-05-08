@@ -21,6 +21,7 @@ export type Database = {
           is_muted: boolean
           joined_at: string
           left_at: string | null
+          participant_role: string
           role: string
           status: string
           user_id: string
@@ -32,6 +33,7 @@ export type Database = {
           is_muted?: boolean
           joined_at?: string
           left_at?: string | null
+          participant_role?: string
           role?: string
           status?: string
           user_id: string
@@ -43,6 +45,7 @@ export type Database = {
           is_muted?: boolean
           joined_at?: string
           left_at?: string | null
+          participant_role?: string
           role?: string
           status?: string
           user_id?: string
@@ -91,6 +94,7 @@ export type Database = {
           requires_active_walk: boolean
           room_type: string
           scheduled_event_id: string | null
+          share_code: string | null
           starts_at: string | null
           status: string
           theme: string | null
@@ -115,6 +119,7 @@ export type Database = {
           requires_active_walk?: boolean
           room_type?: string
           scheduled_event_id?: string | null
+          share_code?: string | null
           starts_at?: string | null
           status?: string
           theme?: string | null
@@ -139,6 +144,7 @@ export type Database = {
           requires_active_walk?: boolean
           room_type?: string
           scheduled_event_id?: string | null
+          share_code?: string | null
           starts_at?: string | null
           status?: string
           theme?: string | null
