@@ -9,6 +9,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
 import { share, haptics } from "@/lib/device";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -157,7 +158,7 @@ function JournalTab() {
         <p className="mt-1 text-muted-foreground">Just for you. Always.</p>
       </header>
 
-      {/* Hero stats card with sparkline */}
+      {/* Hero stats card with day-of-week heatmap */}
       <div className="rounded-3xl border border-border bg-card p-5 shadow-soft md:p-6">
         <div className="grid gap-5 md:grid-cols-[auto,1fr] md:items-center md:gap-8">
           <div className="grid grid-cols-3 gap-6">
@@ -166,12 +167,11 @@ function JournalTab() {
             <Stat label="miles" value={totalMiles.toFixed(1)} />
           </div>
           <div>
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
-            <div className="flex h-16 items-end gap-1">
-              {weeklyMins.map((m, i) => (
-                <div key={i} className="flex-1 rounded-t bg-forest/80" style={{ height: `${Math.max(4, (m / maxWk) * 100)}%`, opacity: m === 0 ? 0.15 : 0.5 + (m / maxWk) * 0.5 }} title={`${m} min`} />
-              ))}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
+              <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
             </div>
+            <Heatmap walks={walks} />
           </div>
         </div>
         {moodAvg !== null && (
