@@ -261,10 +261,12 @@ function RootComponent() {
     <AuthProvider>
       <ViewModeProvider>
         <AuthPromptProvider>
-          <AppFrame>
-            <Outlet />
-          </AppFrame>
-          <Toaster />
+          <AmbientPlayerProvider>
+            <AppFrame>
+              <Outlet />
+            </AppFrame>
+            <Toaster />
+          </AmbientPlayerProvider>
         </AuthPromptProvider>
       </ViewModeProvider>
     </AuthProvider>
