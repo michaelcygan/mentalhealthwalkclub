@@ -5,10 +5,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Footprints, Users, CalendarPlus, Headphones, MapPin, Heart, Sparkles, Award, ChevronDown } from "lucide-react";
+import { Footprints, Users, CalendarPlus, Headphones, MapPin, Heart, Sparkles, Award, ChevronDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
+import { share, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/groups/$slug")({
   component: GroupDetail,
@@ -192,7 +193,24 @@ function GroupDetail() {
             <Users className="h-3 w-3" />{group.member_count.toLocaleString()} walkers
             {walkersWeek > 0 && <> · {walkersWeek} this week</>}
           </div>
-          <h1 className="mt-2 font-serif text-3xl leading-tight">{group.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">{group.name}</h1>
+            <button
+              onClick={async () => {
+                haptics.tap();
+                const ok = await share({
+                  title: `${group.name} — Walk Club`,
+                  text: group.description ?? "A quiet walking group on Walk Club.",
+                  url: typeof window !== "undefined" ? window.location.href : undefined,
+                });
+                if (ok) toast("Invite ready to share.");
+              }}
+              aria-label="Share group"
+              className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur transition hover:border-forest/40 hover:text-forest"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
           {group.description && <p className="mt-2 max-w-2xl text-sm text-foreground/80">{group.description}</p>}
         </div>
       </header>
