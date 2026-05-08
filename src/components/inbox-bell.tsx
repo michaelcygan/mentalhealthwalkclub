@@ -120,8 +120,7 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
           .in("id", ids)
           .eq("recipient_user_id", user.id)
           .is("read_at", null)
-          .then(({ error }) => { if (!error) setUnread(0); })
-          .catch(() => {});
+          .then(({ error }) => { if (!error) setUnread(0); }, () => {});
       }
     }
   };
