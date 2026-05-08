@@ -9,6 +9,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
 import { share, haptics } from "@/lib/device";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -49,18 +50,8 @@ function JournalTab() {
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
 
-  // 12 week sparkline
-  const weeklyMins = useMemo(() => {
-    const weeks = Array(12).fill(0);
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    walks.forEach((w) => {
-      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
-      const wk = Math.floor(diffDays / 7);
-      if (wk >= 0 && wk < 12) weeks[11 - wk] += Math.round((w.duration_seconds ?? 0) / 60);
-    });
-    return weeks;
-  }, [walks]);
-  const maxWk = Math.max(1, ...weeklyMins);
+  // (heatmap below derives its own per-day grid)
+
 
   // 30-day mood arc — average mood_after_score per day, smoothed sparkline
   const moodArc = useMemo(() => {
@@ -157,7 +148,7 @@ function JournalTab() {
         <p className="mt-1 text-muted-foreground">Just for you. Always.</p>
       </header>
 
-      {/* Hero stats card with sparkline */}
+      {/* Hero stats card with day-of-week heatmap */}
       <div className="rounded-3xl border border-border bg-card p-5 shadow-soft md:p-6">
         <div className="grid gap-5 md:grid-cols-[auto,1fr] md:items-center md:gap-8">
           <div className="grid grid-cols-3 gap-6">
@@ -166,12 +157,11 @@ function JournalTab() {
             <Stat label="miles" value={totalMiles.toFixed(1)} />
           </div>
           <div>
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
-            <div className="flex h-16 items-end gap-1">
-              {weeklyMins.map((m, i) => (
-                <div key={i} className="flex-1 rounded-t bg-forest/80" style={{ height: `${Math.max(4, (m / maxWk) * 100)}%`, opacity: m === 0 ? 0.15 : 0.5 + (m / maxWk) * 0.5 }} title={`${m} min`} />
-              ))}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
+              <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
             </div>
+            <Heatmap walks={walks} />
           </div>
         </div>
         {moodAvg !== null && (
@@ -311,6 +301,13 @@ function JournalTab() {
       </section>
 
       <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Still here. Still walking.</p>
+
+      {/* Mobile detail sheet — desktop already shows the sidebar pane */}
+      <Sheet open={!!selectedId} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
+        <SheetContent side="bottom" className="rounded-t-3xl lg:hidden">
+          <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -389,5 +386,60 @@ function MoodArc({ points }: { points: (number | null)[] }) {
       ) : null)}
       {last != null && <circle cx={xs[xs.length - 1]} cy={last} r={3} fill="oklch(0.36 0.05 155)" />}
     </svg>
+  );
+}
+
+function Heatmap({ walks }: { walks: Walk[] }) {
+  const grid = useMemo(() => {
+    const cells: { mins: number; date: Date }[][] = Array.from({ length: 7 }, () =>
+      Array.from({ length: 12 }, () => ({ mins: 0, date: new Date() }))
+    );
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    for (let col = 0; col < 12; col++) {
+      const weekStart = new Date(monday); weekStart.setDate(monday.getDate() - (11 - col) * 7);
+      for (let row = 0; row < 7; row++) {
+        const d = new Date(weekStart); d.setDate(weekStart.getDate() + row);
+        cells[row][col] = { mins: 0, date: d };
+      }
+    }
+    walks.forEach((w) => {
+      const d = new Date(w.started_at); d.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 12 * 7) return;
+      const dow = (d.getDay() + 6) % 7;
+      const todayDow = (today.getDay() + 6) % 7;
+      const weekIdxFromToday = Math.floor((diffDays + todayDow - dow) / 7);
+      const col = 11 - weekIdxFromToday;
+      if (col < 0 || col > 11) return;
+      cells[dow][col].mins += Math.round((w.duration_seconds ?? 0) / 60);
+    });
+    return cells;
+  }, [walks]);
+  const max = Math.max(1, ...grid.flat().map((c) => c.mins));
+  const todayStr = new Date().toDateString();
+  return (
+    <div className="grid grid-cols-12 gap-[3px]" role="img" aria-label="Walks heatmap, last 12 weeks">
+      {Array.from({ length: 12 }).map((_, col) => (
+        <div key={col} className="grid grid-rows-7 gap-[3px]">
+          {grid.map((row, r) => {
+            const c = row[col];
+            const intensity = c.mins / max;
+            const isToday = c.date.toDateString() === todayStr;
+            const bg = c.mins === 0
+              ? "color-mix(in oklab, var(--forest) 8%, transparent)"
+              : `color-mix(in oklab, var(--forest) ${Math.round(20 + intensity * 75)}%, transparent)`;
+            return (
+              <div
+                key={r}
+                title={`${c.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${c.mins} min`}
+                className={`aspect-square rounded-[3px] ${isToday ? "ring-1 ring-forest" : ""}`}
+                style={{ background: bg }}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }

@@ -1,53 +1,74 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, Play } from "lucide-react";
 import heroImg from "@/assets/walk-hero.jpg";
 import { toast } from "sonner";
-import { LiveNowStrip } from "@/components/live-now-strip";
+import { NowAndNext } from "@/components/now-and-next";
 import { WeeklyRing } from "@/components/weekly-ring";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
-import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
 import { HeroGradient } from "@/components/hero-gradient";
 import { useLiveCount } from "@/hooks/use-live-count";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
-  head: () => ({ meta: [{ title: "Walk — Mental Health Mental Health Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Mental Health Walk Club" }] }),
 });
 
 const MODE_PREFACE: Record<string, string> = {
   solo: "Walking alone still counts.",
-  guided_solo: "A gentle voice in your ear — pick one after this.",
+  guided_solo: "A gentle voice in your ear.",
   audio: "You'll be matched once you start moving.",
   irl_event: "Real people, real sidewalks.",
 };
+
+type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { requireAuth, openWelcome } = useAuthPrompt();
-  const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [guidedTrack, setGuidedTrack] = useState<GuidedTrack | null>(null);
-  const [walkType, setWalkType] = useState<"solo" | "guided_solo" | "irl_event" | "audio">("solo");
+
+  // Pre-walk state lives in the bottom sheet now, not as a step machine.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [pickGuide, setPickGuide] = useState(false);
+  const [walkType, setWalkType] = useState<WalkType>("solo");
   const [feeling, setFeeling] = useState<string>("");
   const [moodScore, setMoodScore] = useState<number | null>(null);
   const [intention, setIntention] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Home state
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
   const [totalWalks, setTotalWalks] = useState<number | null>(null);
+  const [lastReflection, setLastReflection] = useState<string | null>(null);
+
+  // Web Share Target → ?intention=… seeds the next walk
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const u = new URL(window.location.href);
+    const seed = u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title");
+    if (seed) {
+      setIntention(seed.slice(0, 280));
+      setSheetOpen(true);
+    }
+    if (u.searchParams.get("start") === "1") setSheetOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "completed").then(({ count }) => setTotalWalks(count ?? 0));
+    supabase.from("walk_sessions").select("reflection_note").eq("user_id", user.id).eq("status","completed").not("reflection_note","is",null).order("started_at",{ ascending:false }).limit(1).maybeSingle().then(({ data }) => setLastReflection(data?.reflection_note ?? null));
     const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0,0,0,0);
     supabase.from("walk_sessions").select("started_at,duration_seconds,status")
       .eq("user_id", user.id).gte("started_at", since.toISOString())
@@ -63,7 +84,6 @@ function WalkTab() {
         });
         setWeeklyDots(dots);
         const active = rows.find(r => r.status === "active");
-        // refetch id for active walk
         if (active) {
           supabase.from("walk_sessions").select("id").eq("user_id", user.id).eq("status","active").order("started_at",{ascending:false}).limit(1).maybeSingle()
             .then(({ data: a }) => setActiveWalkId(a?.id ?? null));
@@ -82,7 +102,7 @@ function WalkTab() {
         mood_before: feeling || null,
         mood_before_score: moodScore,
         intention: intention || null,
-        guided_track_id: track?.id ?? guidedTrack?.id ?? null,
+        guided_track_id: track?.id ?? null,
       }).select("id").single();
       if (error) throw error;
       navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
@@ -93,8 +113,15 @@ function WalkTab() {
     }
   };
 
-  const proceedAfterMood = () => {
-    if (walkType === "guided_solo") setStep(2);
+  const openSheet = (type: WalkType) => requireAuth(() => {
+    haptics.soft();
+    setWalkType(type);
+    setPickGuide(false);
+    setSheetOpen(true);
+  });
+
+  const proceed = () => {
+    if (walkType === "guided_solo") setPickGuide(true);
     else beginWalk();
   };
 
@@ -107,10 +134,10 @@ function WalkTab() {
           <div className="absolute inset-0 bg-gradient-to-t from-forest/85 via-forest/40 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground md:p-10">
             <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
-            <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight md:text-5xl">Take the walk. Let it count.</h1>
-            <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk & Talk, or Local — never alone.</p>
+            <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight text-balance md:text-5xl">Take the walk. Let it count.</h1>
+            <p className="mt-3 max-w-md text-sm opacity-90 text-pretty md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk & Talk, or Local — never alone.</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={() => requireAuth(() => setStep(1))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
+              <Button onClick={() => requireAuth(() => openSheet("solo"))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
                 <Footprints className="mr-2 h-4 w-4" /> Start a walk
               </Button>
               <Button onClick={openWelcome} variant="outline" className="rounded-full border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
@@ -129,10 +156,10 @@ function WalkTab() {
         <Card className="rounded-3xl border-border bg-card p-7 shadow-soft md:p-9">
           <div className="grid gap-6 md:grid-cols-[1.2fr,1fr] md:items-center">
             <div>
-              <h2 className="font-serif text-2xl md:text-3xl">A different kind of social app</h2>
-              <p className="mt-3 text-muted-foreground">No feeds. No chat. No doomscroll. Groups are quiet affinity tags — Anxiety, Burnout, Sunday Reset, your city — that surface walks that fit you. The socializing happens in person, or on your feet with audio.</p>
+              <h2 className="font-serif text-2xl text-balance md:text-3xl">A different kind of social app</h2>
+              <p className="mt-3 text-muted-foreground text-pretty">No feeds. No chat. No doomscroll. Groups are quiet affinity tags — Anxiety, Burnout, Sunday Reset, your city — that surface walks that fit you. The socializing happens in person, or on your feet with audio.</p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button onClick={() => requireAuth(() => setStep(1))} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
+                <Button onClick={() => requireAuth(() => openSheet("solo"))} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
                   Take your first walk
                 </Button>
                 <Button onClick={openWelcome} variant="ghost" className="rounded-full">Learn more</Button>
@@ -153,30 +180,26 @@ function WalkTab() {
     );
   }
 
-  if (step === 0) {
-    const hour = new Date().getHours();
-    const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-    const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
-    const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
-    const quickFeel = (mood: string, score: number) => {
-      haptics.tap();
-      setFeeling(mood); setMoodScore(score); setWalkType("solo"); setStep(1);
-    };
-    return (
+  // ───────────────────────── Logged-in: one calm scroll ─────────────────────────
+  const hour = new Date().getHours();
+  const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
+  const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
+  const microState = (() => {
+    if (totalWalks === 0) return "Your first walk is the hardest. Five minutes around the block counts.";
+    if (streak >= 4) return "Eight minutes is enough — your body knows.";
+    if (weeklyDots[weeklyDots.length - 2]) return "Two days in a row feels good.";
+    if (weeklyMinutes === 0) return "A small one tonight?";
+    return "Show up however you can.";
+  })();
+
+  return (
+    <>
       <div className="space-y-5">
         <HeroGradient className="p-6 md:p-8">
           <p className="font-serif text-xs italic text-foreground/70">Come as you are. Walk at your pace.</p>
-          <h1 className="mt-1 font-serif text-2xl leading-tight md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
-          <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-forest/80">How are you arriving?</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {[
-              { l: "heavy", s: 3 }, { l: "tender", s: 4 }, { l: "okay", s: 6 }, { l: "lighter", s: 8 },
-            ].map((m) => (
-              <button key={m.l} onClick={() => quickFeel(m.l, m.s)} className="rounded-full border border-foreground/15 bg-card/80 px-3.5 py-1.5 text-sm backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/50">
-                {m.l}
-              </button>
-            ))}
-          </div>
+          <h1 className="mt-1 font-serif text-2xl leading-tight text-balance md:text-3xl">{greet}{name ? `, ${name}` : ""}.</h1>
+          <p className="mt-2 max-w-md font-serif text-sm italic text-foreground/75 text-pretty">{microState}</p>
         </HeroGradient>
 
         {activeWalkId && (
@@ -189,27 +212,18 @@ function WalkTab() {
           </Link>
         )}
 
-        {totalWalks === 0 && !activeWalkId && (
-          <div className="rounded-2xl border border-forest/30 bg-accent/40 p-4">
-            <p className="font-serif text-base">Your first walk is the hardest.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Five minutes around the block counts. We'll be here when you get back.</p>
-          </div>
-        )}
-
-        <StartCta onStart={() => { haptics.soft(); setWalkType("solo"); setStep(1); }} />
+        <StartCta onStart={() => openSheet("solo")} />
 
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
           <div className="flex flex-wrap gap-2">
-            <ModePill icon={Sparkles} label="Guided" onClick={() => { setWalkType("guided_solo"); setStep(1); }} />
-            <ModePill icon={Headphones} label="Walk & Talk" onClick={() => { setWalkType("audio"); setStep(1); }} />
+            <ModePill icon={Sparkles} label="Guided" onClick={() => openSheet("guided_solo")} />
+            <ModePill icon={Headphones} label="Walk & Talk" onClick={() => openSheet("audio")} />
             <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
           </div>
         </div>
 
-        <UpcomingFriendWalks />
-
-        <LiveNowStrip />
+        <NowAndNext />
 
         <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
           <WeeklyRing minutes={weeklyMinutes} dots={weeklyDots} />
@@ -219,51 +233,108 @@ function WalkTab() {
             </p>
           )}
         </Card>
+
+        {lastReflection && (
+          <figure className="px-1 pt-1">
+            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">From your last walk</div>
+            <blockquote className="mt-1 font-serif text-base italic leading-snug text-foreground/85 text-pretty before:mr-1 before:text-forest before:content-['“'] after:text-forest after:content-['”']">{lastReflection}</blockquote>
+          </figure>
+        )}
       </div>
-    );
-  }
 
-  if (step === 1) {
-    return (
-      <div className="mx-auto max-w-lg space-y-6 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-        <button onClick={() => setStep(0)} className="text-xs text-muted-foreground underline-offset-4 hover:text-forest hover:underline">← back</button>
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">{walkType === "audio" ? "Walk & Talk" : walkType === "guided_solo" ? "Guided walk" : walkType === "irl_event" ? "Local walk" : "Solo walk"}</p>
-          <h2 className="mt-1 font-serif text-3xl leading-tight">How are you arriving?</h2>
-          <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
-        </div>
+      <PreWalkSheet
+        open={sheetOpen}
+        onOpenChange={(v) => { setSheetOpen(v); if (!v) setPickGuide(false); }}
+        walkType={walkType}
+        setWalkType={setWalkType}
+        feeling={feeling}
+        setFeeling={setFeeling}
+        moodScore={moodScore}
+        setMoodScore={setMoodScore}
+        intention={intention}
+        setIntention={setIntention}
+        busy={busy}
+        pickGuide={pickGuide}
+        onProceed={proceed}
+        onChooseTrack={(t) => { beginWalk(t); }}
+        onSkipGuide={() => beginWalk(null)}
+      />
+    </>
+  );
+}
 
-        <MoodCloud value={feeling} onChange={setFeeling} />
-
-        <div className={`transition-all duration-500 ${feeling ? "max-h-40 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel? <span className="lowercase italic tracking-normal text-muted-foreground/70">(optional)</span></p>
-          <WeightBar value={moodScore} onChange={setMoodScore} />
-        </div>
-
-        <div className={`transition-all duration-500 ${moodScore ? "max-h-60 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">An intention? <span className="lowercase italic tracking-normal text-muted-foreground/70">optional</span></p>
-          <textarea value={intention} onChange={(e) => setIntention(e.target.value)} placeholder="e.g. let my shoulders drop" rows={2} className="w-full rounded-2xl border border-border bg-card p-3 text-sm focus:border-forest focus:outline-none" />
-        </div>
-
-        <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-          <Button onClick={proceedAfterMood} disabled={busy} className="h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
-            {busy ? "Starting…" : walkType === "guided_solo" ? "Choose a guide" : "Begin walking"}
-          </Button>
-          <button onClick={proceedAfterMood} className="mt-2 block w-full text-center text-xs italic text-muted-foreground hover:text-forest">skip the rest, just walk</button>
-        </div>
-      </div>
-    );
-  }
+function PreWalkSheet({
+  open, onOpenChange, walkType, setWalkType, feeling, setFeeling, moodScore, setMoodScore,
+  intention, setIntention, busy, pickGuide, onProceed, onChooseTrack, onSkipGuide,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  walkType: WalkType; setWalkType: (t: WalkType) => void;
+  feeling: string; setFeeling: (v: string) => void;
+  moodScore: number | null; setMoodScore: (n: number | null) => void;
+  intention: string; setIntention: (v: string) => void;
+  busy: boolean; pickGuide: boolean;
+  onProceed: () => void;
+  onChooseTrack: (t: GuidedTrack) => void;
+  onSkipGuide: () => void;
+}) {
+  const kbInset = useKeyboardInset();
+  const label = useMemo(() =>
+    walkType === "audio" ? "Walk & Talk"
+    : walkType === "guided_solo" ? "Guided walk"
+    : walkType === "irl_event" ? "Local walk"
+    : "Solo walk", [walkType]);
 
   return (
-    <div className="mx-auto max-w-lg pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-      <button onClick={() => setStep(1)} className="mb-4 text-xs text-muted-foreground underline-offset-4 hover:text-forest hover:underline">← back</button>
-      <GuidePicker
-        mood={feeling || null}
-        onChoose={(t) => { setGuidedTrack(t); beginWalk(t); }}
-        onSkip={() => beginWalk(null)}
-      />
-    </div>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[92vh]">
+        <DrawerHeader className="pb-1 text-left">
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">{label}</div>
+          <DrawerTitle className="mt-1 font-serif text-2xl text-balance">How are you arriving?</DrawerTitle>
+          <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
+        </DrawerHeader>
+
+        {pickGuide ? (
+          <div className="px-4 pb-6">
+            <GuidePicker mood={feeling || null} onChoose={onChooseTrack} onSkip={onSkipGuide} />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-5 overflow-y-auto px-4 pb-3">
+              {/* Quick mode swap inside the sheet */}
+              <div className="flex flex-wrap gap-1.5">
+                {(["solo","guided_solo","audio"] as WalkType[]).map((t) => (
+                  <button key={t} onClick={() => setWalkType(t)} className={`rounded-full border px-3 py-1 text-xs transition ${walkType === t ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>
+                    {t === "solo" ? "Solo" : t === "guided_solo" ? "Guided" : "Walk & Talk"}
+                  </button>
+                ))}
+              </div>
+
+              <MoodCloud value={feeling} onChange={setFeeling} />
+
+              <div className={`transition-all duration-500 ${feeling ? "max-h-40 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel? <span className="lowercase italic tracking-normal text-muted-foreground/70">(optional)</span></p>
+                <WeightBar value={moodScore} onChange={setMoodScore} />
+              </div>
+
+              <div className={`transition-all duration-500 ${moodScore ? "max-h-60 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">An intention? <span className="lowercase italic tracking-normal text-muted-foreground/70">optional</span></p>
+                <textarea value={intention} onChange={(e) => setIntention(e.target.value)} placeholder="e.g. let my shoulders drop" rows={2} className="w-full rounded-2xl border border-border bg-card p-3 text-sm focus:border-forest focus:outline-none" />
+              </div>
+            </div>
+
+            <div
+              className="border-t border-border glass px-4 pt-3"
+              style={{ paddingBottom: `calc(max(env(safe-area-inset-bottom), 0.75rem) + ${kbInset}px)` }}
+            >
+              <Button onClick={onProceed} disabled={busy} className="h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
+                {busy ? "Starting…" : walkType === "guided_solo" ? "Choose a guide" : "Begin walking"}
+              </Button>
+              <button onClick={onProceed} className="mt-2 block w-full text-center text-xs italic text-muted-foreground hover:text-forest">skip the rest, just walk</button>
+            </div>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -299,7 +370,6 @@ function StartCta({ onStart }: { onStart: () => void }) {
   );
 }
 
-
 function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -307,7 +377,7 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
         <Icon className="h-5 w-5 text-forest" />
       </div>
       <h3 className="mt-3 font-serif text-lg">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+      <p className="mt-1 text-sm text-muted-foreground text-pretty">{body}</p>
     </div>
   );
 }

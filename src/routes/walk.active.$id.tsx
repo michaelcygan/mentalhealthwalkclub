@@ -42,6 +42,15 @@ function ActiveWalk() {
     return () => { release?.(); };
   }, []);
 
+  // Dynamic theme-color: tint the iOS/Android status bar to forest while walking
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    const prev = meta?.getAttribute("content") ?? null;
+    if (meta) meta.setAttribute("content", "#1f3a2c");
+    return () => { if (meta && prev !== null) meta.setAttribute("content", prev); };
+  }, []);
+
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);

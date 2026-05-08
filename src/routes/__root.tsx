@@ -187,9 +187,10 @@ function TabBar() {
 
       {/* Mobile top bar — sign in for logged-out visitors */}
       {!user ? (
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
-            <LogoStamp tone="dark" size={40} />
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/60 glass px-4 py-2.5 md:hidden">
+          <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={36} />
+            <span className="font-serif text-[13px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
           </Link>
           <div className="flex items-center gap-1">
             <button onClick={openWelcome} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">How it works</button>
@@ -197,9 +198,10 @@ function TabBar() {
           </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
-            <LogoStamp tone="dark" size={40} />
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/60 glass px-4 py-2 md:hidden">
+          <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={36} />
+            <span className="font-serif text-[13px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
           </Link>
           <div className="flex items-center gap-2">
             <ModeToggle compact />

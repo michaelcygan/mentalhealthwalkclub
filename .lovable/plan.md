@@ -1,57 +1,118 @@
-# Logo + Brand Name Pass
+# A concentrated level-up pass
 
-Two related cleanups: drop in the new hand-drawn stamp logo wherever the current green Footprints icon appears, and update every user-facing string from "Walk Club" to "Mental Health Walk Club".
+The app already has the right primitives (Walk, Walk & Talk, Friend Walk, Journal, Groups, Events, badges, mood, reflections). This pass is about **squeezing more out of them** — not adding scope. Three principles drive every change:
 
-## 1. Add the logo as an asset
+1. **Mobile is the canvas.** Use haptics, safe-areas, gestures, system share, install, and motion that respects `prefers-reduced-motion`.
+2. **Reuse, don't add.** No new tables, no new server functions, no new dependencies. Compose existing components into smarter surfaces.
+3. **Calm > clever.** Every visual change should reduce cognitive load, not add ornament.
 
-- Copy `user-uploads://MentalHealthWalkClub-Logo-Black.png` → `src/assets/logo-stamp.png` (used in React surfaces, ES6 import, gets bundled/optimized).
-- Also copy to `public/logo-stamp.png` for the PWA manifest / Apple touch icon / OG image references that need a stable URL.
+---
 
-Approved overlay colors are black + white only. The source PNG is black-on-transparent, so:
-- On cream / white surfaces (sidebar, mobile top bar, welcome dialog, auth page) → render as-is.
-- On forest / dark surfaces (active walk hero, dark mode, share cards on dark) → render with `filter: invert(1)` to flip to white. Single source of truth, no second asset to maintain.
+## 1. Quick fixes spotted while exploring (free wins)
 
-Create one tiny `<LogoStamp />` component in `src/components/logo-stamp.tsx` that takes `tone="dark" | "light"` and a `size` prop, so every surface uses the same component (avoids drift later).
+These are bugs, not features. Bundling them into this pass.
 
-## 2. Surfaces that get the new logo
+- `src/routes/index.tsx` line 22 — page title reads `"Walk — Mental Health Mental Health Walk Club"` (duplicated). Fix to `"Mental Health Walk Club"`.
+- `src/components/mobile-tab-bar.tsx` lines 141-170 — the **Add to Home Screen** install button is mis-nested *inside* the "Schedule a Friend Walk" `<button>`. That's invalid HTML and breaks both controls on some browsers. Pull the install block out as a sibling.
+- `src/routes/__root.tsx` mobile top bar still uses an only-logo header → unauthenticated visitors lose the brand wordmark on mobile. Re-add a small wordmark line under the logo, or switch to a horizontal lockup at 14px.
 
-Replace the existing `<Footprints>`-in-a-green-circle mark in:
+---
 
-- `src/routes/__root.tsx` — desktop sidebar header (line ~138) and the two mobile top-bar variants (lines ~193, ~206). Use `tone="dark"` (black on cream).
-- `src/components/welcome-dialog.tsx` — header next to the title.
-- `src/routes/auth.tsx` — sign-in/sign-up header.
-- `src/routes/walk.active.$id.tsx` — small mark in the hero corner uses `tone="light"` (white on forest).
+## 2. The Walk tab — one breathing surface, not three steps
 
-Other places that use `<Footprints>` as a generic icon (tab bar, empty states, stats) stay as Lucide icons — the logo is only for brand identity moments, not generic UI.
+Today the home is `step 0 → step 1 → step 2` with the multi-step mood/intention form taking over the screen. On mobile this feels like a flow, not a home. Convert it into **one calm scroll** with a sticky bottom action.
 
-## 3. Rename "Walk Club" → "Mental Health Walk Club"
+- Replace the step-machine with a single screen that shows: greeting → mood-check chips → primary "Start a walk" → mode pills → friend walks → live now → weekly ring.
+- Move mood/intention into a **bottom sheet that slides up from the Start CTA** (reuse the existing `Drawer` from shadcn/ui). The sheet has the existing `MoodCloud` + `WeightBar` + intention textarea — no new code, just relocated.
+- Result: home is browse-able at all times, the existing primitives still drive the data, and the "I just want to walk" path is one tap → one drag-to-confirm → walk.
+- Keep guided-walk picker as a separate screen (already perfect on its own).
 
-User-facing strings only. Replace in:
+---
 
-- `src/routes/__root.tsx` — sidebar wordmark, both mobile top-bar wordmarks, `apple-mobile-web-app-title` meta.
-- `src/routes/auth.tsx` — already correct, no change.
-- `src/routes/welcome.tsx` — page title + og:title.
-- `src/routes/events.tsx`, `events.$slug.tsx`, `events.new.tsx` — page titles + descriptions + share text.
-- `src/routes/groups.tsx`, `groups.$slug.tsx` — page titles + descriptions + share text.
-- `src/routes/journal.tsx` — page title + share footer ("— shared from Mental Health Walk Club").
-- `src/routes/profile.tsx`, `facilitate.tsx`, `index.tsx` — page titles.
-- `src/components/guided-player.tsx` — MediaSession `artist` fallback.
-- `src/components/walk-talk-dock.tsx` — MediaSession `album`.
-- `public/manifest.webmanifest` — `short_name` becomes `"Mental Health Walk Club"` (it's long, but it's the actual brand; iOS will truncate gracefully on the home screen).
+## 3. The active walk — make the screen itself the experience
 
-Mobile top bar layout note: the wordmark currently sits next to the brand mark with `text-sm`. "Mental Health Walk Club" is ~3× longer than "Walk Club" and will crowd the InboxBell + ModeToggle on a 390px viewport. Fix by:
-- dropping the wordmark text on mobile top bar (logo alone identifies the brand — the stamp already says "Mental Health Walk Club" inside it), OR
-- keeping it but switching to `text-[11px] tracking-tight` and removing the brand circle so the logo + name read as one unit.
+`/walk/active/$id` already has GPS, sparkline, dock, end flow. Tighten it into a true mobile-first surface.
 
-Going with **logo-only on mobile top bar**, **logo + full name on desktop sidebar** (sidebar has 240px of room). Cleaner and avoids the truncation problem entirely.
+- **Hero gradient + live numbers** at the top. Time and distance get the giant tabular-nums treatment (already have `tabular-nums` available). Mood-before pill sits below.
+- **Edge-to-edge `RouteSparkline`** as a soft underlay behind the numbers (currently a small card). Pure CSS — no new component, just reposition + opacity.
+- **One-thumb controls** pinned to the bottom safe-area: pause / end. Hidden swipe-up reveals reflection prompts and the Walk & Talk dock (already components).
+- **Long-press end button** = haptic + confirmation, instead of a separate dialog tap. Reuse `EndWalkFlow` as the sheet content.
+- **Auto-dim** when no interaction for 30s — drop UI to ~40% opacity, tap to bring back. Pure local state, no library.
 
-## 4. Out of scope
+---
 
-- No new colors / no theme tokens added — black + white overlays are already covered by existing `foreground` / `primary-foreground`.
-- Not regenerating PWA icons (`public/icon-192.png`, `public/icon-512.png`) in this pass — those are the abstract green mark and still work as installable-app icons. Can swap to the stamp in a follow-up if you'd like the stamp on the iOS home screen too. (Quick call-out: tell me if you want that and I'll regenerate them with the new mark on a cream background.)
-- No changes to backend, routes, data, or migrations.
+## 4. Mobile system surface (the 2026 part)
 
-## Files touched
+These are small but disproportionately premium-feeling and use Web APIs already supported on iOS 17+ / Android 14+:
 
-- new: `src/assets/logo-stamp.png`, `public/logo-stamp.png`, `src/components/logo-stamp.tsx`
-- edited: `src/routes/__root.tsx`, `src/routes/welcome.tsx`, `src/routes/events.tsx`, `src/routes/events.$slug.tsx`, `src/routes/events.new.tsx`, `src/routes/groups.tsx`, `src/routes/groups.$slug.tsx`, `src/routes/journal.tsx`, `src/routes/profile.tsx`, `src/routes/facilitate.tsx`, `src/routes/index.tsx`, `src/routes/walk.active.$id.tsx`, `src/components/welcome-dialog.tsx`, `src/components/guided-player.tsx`, `src/components/walk-talk-dock.tsx`, `public/manifest.webmanifest`
+- **Visual viewport offset** — when the soft keyboard opens (intention textarea, reflection notes, schedule sheet), shift the sticky CTAs above it using `window.visualViewport`. ~15 lines in a `use-keyboard-inset` hook.
+- **Web Share Target** — add `share_target` to `manifest.webmanifest` so users can share a podcast / article / image *to* the app and it lands as an intention seed for the next walk. Manifest-only, no new route needed if we accept text into `/?intention=…`.
+- **Pull-to-refresh** on Journal and Groups — light, native-feeling, using a `touchstart`/`touchmove` overscroll detector (~30 lines, no library).
+- **Edge swipe back** on `/walk/active/$id` to dock the walk into the existing `NowPlayingBar` instead of leaving — uses `pointerdown` near `clientX < 16`.
+- **Dynamic theme-color** — flip `<meta name="theme-color">` to `--forest` while a walk is active so the iOS status bar matches the hero. ~5 lines in `walk.active.$id.tsx`.
+
+---
+
+## 5. Visual system tightening (no new tokens)
+
+The token system in `src/styles.css` is already strong. We're using ~70% of it. Surface the rest:
+
+- Promote `glass` and `glass-dark` (already defined, barely used) to: mobile top bar, NowPlayingBar, and the active walk hero overlay. Removes the flat opaque feel.
+- Replace ad-hoc `bg-card/80 backdrop-blur-sm` chips with the `glass` utility.
+- Add **one** new utility — `.text-balance { text-wrap: balance }` — and apply to the serif headings in: index hero, welcome dialog, auth, journal empty states. Single line, huge typographic upgrade.
+- Standardize card radius to `rounded-3xl` for hero/feature cards and `rounded-2xl` for content rows. Currently mixed.
+- Replace the static `breathe` animation on the Start CTA with a **reactive** version: scale paused while the user is not on the home tab (saves battery, less visually noisy when not relevant).
+
+---
+
+## 6. Smarter use of existing data (no new queries)
+
+Everything below is already being fetched on the home screen — we're just composing it differently.
+
+- **Adaptive greeting block.** Today: `"Good evening, name"`. Add a one-line micro-state read from the same weekly walks query already running:
+  - 0 walks this week → *"A small one tonight?"*
+  - Walked yesterday → *"Two days in a row feels good."*
+  - 4+ days streak → *"Eight minutes is enough — your body knows."*
+  No new fetches; same `weeklyDots` array.
+- **Quick-resume chip.** If the last incomplete walk was within 90 minutes, surface it inline instead of as a separate banner — uses the same `activeWalkId` state.
+- **"From your last walk"** — show the last reflection note (already on `walks` query) on the home as a quiet pull-quote in serif italics. One line of UX, huge emotional payoff.
+- **Friend Walks merged with Live Now.** Today there are two separate strips. Compose them into a single `<NowAndNext />` carousel using existing `LiveNowStrip` + `UpcomingFriendWalks` — chronological, not categorical. Less visual noise.
+
+---
+
+## 7. Journal — make it a place, not a list
+
+Journal is currently a chronological list with a sparkline. Two reuse-only upgrades:
+
+- **Calendar heatmap** of the last 12 weeks using the data already in `weeklyMins` — replace the line sparkline with a 7×12 dot grid. ~25 lines, zero deps. Apple-Fitness-style.
+- **Tap a walk row → opens an existing `Sheet`** with the full reflection, mood-before/after delta, and (if linked) the badge earned that day. We already track all of this; today it's invisible unless you go to Profile.
+
+---
+
+## Out of scope (intentionally)
+
+- No new tables, columns, server functions, or third-party packages.
+- No notification system, no push, no AI generation.
+- No design-token rename or color overhaul.
+- No payment / monetization.
+
+---
+
+## Files touched (estimated)
+
+**Edited (~12, mostly small):**
+- `src/routes/index.tsx` — flatten step machine, sticky-sheet mood, adaptive greeting, merged now-strip
+- `src/routes/walk.active.$id.tsx` — hero numbers, edge sparkline, dim, dynamic theme-color
+- `src/routes/journal.tsx` — heatmap + walk-detail sheet
+- `src/routes/__root.tsx` — mobile header wordmark, glass surfaces
+- `src/components/mobile-tab-bar.tsx` — fix nested-button bug, glass floor
+- `src/components/now-playing-bar.tsx` — glass, swipe-up to expand
+- `src/styles.css` — single `.text-balance` utility
+- `public/manifest.webmanifest` — `share_target`
+
+**New (3 small files, all <50 lines):**
+- `src/hooks/use-keyboard-inset.ts` — visualViewport offset
+- `src/hooks/use-pull-to-refresh.ts` — touch-based refresh
+- `src/components/now-and-next.tsx` — composes existing strips
+
+That's it — concentrated, reuse-first, mobile-native, and shipped in a single tight pass.
