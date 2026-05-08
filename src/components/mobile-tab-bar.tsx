@@ -15,10 +15,10 @@ import { FriendWalkScheduleSheet } from "@/components/friend-walk/schedule-sheet
 import { toast } from "sonner";
 
 const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
+  { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/events", label: "Events", icon: Calendar },
   { to: "/journal", label: "Journal", icon: BookHeart },
-  { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
 /** Adaptive mobile bottom bar — 4 flat tabs flanking a center Walk FAB. */
