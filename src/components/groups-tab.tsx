@@ -111,9 +111,10 @@ export function GroupsTab() {
   const totalWalkers = useMemo(() => groups.reduce((s, g) => s + (g.member_count || 0), 0), [groups]);
   const cityCount = useMemo(() => new Set(groups.filter((g) => g.theme === "chapter" && g.city).map((g) => g.city)).size, [groups]);
   const liveNow = useMemo(() => Array.from(pulse.values()).reduce((s, p) => s + (p.live || 0), 0), [pulse]);
+  const liveDisplay = useCountUp(liveNow);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <header className="space-y-3">
         <div className="eyebrow-rise">
           <h1 className="font-serif text-3xl">Groups</h1>
@@ -122,7 +123,7 @@ export function GroupsTab() {
               <>
                 <span className="text-foreground">{totalWalkers.toLocaleString()}</span> walkers
                 {cityCount > 0 && <> across <span className="text-foreground">{cityCount}</span> {cityCount === 1 ? "city" : "cities"}</>}
-                {liveNow > 0 && <> · <span className="text-forest">{liveNow} walking right now</span></>}
+                {liveNow > 0 && <> · <span className="text-forest">{liveDisplay} walking right now</span></>}
               </>
             ) : "Quiet affinity tags. They surface walks that fit you."}
           </p>
