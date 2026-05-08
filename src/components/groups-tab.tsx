@@ -320,14 +320,17 @@ export function GroupsTab() {
                 </div>
               </div>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {niches.map((g) => (
-                  <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="gallery" />
+                {niches.map((g, i) => (
+                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}>
+                    <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="niche" />
+                  </div>
                 ))}
               </ul>
             </section>
           )}
 
           {/* ─── Browse by city ─── */}
+          <div aria-hidden className="mx-auto h-px w-12 bg-border/60" />
           <CityGallery groups={discover} pulse={pulse} mine={mine} onToggle={toggleJoin} />
         </>
       )}
