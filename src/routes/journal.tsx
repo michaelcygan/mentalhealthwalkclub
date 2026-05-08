@@ -325,28 +325,57 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
   const [photos, setPhotos] = useState<{ url: string; t: number }[]>([]);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setPhotos([]);
+    setSnapshotUrl(null);
     if (!walk) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("walk_photos")
-        .select("storage_path, taken_at_seconds")
-        .eq("walk_session_id", walk.id)
-        .order("taken_at_seconds", { ascending: true });
-      if (!data || cancelled) return;
-      const signed = await Promise.all(
-        data.map(async (p) => {
-          const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p.storage_path, 3600);
-          return s?.signedUrl ? { url: s.signedUrl, t: p.taken_at_seconds ?? 0 } : null;
-        })
-      );
-      if (!cancelled) setPhotos(signed.filter(Boolean) as { url: string; t: number }[]);
+      const tasks: Promise<unknown>[] = [];
+      tasks.push((async () => {
+        const { data } = await supabase
+          .from("walk_photos")
+          .select("storage_path, taken_at_seconds")
+          .eq("walk_session_id", walk.id)
+          .order("taken_at_seconds", { ascending: true });
+        if (!data || cancelled) return;
+        const signed = await Promise.all(
+          data.map(async (p) => {
+            const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p.storage_path, 3600);
+            return s?.signedUrl ? { url: s.signedUrl, t: p.taken_at_seconds ?? 0 } : null;
+          })
+        );
+        if (!cancelled) setPhotos(signed.filter(Boolean) as { url: string; t: number }[]);
+      })());
+      if (walk.route_snapshot_path) {
+        tasks.push((async () => {
+          const { data } = await supabase.storage.from("walk-snapshots").createSignedUrl(walk.route_snapshot_path!, 3600);
+          if (!cancelled && data?.signedUrl) setSnapshotUrl(data.signedUrl);
+        })());
+      }
+      await Promise.all(tasks);
     })();
     return () => { cancelled = true; };
   }, [walk?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onShare = async () => {
+    if (!snapshotUrl || !walk) return;
+    haptics.tap();
+    try {
+      const res = await fetch(snapshotUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title: "My walk", text: "Walked it through 🌿" });
+        return;
+      }
+      // Fallback: download
+      const a = document.createElement("a"); a.href = snapshotUrl; a.download = file.name; a.click();
+    } catch { /* user cancel */ }
+  };
 
   if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
   const delta = walk.mood_before_score && walk.mood_after_score ? walk.mood_after_score - walk.mood_before_score : null;
