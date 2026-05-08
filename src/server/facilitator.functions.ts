@@ -199,31 +199,20 @@ export const joinPodAsFacilitator = createServerFn({ method: "POST" })
     if (claimErr) throw new Error(claimErr.message);
     if (!claimed) throw new Error("Another facilitator just took this pod — looking for the next one");
 
-    // Insert participant row (role=facilitator)
-    await supabase.from("audio_room_participants").insert({
-      audio_room_id: data.roomId,
-      user_id: userId,
-      walk_session_id: userId, // facilitators don't have a walk session; reuse user_id as placeholder if NOT NULL
-      role: "facilitator",
-    }).then(async (r: any) => {
-      // walk_session_id is NOT NULL in schema — try a clean insert by using a synthetic walk-less row
-      if (r.error) {
-        // fallback: create a minimal walk session marker for the facilitator
-        const { data: ws } = await supabase
-          .from("walk_sessions")
-          .insert({ user_id: userId, walk_type: "audio", status: "active", privacy: "private" })
-          .select("id")
-          .single();
-        if (ws) {
-          await supabase.from("audio_room_participants").insert({
-            audio_room_id: data.roomId,
-            user_id: userId,
-            walk_session_id: ws.id,
-            role: "facilitator",
-          });
-        }
-      }
-    });
+    // Facilitators need a walk_session_id (NOT NULL) — create a lightweight marker session
+    const { data: ws } = await supabase
+      .from("walk_sessions")
+      .insert({ user_id: userId, walk_type: "audio", status: "active", privacy: "private" })
+      .select("id")
+      .single();
+    if (ws) {
+      await supabase.from("audio_room_participants").insert({
+        audio_room_id: data.roomId,
+        user_id: userId,
+        walk_session_id: ws.id,
+        role: "facilitator",
+      });
+    }
 
     // Visit row
     const { data: visit } = await supabase
