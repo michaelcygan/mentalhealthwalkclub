@@ -243,7 +243,11 @@ function ActiveWalk() {
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
     }
-    try { sessionStorage.removeItem(`walk-notes:${session.id}`); } catch {}
+    if (walkPhotos.length > 0) {
+      try { await uploadWalkPhotos({ supabase, userId: user.id, walkSessionId: session.id, photos: walkPhotos }); }
+      catch { toast.error("Some photos couldn't upload"); }
+    }
+    clearWalkCaptures(session.id);
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
