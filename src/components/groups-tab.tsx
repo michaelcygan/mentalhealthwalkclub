@@ -122,7 +122,7 @@ export function GroupsTab() {
                   key={id}
                   disabled={dim}
                   onClick={() => toggleChip(id)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
+                  className={`inline-flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                     on ? "border-forest bg-forest text-primary-foreground"
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
