@@ -36,6 +36,8 @@ function EventDetail() {
   const [busy, setBusy] = useState<string | null>(null);
   const [livePodCount, setLivePodCount] = useState<{ pods: number; walkers: number } | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [groupInfo, setGroupInfo] = useState<{ name: string; slug: string | null } | null>(null);
+  const [isMember, setIsMember] = useState<boolean>(false);
 
   const startFn = useServerFn(startLocalWalk);
   const checkInFn = useServerFn(checkInToLocalWalk);
@@ -44,9 +46,13 @@ function EventDetail() {
   const joinScheduledFn = useServerFn(joinScheduledWalk);
   const openRoomFn = useServerFn(openScheduledRoom);
   const reshuffleFn = useServerFn(reshufflePods);
+  const rsvpFn = useServerFn(rsvpToEvent);
+  const endAudioFn = useServerFn(endScheduledWalk);
 
   const isHost = !!user && !!event && event.host_user_id === user.id;
   const isAudio = event?.event_type === "audio_walk";
+  const isGroupOnly = !!event && event.visibility === "group" && !!event.group_id;
+  const memberGated = isGroupOnly && !!user && !isHost && !isMember;
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15_000);
