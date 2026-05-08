@@ -6,6 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { GroupCard } from "@/components/group-card";
 import { VibeCollection } from "@/components/groups/vibe-collection";
 import { CityGallery } from "@/components/groups/city-gallery";
+import { PulseRail } from "@/components/groups/pulse-rail";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
 
@@ -148,6 +149,13 @@ export function GroupsTab() {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
               const isLive = id === "live";
+              const idleAnim = on
+                ? ""
+                : id === "near" ? "pin-drop"
+                : id === "upcoming" || id === "quiet" ? "sparkle-twinkle"
+                : id === "audio" ? "headphones-bob"
+                : isLive ? "live-pulse"
+                : "";
               return (
                 <button
                   key={id}
@@ -158,7 +166,7 @@ export function GroupsTab() {
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
                 >
-                  <Icon className={`h-3 w-3 ${isLive && !on ? "live-pulse text-forest" : ""}`} />{label}
+                  <Icon className={`h-3 w-3 ${idleAnim} ${isLive && !on ? "text-forest" : ""}`} />{label}
                 </button>
               );
             })}
@@ -204,22 +212,20 @@ export function GroupsTab() {
         </section>
       ) : (
         <>
-          {/* ─── Pulse strip ─── */}
-          {pulseGroups.length > 0 && (
-            <section className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Radio className="h-3.5 w-3.5 text-forest live-pulse" />
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
-              </div>
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
-                {pulseGroups.map(({ g, p }, i) => (
-                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
-                    <GroupCard group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {/* ─── Pulse rail (auto-drift) ─── */}
+          <PulseRail
+            groups={[...pulseGroups.map((x) => x.g),
+              // also include "needs walkers" candidates that aren't already live
+              ...discover.filter((g) => {
+                const p = pulse.get(g.id);
+                if (!p?.nextStart || p.live > 0) return false;
+                const ms = new Date(p.nextStart).getTime() - Date.now();
+                return ms > -5 * 60_000 && ms < 90 * 60_000 && p.walkersWeek < 3;
+              })]}
+            pulse={pulse}
+            mine={mine}
+            onToggle={toggleJoin}
+          />
 
           {/* ─── Your groups (mini grid) ─── */}
           {yours.length > 0 && (
@@ -243,7 +249,7 @@ export function GroupsTab() {
           {forYou.length > 0 && (
             <section className="space-y-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                <Sparkles className="h-3 w-3" /> Picked for you
+                <Sparkles className="h-3 w-3 sparkle-twinkle" /> Picked for you
               </div>
               <div className="relative -mx-4 px-4">
                 <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
@@ -260,7 +266,7 @@ export function GroupsTab() {
           {nearYou.length > 0 && (
             <section className="space-y-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                <MapPin className="h-3 w-3" /> Near you · {myCity}
+                <MapPin className="h-3 w-3 pin-drop" /> Near you · {myCity}
               </div>
               <div className="relative -mx-4 px-4">
                 <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
@@ -314,7 +320,7 @@ export function GroupsTab() {
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                    <Sparkles className="h-3 w-3" /> Niches
+                    <Sparkles className="h-3 w-3 sparkle-twinkle" /> Niches
                   </div>
                   <h2 className="mt-0.5 font-serif text-xl">Find your tribe</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">The weirdly specific ones. They tend to hit hardest.</p>

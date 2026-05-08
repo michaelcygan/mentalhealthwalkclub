@@ -20,6 +20,8 @@ export interface GroupPulse {
   live: number;
   walkersWeek: number;
   nextStart: string | null;
+  /** UI-only flag — set by surfaces (e.g. PulseRail) to invite walkers in. Not persisted. */
+  needsCompany?: boolean;
 }
 
 export interface GroupsFeed {

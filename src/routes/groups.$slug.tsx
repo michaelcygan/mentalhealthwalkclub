@@ -186,12 +186,12 @@ function GroupDetail() {
       {hasCity && (
         <Link to={"/events/new" as never} search={{ group: group.id, mode: "irl" } as never}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40 hover:text-forest transition">
-          <MapPin className="h-3.5 w-3.5" /> In person
+          <MapPin className="h-3.5 w-3.5 pin-drop" /> In person
         </Link>
       )}
       <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never}
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40 hover:text-forest transition">
-        <Headphones className="h-3.5 w-3.5" /> Walk & Talk
+        <Headphones className="h-3.5 w-3.5 headphones-bob" /> Walk & Talk
       </Link>
     </div>
   );
@@ -278,7 +278,7 @@ function GroupDetail() {
           </div>
           {isMember ? (
             <Button size="sm" onClick={onWelcome} disabled={welcomedKey === group.id} className="shrink-0 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />{welcomedKey === group.id ? "Sent" : "Welcome"}
+              <Sparkles className="mr-1.5 h-3.5 w-3.5 sparkle-twinkle" />{welcomedKey === group.id ? "Sent" : "Welcome"}
             </Button>
           ) : (
             <Button size="sm" onClick={() => toggleJoin(group, false, () => setIsMember(true))} className="shrink-0 rounded-full bg-forest text-primary-foreground hover:opacity-90">Join</Button>
