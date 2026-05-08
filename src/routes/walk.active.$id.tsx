@@ -17,6 +17,10 @@ import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
 import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
+import { WeatherPill } from "@/components/weather-pill";
+import { RainSoonBanner } from "@/components/rain-soon-banner";
+import { useCurrentWeather } from "@/hooks/use-weather";
+import { getNow as getWeatherNow } from "@/lib/weather";
 
 const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
 
