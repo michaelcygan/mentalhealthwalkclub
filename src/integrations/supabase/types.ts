@@ -1322,6 +1322,45 @@ export type Database = {
           },
         ]
       }
+      walk_photos: {
+        Row: {
+          bytes: number | null
+          caption: string | null
+          created_at: string
+          height: number | null
+          id: string
+          storage_path: string
+          taken_at_seconds: number
+          user_id: string
+          walk_session_id: string
+          width: number | null
+        }
+        Insert: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          storage_path: string
+          taken_at_seconds?: number
+          user_id: string
+          walk_session_id: string
+          width?: number | null
+        }
+        Update: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          storage_path?: string
+          taken_at_seconds?: number
+          user_id?: string
+          walk_session_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       walk_routes: {
         Row: {
           created_at: string
