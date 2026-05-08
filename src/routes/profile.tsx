@@ -5,12 +5,17 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Trophy, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
 import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
 import { ProfileRouteMosaic } from "@/components/profile-route-mosaic";
+import { WalkerCardHeader } from "@/components/walker-card-header";
+import { BadgeWall } from "@/components/badge-wall";
+import { ProfileStatsGrid } from "@/components/profile-stats-grid";
+import { useProfileStats } from "@/hooks/use-profile-stats";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
@@ -40,6 +45,8 @@ function ProfileTab() {
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
   const [editingGoal, setEditingGoal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const stats = useProfileStats(user?.id);
 
   useEffect(() => {
     if (!user) return;
@@ -93,37 +100,45 @@ function ProfileTab() {
   const since = user.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : null;
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center gap-4 rounded-3xl border border-border bg-gradient-to-br from-accent/40 to-card p-5 shadow-soft">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-forest font-serif text-xl text-primary-foreground">{initials}</div>
-        <div className="min-w-0">
-          <h1 className="truncate font-serif text-2xl">{p.display_name || "Walker"}</h1>
-          <p className="truncate text-sm text-muted-foreground">{p.location_label || p.city || "Add your city"}{since ? ` · since ${since}` : ""}</p>
+    <div className="space-y-5 pb-24">
+      <WalkerCardHeader
+        initials={initials}
+        displayName={p.display_name || "Walker"}
+        city={p.location_label || p.city}
+        totalWalks={stats.totalWalks}
+        totalMinutes={stats.totalMinutes}
+        level={stats.level}
+        onAvatarLongPress={() => setEditing("name")}
+      />
+
+      <ProfileStatsGrid s={stats} />
+
+      {stats.weekStreak > 0 && (
+        <div className="flex items-center justify-center gap-2 rounded-full border border-clay/30 bg-clay/10 py-2 text-sm">
+          <Flame className="h-4 w-4 text-clay" />
+          <span className="font-serif italic">{stats.weekStreak} week{stats.weekStreak === 1 ? "" : "s"} in a row · rest counts too</span>
         </div>
-      </header>
+      )}
 
-      <section className="rounded-2xl border border-border bg-card shadow-soft">
-        <InlineRow label="Name" editing={editing === "name"} onEdit={() => setEditing("name")} onCancel={() => setEditing(null)} display={p.display_name || <span className="text-muted-foreground">Add your name</span>}>
-          <div className="flex gap-2">
-            <Input autoFocus defaultValue={p.display_name ?? ""} onKeyDown={(e) => { if (e.key === "Enter") savePatch({ display_name: (e.target as HTMLInputElement).value }); }} id="name-input" />
-            <Button size="sm" onClick={() => savePatch({ display_name: (document.getElementById("name-input") as HTMLInputElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
-          </div>
-        </InlineRow>
-        <InlineRow label="Location" editing={editing === "location"} onEdit={() => setEditing("location")} onCancel={() => setEditing(null)} display={p.location_label || <span className="text-muted-foreground">Add your city</span>}>
-          <LocationAutosuggest
-            value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
-            onChange={(v: LocationValue | null) => savePatch({ city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
-          />
-        </InlineRow>
-        <InlineRow label="Bio" editing={editing === "bio"} onEdit={() => setEditing("bio")} onCancel={() => setEditing(null)} display={p.bio || <span className="text-muted-foreground">A few words about you</span>} last>
-          <div className="space-y-2">
-            <textarea autoFocus id="bio-input" rows={3} defaultValue={p.bio ?? ""} className="w-full rounded-xl border border-input bg-background p-3 text-sm" />
-            <Button size="sm" onClick={() => savePatch({ bio: (document.getElementById("bio-input") as HTMLTextAreaElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
-          </div>
-        </InlineRow>
-      </section>
+      <Link
+        to="/leaderboard"
+        className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-soft transition active:scale-[0.99] hover:border-forest/40"
+      >
+        <span className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/60"><Trophy className="h-4 w-4 text-forest" /></span>
+          <span>
+            <div className="font-serif text-base">Leaderboard</div>
+            <div className="text-[11px] text-muted-foreground">Top 100 walkers · week, month, all-time</div>
+          </span>
+        </span>
+        <span className="text-muted-foreground">›</span>
+      </Link>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <BadgeWall userId={user.id} />
+
+      <ProfileRouteMosaic userId={user.id} />
+
+      <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <SectionHeading eyebrow="Pace yourself" title="Weekly goal" />
         <div className="mt-3 flex items-center gap-3">
           <Target className="h-5 w-5 text-forest" />
@@ -143,13 +158,11 @@ function ProfileTab() {
         </div>
       </section>
 
-      <ProfileRouteMosaic userId={user.id} />
-
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <MyFriendWalks />
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="rounded-3xl border border-border bg-card p-5">
         <SectionHeading eyebrow="Affinities" title="Your groups" />
         {groups.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">You haven't joined any groups yet.</p>
@@ -160,28 +173,65 @@ function ProfileTab() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="flex items-center gap-2 font-serif text-xl"><Shield className="h-5 w-5 text-forest" />Safety & support</h2>
-        <div className="mt-3 space-y-2 text-sm">
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
-            <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger? Call your local emergency services.</div>
-          </div>
-          <div className="rounded-xl bg-secondary p-3">
-            US mental health crisis: call or text <a href="tel:988" className="font-medium text-forest underline">988</a>.
-          </div>
-        </div>
-      </section>
+      <button
+        onClick={() => setSettingsOpen(true)}
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Settings & safety</span>
+        <span className="text-xs text-muted-foreground">›</span>
+      </button>
 
-      {isAdmin && (
-        <Link to="/admin/music" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
-          <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Music library</span>
-          <span className="text-xs text-muted-foreground">Manage</span>
-        </Link>
-      )}
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader><SheetTitle className="font-serif text-2xl">Settings</SheetTitle></SheetHeader>
+          <div className="space-y-5 pb-8 pt-4">
+            <section className="rounded-2xl border border-border bg-card">
+              <InlineRow label="Name" editing={editing === "name"} onEdit={() => setEditing("name")} onCancel={() => setEditing(null)} display={p.display_name || <span className="text-muted-foreground">Add your name</span>}>
+                <div className="flex gap-2">
+                  <Input autoFocus defaultValue={p.display_name ?? ""} onKeyDown={(e) => { if (e.key === "Enter") savePatch({ display_name: (e.target as HTMLInputElement).value }); }} id="name-input" />
+                  <Button size="sm" onClick={() => savePatch({ display_name: (document.getElementById("name-input") as HTMLInputElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
+                </div>
+              </InlineRow>
+              <InlineRow label="Location" editing={editing === "location"} onEdit={() => setEditing("location")} onCancel={() => setEditing(null)} display={p.location_label || <span className="text-muted-foreground">Add your city</span>}>
+                <LocationAutosuggest
+                  value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
+                  onChange={(v: LocationValue | null) => savePatch({ city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
+                />
+              </InlineRow>
+              <InlineRow label="Bio" editing={editing === "bio"} onEdit={() => setEditing("bio")} onCancel={() => setEditing(null)} display={p.bio || <span className="text-muted-foreground">A few words about you</span>} last>
+                <div className="space-y-2">
+                  <textarea autoFocus id="bio-input" rows={3} defaultValue={p.bio ?? ""} className="w-full rounded-xl border border-input bg-background p-3 text-sm" />
+                  <Button size="sm" onClick={() => savePatch({ bio: (document.getElementById("bio-input") as HTMLTextAreaElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
+                </div>
+              </InlineRow>
+            </section>
 
-      <Button variant="outline" onClick={signOut} className="rounded-full">
-        <LogOut className="mr-2 h-4 w-4" />Sign out
-      </Button>
+            <section className="rounded-2xl border border-border bg-card p-5">
+              <h2 className="flex items-center gap-2 font-serif text-lg"><Shield className="h-4 w-4 text-forest" />Safety & support</h2>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+                  <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger? Call your local emergency services.</div>
+                </div>
+                <div className="rounded-xl bg-secondary p-3">
+                  US mental health crisis: call or text <a href="tel:988" className="font-medium text-forest underline">988</a>.
+                </div>
+              </div>
+            </section>
+
+            {isAdmin && (
+              <Link to="/admin/music" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
+                <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Music library</span>
+                <span className="text-xs text-muted-foreground">Manage</span>
+              </Link>
+            )}
+
+            <Button variant="outline" onClick={signOut} className="w-full rounded-full">
+              <LogOut className="mr-2 h-4 w-4" />Sign out
+            </Button>
+            {since && <p className="text-center text-[11px] text-muted-foreground">Walker since {since}</p>}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
