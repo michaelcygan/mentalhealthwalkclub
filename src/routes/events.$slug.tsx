@@ -6,8 +6,8 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee } from "@/server/walks.functions";
-import { joinScheduledWalk, openScheduledRoom, reshufflePods } from "@/server/audio.functions";
+import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee, rsvpToEvent } from "@/server/walks.functions";
+import { joinScheduledWalk, openScheduledRoom, reshufflePods, endScheduledWalk } from "@/server/audio.functions";
 import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users } from "lucide-react";
 
 export const Route = createFileRoute("/events/$slug")({ component: EventDetail });
@@ -20,6 +20,7 @@ interface EventRow {
   attendee_count: number; donation_note: string | null; vibe: string | null; event_type: string;
   status: string; host_user_id: string | null; started_at: string | null; ended_at: string | null;
   audio_room_id: string | null; breakout_size: number; breakout_rotate_minutes: number | null;
+  visibility: string; group_id: string | null;
 }
 
 interface Attendee { user_id: string; status: string; checked_in_at: string | null; profiles?: { display_name: string | null } | null }
@@ -35,6 +36,8 @@ function EventDetail() {
   const [busy, setBusy] = useState<string | null>(null);
   const [livePodCount, setLivePodCount] = useState<{ pods: number; walkers: number } | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [groupInfo, setGroupInfo] = useState<{ name: string; slug: string | null } | null>(null);
+  const [isMember, setIsMember] = useState<boolean>(false);
 
   const startFn = useServerFn(startLocalWalk);
   const checkInFn = useServerFn(checkInToLocalWalk);
@@ -43,9 +46,13 @@ function EventDetail() {
   const joinScheduledFn = useServerFn(joinScheduledWalk);
   const openRoomFn = useServerFn(openScheduledRoom);
   const reshuffleFn = useServerFn(reshufflePods);
+  const rsvpFn = useServerFn(rsvpToEvent);
+  const endAudioFn = useServerFn(endScheduledWalk);
 
   const isHost = !!user && !!event && event.host_user_id === user.id;
   const isAudio = event?.event_type === "audio_walk";
+  const isGroupOnly = !!event && event.visibility === "group" && !!event.group_id;
+  const memberGated = isGroupOnly && !!user && !isHost && !isMember;
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15_000);
@@ -75,6 +82,26 @@ function EventDetail() {
       const walkers = list.reduce((s, p) => s + (p.current_participant_count ?? 0), 0);
       setLivePodCount({ pods: data.breakout_size > 0 ? list.length : 1, walkers });
     }
+    // Group info + membership
+    if (data.visibility === "group" && data.group_id) {
+      const { data: g } = await supabase.from("groups").select("name,slug").eq("id", data.group_id).single();
+      setGroupInfo(g ?? null);
+      if (user) {
+        const { data: mem } = await supabase
+          .from("group_memberships")
+          .select("id")
+          .eq("group_id", data.group_id)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+        setIsMember(!!mem);
+      } else {
+        setIsMember(false);
+      }
+    } else {
+      setGroupInfo(null);
+      setIsMember(true);
+    }
   };
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, user]);
 
@@ -88,16 +115,30 @@ function EventDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.audio_room_id]);
 
+  const joinGroup = async () => {
+    if (!user || !event?.group_id) return;
+    await supabase.from("group_memberships").insert({ group_id: event.group_id, user_id: user.id });
+    toast.success(`Joined ${groupInfo?.name ?? "the group"}.`);
+    await refresh();
+  };
+
   const goRSVP = () => requireAuth(async () => {
     if (!user || !event) return;
     if (rsvp) {
       await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", user.id);
       toast("RSVP removed");
-    } else {
-      await supabase.from("event_rsvps").insert({ event_id: event.id, user_id: user.id, status: "going" });
-      toast.success("You're going. We'll save you a spot.");
+      refresh();
+      return;
     }
-    refresh();
+    try {
+      const res = await rsvpFn({ data: { event_id: event.id } });
+      if (!res.ok && res.requiresJoin) {
+        toast(`${res.groupName} members only — join to RSVP.`);
+        return;
+      }
+      toast.success("You're going. We'll save you a spot.");
+      refresh();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Couldn't RSVP"); }
   });
 
   const startWalk = async () => {
@@ -159,10 +200,26 @@ function EventDetail() {
     setBusy("join");
     try {
       const res = await joinScheduledFn({ data: { eventId: event.id } });
+      if (res.requiresJoin) {
+        toast(`${res.groupName} members only — join to enter.`);
+        setBusy(null);
+        return;
+      }
       toast.success(res.podIndex ? `You're in pod ${res.podIndex}.` : "You're in the circle.");
       navigate({ to: "/walk/active/$id" as never, params: { id: res.walkSessionId } as never });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not join"); setBusy(null); }
   });
+
+  const endAudio = async () => {
+    if (!event) return;
+    setBusy("end-audio");
+    try {
+      await endAudioFn({ data: { eventId: event.id } });
+      toast.success("Walk ended. Thank you for hosting.");
+      refresh();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not end"); }
+    finally { setBusy(null); }
+  };
 
   const openEarly = async () => {
     if (!event) return;
@@ -215,6 +272,11 @@ function EventDetail() {
           {inProgress && <span className="rounded-full bg-forest px-2 py-0.5 text-xs font-medium text-primary-foreground">In progress</span>}
           {completed && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">Completed</span>}
           {event.status === "published" && <span className="rounded-full bg-accent px-2 py-0.5 text-xs">{startLabel}</span>}
+          {isGroupOnly && groupInfo && (
+            <Link to={"/groups/$slug" as never} params={{ slug: groupInfo.slug ?? "" } as never} className="rounded-full border border-forest/30 bg-card px-2 py-0.5 text-xs text-forest hover:bg-accent">
+              {groupInfo.name} · members only
+            </Link>
+          )}
         </div>
         <h1 className="mt-1 font-serif text-3xl">{event.title}</h1>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
@@ -246,7 +308,21 @@ function EventDetail() {
       </div>
 
       {/* Action area */}
-      {!completed && (
+      {!completed && memberGated && (
+        <div className="rounded-2xl border border-forest/20 bg-accent/40 p-5 text-center">
+          <p className="font-serif text-base">
+            Reserved for {groupInfo?.name ?? "the group"}.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Join the group to RSVP and walk together.
+          </p>
+          <Button onClick={() => requireAuth(joinGroup)} className="mt-4 h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+            Join {groupInfo?.name ?? "group"} to RSVP
+          </Button>
+        </div>
+      )}
+
+      {!completed && !memberGated && (
         <div className="space-y-3">
           {isAudio ? (
             <>
@@ -271,8 +347,8 @@ function EventDetail() {
                 </Button>
               )}
               {isHost && (
-                <Button onClick={endWalk} disabled={busy === "end"} variant="ghost" className="h-10 w-full rounded-full text-muted-foreground">
-                  {busy === "end" ? "Wrapping…" : "End this walk"}
+                <Button onClick={endAudio} disabled={busy === "end-audio"} variant="ghost" className="h-10 w-full rounded-full text-muted-foreground">
+                  {busy === "end-audio" ? "Wrapping…" : "End this walk"}
                 </Button>
               )}
             </>

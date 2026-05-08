@@ -240,3 +240,51 @@ export const endLocalWalk = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+// ─────────────────────────────────────────────────────────────────────
+// Group-aware RSVP: gates group-only events behind membership
+// ─────────────────────────────────────────────────────────────────────
+
+const RsvpSchema = z.object({ event_id: z.string().uuid() });
+
+export const rsvpToEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => RsvpSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ev } = await supabase
+      .from("events")
+      .select("id,visibility,group_id")
+      .eq("id", data.event_id)
+      .single();
+    if (!ev) throw new Error("Walk not found");
+
+    if (ev.visibility === "group" && ev.group_id) {
+      const { data: mem } = await supabase
+        .from("group_memberships")
+        .select("id")
+        .eq("group_id", ev.group_id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!mem) {
+        const { data: g } = await supabase
+          .from("groups").select("name,slug").eq("id", ev.group_id).single();
+        return {
+          ok: false as const,
+          requiresJoin: true as const,
+          groupId: ev.group_id,
+          groupName: g?.name ?? "the group",
+          groupSlug: g?.slug ?? null,
+        };
+      }
+    }
+
+    const { error } = await supabase
+      .from("event_rsvps")
+      .insert({ event_id: data.event_id, user_id: userId, status: "going" });
+    if (error && !error.message.toLowerCase().includes("duplicate")) {
+      throw new Error(error.message);
+    }
+    return { ok: true as const, requiresJoin: false as const };
+  });
