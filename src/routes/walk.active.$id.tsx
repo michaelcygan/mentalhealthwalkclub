@@ -64,6 +64,7 @@ function ActiveWalk() {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
+  const [walkerCoords, setWalkerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [hasMoved, setHasMoved] = useState(false);
   const [ending, setEnding] = useState(false);
   const [routeTick, setRouteTick] = useState(0);
@@ -132,6 +133,7 @@ function ActiveWalk() {
         lastPos.current = p;
         points.current.push(p);
         setGps("live");
+        setWalkerCoords({ lat: p.lat, lng: p.lng });
       }
     }, (err) => {
       setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
