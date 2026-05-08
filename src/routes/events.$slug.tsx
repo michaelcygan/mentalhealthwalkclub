@@ -272,6 +272,11 @@ function EventDetail() {
           {inProgress && <span className="rounded-full bg-forest px-2 py-0.5 text-xs font-medium text-primary-foreground">In progress</span>}
           {completed && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">Completed</span>}
           {event.status === "published" && <span className="rounded-full bg-accent px-2 py-0.5 text-xs">{startLabel}</span>}
+          {isGroupOnly && groupInfo && (
+            <Link to={"/groups/$slug" as never} params={{ slug: groupInfo.slug ?? "" } as never} className="rounded-full border border-forest/30 bg-card px-2 py-0.5 text-xs text-forest hover:bg-accent">
+              {groupInfo.name} · members only
+            </Link>
+          )}
         </div>
         <h1 className="mt-1 font-serif text-3xl">{event.title}</h1>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
