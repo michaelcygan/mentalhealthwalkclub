@@ -9,6 +9,7 @@ import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check 
 import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
+import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
