@@ -406,12 +406,11 @@ function ActiveWalk() {
           {showMap && (
             <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-secondary/60" />}>
               <WalkLiveMap
-                points={points.current}
+                points={points.current.slice()}
                 walkSessionId={session.id}
                 userId={user?.id ?? null}
                 groupId={session.group_id}
                 shareToGroup={shareMap}
-                key={routeTick === 0 ? "init" : "live"}
               />
             </Suspense>
           )}
