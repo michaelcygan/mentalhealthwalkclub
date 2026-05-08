@@ -135,7 +135,7 @@ function TabBar() {
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
         <Link to="/" className="mb-8 flex items-center gap-2">
-          <LogoStamp tone="dark" size={44} />
+          <LogoStamp tone="dark" size={57} />
           <span className="font-serif text-[15px] leading-tight text-sidebar-foreground">
             Mental Health<br />Walk Club
           </span>
