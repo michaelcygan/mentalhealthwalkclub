@@ -49,7 +49,7 @@ export function useGroupsFeed(): GroupsFeed {
     const weekAgoIso = new Date(now.getTime() - 7 * 86400_000).toISOString();
 
     const [g, m, rooms, evts, walks, prof, prefs] = await Promise.all([
-      supabase.from("groups").select("id,name,slug,description,member_count,theme,city").eq("is_active", true).order("member_count", { ascending: false }),
+      supabase.from("groups").select("id,name,slug,description,member_count,theme,city,state,country,location_label").eq("is_active", true).order("member_count", { ascending: false }),
       user ? supabase.from("group_memberships").select("group_id").eq("user_id", user.id) : Promise.resolve({ data: [] as { group_id: string }[] }),
       supabase.from("audio_rooms").select("group_id").eq("status", "open").gt("current_participant_count", 0).is("parent_room_id", null),
       supabase.from("events").select("group_id,starts_at").eq("status", "published").gte("starts_at", nowIso).lte("starts_at", in7dIso).order("starts_at"),
