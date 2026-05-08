@@ -226,6 +226,21 @@ function TabBar() {
 function AppFrame({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { mode, isFacilitator, ready } = useViewMode();
+
+  // First-load default: send facilitators to /facilitate when they land on home
+  const [redirected, setRedirected] = useState(false);
+  useEffect(() => {
+    if (!ready || redirected) return;
+    if (isFacilitator && mode === "facilitator" && path === "/") {
+      setRedirected(true);
+      navigate({ to: "/facilitate" });
+    } else {
+      setRedirected(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   if (path.startsWith("/auth") || path.startsWith("/welcome")) return <>{children}</>;
 
@@ -250,12 +265,14 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <AuthProvider>
-      <AuthPromptProvider>
-        <AppFrame>
-          <Outlet />
-        </AppFrame>
-        <Toaster />
-      </AuthPromptProvider>
+      <ViewModeProvider>
+        <AuthPromptProvider>
+          <AppFrame>
+            <Outlet />
+          </AppFrame>
+          <Toaster />
+        </AuthPromptProvider>
+      </ViewModeProvider>
     </AuthProvider>
   );
 }
