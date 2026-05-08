@@ -189,13 +189,6 @@ function TabBar() {
             You don't have to walk through it alone.
           </p>
         </div>
-          <button onClick={openWelcome} className="block text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
-            How it works →
-          </button>
-          <p className="font-serif text-xs italic leading-relaxed text-muted-foreground">
-            You don't have to walk through it alone.
-          </p>
-        </div>
       </aside>
 
       {/* Mobile top bar — sign in for logged-out visitors */}
