@@ -183,6 +183,24 @@ function ActiveWalk() {
   const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
   const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
 
+  // Rotating "hero stat" — softly cycles through the four every 5s
+  const [statIdx, setStatIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setStatIdx((i) => (i + 1) % 4), 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Calm/dim mode: after 60s without interaction, fade non-essential UI to ~35% opacity.
+  const [dim, setDim] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const reset = () => { setDim(false); clearTimeout(t); t = setTimeout(() => setDim(true), 60_000); };
+    reset();
+    const evs: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+    evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
+  }, []);
+
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
     await supabase.from("walk_sessions").update({
