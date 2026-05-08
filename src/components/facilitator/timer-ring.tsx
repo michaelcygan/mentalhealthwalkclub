@@ -1,16 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { haptics } from "@/lib/device";
 
 interface Props {
   startSeconds: number;
   onZero?: () => void;
+  /** Called every second with seconds elapsed since the timer began. */
+  onTick?: (elapsed: number) => void;
   paused?: boolean;
 }
 
-export function TimerRing({ startSeconds, onZero, paused }: Props) {
+export function TimerRing({ startSeconds, onZero, onTick, paused }: Props) {
   const [remaining, setRemaining] = useState(startSeconds);
+  const warnedRef = useRef(false);
 
   useEffect(() => {
     setRemaining(startSeconds);
+    warnedRef.current = false;
   }, [startSeconds]);
 
   useEffect(() => {
@@ -18,16 +23,20 @@ export function TimerRing({ startSeconds, onZero, paused }: Props) {
     if (remaining <= 0) return;
     const t = setInterval(() => {
       setRemaining((r) => {
-        if (r <= 1) {
+        const next = r - 1;
+        if (r === 61 && !warnedRef.current) { warnedRef.current = true; haptics.warn(); }
+        onTick?.(startSeconds - next);
+        if (next <= 0) {
           clearInterval(t);
+          haptics.success();
           onZero?.();
           return 0;
         }
-        return r - 1;
+        return next;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [paused, remaining, onZero]);
+  }, [paused, remaining, onZero, onTick, startSeconds]);
 
   const pct = Math.max(0, Math.min(1, remaining / startSeconds));
   const r = 54;
