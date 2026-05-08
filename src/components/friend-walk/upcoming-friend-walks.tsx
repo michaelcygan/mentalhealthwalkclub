@@ -27,7 +27,7 @@ export function UpcomingFriendWalks() {
               className={`min-w-[200px] shrink-0 rounded-2xl border p-3 transition hover:-translate-y-px ${isLive ? "border-forest/40 bg-accent/40" : "border-border bg-card"}`}
             >
               <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-forest">
-                {isLive ? <Radio className="h-3 w-3" /> : <CalendarClock className="h-3 w-3 text-muted-foreground" />}
+                {isLive ? <Radio className="h-3 w-3 live-pulse" /> : <CalendarClock className="h-3 w-3 text-muted-foreground" />}
                 <span className={isLive ? "text-forest" : "text-muted-foreground"}>{when}</span>
               </div>
               <div className="mt-1 line-clamp-1 font-serif text-sm">{w.title}</div>
