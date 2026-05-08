@@ -220,3 +220,14 @@
   .animate-ping, .animate-pulse, .animate-bounce { animation: none !important; }
 }
 
+
+/* Soft glow for the active speaker avatar in Walk & Talk pods */
+@keyframes speaker-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.36 0.05 155 / 0.45); }
+  50%      { box-shadow: 0 0 0 8px oklch(0.36 0.05 155 / 0); }
+}
+.speaker-glow { animation: speaker-glow 1.6s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .speaker-glow { animation: none !important; }
+}

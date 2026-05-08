@@ -17,7 +17,8 @@ import {
   getFacilitatorOverview,
 } from "@/server/facilitator.functions";
 import { TimerRing } from "@/components/facilitator/timer-ring";
-import { PromptDrawer } from "@/components/facilitator/prompt-drawer";
+import { WhisperPrompts } from "@/components/facilitator/whisper-prompts";
+import { FacilitatorQueue } from "@/components/facilitator/facilitator-queue";
 import { ReportDialog } from "@/components/facilitator/report-dialog";
 import { toast } from "sonner";
 
@@ -53,6 +54,7 @@ function FacilitatePage() {
   const [visitDuration, setVisitDuration] = useState(300); // 5 min default
   const [timerDone, setTimerDone] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, { display_name: string | null; avatar_url: string | null }>>({});
   const pollRef = useRef<number | null>(null);
 
@@ -304,6 +306,7 @@ function FacilitatePage() {
             {overview?.livePodCount ?? 0} live walks right now
           </p>
         </div>
+        <FacilitatorQueue />
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleBreak(true)} className="flex-1 rounded-full">
             <Pause className="mr-2 h-4 w-4" /> Take a break
@@ -364,6 +367,7 @@ function FacilitatePage() {
             <TimerRing
               startSeconds={visitDuration}
               onZero={() => setTimerDone(true)}
+              onTick={setElapsed}
             />
           </div>
         </div>
@@ -410,7 +414,7 @@ function FacilitatePage() {
         )}
       </div>
 
-      <PromptDrawer />
+      <WhisperPrompts elapsedSeconds={elapsed} totalSeconds={visitDuration} paused={showReport} />
 
       {showReport && visit && sessionId && (
         <ReportDialog

@@ -401,7 +401,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
                 className="absolute flex flex-col items-center gap-1 transition-transform duration-700 animate-in fade-in zoom-in"
                 style={{ transform: `translate(${p.x}px, ${p.y}px)` }}
               >
-                <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card" : ""} ${isFacilitator ? "ring-2 ring-clay ring-offset-2 ring-offset-card" : ""}`}>
+                <div className={`relative grid h-14 w-14 place-items-center rounded-full border bg-secondary text-sm font-medium transition ${p.speaking ? "scale-110 ring-2 ring-forest ring-offset-2 ring-offset-card speaker-glow" : ""} ${isFacilitator ? "ring-2 ring-clay ring-offset-2 ring-offset-card" : ""}`}>
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                   ) : <span>{initial}</span>}
