@@ -13,6 +13,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as FacilitateRouteImport } from './routes/facilitate'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -41,6 +42,11 @@ const JournalRoute = JournalRouteImport.update({
 const GroupsRoute = GroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FacilitateRoute = FacilitateRouteImport.update({
+  id: '/facilitate',
+  path: '/facilitate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/facilitate'
     | '/groups'
     | '/journal'
     | '/profile'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/facilitate'
     | '/groups'
     | '/journal'
     | '/profile'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/facilitate'
     | '/groups'
     | '/journal'
     | '/profile'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
+  FacilitateRoute: typeof FacilitateRoute
   GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
   ProfileRoute: typeof ProfileRoute
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/groups'
       fullPath: '/groups'
       preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/facilitate': {
+      id: '/facilitate'
+      path: '/facilitate'
+      fullPath: '/facilitate'
+      preLoaderRoute: typeof FacilitateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
+  FacilitateRoute: FacilitateRoute,
   GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
   ProfileRoute: ProfileRoute,
