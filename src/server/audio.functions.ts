@@ -390,7 +390,8 @@ export const joinScheduledWalk = createServerFn({ method: "POST" })
         .eq("status", "open")
         .order("current_participant_count", { ascending: true });
       podCount = pods?.length ?? 0;
-      const open = (pods ?? []).find((p) => p.current_participant_count < p.max_participants);
+      // Walker cap = breakout_size (the +1 seat is reserved for facilitator)
+      const open = (pods ?? []).find((p) => p.current_participant_count < ev.breakout_size);
       if (open) {
         targetRoomId = open.id;
         podIndex = open.pod_index;
