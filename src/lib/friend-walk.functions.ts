@@ -147,7 +147,7 @@ export const rescheduleFriendWalk = createServerFn({ method: "POST" })
     if (startsAt.getTime() < Date.now() - 60_000) throw new Error("pick a future time");
     const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60_000);
 
-    const patch: Record<string, unknown> = {
+    const patch: { starts_at: string; ends_at: string; title?: string } = {
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
     };
