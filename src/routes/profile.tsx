@@ -48,6 +48,8 @@ function ProfileTab() {
       .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
+    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
   const savePatch = async (patch: Partial<Profile>) => {
