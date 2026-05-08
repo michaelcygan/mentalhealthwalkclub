@@ -12,6 +12,7 @@ import { LiveNowStrip } from "@/components/live-now-strip";
 import { WeeklyRing } from "@/components/weekly-ring";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
+import { haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
@@ -162,6 +163,7 @@ function WalkTab() {
       "from-indigo-300/40 via-forest/40 to-forest/60";
     const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
     const quickFeel = (mood: string, score: number) => {
+      haptics.tap();
       setFeeling(mood); setMoodScore(score); setWalkType("solo"); setStep(1);
     };
     return (
@@ -198,7 +200,7 @@ function WalkTab() {
           </div>
         )}
 
-        <Button onClick={() => { setWalkType("solo"); setStep(1); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft hover:opacity-90">
+        <Button onClick={() => { haptics.soft(); setWalkType("solo"); setStep(1); }} className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.99] hover:opacity-90">
           <Footprints className="mr-2 h-5 w-5" /> Start a walk
         </Button>
 
