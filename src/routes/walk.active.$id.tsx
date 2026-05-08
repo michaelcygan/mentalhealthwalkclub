@@ -242,6 +242,14 @@ function ActiveWalk() {
     if (!user || !session) return;
     const notesBlock = notesToJournalBlock(walkNotes);
     const merged = [out.reflection?.trim(), notesBlock].filter(Boolean).join("\n\n");
+    let weatherSnap: Record<string, unknown> | null = null;
+    const last = lastPos.current;
+    if (last) {
+      try {
+        const w = await getWeatherNow(last.lat, last.lng);
+        if (w) weatherSnap = w as unknown as Record<string, unknown>;
+      } catch { /* best-effort */ }
+    }
     await supabase.from("walk_sessions").update({
       status: "completed",
       ended_at: new Date().toISOString(),
@@ -251,6 +259,7 @@ function ActiveWalk() {
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
       reflection_note: merged || null,
+      weather_at_end: weatherSnap,
     }).eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
