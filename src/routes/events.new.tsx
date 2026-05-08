@@ -41,7 +41,7 @@ function NewWalk() {
   const [location, setLocation] = useState<LocationValue | null>(null);
   // audio
   const [theme, setTheme] = useState<string | null>(null);
-  const [breakoutSize, setBreakoutSize] = useState<0 | 2 | 3 | 4>(0);
+  const [breakoutSize, setBreakoutSize] = useState<0 | 2 | 3 | 4>(4);
   const [rotateMinutes, setRotateMinutes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
