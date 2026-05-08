@@ -345,15 +345,15 @@
 .eyebrow-rise { animation: eyebrow-rise 420ms ease-out both; }
 
 @keyframes hue-drift {
-  0%, 100% { box-shadow: 0 0 0 3px hsl(var(--forest) / 0.12); }
-  50%      { box-shadow: 0 0 0 3px hsl(var(--forest) / 0.22); }
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--forest) 12%, transparent); }
+  50%      { box-shadow: 0 0 0 3px color-mix(in oklab, var(--forest) 22%, transparent); }
 }
 .focus-hue-drift:focus-within { animation: hue-drift 6s ease-in-out infinite; }
 
 @keyframes ember-spark {
-  0%   { box-shadow: 0 0 0 0 hsl(var(--forest) / 0.45); }
-  60%  { box-shadow: 0 0 0 14px hsl(var(--forest) / 0); }
-  100% { box-shadow: 0 0 0 0 hsl(var(--forest) / 0); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 45%, transparent); }
+  60%  { box-shadow: 0 0 0 14px color-mix(in oklab, var(--forest) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 0%, transparent); }
 }
 .ember-spark:active { animation: ember-spark 480ms ease-out; }
 
