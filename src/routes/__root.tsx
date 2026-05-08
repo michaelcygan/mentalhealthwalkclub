@@ -207,6 +207,19 @@ function TabBar() {
           <div className="flex items-center gap-2">
             <ModeToggle compact />
             <InboxBell variant="mobile" />
+            <Link
+              to="/profile"
+              aria-label="Profile"
+              className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-border bg-accent/40 text-forest transition active:scale-95"
+            >
+              {user.user_metadata?.avatar_url ? (
+                <img src={user.user_metadata.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-serif text-sm font-semibold">
+                  {(user.user_metadata?.display_name || user.email || "?").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
       )}
