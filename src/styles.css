@@ -361,9 +361,25 @@
 .tap-press:active { transform: scale(0.97); }
 
 /* Fade-edge horizontal scroller */
-.fade-edge-x { mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%); }
+.fade-edge-x { mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%); }
+
+/* "Live" radio/dot — gentle breathing pulse */
+@keyframes live-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.18); }
+}
+.live-pulse { animation: live-pulse 1.6s ease-in-out infinite; transform-origin: center; will-change: transform, opacity; }
+
+/* Heart-beat — two quick squeezes, long rest */
+@keyframes heart-beat {
+  0%, 28%, 70%, 100% { transform: scale(1); }
+  14%               { transform: scale(1.22); }
+  42%               { transform: scale(1.10); }
+}
+.heart-beat { animation: heart-beat 1.6s ease-in-out infinite; transform-origin: center; will-change: transform; }
 
 @media (prefers-reduced-motion: reduce) {
   .ken-burns, .glyph-float, .city-pulse-ring, .card-in,
-  .eyebrow-rise, .focus-hue-drift, .ember-spark { animation: none !important; }
+  .eyebrow-rise, .focus-hue-drift, .ember-spark,
+  .live-pulse, .heart-beat { animation: none !important; }
 }
