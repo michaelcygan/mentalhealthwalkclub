@@ -131,11 +131,9 @@ function TabBar() {
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
         <Link to="/" className="mb-8 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-forest">
-            <Footprints className="h-4.5 w-4.5 text-primary-foreground" />
-          </div>
-          <span className="font-serif text-lg leading-tight text-sidebar-foreground">
-            Walk Club
+          <LogoStamp tone="dark" size={36} />
+          <span className="font-serif text-[15px] leading-tight text-sidebar-foreground">
+            Mental Health<br />Walk Club
           </span>
         </Link>
 
