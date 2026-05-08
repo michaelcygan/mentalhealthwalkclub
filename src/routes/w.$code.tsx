@@ -141,7 +141,8 @@ function FriendWalkLanding() {
 
   if (loading) return <div className="py-24 text-center font-serif text-muted-foreground">a quiet moment…</div>;
 
-  const ended = room && room.status === "closed";
+  const ended = room && (room.status === "closed" || room.status === "canceled");
+  const wasCanceled = room?.status === "canceled";
 
   return (
     <div className="mx-auto -mx-4 min-h-[80vh] gradient-forest px-5 py-12 text-primary-foreground md:mx-0 md:rounded-3xl">
