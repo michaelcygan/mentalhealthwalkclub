@@ -246,13 +246,27 @@ function ActiveWalk() {
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
       reflection_note: merged || null,
     }).eq("id", session.id);
+    let snapshotPath: string | null = null;
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
+      try {
+        const blob = await renderRouteSnapshot(points.current, { width: 1080, height: 1080 });
+        if (blob) {
+          const path = `${user.id}/${session.id}.png`;
+          const { error } = await supabase.storage.from("walk-snapshots").upload(path, blob, { contentType: "image/png", upsert: true });
+          if (!error) snapshotPath = path;
+        }
+      } catch { /* snapshot is best-effort */ }
+    }
+    if (snapshotPath) {
+      await supabase.from("walk_sessions").update({ route_snapshot_path: snapshotPath }).eq("id", session.id);
     }
     if (walkPhotos.length > 0) {
       try { await uploadWalkPhotos({ supabase, userId: user.id, walkSessionId: session.id, photos: walkPhotos }); }
       catch { toast.error("Some photos couldn't upload"); }
     }
+    // Clean up any live pings (also auto-fade by 2-min select filter)
+    await supabase.from("walk_live_pings").delete().eq("walk_session_id", session.id);
     clearWalkCaptures(session.id);
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
