@@ -138,6 +138,58 @@ function JournalTab() {
         </div>
       </div>
 
+      {/* Memory ribbon — horizontally scroll-snapped weeks */}
+      {walks.length > 0 && (
+        <section className="space-y-2">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Memory ribbon</div>
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0" style={{ scrollPaddingLeft: "1rem" }}>
+            {ribbonWeeks.map((w) => {
+              const empty = w.walks.length === 0;
+              return (
+                <article
+                  key={w.offset}
+                  className={`group relative w-[78%] shrink-0 snap-start overflow-hidden rounded-3xl border p-4 transition active:scale-[0.99] sm:w-[55%] md:w-[40%] lg:w-[32%] ${
+                    empty ? "border-dashed border-border bg-card/60" : "border-border bg-gradient-to-br from-card via-card to-accent/30 shadow-soft"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span>{w.label}</span>
+                    <span className="tabular-nums">{w.walks.length} walk{w.walks.length === 1 ? "" : "s"}</span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-1.5">
+                    <span className="font-serif text-3xl tabular-nums">{w.mins}</span>
+                    <span className="text-xs text-muted-foreground">min</span>
+                  </div>
+                  {/* mini bar of the 7 days */}
+                  <div className="mt-3 flex h-7 items-end gap-1">
+                    {Array.from({ length: 7 }).map((_, i) => {
+                      const dayMins = w.walks
+                        .filter((wk) => {
+                          const d = new Date(wk.started_at);
+                          const dow = (d.getDay() + 6) % 7; // Mon=0
+                          return dow === i;
+                        })
+                        .reduce((s, wk) => s + Math.round((wk.duration_seconds ?? 0) / 60), 0);
+                      const max = Math.max(1, ...w.walks.map((wk) => Math.round((wk.duration_seconds ?? 0) / 60)));
+                      return <div key={i} className="flex-1 rounded-sm bg-forest/70" style={{ height: `${Math.max(6, (dayMins / max) * 100)}%`, opacity: dayMins === 0 ? 0.18 : 0.55 + (dayMins / max) * 0.45 }} />;
+                    })}
+                  </div>
+                  {w.mood && (
+                    <div className="mt-3 inline-flex rounded-full bg-accent/60 px-2.5 py-0.5 text-[11px] capitalize">{w.mood}</div>
+                  )}
+                  {w.reflect && (
+                    <p className="mt-2 line-clamp-2 font-serif text-sm italic leading-snug text-foreground/80">"{w.reflect}"</p>
+                  )}
+                  {empty && (
+                    <p className="mt-3 font-serif text-sm italic text-muted-foreground">A quiet week. Rest counts too.</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {badges.length > 0 && (
         <section className="space-y-3">
           <SectionHeading eyebrow="Earned" title="Badges" />
