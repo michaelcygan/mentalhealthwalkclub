@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { haptics } from "@/lib/device";
@@ -10,6 +10,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { createFriendWalk } from "@/lib/friend-walk.functions";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
+import { FriendWalkScheduleSheet } from "@/components/friend-walk/schedule-sheet";
 import { toast } from "sonner";
 
 const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
@@ -61,7 +62,8 @@ export function MobileTabBar() {
   const navigate = useNavigate();
   const createFriend = useServerFn(createFriendWalk);
   const [shareOpen, setShareOpen] = useState(false);
-  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string } | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string | null; startsAt: string | null } | null>(null);
   const [friendBusy, setFriendBusy] = useState(false);
 
   const startFriendWalk = () =>
@@ -69,7 +71,7 @@ export function MobileTabBar() {
       setFriendBusy(true);
       try {
         const r = await createFriend();
-        setFriendInfo({ code: r.code, walkId: r.walkId });
+        setFriendInfo({ code: r.code, walkId: r.walkId, startsAt: null });
         setSheetOpen(false);
         setShareOpen(true);
       } catch (e) {
@@ -77,6 +79,12 @@ export function MobileTabBar() {
       } finally {
         setFriendBusy(false);
       }
+    });
+
+  const openSchedule = () =>
+    requireAuth(() => {
+      setSheetOpen(false);
+      setScheduleOpen(true);
     });
 
   return (
@@ -156,9 +164,31 @@ export function MobileTabBar() {
               </div>
               <span className="rounded-full bg-clay/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-clay">new</span>
             </button>
+            <button
+              type="button"
+              onClick={() => { haptics.tap(); openSchedule(); }}
+              className="col-span-2 flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left transition active:scale-[0.98] hover:border-forest/40"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-accent/60">
+                <CalendarClock className="h-4 w-4 text-forest" />
+              </span>
+              <div className="flex-1">
+                <div className="font-serif text-base">Schedule a Friend Walk</div>
+                <div className="text-[11px] text-muted-foreground">pick a time later this week — share the invite now</div>
+              </div>
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
+
+      <FriendWalkScheduleSheet
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        onScheduled={(info) => {
+          setFriendInfo({ code: info.code, walkId: null, startsAt: info.startsAt });
+          setShareOpen(true);
+        }}
+      />
 
       {friendInfo && (
         <FriendWalkShareCard
@@ -166,13 +196,17 @@ export function MobileTabBar() {
           onOpenChange={(v) => {
             setShareOpen(v);
             if (!v && friendInfo) {
-              navigate({ to: "/walk/active/$id" as never, params: { id: friendInfo.walkId } as never });
+              // Live walk → jump into the room. Scheduled → just close.
+              if (friendInfo.walkId) {
+                navigate({ to: "/walk/active/$id" as never, params: { id: friendInfo.walkId } as never });
+              }
               setFriendInfo(null);
             }
           }}
           hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "you"}
           hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
           shareCode={friendInfo.code}
+          startsAt={friendInfo.startsAt}
         />
       )}
     </>

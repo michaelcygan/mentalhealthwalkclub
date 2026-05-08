@@ -63,6 +63,54 @@ export const createFriendWalk = createServerFn({ method: "POST" })
     return { code, walkId: walk.id, roomId: room.id };
   });
 
+/** Schedule a Friend Walk for a future time. Returns share code (room only — no walk session yet). */
+export const scheduleFriendWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      startsAt: z.string().datetime(),
+      durationMinutes: z.number().int().min(15).max(240).default(45),
+      title: z.string().trim().max(80).optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const startsAt = new Date(data.startsAt);
+    if (startsAt.getTime() < Date.now() - 60_000) throw new Error("pick a future time");
+    const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60_000);
+
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      const c = makeCode();
+      const { data: existing } = await supabase.from("audio_rooms").select("id").eq("share_code", c).maybeSingle();
+      if (!existing) { code = c; break; }
+    }
+    if (!code) throw new Error("couldn't mint a share code");
+
+    const { data: profile } = await supabase.from("profiles").select("display_name, username").eq("id", userId).maybeSingle();
+    const name = profile?.display_name || profile?.username || "a friend";
+
+    const { data: room, error: roomErr } = await supabase
+      .from("audio_rooms")
+      .insert({
+        title: data.title?.trim() || `${name}'s walk`,
+        room_type: "friend",
+        host_user_id: userId,
+        max_participants: 4,
+        requires_active_walk: false,
+        share_code: code,
+        status: "scheduled",
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (roomErr || !room) throw new Error(roomErr?.message ?? "couldn't schedule walk");
+
+    return { code, roomId: room.id, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+  });
+
 /** Join an existing Friend Walk by share code. Returns walk id to navigate to. */
 export const joinFriendWalk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -72,11 +120,19 @@ export const joinFriendWalk = createServerFn({ method: "POST" })
 
     const { data: room } = await supabase
       .from("audio_rooms")
-      .select("id, status, max_participants, host_user_id, current_participant_count")
+      .select("id, status, max_participants, host_user_id, current_participant_count, starts_at")
       .eq("share_code", data.code.toLowerCase())
       .maybeSingle();
     if (!room) throw new Error("walk not found");
-    if (room.status !== "open") throw new Error("this walk has ended");
+    if (room.status === "closed") throw new Error("this walk has ended");
+
+    // Scheduled flow: host opens it on first join; others must wait until start time.
+    if (room.status === "scheduled") {
+      const startMs = room.starts_at ? new Date(room.starts_at).getTime() : 0;
+      const isHost = room.host_user_id === userId;
+      if (!isHost && startMs > Date.now()) throw new Error("this walk hasn't started yet");
+      await supabase.from("audio_rooms").update({ status: "open" }).eq("id", room.id);
+    }
 
     // Auto-listener if room is at speaker capacity
     const speakerCount = room.current_participant_count ?? 0;

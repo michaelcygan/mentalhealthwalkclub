@@ -11,32 +11,37 @@ interface Props {
   hostName: string;
   hostAvatarUrl?: string | null;
   shareCode: string;
+  /** ISO start time — when present, card renders as scheduled invite. */
+  startsAt?: string | null;
 }
 
 /** Renders a 1080×1920 IG-Story-ready share card to canvas + native share sheet. */
-export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUrl, shareCode }: Props) {
+export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUrl, shareCode, startsAt }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const url = typeof window !== "undefined" ? `${window.location.origin}/w/${shareCode}` : `/w/${shareCode}`;
+  const whenLabel = startsAt
+    ? new Date(startsAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
 
   useEffect(() => {
     if (!open) return;
-    void renderCard(canvasRef.current, { hostName, hostAvatarUrl, url, code: shareCode })
+    void renderCard(canvasRef.current, { hostName, hostAvatarUrl, url, code: shareCode, whenLabel })
       .then((dataUrl) => setPreviewUrl(dataUrl));
-  }, [open, hostName, hostAvatarUrl, url, shareCode]);
+  }, [open, hostName, hostAvatarUrl, url, shareCode, whenLabel]);
+
 
   const onShare = async () => {
     haptics.tap();
     const ok = await share({
-      title: `${hostName} is on a walk`,
-      text: `i'm out walking — come walk with me 🌿`,
+      title: whenLabel ? `${hostName} · walk on ${whenLabel}` : `${hostName} is on a walk`,
+      text: whenLabel ? `walk with me — ${whenLabel.toLowerCase()} 🌿` : `i'm out walking — come walk with me 🌿`,
       url,
     });
     if (ok) toast("link shared");
   };
-
   const onCopy = async () => {
     haptics.tap();
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); toast("link copied"); } catch { /* noop */ }
@@ -92,7 +97,7 @@ export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUr
 
 async function renderCard(
   canvas: HTMLCanvasElement | null,
-  opts: { hostName: string; hostAvatarUrl?: string | null; url: string; code: string }
+  opts: { hostName: string; hostAvatarUrl?: string | null; url: string; code: string; whenLabel?: string | null }
 ): Promise<string> {
   if (!canvas) return "";
   const ctx = canvas.getContext("2d");
@@ -152,11 +157,11 @@ async function renderCard(
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.stroke();
 
-  // Pulse hint
+  // Status / time hint
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = "500 38px -apple-system, system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("LIVE  ·  walking now", cx, cy + r + 80);
+  ctx.fillText(opts.whenLabel ? `SCHEDULED  ·  ${opts.whenLabel}` : "LIVE  ·  walking now", cx, cy + r + 80);
 
   // Name
   ctx.fillStyle = "#f7f1e3";
@@ -166,7 +171,7 @@ async function renderCard(
   // Sub
   ctx.fillStyle = "rgba(247,241,227,0.78)";
   ctx.font = "44px -apple-system, system-ui, sans-serif";
-  ctx.fillText("come walk with me", cx, H * 0.65);
+  ctx.fillText(opts.whenLabel ? "save the time — walk with me" : "come walk with me", cx, H * 0.65);
 
   // URL pill
   const pillW = 760, pillH = 130, px = (W - pillW) / 2, py = H * 0.78;
