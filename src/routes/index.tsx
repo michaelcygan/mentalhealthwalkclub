@@ -276,6 +276,29 @@ function ModePill({ icon: Icon, label, onClick }: { icon: typeof Footprints; lab
   );
 }
 
+function StartCta({ onStart }: { onStart: () => void }) {
+  const live = useLiveCount();
+  return (
+    <div className="relative">
+      <Button
+        onClick={onStart}
+        className="breathe relative h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.99] hover:opacity-90"
+      >
+        <Footprints className="mr-2 h-5 w-5" /> Start a walk
+      </Button>
+      {live > 0 && (
+        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest/60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
+          </span>
+          <span><span className="font-medium text-forest tabular-nums">{live}</span> walking & talking now</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
   return (
