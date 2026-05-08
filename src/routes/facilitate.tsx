@@ -17,7 +17,8 @@ import {
   getFacilitatorOverview,
 } from "@/server/facilitator.functions";
 import { TimerRing } from "@/components/facilitator/timer-ring";
-import { PromptDrawer } from "@/components/facilitator/prompt-drawer";
+import { WhisperPrompts } from "@/components/facilitator/whisper-prompts";
+import { FacilitatorQueue } from "@/components/facilitator/facilitator-queue";
 import { ReportDialog } from "@/components/facilitator/report-dialog";
 import { toast } from "sonner";
 
@@ -53,6 +54,7 @@ function FacilitatePage() {
   const [visitDuration, setVisitDuration] = useState(300); // 5 min default
   const [timerDone, setTimerDone] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, { display_name: string | null; avatar_url: string | null }>>({});
   const pollRef = useRef<number | null>(null);
 
