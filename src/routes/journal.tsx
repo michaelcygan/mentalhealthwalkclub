@@ -173,6 +173,7 @@ function JournalTab() {
               ))}
             </div>
           </div>
+        </div>
         {moodAvg !== null && (
           <div className="mt-5 border-t border-border pt-4">
             <div className="flex items-baseline justify-between">
