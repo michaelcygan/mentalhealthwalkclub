@@ -21,26 +21,66 @@ export function setCachedCoords(c: Coords) {
   try { window.localStorage.setItem(COORDS_KEY, JSON.stringify(c)); } catch { /* ignore */ }
 }
 
+/** Coarse IP-based geolocation fallback (keyless). */
+async function fetchIpCoords(): Promise<Coords | null> {
+  try {
+    const res = await fetch("https://ipapi.co/json/");
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (typeof j?.latitude === "number" && typeof j?.longitude === "number") {
+      return { lat: j.latitude, lng: j.longitude };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 /**
- * Best-effort browser geolocation. Returns null if unavailable or the user
- * has not yet granted permission — never prompts proactively beyond what
- * the browser does. Cached for the session.
+ * Best-effort geolocation with graceful fallback chain:
+ *   cached → (optional) browser geolocation → IP-based coarse coords.
+ * The IP fallback runs by default so the homepage weather pill has
+ * something to show on first login without a permission prompt.
  */
-export function useGeolocation(opts: { autoRequest?: boolean } = {}) {
+export function useGeolocation(opts: { autoRequest?: boolean; ipFallback?: boolean } = {}) {
+  const { autoRequest = false, ipFallback = true } = opts;
   const [coords, setCoords] = useState<Coords | null>(() => getCachedCoords());
+  const [requesting, setRequesting] = useState(false);
+
   useEffect(() => {
-    if (coords || !opts.autoRequest) return;
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setCoords(c); setCachedCoords(c);
-      },
-      () => { /* silent */ },
-      { maximumAge: 10 * 60 * 1000, timeout: 8000 }
-    );
-  }, [coords, opts.autoRequest]);
-  return coords;
+    if (coords) return;
+    let cancelled = false;
+    const tryBrowser = () => new Promise<Coords | null>((resolve) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { maximumAge: 10 * 60 * 1000, timeout: 8000 }
+      );
+    });
+    (async () => {
+      let next: Coords | null = null;
+      if (autoRequest) next = await tryBrowser();
+      if (!next && ipFallback) next = await fetchIpCoords();
+      if (!cancelled && next) { setCoords(next); setCachedCoords(next); }
+    })();
+    return () => { cancelled = true; };
+  }, [coords, autoRequest, ipFallback]);
+
+  const requestPrecise = async () => {
+    setRequesting(true);
+    try {
+      const next = await new Promise<Coords | null>((resolve) => {
+        if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          { maximumAge: 0, timeout: 10000 }
+        );
+      });
+      if (next) { setCoords(next); setCachedCoords(next); }
+    } finally { setRequesting(false); }
+  };
+
+  return { coords, requestPrecise, requesting };
 }
 
 export function useCurrentWeather(coords: Coords | null) {
