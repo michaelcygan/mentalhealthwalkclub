@@ -340,6 +340,12 @@ function EventDetail() {
         )}
       </div>
 
+      {!isAudio && event.lat != null && event.lng != null && (
+        <Suspense fallback={<div className="h-44 rounded-2xl border border-dashed border-border" />}>
+          <StaticLocationMap lat={Number(event.lat)} lng={Number(event.lng)} className="h-44" label={`Map of ${event.venue_name ?? event.title}`} />
+        </Suspense>
+      )}
+
       {/* Action area */}
       {!completed && memberGated && (
         <div className="rounded-2xl border border-forest/20 bg-accent/40 p-5 text-center">
