@@ -113,10 +113,8 @@ function GroupDetail() {
   const isHost = !!user && group.owner_user_id === user.id;
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <Link to={"/groups" as never} className="text-sm text-muted-foreground hover:text-foreground">← All groups</Link>
-
-      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-6 shadow-soft md:p-7`}>
+    <div className="space-y-6">
+      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6`}>
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-card/30 blur-3xl animate-pulse [animation-duration:6s]" />
         <div className="relative">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
@@ -125,7 +123,7 @@ function GroupDetail() {
           </div>
           <h1 className="mt-2 font-serif text-3xl leading-tight">{group.name}</h1>
           {group.description && <p className="mt-2 max-w-2xl text-sm text-foreground/80">{group.description}</p>}
-          <div className="mt-5 hidden flex-wrap gap-2 md:flex">
+          <div className="mt-5 flex flex-wrap gap-2">
             <Button onClick={walkWithGroup} disabled={busy} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
               <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk with this group"}
             </Button>
@@ -231,19 +229,6 @@ function GroupDetail() {
         </section>
       )}
 
-      {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-14 z-30 px-4 pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="mx-auto flex max-w-md gap-2 rounded-full border border-border bg-card/95 p-1.5 shadow-soft backdrop-blur">
-          <Button onClick={walkWithGroup} disabled={busy} className="flex-1 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-            <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk now"}
-          </Button>
-          {isHost && (
-            <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never} className="inline-flex items-center justify-center rounded-full border border-border px-4 text-sm">
-              <CalendarPlus className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
