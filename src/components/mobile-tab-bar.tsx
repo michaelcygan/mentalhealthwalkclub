@@ -34,7 +34,7 @@ export function MobileTabBar() {
   // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const walkActive = isActive("/", true);
+  const walkActive = false;
 
   // Friend Walk: create + open share card
   const { user } = useAuth();
