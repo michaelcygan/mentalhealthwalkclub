@@ -5,7 +5,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 
@@ -144,11 +144,16 @@ function TabBar() {
         <LiveSidebarPill />
         {user && <InboxBell variant="desktop" />}
 
-        <div className="mt-auto pt-6">
-          <button onClick={openWelcome} className="text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
+        <div className="mt-auto pt-6 space-y-3">
+          {user && (
+            <Link to="/facilitate" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+              <Headphones className="h-3.5 w-3.5" /> Facilitator space
+            </Link>
+          )}
+          <button onClick={openWelcome} className="block text-left font-serif text-xs italic leading-relaxed text-muted-foreground hover:text-foreground">
             How it works →
           </button>
-          <p className="mt-3 font-serif text-xs italic leading-relaxed text-muted-foreground">
+          <p className="font-serif text-xs italic leading-relaxed text-muted-foreground">
             You don't have to walk through it alone.
           </p>
         </div>

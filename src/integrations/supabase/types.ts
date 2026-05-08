@@ -431,6 +431,125 @@ export type Database = {
           },
         ]
       }
+      facilitator_profiles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bio: string | null
+          created_at: string
+          credentials: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bio?: string | null
+          created_at?: string
+          credentials?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bio?: string | null
+          created_at?: string
+          credentials?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      facilitator_sessions: {
+        Row: {
+          created_at: string
+          current_audio_room_id: string | null
+          ended_at: string | null
+          facilitator_user_id: string
+          id: string
+          pods_visited: number
+          started_at: string
+          status: string
+          total_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_audio_room_id?: string | null
+          ended_at?: string | null
+          facilitator_user_id: string
+          id?: string
+          pods_visited?: number
+          started_at?: string
+          status?: string
+          total_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_audio_room_id?: string | null
+          ended_at?: string | null
+          facilitator_user_id?: string
+          id?: string
+          pods_visited?: number
+          started_at?: string
+          status?: string
+          total_seconds?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      facilitator_visits: {
+        Row: {
+          audio_room_id: string
+          created_at: string
+          facilitator_session_id: string
+          facilitator_user_id: string
+          id: string
+          joined_at: string
+          left_at: string | null
+          notes: string | null
+          outcome: string | null
+          planned_duration_seconds: number
+        }
+        Insert: {
+          audio_room_id: string
+          created_at?: string
+          facilitator_session_id: string
+          facilitator_user_id: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          notes?: string | null
+          outcome?: string | null
+          planned_duration_seconds?: number
+        }
+        Update: {
+          audio_room_id?: string
+          created_at?: string
+          facilitator_session_id?: string
+          facilitator_user_id?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          notes?: string | null
+          outcome?: string | null
+          planned_duration_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facilitator_visits_facilitator_session_id_fkey"
+            columns: ["facilitator_session_id"]
+            isOneToOne: false
+            referencedRelation: "facilitator_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           created_at: string
@@ -1263,7 +1382,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "member"
+      app_role: "admin" | "moderator" | "member" | "facilitator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1391,7 +1510,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "member"],
+      app_role: ["admin", "moderator", "member", "facilitator"],
     },
   },
 } as const

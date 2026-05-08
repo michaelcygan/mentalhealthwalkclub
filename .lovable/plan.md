@@ -1,64 +1,193 @@
-## Walk & Talk pod sizing: 4 + facilitator seat
+# Facilitator Role — Plan
 
-Set the conversational pod target to **4 walkers**, with a reserved **5th seat** for a future Facilitator role (drop-in therapist). No facilitator logic yet — just the structural seat and the consolidation math that respects it.
+A volunteer account type (therapists / psychology students) who taps **Start facilitating** and is auto-routed through live Walk & Talk pods, one at a time, in the reserved 5th seat. Walks continue to function with zero facilitators online — this layer is purely additive.
 
-### 1. Constants & schema
+---
 
-**`audio_rooms`** — change defaults, add reserved seat:
-- `max_participants` default: `8` → `5` (4 walkers + 1 facilitator)
-- Add column `facilitator_seat_reserved boolean NOT NULL DEFAULT true`
-- Add column `facilitator_user_id uuid` (nullable, populated when a facilitator joins)
+## 1. Role & access
 
-**`events`** — pod sizing:
-- `breakout_size` default: `0` → `4`
-- Backfill existing scheduled walks where `breakout_size = 0` to `4`
+**Schema**
+- Extend `app_role` enum: add `'facilitator'`.
+- New table `facilitator_profiles`:
+  - `user_id uuid PK → auth.users`
+  - `status text` — `'pending' | 'approved' | 'suspended'` (default `pending`)
+  - `credentials text` (free text: license #, school, supervisor)
+  - `bio text`, `approved_at`, `approved_by uuid`
+- RLS: facilitator can read/update own row; admins manage all.
 
-**`audio_room_participants`** — role values:
-- Existing `role` text already supports `'participant' | 'host'`. Add convention for `'facilitator'` (no enum change needed; it's a free text column).
+**Onboarding (out of scope for this pass beyond the stub)**
+- A simple `/facilitate/apply` form that creates the row + assigns `facilitator` role on admin approval. For now: admins grant manually via SQL; the app gates on `has_role(uid, 'facilitator') AND status='approved'`.
 
-### 2. Server logic (`src/server/audio.functions.ts`)
+---
 
-**Pod scaling (`openScheduledRoomImpl`)**
+## 2. Facilitator session model
+
+**New table `facilitator_sessions`** — one row per "shift" of being available:
+- `id`, `facilitator_user_id`, `started_at`, `ended_at`
+- `status` — `'available' | 'in_pod' | 'on_break' | 'ended'`
+- `current_audio_room_id uuid` (nullable)
+- `pods_visited int default 0`, `total_seconds int default 0`
+
+**New table `facilitator_visits`** — one row per pod drop-in:
+- `id`, `facilitator_session_id`, `audio_room_id`, `joined_at`, `left_at`
+- `planned_duration_seconds int` (the timer value, e.g. 300)
+- `outcome text` — `'completed' | 'reported' | 'left_early' | 'pod_ended'`
+- `notes text` (private to facilitator + admin)
+
+---
+
+## 3. Routing logic — "press play, flow through walks"
+
+**Server fn `startFacilitatorShift()`** — creates `facilitator_sessions` row, status `available`.
+
+**Server fn `nextPodForFacilitator()`** — the heart of the flow. Picks the next live pod:
+
 ```
-walkerCap = breakout_size              // 4
-podCount  = max(1, ceil(rsvps / walkerCap))
+candidates = audio_rooms
+  WHERE status = 'open'
+    AND scheduled_event_id IS NOT NULL          -- only scheduled walks (groups)
+    AND facilitator_user_id IS NULL              -- no facilitator currently
+    AND current_participant_count >= 2           -- skip empty/solo pods
+    AND id NOT IN (recent visits this shift, last 30 min)  -- don't re-enter
+score by:
+  1. longest time without a facilitator visit (fairness)
+  2. highest walker count (most people benefit)
+  3. event soonest to end (catch before it closes)
+pick top 1
 ```
-Rooms still created with `max_participants = walkerCap + 1` to hold the facilitator seat.
 
-**Join gating (`joinScheduledWalk` / open Walk & Talk join)**
-- Count active participants where `role <> 'facilitator'`.
-- Reject join if `walker_count >= breakout_size` (4), even if total seats remain — the 5th is reserved.
-- Facilitators bypass this check; they fill the reserved seat.
+If none available → return `{ status: 'no_pods', retryAfterSeconds: 30 }`. UI shows ambient "listening for walks…" state.
 
-**Consolidation (`consolidatePodsImpl`)** — math uses walker counts only:
-- Smallest pod A merges into target B when `walkers_A + walkers_B ≤ 4`.
-- Facilitators are NOT moved by consolidation (they choose which pod to drop into). When A closes, if it had a facilitator, mark them as detached so they can rejoin elsewhere.
+**Server fn `joinPodAsFacilitator({ roomId, plannedDurationSeconds })`**:
+- Set `audio_rooms.facilitator_user_id = uid`
+- Insert `audio_room_participants` with `role='facilitator'`
+- Insert `facilitator_visits` row
+- Update session: `status='in_pod'`, `current_audio_room_id`
+- Broadcast realtime event `facilitator_joined` so walkers see the announcement banner
 
-**Solo grace + ambient (lightweight, no new tables)**
-- When a pod drops to 1 walker, set a 60s grace timer client-side before the dock attempts a merge call. During grace, dock shows ambient state ("Walking with you — others joining in a moment").
-- Never auto-close the last walker mid-event; pod stays open with ambient music until host ends the walk.
+**Server fn `leavePodAsFacilitator({ visitId, outcome })`**:
+- Mark participant `left_at`, clear `audio_rooms.facilitator_user_id`
+- Close `facilitator_visits` row with outcome + duration
+- Broadcast `facilitator_left`
+- Increment session counters
+- Set session back to `available` (UI auto-fetches next pod)
 
-### 3. UI surfacing
+**Server fn `reportFromPod({ visitId, reportedUserIds[], reason, details })`**:
+- Insert into existing `safety_reports` (one per user)
+- Force-close the audio room: `status='closed'`, `ends_at=now()`
+- Mark visit `outcome='reported'`
+- Walker dock receives realtime close event → "Walk ended by facilitator" toast → returns to home
 
-- **Schedule form** (`events.new.tsx`): show "Pods of 4 · 1 facilitator seat reserved" as a static helper line under the audio walk option. No user-facing config yet.
-- **Event detail** (`events.$slug.tsx`): pod count chip reads `4 walkers per pod` instead of generic "breakout size."
-- **walk-talk-dock**: when alone, swap "Waiting for others" copy → "Walking with you" + subtle ambient pulse. When pod has 4, show "Full pod" badge (facilitator slot still open and invisible to walkers — no need to advertise the empty seat yet).
+**Server fn `endFacilitatorShift()`** — sets `ended_at`, `status='ended'`, leaves any active pod cleanly.
 
-### 4. Out of scope (next pass — Facilitator)
-- Facilitator app role (`app_role` enum addition: `'facilitator'`)
-- Facilitator dashboard listing live group walks
-- "Drop in" flow that joins a pod in the reserved seat
-- Therapist verification + scheduling availability
-- Post-walk facilitator notes
+---
 
-### Files to change
-- `supabase/migrations/<new>` — `max_participants` default, `facilitator_seat_reserved`, `facilitator_user_id`, `breakout_size` default + backfill
-- `src/server/audio.functions.ts` — pod scaling, walker-only join gate, consolidation walker math, facilitator detach on close
-- `src/components/walk-talk-dock.tsx` — solo grace + ambient copy, full-pod badge
-- `src/routes/events.new.tsx` — helper copy
-- `src/routes/events.$slug.tsx` — pod label copy
+## 4. Walker-side changes (small)
 
-### Why these specific numbers
-- 4 walkers = Dunbar conversational ceiling for audio without video
-- Consolidation cleanly resolves: 2+2→4, 3+1→4, 1+1→2 (waits for next merge)
-- Reserved 5th seat means facilitators never get rejected by full pods and never displace a walker
+- `walk-talk-dock`: subscribe to `audio_rooms.facilitator_user_id` change. When a facilitator joins, show a soft banner: *"{Name}, facilitator, has joined to listen in"* + small badge on their avatar. When they leave, fade banner.
+- Constellation: facilitator avatar gets a distinct ring color (warm clay) and a small "facilitator" label — no mute icon, no speaking ring change.
+- Pod close from facilitator report → existing leave flow + toast.
+
+---
+
+## 5. Facilitator UI — `/facilitate`
+
+Single dedicated route, gated by `has_role(uid, 'facilitator')`. Mobile-first, big touch targets.
+
+**State: `idle`** (before press play)
+- Hero: "Hold space for a walk." Short description.
+- Big primary button: **Start facilitating**
+- Below: today's stats (pods visited, hours held)
+- Optional: time limit selector (15min / 30min / 60min / unlimited shift)
+
+**State: `searching`** (no pod available)
+- Ambient pulse animation (matches walker matching screen)
+- "Listening for live walks… {n} active right now"
+- Auto-polls `nextPodForFacilitator` every 30s
+- Buttons: **End shift** · **Take a break** (pauses polling)
+
+**State: `in-pod`** (active visit)
+- Top: pod title, walker count, "you are facilitating"
+- **Timer**: ring countdown from chosen visit length (default 5 min). Configurable: 3/5/8 min.
+- Audio cockpit (same mic / hands-free / PTT controls as walker, but unmuted by default — facilitators talk)
+- **Suggested prompts** drawer (collapsed by default, swipe up):
+  - Curated by stage (opener / mid-walk / wrap)
+  - "What brought you out walking today?"
+  - "Anyone want to share what's on their mind?"
+  - "We've got a couple minutes left — anything sitting with you?"
+  - Tap to copy / glance only
+- When timer hits 0: pulse animation + **Next walk →** button appears (replaces timer). Facilitator says goodbye, then taps.
+- Persistent secondary actions:
+  - **Report & close** (red, requires confirm + reason + which user(s))
+  - **Leave early** (no report — just exits this pod, returns to searching)
+- Quick-note field: private notes saved to `facilitator_visits.notes`
+
+**State: `between`** (after Next, before next pod loads)
+- 10s breathing screen: "Nice work. Resetting…"
+- Auto-advances to `searching`
+
+**State: `break`**
+- "On a break. Tap when ready."
+- Resume / End shift buttons
+
+---
+
+## 6. Suggested prompts (static seed)
+
+Hardcoded JSON in `src/lib/facilitator-prompts.ts`:
+```
+openers:   ["What brought you out today?", "Anyone walking somewhere new?", ...]
+deepening: ["What's been sitting with you this week?", ...]
+gentle:    ["No pressure to share — happy to walk in quiet too.", ...]
+wrap:      ["A couple minutes left — anything you want to land on?", ...]
+```
+Later: AI-generated prompts via Lovable AI based on pod mood/theme (next pass).
+
+---
+
+## 7. Edge cases
+
+- **Pod ends mid-visit** (host ends walk, all walkers leave): facilitator's dock shows "This walk ended" + auto-advance to next.
+- **Facilitator disconnects** (closes tab): server cron `rotate-pods` already runs — extend it to clear stale `facilitator_user_id` after 90s of no participant heartbeat.
+- **Two facilitators race for same pod**: `joinPodAsFacilitator` uses `UPDATE … WHERE facilitator_user_id IS NULL RETURNING` — only one wins; loser gets next pod.
+- **Walker reports facilitator**: existing `safety_reports` flow already covers this; admins can suspend via `facilitator_profiles.status='suspended'`.
+- **No pods available for full shift**: facilitator just sees ambient state — fine, this is expected as bandwidth varies.
+
+---
+
+## 8. Files to touch
+
+**New**
+- `supabase/migrations/<new>` — enum, two tables, RLS
+- `src/server/facilitator.functions.ts` — all server fns above
+- `src/routes/facilitate.tsx` — main facilitator UI (gated)
+- `src/components/facilitator/timer-ring.tsx`
+- `src/components/facilitator/prompt-drawer.tsx`
+- `src/components/facilitator/report-dialog.tsx`
+- `src/lib/facilitator-prompts.ts`
+
+**Edited**
+- `src/components/walk-talk-dock.tsx` — facilitator-joined banner + avatar styling + force-close handling
+- `src/routes/api/public/hooks/rotate-pods.ts` — clear stale facilitators
+- Bottom nav / profile menu — add "Facilitate" entry visible only to facilitator role
+
+---
+
+## 9. Out of scope (next passes)
+
+- Public application form & admin approval UI (manual SQL grant for now)
+- AI-generated prompts tuned to pod mood
+- Post-walk facilitator reflection summary / supervisor review
+- Facilitator scheduling availability calendar
+- Walker preference: "prefer pods with facilitators" / "no facilitators please"
+- Stipend / hours tracking for paid program
+
+---
+
+## Why this shape
+
+- **Press-play simplicity**: one button starts the flow, server picks pods, facilitator never has to choose. Matches the walker UX philosophy.
+- **Zero-facilitator resilience**: the reserved 5th seat already exists; everything here is purely additive — walks work identically when no one is facilitating.
+- **Fairness routing**: longest-without-a-facilitator scoring spreads attention across pods instead of clustering on the busiest one.
+- **Timer + Next button** mirrors how a real group therapist rotates through breakouts; the goodbye moment is honored, not rushed.
+- **Report = close**: collapses two safety actions into one decisive control — a facilitator wouldn't leave a harmful pod running while filing paperwork.
