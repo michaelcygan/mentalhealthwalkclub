@@ -21,7 +21,7 @@ export function FacilitatorQueue() {
     const load = async () => {
       const { data } = await supabase
         .from("audio_rooms")
-        .select("id,title,current_participant_count,opened_at,facilitator_user_id,status")
+        .select("id,title,current_participant_count,created_at,facilitator_user_id,status")
         .eq("status", "open")
         .is("facilitator_user_id", null)
         .gte("current_participant_count", 1)
@@ -34,7 +34,7 @@ export function FacilitatorQueue() {
           id: r.id,
           title: r.title,
           participants: r.current_participant_count ?? 0,
-          ageMinutes: r.opened_at ? Math.max(0, Math.round((now - new Date(r.opened_at).getTime()) / 60_000)) : 0,
+          ageMinutes: r.created_at ? Math.max(0, Math.round((now - new Date(r.created_at).getTime()) / 60_000)) : 0,
         })),
       );
     };
