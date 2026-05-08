@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Radio, MapPin, Sparkles, Headphones, X, Flame, Heart, Compass, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -7,6 +7,7 @@ import { GroupCard } from "@/components/group-card";
 import { VibeCollection } from "@/components/groups/vibe-collection";
 import { CityGallery } from "@/components/groups/city-gallery";
 import { PulseRail } from "@/components/groups/pulse-rail";
+import { NicheCollection } from "@/components/groups/niche-collection";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
 
