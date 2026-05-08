@@ -114,7 +114,7 @@ function NewWalk() {
       <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-1.5 shadow-soft">
         {([
           { key: "irl" as const, label: "In person", icon: MapPin, sub: "Meet at a place" },
-          { key: "audio" as const, label: "Audio together", icon: Headphones, sub: "Walk anywhere · talk live" },
+          { key: "audio" as const, label: "Walk & Talk", icon: Headphones, sub: "Walk anywhere · talk live" },
         ]).map(({ key, label, icon: Icon, sub }) => (
           <button
             key={key}
