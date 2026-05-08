@@ -72,7 +72,14 @@ function GroupDetail() {
         user ? supabase.from("group_memberships").select("id").eq("group_id", g.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as { data: unknown }),
       ]);
       if (cancel) return;
-      setEvents(e ?? []);
+      const evs = (e ?? []) as Event[];
+      const hostIds = Array.from(new Set(evs.map((x) => x.host_user_id).filter(Boolean) as string[]));
+      if (hostIds.length) {
+        const { data: hosts } = await supabase.from("profiles").select("id,display_name").in("id", hostIds);
+        const map = new Map((hosts ?? []).map((h) => [h.id, h.display_name]));
+        evs.forEach((x) => { x.host_name = x.host_user_id ? map.get(x.host_user_id) ?? null : null; });
+      }
+      setEvents(evs);
       setRooms(r ?? []);
       const walks = w ?? [];
       setWalksWeek(walks.length);
@@ -350,6 +357,11 @@ function GroupDetail() {
                   </div>
                   <Link to={"/events/$slug" as never} params={{ slug: e.slug } as never} className="font-medium hover:text-forest">{e.title}</Link>
                   <div className="text-xs text-muted-foreground">{new Date(e.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}{e.city ? ` · ${e.city}` : ""}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {e.host_name ? <>Hosted by {e.host_name}</> : null}
+                    {e.host_name && (e.attendee_count ?? 0) >= 0 ? " · " : null}
+                    {(e.attendee_count ?? 0) === 0 ? <span className="text-forest">0 going · be the first</span> : <>{e.attendee_count} going</>}
+                  </div>
                 </li>
               ))}
             </ul>
