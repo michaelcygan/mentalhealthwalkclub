@@ -55,7 +55,7 @@ function GroupDetail() {
     let cancel = false;
     let cleanup: (() => void) | undefined;
     (async () => {
-      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme,owner_user_id").eq("slug", slug).single();
+      const { data: g } = await supabase.from("groups").select("id,name,description,member_count,city,theme,owner_user_id,cover_set").eq("slug", slug).single();
       if (!g || cancel) return;
       setGroup(g);
       const now = new Date().toISOString();
