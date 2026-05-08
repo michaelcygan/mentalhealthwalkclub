@@ -15,7 +15,7 @@ type SearchParams = { group?: string; mode?: "irl" | "audio" };
 
 export const Route = createFileRoute("/events/new")({
   component: NewWalk,
-  head: () => ({ meta: [{ title: "Schedule a walk — Walk Club" }] }),
+  head: () => ({ meta: [{ title: "Schedule a walk — Mental Health Walk Club" }] }),
   validateSearch: (s: Record<string, unknown>): SearchParams => ({
     group: typeof s.group === "string" ? s.group : undefined,
     mode: s.mode === "audio" ? "audio" : s.mode === "irl" ? "irl" : undefined,

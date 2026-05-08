@@ -63,7 +63,7 @@ export function GuidedPlayer({ trackId, paused = false }: { trackId: string; pau
     }
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title, artist: track.host ?? "Walk Club", album: "Guided Walk",
+        title: track.title, artist: track.host ?? "Mental Health Walk Club", album: "Guided Walk",
       });
     }
   };

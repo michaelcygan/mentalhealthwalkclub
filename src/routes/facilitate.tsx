@@ -26,7 +26,7 @@ export const Route = createFileRoute("/facilitate")({
   component: FacilitatePage,
   head: () => ({
     meta: [
-      { title: "Facilitate · Walk Club" },
+      { title: "Facilitate · Mental Health Walk Club" },
       { name: "description", content: "Hold space for live Walk & Talks. Drop in, listen, gently guide." },
       { name: "robots", content: "noindex" },
     ],

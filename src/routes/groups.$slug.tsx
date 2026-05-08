@@ -15,10 +15,10 @@ export const Route = createFileRoute("/groups/$slug")({
   component: GroupDetail,
   head: ({ params }) => ({
     meta: [
-      { title: `${params.slug.replace(/-/g, " ")} — Walk Club group` },
-      { name: "description", content: "A quiet affinity group on Walk Club. Walks, Walk & Talks, and Local meetups for people who get it." },
+      { title: `${params.slug.replace(/-/g, " ")} — Mental Health Walk Club group` },
+      { name: "description", content: "A quiet affinity group on Mental Health Walk Club. Walks, Walk & Talks, and Local meetups for people who get it." },
       { property: "og:title", content: `Join the ${params.slug.replace(/-/g, " ")} walking group` },
-      { property: "og:description", content: "Find your people on Walk Club — by city, by theme, by feeling." },
+      { property: "og:description", content: "Find your people on Mental Health Walk Club — by city, by theme, by feeling." },
       { property: "og:type", content: "website" },
     ],
   }),
@@ -199,8 +199,8 @@ function GroupDetail() {
               onClick={async () => {
                 haptics.tap();
                 const ok = await share({
-                  title: `${group.name} — Walk Club`,
-                  text: group.description ?? "A quiet walking group on Walk Club.",
+                  title: `${group.name} — Mental Health Walk Club`,
+                  text: group.description ?? "A quiet walking group on Mental Health Walk Club.",
                   url: typeof window !== "undefined" ? window.location.href : undefined,
                 });
                 if (ok) toast("Invite ready to share.");

@@ -231,7 +231,7 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     const ms = (navigator as Navigator & { mediaSession?: MediaSession }).mediaSession;
     if (!ms) return;
     try {
-      ms.metadata = new MediaMetadata({ title: room.title, artist: "Walk & Talk", album: "Walk Club" });
+      ms.metadata = new MediaMetadata({ title: room.title, artist: "Walk & Talk", album: "Mental Health Walk Club" });
       ms.setActionHandler("play", () => { if (muted) toggleMute(); });
       ms.setActionHandler("pause", () => { if (!muted) toggleMute(); });
     } catch { /* noop */ }
