@@ -80,10 +80,7 @@ export function useGeolocation(opts: { autoRequest?: boolean; ipFallback?: boole
     } finally { setRequesting(false); }
   };
 
-  // Backwards-compat: callers that did `const coords = useGeolocation(...)`
-  // still receive a Coords | null thanks to the valueOf/toJSON proxy below.
-  return Object.assign(coords as Coords | null, { coords, requestPrecise, requesting }) as
-    (Coords | null) & { coords: Coords | null; requestPrecise: () => Promise<void>; requesting: boolean };
+  return { coords, requestPrecise, requesting };
 }
 
 export function useCurrentWeather(coords: Coords | null) {
