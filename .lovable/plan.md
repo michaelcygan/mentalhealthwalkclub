@@ -1,158 +1,135 @@
-## Goal
+# Home Tab — World-Class Pass
 
-Level up badges, leaderboard, profile, and stickiness into something that feels best-in-class for 2026 — using primitives that already exist (walk_sessions, user_badges, badge_definitions, group_memberships, goals, weather_at_end, route snapshots). Minimal new code, maximum craft.
+The home tab today is a long vertical list of small components stacked by hand. The fix is not to add features — it's to **promote the home page into a deliberate module feed** where each card is sized for its signal strength, mobile gestures are first-class, and the weather + live walks become real modules instead of inline text.
+
+Everything below reuses existing primitives. Net new code is ~3 small components and a layout refactor of `src/routes/index.tsx`.
 
 ---
 
-## 1. Profile — make it the centerpiece
-
-Right now `/profile` is a settings form with a route mosaic. Reframe it as a **living identity card**.
-
-**New layout (top to bottom, mobile-first):**
+## The new module order (logged-in)
 
 ```text
-┌─────────────────────────────┐
-│  avatar · display name       │  ← long-press avatar → edit
-│  city · "47 walks · 12h"     │
-│  ▓▓▓▓▓▓▓▓░░  level ring     │  ← cumulative minutes → "Level 7 Walker"
-├─────────────────────────────┤
-│  badge wall (3-col grid)     │  ← earned in color, locked greyed at 30%
-│  tap → sheet w/ how-earned   │
-├─────────────────────────────┤
-│  route mosaic (existing)     │
-├─────────────────────────────┤
-│  weekly ring · streak chip   │  ← 🔥 4-week streak
-├─────────────────────────────┤
-│  stats grid (4 tiles)        │  miles · minutes · groups · weather walked-through
-├─────────────────────────────┤
-│  settings (collapsed)        │  ← all current edit forms moved into a sheet
-└─────────────────────────────┘
+┌─────────────────────────────────────┐
+│  HERO BAND  (greeting + level ring) │  ← merges greeting + walker level
+├─────────────────────────────────────┤
+│  ▶ ACTIVE WALK  (only if active)    │
+│  ⤴ COMEBACK NUDGE (only if 7d gap)  │
+├─────────────────────────────────────┤
+│  ⬛ START A WALK  (primary CTA)      │
+│  ··  Other ways to walk (chips)     │
+├─────────────────────────────────────┤
+│  THIS WEEK  (ring + streak + dots)  │
+│   ↳ weather chip lives here, inline │
+├─────────────────────────────────────┤
+│  HAPPENING NOW  (horizontal feed)   │  ← live rooms + scheduled <60min
+├─────────────────────────────────────┤
+│  WEATHER MODULE  (full card)        │  ← collapsed → expand for forecast
+├─────────────────────────────────────┤
+│  WEEK IN REVIEW (Sun only)          │
+│  YOUR LAST REFLECTION (if any)      │
+└─────────────────────────────────────┘
 ```
 
-**Levels** (pure derivation, no schema): `level = floor(sqrt(totalMinutes / 30))`, label from a 12-entry array ("First Steps" → "Quiet Mountain"). Ring shows progress to next level.
-
-**Streak**: derived in one query — count distinct ISO weeks with ≥1 completed walk, walking backwards from this week. No new table.
-
-**Stats tiles** use existing columns: `SUM(distance_meters)`, `SUM(duration_seconds)`, `COUNT(DISTINCT group_id)`, `COUNT(*) WHERE weather_at_end->>'code' indicates rain`.
-
-**Mobile capability**:
-- Long-press avatar to edit (haptics.tap on press-in, soft on save)
-- Pull-to-refresh on profile (hook already exists)
-- Share-sheet button on header → uses existing `share()` helper to share a "Walker card" (re-use `share-card.ts` baker with profile variant)
-- Vibrate `success` on level-up detection (compare last-seen level in localStorage)
+Visibility rules: every module returns `null` when its signal is empty. The page never feels half-built.
 
 ---
 
-## 2. Badges — from list to ritual
+## Module-by-module changes
 
-Currently badges live in `user_badges` and are evaluated server-side in `evaluate_badges()`. That works — we just don't surface them well.
+### 1. Hero Band — merge greeting + walker level
+Today the greeting is a `HeroGradient` and the level lives only on /profile. Pull the level ring into the hero so the user *sees their progress at the top*.
 
-**Badge wall component** (`src/components/badge-wall.tsx`, new, ~120 lines):
-- 3-col grid of all `badge_definitions`, earned ones in full color with subtle `animate-in` shimmer, locked ones at 30% opacity with the icon outline only
-- Tap → bottom sheet showing: large icon, name, "earned on Mar 4 after a rainy walk in Brooklyn" (use `walk_session_id` → date + city + weather)
-- Long-press locked badge → "How to earn" hint pulled from `badge_definitions.description`
+- Left: greeting + microState copy (unchanged).
+- Right (mobile: top-right inside hero; desktop: aligned right): a small `LevelRing` (40px) — reuses `walker-level.ts` math + the ring SVG already in `walker-card-header.tsx`. Tap → `/profile`.
+- Adds **time-of-day tinting** to the hero gradient using the existing tone tokens (dawn/day/dusk/night) so the page feels alive across the day.
 
-**New "soft" badges** (data-only, add to badge_definitions via migration — no logic changes since `evaluate_badges()` already handles unknowns gracefully; we extend the function to add ~6 new branches):
-
-| Key | Trigger | Why it sticks |
-|-----|---------|---------------|
-| `weather_warrior` | 5 walks with rain in `weather_at_end` | Rewards showing up |
-| `golden_hour` | walk started within 1h of sunset (we already have lat/lng + start time → derivable client-side, set via small server fn at completion) | Aesthetic/poetic |
-| `dawn_patrol` | walk started before 7am local | Identity badge |
-| `four_seasons` | walk in 4 distinct meteorological seasons | Long-arc commitment |
-| `loop_closer` | finished within 50m of start point | Uses existing route snapshot |
-| `companion` | 10 walks with `audio_room_id` not null | Social rewards |
-
-These add up to ~30 lines in `evaluate_badges()` plus 6 rows in `badge_definitions`.
-
-**Badge "earned" moment** (the dopamine hit): when `endWalk` returns and a new badge_id appears, show a full-screen `<BadgeEarnedSheet>` with the badge crystallizing in (reduced-motion respecting), haptic `success`, "Share" button. Currently we don't celebrate at all.
-
----
-
-## 3. Leaderboard — top 100 walkers
-
-**New route**: `src/routes/leaderboard.tsx`
-
-**New DB primitive**: a single SECURITY DEFINER function `get_leaderboard(_period text, _scope text, _group_id uuid)` returning `{rank, user_id, display_name, avatar_url, city, total_minutes, total_walks, badge_count}`. Aggregates from `walk_sessions` joined to `profiles` and `user_badges`. RLS-safe because function owner bypasses + we only return public columns. Capped at 100.
-
-**UI** (Strava-meets-Apple-Fitness aesthetic):
-- Segmented control: `This Week / This Month / All-Time`
-- Second segmented control: `Global / My Groups` (when in a group, scope = membership intersection)
-- List rows: `#1 ▍ avatar  name · city  ·  124 min  ·  🏅 8`
-  - Top 3 get gold/silver/bronze accent on the rank number, no gaudy crown emojis
-  - Current user row is sticky-highlighted with a soft `--accent` bg, even if outside top 100 → "You're #247 — 12 minutes from #246"
-- Tap any row → opens that user's profile sheet (re-use profile component in read-only mode)
-
-**Performance**: cache per scope+period in a 2-min TanStack Query staleTime; one round-trip per view.
-
-**Stickiness loop**: a small "Climb" pill on home if user is within 30 min of overtaking the next rank in their group's weekly board → "12 min to pass Sara this week."
-
----
-
-## 4. Stickiness — three small mechanics that compound
-
-All three are pure-derivation, no new tables.
-
-**a) Week-in-review card** on home, Sundays only: minutes, badge earned, longest walk, weather mix, friend count. One "Share my week" button → uses share-card baker with a "week summary" template.
-
-**b) Comeback nudge**: if last walk > 7 days ago AND streak just broke, the home Now & Next slot shows a soft "Welcome back. Two minutes still counts." (no shame, no red, just amber). Uses haptic `tap` on appearance only once per visit.
-
-**c) Goal-met confetti**: when weekly minutes crosses the goal value, the WeeklyRing fills to gold and pulses once. Existing `WeeklyRing` already takes `minutes/goal`; we add a `metGoalThisWeek` prop and a 1.2s ease-out animation. Haptic `success` once per week (localStorage flag).
-
----
-
-## 5. UI polish — modern, mobile-first, "2026"
-
-These touches across the app cost almost nothing but raise the perceived quality bar:
-
-- **Glass nav**: tab bar gets `backdrop-blur` + 70% surface opacity (currently flat). Already CSS-only.
-- **Springy press states**: a `data-[active]:scale-[0.98] transition-transform` on cards/buttons — feels native iOS/Android.
-- **Long-press menus** on walk journal entries (rename, delete, share) using a `<Drawer>` instead of nav. We already have drawer + haptics.
-- **Skeleton loaders** with content-aware shapes for the badge wall, leaderboard, journal — replaces "loading…" text.
-- **Dynamic island-style top toast** for badge-earned and goal-met (already have `sonner`, just custom render with rounded-full + blur).
-- **Reduced-motion respect** everywhere new animation lands — `reducedMotion()` helper already exists.
-
----
-
-## 6. Files to add / edit
+### 2. "This Week" card — pull weather into it
+The weather chip currently floats above NowAndNext as a button. Move it **inside the This Week card** as a small inline chip beside the streak line — it's a status signal, not a destination.
 
 ```text
-src/lib/walker-level.ts         (new, ~40 lines)  — pure deriv: minutes → {level, label, nextAt, pct}
-src/lib/profile-stats.ts        (new, ~80 lines)  — single hook returns {minutes, walks, miles, groups, streak, rainyWalks, level}
-src/components/badge-wall.tsx   (new, ~140)       — grid + earned sheet
-src/components/badge-earned-sheet.tsx (new, ~80)  — full-screen celebration
-src/components/leaderboard-row.tsx (new, ~60)
-src/components/walker-card-header.tsx (new, ~90)  — avatar/name/level ring/share
-src/components/week-in-review.tsx (new, ~80)
-src/routes/leaderboard.tsx      (new, ~140)
-src/routes/profile.tsx          (edit) — restructure as composition of above
-src/routes/index.tsx            (edit) — slot week-in-review + comeback nudge
-src/components/weekly-ring.tsx  (edit) — add metGoal animation
-src/components/end-walk-flow.tsx (edit) — fire BadgeEarnedSheet on new badge
-src/components/mobile-tab-bar.tsx (edit) — add Leaderboard tab? Or keep behind profile.
-src/lib/share-card.ts           (edit) — add 'walker' + 'week' templates
-src/server/walks.functions.ts   (edit) — endWalk returns newly-earned badge IDs
-supabase/migration              (new)  — 6 new badge rows + extend evaluate_badges()
-supabase/migration              (new)  — get_leaderboard() SECURITY DEFINER
+┌────────────────────────────────────┐
+│  ◐ 27/90 min     This week         │
+│                  Small walks count │
+│  · · · · ● ● ·                     │
+│  ─────────────                     │
+│  3-day streak · ☀ 62° clear        │  ← weather chip inline
+└────────────────────────────────────┘
 ```
 
-Total new code: ~900 lines, almost all small focused components. No new tables.
+Reuses `WeeklyRing` + `WeatherPill`. Tapping the weather chip scrolls to the full Weather module below.
+
+### 3. Happening Now — promote into a real join-feed
+`LiveNowStrip` already does this — but it's buried inside `NowAndNext` and styled like a footer. Promote it:
+
+- **New section heading** with live dot + count: "3 walking now · 2 starting soon".
+- **Larger snap-scroll cards** (260px, snap-x mandatory) with pressed states + haptics on tap.
+- **One-tap join** for live rooms: tap → starts a Walk & Talk session and routes into the room (calls existing `openSheet("audio")` flow with the room id pre-selected). No middleman screen.
+- **"Starting in 8 min"** countdown updates live (already polled).
+- Empty state: "All quiet right now — be the first" with a one-tap "Start a Walk & Talk" pill.
+
+### 4. Weather Module — full card, not a chip
+Replace inline weather with a proper card. Collapsed by default (single row), tap to expand:
+
+- Collapsed: `☀ 62° · clear · good walking weather` + chevron.
+- Expanded: existing `WeatherStrip` with 6-hour forecast + a `RainSoonBanner` if rain ≤ 2h.
+- "Best window today" pill — finds the next 90-min block of best `tone` from the forecast and surfaces it: `best window · 4–6pm`.
+- Long-press → "Set a reminder for 4pm" (uses existing notification scaffolding if present, else a toast for now).
+
+Uses existing `useCurrentWeather`, `useHourlyForecast`, `WeatherStrip`, `RainSoonBanner`. Net new: ~60 lines for the card shell + best-window calc.
+
+### 5. Start CTA — gesture-rich
+Current `StartCta` is a single button. Level it up without bloating it:
+
+- **Long-press** the big button → opens the mode sheet directly (skip default solo).
+- **Swipe left/right on the button** → cycles mode (Solo → Guided → Walk & Talk) with haptic ticks; the button label morphs.
+- Press-down state uses a spring scale (0.98) + subtle shadow lift.
+- Sub-chips ("Other ways to walk") become a single horizontal snap-scroll row with mini-icons; saves vertical space.
+
+### 6. Pull-to-refresh
+The `use-pull-to-refresh.ts` hook already exists. Wire it on the home scroll container — refreshes weekly stats, live rooms, weather. Subtle leaf/footprint icon descends on overscroll.
+
+### 7. Sticky weekly progress (micro)
+When the user scrolls past the This Week card, a 24px-tall sticky bar appears under the header showing `▮▮▮▮◯◯◯ 27/90` — disappears when they scroll back up. Uses existing `useScrollDirection`. Single dependency, ~30 lines.
 
 ---
 
-## 7. Rollout order
+## What we are NOT adding
+- No new database tables.
+- No new RPC.
+- No new routes.
+- No new dependencies.
+- No new badges or features beyond surfacing what exists.
 
-1. Walker level + profile stats hook (foundation, zero UI)
-2. Restructure profile route around new header + badge wall + stats grid
-3. Badge wall + earned sheet + endWalk badge return
-4. Leaderboard route + DB function
-5. Week-in-review + comeback nudge + goal-met animation
-6. Pass over UI polish (glass, springs, skeletons, toast)
+## Files
 
-Each step ships independently and the app stays usable throughout.
+**Edit:**
+- `src/routes/index.tsx` — module feed layout (~80 line refactor, mostly removing/reordering).
+- `src/components/now-and-next.tsx` — split: weather goes into the new WeeklyCard, LiveNowStrip is promoted as its own section.
+- `src/components/live-now-strip.tsx` — bigger cards, snap-scroll, one-tap join, empty state.
+- `src/components/weekly-ring.tsx` — accepts an optional `weatherSlot` prop for the inline chip.
+
+**New (small):**
+- `src/components/home/hero-band.tsx` — greeting + level ring + time-of-day tint (~80 lines).
+- `src/components/home/weather-module.tsx` — collapsible card with best-window pill (~110 lines).
+- `src/components/home/sticky-week-bar.tsx` — scroll-revealed mini progress (~40 lines).
+
+Total: ~330 lines new, ~150 lines moved/removed. Net add ≈ 180 lines for a substantially better mobile home.
 
 ---
 
-## Tone
+## Mobile capabilities used
+- **Haptics** on every meaningful tap (already in `lib/device.ts`).
+- **Pull-to-refresh** (existing hook).
+- **Long-press** on Start CTA + Weather card.
+- **Swipe-to-cycle** mode on Start CTA.
+- **Snap-scroll** with `scroll-snap-type: x mandatory` on Happening Now and chips.
+- **Safe-area aware** padding (already throughout).
+- **Time-of-day tint** — hero tint shifts every few hours; subtle cue you're in a living app, not a static page.
+- **Reduced motion respected** — all springs gated on `prefers-reduced-motion`.
 
-The whole pass should feel like **care, not gamification**. Levels are named after places of stillness, not "ranks." Leaderboards highlight effort without shame for those below. Comeback copy is gentle. Badges celebrate showing up in hard weather, not crushing PRs. The goal is an app that feels like it understands the user's nervous system, not one that pressures them.
+## Why this is "world-class 2026"
+- Every module earns its place: zero-state hides, signal-state grows. The page reorganizes itself around what you actually have today.
+- Weather and live walks become *modules*, not afterthoughts — matching how Apple Weather, Headspace Today, and Strava feed treat ambient context.
+- One-tap join from the home page collapses 3 screens of friction into a single gesture.
+- The hero shows progress (level), the card shows commitment (this week + weather), the feed shows community (happening now). Three jobs, three modules, no clutter.
+- Tone stays care-first: no red, no shame, no streak loss screams. The weather hint is a friend, not a notification.
