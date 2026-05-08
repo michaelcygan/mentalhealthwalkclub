@@ -381,6 +381,7 @@ function ActiveWalk() {
       </section>
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
+        <RainSoonBanner coords={walkerCoords} active={!paused} currentlyRaining={false} />
         {/* Live map — collapsible, lazy. Visible to walker only; opt-in to broadcast. */}
         <section className="rounded-2xl border border-border bg-card p-3 shadow-soft">
           <div className="flex items-center justify-between gap-2 pb-2">
