@@ -3,11 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarPlus, Footprints, Headphones, Mic, Share2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { joinFriendWalk } from "@/lib/friend-walk.functions";
+import { joinFriendWalk, getFriendWalkPublic, joinAudience } from "@/lib/friend-walk.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { share, haptics } from "@/lib/device";
 import { toast } from "sonner";
+import { AudienceBar } from "@/components/friend-walk/audience-bar";
+import { QuickSignupSheet } from "@/components/friend-walk/quick-signup-sheet";
+import { getGuestId } from "@/lib/guest-id";
 
 export const Route = createFileRoute("/w/$code")({
   head: ({ params }) => ({
@@ -22,12 +25,16 @@ export const Route = createFileRoute("/w/$code")({
 });
 
 interface RoomState {
+  id: string;
   title: string;
   speakers: number;
   cap: number;
+  audienceCount: number;
   status: string;
   startsAt: string | null;
-  host?: { display_name: string | null; avatar_url: string | null };
+  reactionsEnabled: boolean;
+  isLocked: boolean;
+  host?: { display_name: string | null; avatar_url: string | null } | null;
 }
 
 function FriendWalkLanding() {
@@ -35,45 +42,73 @@ function FriendWalkLanding() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const join = useServerFn(joinFriendWalk);
+  const fetchPublic = useServerFn(getFriendWalkPublic);
+  const joinAud = useServerFn(joinAudience);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"speak" | "listen" | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Public room snapshot (works for guests).
   useEffect(() => {
     let cancelled = false;
-    supabase
-      .from("audio_rooms")
-      .select("title, current_participant_count, max_participants, status, host_user_id, starts_at")
-      .eq("share_code", code.toLowerCase())
-      .maybeSingle()
-      .then(async ({ data }) => {
-        if (cancelled || !data) { setRoom(null); return; }
-        let host: { display_name: string | null; avatar_url: string | null } | undefined;
-        if (data.host_user_id) {
-          const { data: p } = await supabase.from("profiles").select("display_name, avatar_url").eq("id", data.host_user_id).maybeSingle();
-          if (p) host = { display_name: p.display_name, avatar_url: p.avatar_url };
-        }
-        setRoom({
-          title: data.title,
-          speakers: data.current_participant_count ?? 0,
-          cap: data.max_participants ?? 4,
-          status: data.status,
-          startsAt: data.starts_at,
-          host,
-        });
+    fetchPublic({ data: { code } }).then((res) => {
+      if (cancelled || !res.room) { if (!cancelled) setRoom(null); return; }
+      const r = res.room;
+      setRoom({
+        id: r.id,
+        title: r.title,
+        speakers: r.current_participant_count ?? 0,
+        cap: r.max_participants ?? 4,
+        audienceCount: r.audience_count ?? 0,
+        status: r.status,
+        startsAt: r.starts_at,
+        reactionsEnabled: r.reactions_enabled ?? true,
+        isLocked: r.is_locked ?? false,
+        host: r.host ?? null,
       });
+    }).catch(() => setRoom(null));
     return () => { cancelled = true; };
-  }, [code]);
+  }, [code, fetchPublic]);
+
+  // Live room updates
+  useEffect(() => {
+    if (!room?.id) return;
+    const ch = supabase
+      .channel(`room-meta-${room.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "audio_rooms", filter: `id=eq.${room.id}` }, (p) => {
+        const n = p.new as { status: string; current_participant_count: number; audience_count: number; reactions_enabled: boolean; is_locked: boolean };
+        setRoom((r) => r ? { ...r,
+          status: n.status,
+          speakers: n.current_participant_count ?? r.speakers,
+          audienceCount: n.audience_count ?? r.audienceCount,
+          reactionsEnabled: n.reactions_enabled ?? r.reactionsEnabled,
+          isLocked: n.is_locked ?? r.isLocked,
+        } : r);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [room?.id]);
+
+  // Auto-register guest into audience as soon as room loads + open
+  useEffect(() => {
+    if (!room?.id || room.status !== "open") return;
+    if (user) return; // signed-in heartbeat is handled by AudienceBar
+    const guestId = getGuestId();
+    if (!guestId) return;
+    joinAud({ data: { code, guestId } }).catch(() => {});
+  }, [room?.id, room?.status, user, code, joinAud]);
 
   const goJoin = async (asListener: boolean) => {
     if (!user) {
-      try { sessionStorage.setItem("friendWalkRedirect", `/w/${code}`); } catch { /* noop */ }
-      navigate({ to: "/auth" as never });
+      setPendingAction(asListener ? "listen" : "speak");
+      setSignupOpen(true);
       return;
     }
     setBusy(true);
@@ -119,9 +154,8 @@ function FriendWalkLanding() {
     a.click();
   };
 
-  const isScheduled = room?.status === "scheduled" && room.startsAt;
+  const isScheduled = room?.status === "scheduled" && !!room.startsAt;
   const startMs = room?.startsAt ? new Date(room.startsAt).getTime() : 0;
-  const isHost = !!user && room?.host?.display_name !== undefined && false; // host detection done server-side; UI just shows "open early" if scheduled & past time
   const canHostOpen = isScheduled && now >= startMs - 5 * 60_000;
   const countdown = useMemo(() => {
     if (!isScheduled) return null;
@@ -143,9 +177,10 @@ function FriendWalkLanding() {
 
   const ended = room && (room.status === "closed" || room.status === "canceled");
   const wasCanceled = room?.status === "canceled";
+  const isLive = room && room.status === "open";
 
   return (
-    <div className="mx-auto -mx-4 min-h-[80vh] gradient-forest px-5 py-12 text-primary-foreground md:mx-0 md:rounded-3xl">
+    <div className="min-h-screen gradient-forest px-5 py-12 text-primary-foreground">
       <div className="mx-auto max-w-md text-center">
         <div className="mx-auto mb-6 grid h-28 w-28 place-items-center overflow-hidden rounded-full bg-cream/20 ring-4 ring-cream/30">
           {room?.host?.avatar_url ? (
@@ -156,7 +191,7 @@ function FriendWalkLanding() {
         </div>
 
         <p className="text-[10px] uppercase tracking-[0.32em] opacity-80">
-          {isScheduled ? "scheduled walk · link only" : "live walk · link only"}
+          {isScheduled ? "scheduled walk · link only" : isLive ? "live walk · listening open" : "link only"}
         </p>
         <h1 className="mt-2 font-serif text-3xl italic leading-tight">
           {room?.host?.display_name
@@ -174,7 +209,9 @@ function FriendWalkLanding() {
         <p className="mt-4 text-sm opacity-85">
           {isScheduled
             ? "save the time — pop in when it's about to begin."
-            : "come walk with them — talk, listen, or just be near."}
+            : !user
+              ? "you're listening in. tap a heart to send love. sign up to join the mic."
+              : "come walk with them — talk, listen, or just be near."}
         </p>
 
         {!room && <p className="mt-10 text-sm opacity-80">finding the walk…</p>}
@@ -195,14 +232,16 @@ function FriendWalkLanding() {
             <Button onClick={onShare} variant="outline" className="h-12 w-full rounded-2xl border-cream/40 bg-transparent text-cream hover:bg-cream/10">
               <Share2 className="mr-2 h-4 w-4" /> Share with a friend
             </Button>
-            <Button
-              onClick={() => goJoin(false)}
-              disabled={busy || !canHostOpen}
-              variant="outline"
-              className="h-12 w-full rounded-2xl border-cream/40 bg-transparent text-cream hover:bg-cream/10 disabled:opacity-50"
-            >
-              {canHostOpen ? "Open the walk now (host)" : "Doors open 5 min before start"}
-            </Button>
+            {user && (
+              <Button
+                onClick={() => goJoin(false)}
+                disabled={busy || !canHostOpen}
+                variant="outline"
+                className="h-12 w-full rounded-2xl border-cream/40 bg-transparent text-cream hover:bg-cream/10 disabled:opacity-50"
+              >
+                {canHostOpen ? "Open the walk now (host)" : "Doors open 5 min before start"}
+              </Button>
+            )}
           </div>
         )}
 
@@ -210,29 +249,50 @@ function FriendWalkLanding() {
           <div className="mt-10 space-y-3">
             <Button
               onClick={() => goJoin(false)}
-              disabled={busy}
-              className="h-14 w-full rounded-2xl bg-cream text-forest hover:bg-cream/90"
+              disabled={busy || room.isLocked}
+              className="h-14 w-full rounded-2xl bg-cream text-forest hover:bg-cream/90 disabled:opacity-60"
             >
               <Mic className="mr-2 h-4 w-4" />
-              {room.speakers >= room.cap ? "Speakers full — join as listener" : "Join the walk · talk"}
+              {room.isLocked ? "Host locked the mic" : room.speakers >= room.cap ? "Speakers full — join the lobby" : user ? "Join the walk · talk" : "Sign up to ask for the mic"}
             </Button>
-            <Button
-              onClick={() => goJoin(true)}
-              disabled={busy}
-              variant="outline"
-              className="h-14 w-full rounded-2xl border-cream/40 bg-transparent text-cream hover:bg-cream/10"
-            >
-              <Headphones className="mr-2 h-4 w-4" /> Just listen
-            </Button>
+            {user && (
+              <Button
+                onClick={() => goJoin(true)}
+                disabled={busy}
+                variant="outline"
+                className="h-14 w-full rounded-2xl border-cream/40 bg-transparent text-cream hover:bg-cream/10"
+              >
+                <Headphones className="mr-2 h-4 w-4" /> Join the lobby
+              </Button>
+            )}
             <p className="pt-2 text-[11px] opacity-70">
               <Footprints className="mr-1 inline h-3 w-3" />
-              {room.speakers} on the walk · {room.cap} mics
+              {room.speakers} on the walk · {room.audienceCount} listening
             </p>
+            <Button onClick={onShare} variant="outline" className="mt-2 h-10 w-full rounded-2xl border-cream/30 bg-transparent text-cream hover:bg-cream/10">
+              <Share2 className="mr-2 h-3.5 w-3.5" /> Share the walk
+            </Button>
           </div>
         )}
-        {/* prevent unused-var warning */}
-        <span className="hidden">{String(isHost)}</span>
       </div>
+
+      {isLive && room && (
+        <AudienceBar
+          roomId={room.id}
+          audienceCount={room.audienceCount}
+          reactionsEnabled={room.reactionsEnabled}
+        />
+      )}
+
+      <QuickSignupSheet
+        open={signupOpen}
+        onOpenChange={setSignupOpen}
+        reason={pendingAction === "speak" ? "Create an account to join the mic — keeps the walk safe." : "Create an account to hop in."}
+        onSuccess={() => {
+          // After signup, auto-join with the original intent
+          setTimeout(() => goJoin(pendingAction === "listen"), 250);
+        }}
+      />
     </div>
   );
 }

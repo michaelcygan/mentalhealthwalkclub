@@ -227,7 +227,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
-  if (path.startsWith("/auth") || path.startsWith("/welcome")) return <>{children}</>;
+  if (path.startsWith("/auth") || path.startsWith("/welcome") || path.startsWith("/w/")) return <>{children}</>;
 
   if (loading) {
     return (

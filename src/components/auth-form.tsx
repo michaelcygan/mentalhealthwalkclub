@@ -9,9 +9,11 @@ import { useNavigate } from "@tanstack/react-router";
 interface Props {
   defaultMode?: "signin" | "signup";
   onSuccess?: (mode: "signin" | "signup") => void;
+  /** When true, skip the default navigate-to-/welcome on signup success. */
+  suppressRedirect?: boolean;
 }
 
-export function AuthForm({ defaultMode = "signup", onSuccess }: Props) {
+export function AuthForm({ defaultMode = "signup", onSuccess, suppressRedirect = false }: Props) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const [email, setEmail] = useState("");
@@ -35,7 +37,7 @@ export function AuthForm({ defaultMode = "signup", onSuccess }: Props) {
         if (error) throw error;
         toast.success("Welcome. Lacing up your walking shoes…");
         onSuccess?.("signup");
-        navigate({ to: "/welcome" });
+        if (!suppressRedirect) navigate({ to: "/welcome" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

@@ -1,82 +1,99 @@
-# Friend Walk — viral, link-gated walk & talk
+## Scaling Friend Walks for large audiences
 
-A user spins up a **Friend Walk** from their profile / FAB. They get a beautiful share card + short link they can drop into Instagram Stories, iMessage, etc. Anyone with the link can hop in. The room stays open as long as the host keeps it live (auto-closes after inactivity). Up to **4 active speakers**; everyone else lands as a **Listener** in a waitlist pool with a one-tap "Ask to speak" / "Join walk" toggle.
+Right now a Friend Walk is a tight 4-speaker room with a small listener pool, all auth-required. If a celebrity or influencer drops a link to their followers, two things break: the audio mesh can't carry hundreds of listeners, and forcing signup at the door kills the viral moment.
 
-This is genuinely viral: every shared link is an invitation that demonstrates the product in 5 seconds.
-
----
-
-## UX flow
-
-1. **Start** — From the mobile FAB long-press menu, add a "Friend Walk" mode (alongside Solo / Walk & Talk / Guided / Local). Tapping it instantly creates the room and opens the share sheet.
-2. **Share card** — A generated 1080×1920 SVG/Canvas graphic with the host's name, avatar, soft gradient, and the short link (`/w/{code}`). One tap → native Web Share API → IG / iMessage / WhatsApp. Fallback: copy link + download image.
-3. **Join via link** — `/w/{code}` resolves to the active room. Auth-gated (sign in or quick magic-link). Joiner picks **Speak** or **Listen** at the door.
-4. **In-room** — Same `walk-talk-dock` UI, with two new affordances:
-   - **Speakers rail** (≤4 avatars, glow on speaking) — existing dock.
-   - **Listener pool** — horizontal avatar strip below, with count ("+7 listening"). Each listener has a "Raise hand" toggle. When a speaker leaves, the oldest raised hand auto-promotes (or host taps to admit).
-5. **Persistence** — Room stays "open" while ≥1 participant is present. Empty for >5 min → auto-close. Host can re-open the same code within 24h (link stays alive in their Story).
-6. **End** — Host taps "End Friend Walk" → all participants get a soft "thanks for walking" toast + CTA to start their own.
+This plan splits the room into **speakers (mesh audio)** + **listeners (broadcast-only)**, opens listening to logged-out guests, and gates "ask to speak" behind a fast inline signup.
 
 ---
 
-## Technical plan (lean, reuses everything)
+### 1. Two-tier room model
 
-### Data
-Reuse `audio_rooms` — add 3 columns via migration:
-- `room_type` already exists; add value `'friend'`.
-- `share_code text unique` — short 8-char nanoid for the URL.
-- `host_user_id` already exists.
-- `max_speakers int default 4` (rename of `max_participants` semantics for friend rooms; no schema change needed, just reuse `max_participants`).
-- `listener_mode boolean default true` — when true, participants beyond `max_participants` join as listeners.
+```text
+                ┌───────── Friend Walk ─────────┐
+                │                                │
+  Speakers (≤4) │  full-mesh audio, can talk     │  ← signed in
+  ─────────────────────────────────────────────  │
+  Lobby (≤~50) │  signed-in listeners,           │  ← signed in
+                │  can raise hand → promoted      │
+  ─────────────────────────────────────────────  │
+  Audience     │  broadcast-only, no mic ever    │  ← guest OR signed in
+                │  reactions, count, captions     │
+                └────────────────────────────────┘
+```
 
-Reuse `audio_room_participants` — add 1 column:
-- `participant_role text default 'speaker'` — `'speaker' | 'listener' | 'raised_hand'`.
+- **Speakers** stay on the existing WebRTC mesh (cap 4, unchanged).
+- **Lobby** is a bounded, named pool (default 50). These are the people the host can promote. Same realtime UI as today's listener pool, just paginated.
+- **Audience** is unbounded. They receive a one-way audio stream and can send lightweight reactions (❤️ 👏 🌿) and see the live transcript/captions if enabled. They cannot raise a hand without signing in.
 
-RLS stays the same (room is selectable by anyone authenticated; the link itself is the "permission" — knowing the code = invited).
+We don't need a third-party SFU on day one. Phase the rollout:
+- **Phase A (this pass):** keep mesh for speakers. For the audience, broadcast via a server-fanned **MediaRecorder → HLS-style chunks** or just a **read-only Realtime channel of "who's speaking + reactions + captions"** — i.e. presence + waveform, no audio yet. This unlocks scale without an SFU.
+- **Phase B (follow-up, flagged):** add a real audio broadcast leg using LiveKit / Cloudflare Calls SFU when a room crosses an `audience_threshold` (e.g. > 20). Triggered server-side; speakers don't notice.
 
-### Routes
-- `src/routes/w.$code.tsx` — short public landing → resolves code → redirects to `/walk/active/{walk_session_id}` after creating a participant row. Includes a "Speak or Listen" door step.
-- Reuse `src/routes/walk.active.$id.tsx` — branch UI when `room_type='friend'` to show listener pool.
-
-### Components
-- `src/components/friend-walk/share-card.tsx` — Canvas-rendered 1080×1920 PNG with host avatar, name, gradient, short link, and a soft "Tap to walk with me" caption. Uses `share()` from `lib/device.ts`.
-- `src/components/friend-walk/listener-pool.tsx` — Horizontal scroll of listener avatars with "Raise hand" toggle and host-side admit.
-- Extend `src/components/mobile-tab-bar.tsx` radial menu with "Friend Walk" option.
-
-### Server functions
-- `src/lib/friend-walk.functions.ts`:
-  - `createFriendWalk()` — inserts `audio_rooms` with `room_type='friend'`, generates `share_code`, creates host's `walk_session`, returns `{ code, walkId }`.
-  - `joinFriendWalk({ code, asListener })` — resolves code → upserts participant with role → returns `walkId`.
-  - `raiseHand({ roomId })` / `admitListener({ roomId, userId })`.
-
-### Realtime
-Reuse the existing `audio_room_participants` realtime channel. Listener-pool component subscribes to inserts/updates filtered by `audio_room_id`.
-
-### Auto-close
-A lightweight check inside `tg_audio_room_participant_count` already closes rooms when count hits 0. For friend rooms add a 5-min grace via the existing `rotate-pods` cron route or a new `close-stale-friend-rooms` cron.
+Phase B is scoped but not built in this pass — we add the seams (room mode, capacity fields, transport abstraction) so it slots in cleanly.
 
 ---
 
-## Files to create / edit
+### 2. Logged-out listening, gated speaking
 
-**New**
-- `supabase/migrations/...` — add `share_code` + `participant_role` columns, unique index on `share_code`.
-- `src/lib/friend-walk.functions.ts` — server fns.
-- `src/routes/w.$code.tsx` — short link landing.
-- `src/components/friend-walk/share-card.tsx` — canvas share image + share sheet.
-- `src/components/friend-walk/listener-pool.tsx` — listener UI.
+Behavior on `/w/:code`:
 
-**Edited**
-- `src/components/mobile-tab-bar.tsx` — add "Friend Walk" radial option.
-- `src/routes/walk.active.$id.tsx` — render listener pool + share button when `room_type='friend'`.
-- `src/routes/api/public/hooks/rotate-pods.ts` — add stale friend-room sweep (or new cron).
+| State | Listen | React | Raise hand | Speak |
+|---|---|---|---|---|
+| Guest (logged out) | ✅ | ✅ (rate-limited, anon id in cookie) | ❌ → opens signup | ❌ |
+| Signed-in listener | ✅ | ✅ | ✅ → enters lobby | ❌ until promoted |
+| Promoted speaker | ✅ | ✅ | n/a | ✅ |
+| Host | ✅ | ✅ | n/a | ✅ + promote/kick |
+
+- Tapping **"Ask to speak"** as a guest opens a **bottom-sheet quick signup** (email + display name + password, or Google) inline — no full-page redirect, no leaving the walk. On success they land back in the same room as a lobby member and the raise-hand request fires automatically.
+- Guests get a stable anonymous `guest_id` (cookie) so reactions and presence work, and so we can rate-limit / shadow-ban abusers without an account.
 
 ---
 
-## Why this is the right viral loop
-- **Zero friction**: one tap to create, one tap to share, one tap to join.
-- **Demonstrates product in the share itself**: the graphic shows the host's face mid-walk — every story is an ad.
-- **Low-pressure**: listeners can lurk, lowering join anxiety.
-- **Genuine social behavior**: "I'm walking, come walk with me" is a real thing people say.
+### 3. Safety for big rooms
 
-Shall I build it?
+- **Host controls:** mute speaker, demote to lobby, remove from room, lock room (no new joiners), pause reactions.
+- **Reaction rate limit:** max N per guest per 10s, server-enforced.
+- **Word filter on raised-hand "intro" text** (optional 1-line "why you want to speak").
+- **Auto-kick on report threshold:** 3 reports from distinct signed-in users in 60s → auto-removed, host notified.
+- **Block list** already exists (`blocks` table) — apply it to reactions and lobby visibility.
+
+---
+
+### 4. What changes in the app
+
+**Database (one migration):**
+- `audio_rooms`: add `audience_mode` (`closed` | `lobby` | `broadcast`), `lobby_capacity` (default 50), `audience_count` (rollup), `allow_guest_listeners` (bool, default true for friend walks), `reactions_enabled` (bool, default true), `is_locked` (bool).
+- New table `room_audience_presence` (ephemeral): `room_id`, `guest_id` (text) **or** `user_id`, `last_seen_at`. Used for live count + rate limiting; pruned by a cron.
+- New table `room_reactions`: `room_id`, `actor_id` (guest or user), `kind`, `created_at`. RLS allows insert by anyone for friend rooms with `reactions_enabled`, select by participants.
+- Extend `participant_role` enum with `lobby` (distinct from `listener`, which becomes legacy/alias).
+
+**Server functions (`friend-walk.functions.ts`):**
+- `joinAsAudience({ code, guestId? })` — no auth required; returns a read-only realtime channel name + room snapshot.
+- `sendReaction({ roomId, kind })` — works for guest + user, rate-limited.
+- `requestToSpeak()` — auth required; if called while guest, server function 401 → client opens signup sheet.
+- `lockRoom`, `kickParticipant`, `muteSpeaker` — host only.
+- Update `joinFriendWalk` to route into lobby (not auto-speaker) once speakers ≥ 4 OR audience_mode = `broadcast`.
+
+**Client:**
+- `/w/:code` becomes a **public route** (no auth gate). Renders three zones: stage (speakers), lobby strip (signed-in only), audience bar (count + reactions).
+- New `<QuickSignupSheet />` invoked from "Ask to speak" / "Join the walk" CTAs. Uses existing `AuthForm` in compact mode.
+- New `<AudienceBar />` with floating reaction emojis and live count.
+- New `<HostControls />` drawer for the host (lock, mute, kick).
+- Update `share-card.tsx` to optionally render "🎙 LIVE • {audience_count} listening" when broadcast mode is on.
+- Abstract audio transport in `src/lib/audio/` so Phase B (SFU) can swap in without touching components.
+
+**Routing:**
+- `/w/:code` already exists — relax its auth requirement, add SSR-safe guest path.
+
+---
+
+### 5. Open questions for you
+
+I'll ask these inline before building so we don't over-scope.
+
+### Technical notes (for reference)
+
+- Mesh stays ≤4 speakers — anything more requires an SFU and we don't ship that today.
+- Guest identity is a signed cookie (`guest_id`), not anonymous Supabase auth (you've asked us never to use anon signups).
+- All large-audience features are gated behind `room_type = 'friend'` so open rooms / events are unaffected.
+- The Phase B SFU swap is a transport-level change; the role model (speaker / lobby / audience) does not change between phases.
