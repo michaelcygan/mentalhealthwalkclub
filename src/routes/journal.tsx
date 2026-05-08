@@ -322,10 +322,36 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
+  const [photos, setPhotos] = useState<{ url: string; t: number }[]>([]);
+  const [zoom, setZoom] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPhotos([]);
+    if (!walk) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("walk_photos")
+        .select("storage_path, taken_at_seconds")
+        .eq("walk_session_id", walk.id)
+        .order("taken_at_seconds", { ascending: true });
+      if (!data || cancelled) return;
+      const signed = await Promise.all(
+        data.map(async (p) => {
+          const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p.storage_path, 3600);
+          return s?.signedUrl ? { url: s.signedUrl, t: p.taken_at_seconds ?? 0 } : null;
+        })
+      );
+      if (!cancelled) setPhotos(signed.filter(Boolean) as { url: string; t: number }[]);
+    })();
+    return () => { cancelled = true; };
+  }, [walk?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
   const delta = walk.mood_before_score && walk.mood_after_score ? walk.mood_after_score - walk.mood_before_score : null;
   const mins = Math.round((walk.duration_seconds ?? 0) / 60);
   const miles = ((walk.distance_meters ?? 0) * 0.000621371).toFixed(2);
+  const fmtT = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   return (
     <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
       <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
@@ -348,10 +374,34 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
           </div>
         </div>
       )}
+      {photos.length > 0 && (
+        <div className="mt-5">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Photos · {photos.length}</div>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => setZoom(i)}
+                className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-secondary"
+                aria-label={`Photo at ${fmtT(p.t)}`}
+              >
+                <img src={p.url} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
+                <span className="absolute bottom-1 left-1 rounded-full bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tabular-nums text-foreground/80">{fmtT(p.t)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {walk.reflection_note && (
         <div className="mt-5">
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Reflection</div>
-          <p className="mt-1 font-serif italic leading-relaxed">"{walk.reflection_note}"</p>
+          <p className="mt-1 whitespace-pre-wrap font-serif italic leading-relaxed">{walk.reflection_note}</p>
+        </div>
+      )}
+
+      {zoom !== null && photos[zoom] && (
+        <div onClick={() => setZoom(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/85 p-4 backdrop-blur" role="dialog" aria-label="Photo preview">
+          <img src={photos[zoom].url} alt="" className="max-h-full max-w-full rounded-2xl object-contain shadow-elevated" />
         </div>
       )}
     </div>
