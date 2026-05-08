@@ -1,80 +1,104 @@
-# Groups Expansion — Locations + Viral Niches
+# Groups Tab — Merchandising Pass
 
-Goal: turn the Groups tab into a place where almost every walker finds a "that's me" group on day one — and a few that are weird/specific enough to share. All seeded via a single `INSERT` (no schema change, no UI change). Existing `groups-tab.tsx` already handles `theme`, `city`, `country`, "Near me", and theme buckets, so new rows light up automatically.
+The tab now holds ~125 groups. Today everything renders as the same medium card in vertically stacked theme buckets. With this much inventory, that's a wall. Goal: turn it into a **scannable, shoppable surface** where the right group finds the right walker in under five seconds, and where the long tail is browsable without infinite scroll.
 
-## What gets added
+No new tables, no new RPCs, no new dependencies. All work happens in `groups-tab.tsx`, a slimmer `group-card.tsx`, and 2–3 small new presentational components.
 
-### 1. US metro chapters (~55)
-One group per top US metropolitan area, theme `chapter`, with `city`, `state`, `country='US'`, and a friendly `location_label` (e.g. "Chicagoland"). Slugs like `chapter-nyc`, `chapter-chicagoland`, `chapter-dfw`.
+## The new shape
 
-Tier A (top 25 metros): NYC, LA, Chicagoland, Dallas–Fort Worth, Houston, DC Metro, Bay Area, Philadelphia, Miami–South Florida, Atlanta, Boston, Phoenix, SF, Riverside–San Bernardino (Inland Empire), Detroit, Seattle, Minneapolis–St. Paul (Twin Cities), San Diego, Tampa Bay, Denver, St. Louis, Baltimore, Charlotte, Orlando, San Antonio.
+Single hero header (title + search + chips, unchanged ergonomics, tightened visuals) followed by a **module feed** — like the Home tab now is. Each module merchandises differently so the page has rhythm.
 
-Tier B (26–50): Portland OR, Sacramento, Pittsburgh, Las Vegas, Austin, Cincinnati, Kansas City, Columbus, Cleveland, Indianapolis, San Jose, Nashville, Virginia Beach–Hampton Roads, Providence, Milwaukee, Jacksonville, Oklahoma City, Raleigh–Durham (Triangle), Memphis, Richmond, New Orleans, Louisville, Salt Lake City, Hartford, Buffalo.
+```text
+┌─────────────────────────────────────────┐
+│ Groups · search · filter chips          │
+├─────────────────────────────────────────┤
+│ ⚡ Pulse  ← live + starting-soon strip   │  (existing, keep)
+├─────────────────────────────────────────┤
+│ Your groups · 3·4 grid of mini-tiles    │  (compact, all yours visible)
+├─────────────────────────────────────────┤
+│ Picked for you · 3-up snap carousel     │  (city + theme match)
+├─────────────────────────────────────────┤
+│ 🌆 Near you · {City}  · horizontal rail │  (NEW — surfaces metro chapters)
+├─────────────────────────────────────────┤
+│ 🔥 Trending this week · rail            │  (NEW — most walkers_week)
+├─────────────────────────────────────────┤
+│ ✨ Vibes (theme galleries)              │  (NEW collection layer)
+│   Quiet support · Rituals · …           │
+│   Each = pill row → tap → sheet w/ all  │
+├─────────────────────────────────────────┤
+│ 🌍 Browse by city · gallery grid        │  (NEW — small location tiles)
+├─────────────────────────────────────────┤
+│ Niches you might love · masonry         │  (NEW — viral group merch)
+└─────────────────────────────────────────┘
+```
 
-Plus a few high-signal sub-metros: Chicagoland Suburbs, NYC–Brooklyn (already exists, keep), NYC–Queens, LA–South Bay, LA–Valley, Bay Area–East Bay, DC–NoVA.
+## Card variants (one component, three sizes)
 
-### 2. Lifestyle / geography (~8)
-- **Rural Walkers** (theme `quiet`, no city) — country roads, gravel, big sky
-- **Small Town Walkers**
-- **Suburban Loop**
-- **Coastal Walkers**
-- **Mountain Town Walkers**
-- **Desert Walkers**
-- **Snow Walkers** (cold-weather)
-- **City Block Walkers** (urban dense)
+`GroupCard` gets a `variant` prop with three new looks (the existing `pulse` pill stays):
 
-### 3. Viral niche groups (~25)
-Designed to be screenshot-able and tribe-forming. Each maps to an existing `theme` so filters keep working.
+- **`tile`** (current 2-up) — promoted spots only (For You, hero modules)
+- **`mini`** — h-16 row with avatar dot, name, member count, join button. Used in *Your groups* (4-up grid on mobile, 6-up md) and rails.
+- **`rail`** — 220px snap card: theme-tinted top band, name, one stat (e.g. "42 this week"), tiny join icon-button. Used in horizontal carousels.
+- **`gallery`** — square-ish 1:1 with big serif name and city/theme caption. Used in "Browse by city" and "Niches" masonry.
 
-Identity / life-stage:
-- **5am Club** (`reset`)
-- **Night Owls** (`quiet`) — post-10pm walkers
-- **Lunchbreak Walkers** (`reset`)
-- **Dog Parents** (`connection`)
-- **Stroller Crew** (`connection`)
-- **Empty Nesters** (`chapter`)
-- **Solo Travelers** (`connection`)
-- **Remote Workers** (`burnout`)
-- **Shift Workers** (`burnout`)
-- **Grad School Survival** (`burnout`)
-- **First-Year Teachers** (`burnout`)
-- **Healthcare Workers** (`burnout`)
-- **Founders Walk** (`burnout`)
-- **Caregivers** (`grief`)
+All four reuse the same theme tint map and join-toggle wiring already in `GroupCard`. No new data fetched.
 
-Mind / mood:
-- **Walk Instead of Doomscroll** (`reset`) — viral hook
-- **Phone-Free Walkers** (`quiet`)
-- **One Podcast, One Walk** (`quiet`)
-- **Audiobook Walkers** (`quiet`)
-- **Hot Girl Walk** (`reset`) — known meme, broad appeal
-- **Silent Walking** (`quiet`) — TikTok trend
-- **Rage Walk** (`burnout`)
-- **Gratitude Walk** (`reset`)
-- **Walk & Pray** (`quiet`)
-- **Sunset Chasers** (`reset`)
-- **Sunrise Club** (`reset`)
-- **Rainy Day Walkers** (`quiet`) — pairs with the new `weather_warrior` badge
+## New collection: "Vibes"
 
-### 4. International chapters (~10)
-Toronto, Vancouver, Montréal, Mexico City, London (exists), Manchester, Dublin, Berlin, Amsterdam, Paris, Barcelona, Madrid, Sydney, Melbourne, Auckland, Tokyo, Singapore.
+The current theme buckets (`THEME_GROUPS`) become **collections** instead of long lists. Each Vibe renders as:
 
-## Technical details
+- A thin horizontal **rail** (3 hero cards)
+- A "See all 18 →" pill that opens a **bottom sheet** (mobile) / dialog (desktop) with the full filtered list inside.
+- Sheet body reuses `mini` cards in a single column with sticky search inside the sheet.
 
-- **One `supabase--insert` call** with `INSERT ... ON CONFLICT (slug) DO NOTHING` so it's idempotent and safe to re-run.
-- Columns: `name, slug, description, theme, city, state, country, location_label, group_type, is_active`. No `owner_user_id` (admin-seeded). `member_count` defaults to 0; the existing trigger keeps it accurate as people join.
-- Descriptions kept to one calm sentence each (≤120 chars) — the GroupCard already truncates to 2 lines.
-- `theme` uses only existing values (`anxiety, burnout, grief, depression, loneliness, reset, quiet, connection, chapter`) so theme buckets in `GroupsTab` light up without code changes.
-- "Near me" already keys off `profiles.city` exact match — for metros we use the canonical city name (e.g. `Chicago`, not `Chicagoland`) but set `location_label='Chicagoland'` so the card reads naturally while matching commuters.
+This is the magic move: collapses ~80 niche/lifestyle/chapter groups into 5 tappable galleries that look curated. Old "Everything else" bucket is removed — it's now the long tail inside each sheet.
+
+## New collection: "Browse by city"
+
+Auto-built from `groups` rows where `theme = 'chapter'` and `city is not null`. Renders as a **gallery grid** (3-col mobile, 5-col desktop) of compact city tiles: city name big in serif, country flag glyph, member count small. Tapping a tile opens the same sheet pattern, scoped to that city/region.
+
+Adds a "More cities" affordance at the end opening a full alphabetical sheet.
+
+## New "Near you" rail
+
+If `myCity` is set, surface the matching chapter as the **first card**, then 3-4 nearby chapters by `country` + `state`. If no `myCity`, this module hides (no empty state — preserve quiet).
+
+## Trending rail
+
+Sorts groups by `pulse.walkersWeek` desc, top 8. Already in the `useGroupsFeed` data — no new query. Empty if nothing has activity (skip module).
+
+## Filter chip changes
+
+Chips stay sticky at the top, but when ANY chip is active OR search has text, the whole module feed collapses into a single flat results grid (`tile` cards) with a count: "24 groups". Removes confusion about why galleries change. Clear chip → modules return.
+
+## Visual / motion
+
+- Theme tint becomes a **soft top edge band** on rail/gallery cards instead of a full gradient — less heavy at small sizes, more legible.
+- Section eyebrows get tiny lucide icons (Radio, Sparkles, MapPin, Flame, Globe) for orientation at a glance.
+- All horizontal rails: `snap-x snap-mandatory`, edge-bleed (`-mx-4 px-4`), 16px gap, `overscroll-x-contain`, scroll-shadow gradient on right edge so users know there's more.
+- Long-press on any card opens a quick "preview" sheet (group description + Join + Walk now) — same data already loaded. No navigation cost. Tap still navigates.
+- Pull-to-refresh on the tab (use existing `usePullToRefresh`) re-runs `refresh()`.
+- Reduced-motion respected throughout.
+
+## Empty / sparse states
+
+When a section has 0 cards, it disappears entirely (don't show empty rails). Tab is never blank because Vibes + Browse by city always have content given the seeded inventory.
+
+## Files touched
+
+- **`src/components/groups-tab.tsx`** — rewrite layout into module feed (~250 lines, replaces current 230).
+- **`src/components/group-card.tsx`** — add `mini | rail | gallery` variants (~80 lines added).
+- **`src/components/groups/vibe-collection.tsx`** *(new, ~70 lines)* — rail + "See all" sheet wrapper.
+- **`src/components/groups/city-gallery.tsx`** *(new, ~50 lines)* — chapter gallery + sheet.
+- No hook changes. No DB changes. No new routes.
 
 ## What does NOT change
 
-- No schema migration, no new columns, no RLS changes.
-- No edits to `groups-tab.tsx`, `group-card.tsx`, or `use-groups-feed.ts` — they already render everything.
-- Pulse/live counts populate naturally as walks happen.
+- `useGroupsFeed` (same query, same pulse map).
+- `/groups/$slug` detail page.
+- Join/leave logic, auth prompt, GroupPulse strip.
+- Search behavior — still client-side, still fast.
 
-## Open questions before I run the insert
+## Net effect
 
-1. Total target — is **~120 groups** the right magnitude, or do you want me to push toward **200+** (e.g. add top-100 US cities + more international)?
-2. For metros that span states (DC Metro, NYC tri-state, KC, Memphis), should "Near me" match the **core city only** (simplest) or should I also seed sibling chapters like `chapter-nyc-nj`?
-3. Any niches you want **in or out**? Anything on your "viral plan" I should mirror in the seed names so launch lines up?
+A merchandising layer on top of unchanged data: ~125 groups go from a wall of identical tiles to a hero feed with **2 rails, 2 galleries, 5 vibes**, where any group is reachable in ≤2 taps and the surface looks like something shipped in 2026, not 2019.
