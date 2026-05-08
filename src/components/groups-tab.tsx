@@ -111,7 +111,7 @@ export function GroupsTab() {
   const liveNow = useMemo(() => Array.from(pulse.values()).reduce((s, p) => s + (p.live || 0), 0), [pulse]);
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-7">
       <header className="space-y-3">
         <div className="eyebrow-rise">
           <h1 className="font-serif text-3xl">Groups</h1>
