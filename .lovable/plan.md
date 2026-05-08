@@ -1,43 +1,59 @@
-## Pass 8 — Moods polish + locations audit
+## Pass 9 — Moods polish: per-group thumbs, smoother fades, contained scroll
 
-### 1. Mood list: scrollable, ~4 visible
+Three concrete fixes plus a tight polish pass over the surface.
 
-Currently `MoodsCollection` slices to 6 in a 2-col grid, with a separate "See all" sheet. On 390px the user sees ~3 rows comfortably and the rest pushes the page long.
+### 1. Per-group thumbnails (less sharing)
 
-Change to a **single-column, vertically scrollable list** capped to a fixed height that shows ~4 rows, then scrolls in-place:
+Today every group in a mood pulls from the same 3 theme images, so neighbors look identical. Switch to **group-specific covers**, falling back to theme covers only when none exist.
 
-- Replace the 2-col grid with a 1-col list inside a `max-h-[19rem] overflow-y-auto` container with `scroll-snap-type: y proximity`, `overscroll-behavior: contain`, soft top/bottom mask (`mask-image: linear-gradient(...)`), and `no-scrollbar`.
-- Render **all** groups in the active mood (no slice). The sheet "See all" stays available as a fullscreen browse, but is no longer required to discover the list.
-- Each item is the existing `variant="mini"` card (no new variant), with the circle thumbnail upgraded (see §2).
-- Tab switch keeps `viewTransition()` so the list cross-fades.
+- **Reuse what's already here.** 26 mood-eligible groups already have 3 photos each in `public/niche-covers/{slug}/` (audiobook-walkers, founders-walk, hot-girl-walk, sunrise-club, etc.) — wire those in directly via the existing `NICHE_COVERS` registry. No new generation for these.
+- **Generate covers for the 22 groups missing them.** 2 images per group (not 3) to keep weight down, abstract on-brand style matching the current mood palette. List:
+  - anxiety: `anxiety`
+  - burnout: `after-work-wind-down`, `burnout`
+  - connection: `long-distance-friends`, `new-friends`, `new-parents`, `small-town-walkers`, `sober-walkers`, `the-commons`
+  - grief: `breakup-recovery`, `grief`, `postpartum`
+  - quiet: `coastal-walkers`, `creative-block`, `desert-walkers`, `mountain-town-walkers`, `neurodivergent`, `quiet`, `rural-walkers`, `snow-walkers`
+  - reset: `city-block-walkers`, `morning-light`, `suburban-loop`, `sunday-reset`
+  → ~44 webps under `public/group-covers/{slug}/{1,2}.webp`.
+- **New `scripts/compress-group-covers.mjs`** mirrors the niche script and emits `src/data/group-covers.ts` with `{ count, blur[] }` + `groupCoverUrl()`.
+- **`MoodThumb` resolution order**: `GROUP_COVERS[slug]` → `NICHE_COVERS[slug]` → `MOOD_COVERS[theme]` → solid band. Component takes `slug` + `theme` and picks the best source.
 
-### 2. Mood thumbnails: photo circles with gentle slideshow
+### 2. Smoother fade (no first-load clunk)
 
-Each `mini` card today shows a flat colored square (`themeBand`). Replace with a circular photo that slowly cross-fades through 3 images, similar to niches but slower and offset per card so the whole list breathes.
+Current `mood-fade` runs `opacity 0 → 1 → 0` on every image with negative `animation-delay`, but until the `<img>` actually decodes the slot is empty, so the first cycle visibly pops in. Fixes:
 
-- **Generate 3 square images per theme** (8 themes × 3 = 24 webps), 384×384, saved to `public/mood-covers/{theme}/{1,2,3}.webp`. Themes: `anxiety, burnout, grief, depression, loneliness, reset, quiet, connection`. Style brief: soft, abstract, on-brand (muted, painterly, no people-faces, no text), each tinted toward the existing themeTint hue so they harmonize with the card.
-- **Compress + LQIP**: new `scripts/compress-moods.mjs` (mirror of `compress-niches.mjs`) → writes `src/data/mood-covers.ts` with `{ count, blur[] }` and a `moodUrl(theme, i)` helper.
-- **New tiny component** `src/components/groups/mood-thumb.tsx` — a 32px circle that:
-  - Renders all 3 images stacked, opacity-cycled via CSS `@keyframes mood-fade` (15s cycle, 5s per slide).
-  - Uses `animation-delay: -{hash(group.id) % 15}s` so adjacent cards are out of phase.
-  - Pauses via `animation-play-state: paused` when off-screen using IntersectionObserver (same pattern as `CityTile`).
-  - Falls back to the existing `themeBand` color if the theme has no covers.
-- **Wire into `GroupCard` `mini` variant**: replace the `<span class="...band">` with `<MoodThumb theme={group.theme} groupId={group.id} fallbackBand={band} />`. No other variant touched.
-- Respect `prefers-reduced-motion`: drop to a static first image.
+- Render the **first image as the steady base layer** (no animation, opacity 1). Only images 2..N animate on top with a ping-pong fade. The base is always visible, so initial load shows a complete circle instantly.
+- Use **`fetchpriority="high"` on slide #1**, `loading="lazy"` on the rest, and only mount slides 2..N once the base image's `onLoad` has fired (small `useState`). Eliminates the empty/blur flash.
+- Replace the linear opacity keyframe with a **smoother curve** (5% hold → ease-in 25% → hold 40% → ease-out 25% → hold 5%) so fades feel like breathing, not blinking.
+- Increase cycle to `count * 7s` (slower) and stagger `animation-delay` more gently. Pause via IntersectionObserver stays.
+- Honour `prefers-reduced-motion` → only the base image renders.
 
-### 3. Location coverage audit (read-only)
+### 3. Scroll containment (no page-bleed)
 
-Verified all chapters:
-- ~42 chapters have photo cover sets (`src/data/city-covers.ts`).
-- All remaining chapters fall back to procedural sky + silhouette in `CityTile` (`src/data/city-procedural.ts`) — no chapter renders blank.
-- Coverage looks complete; recommend **no new image generation** for locations this pass. If you want photo coverage for everything, I can queue a follow-up to generate the ~28 missing cities (4 day-states each = ~112 images, heavier job).
+The list already has `overscroll-behavior: contain` and `max-h-[19rem]`, but the page still scrolls when you hit either edge on iOS Safari because the inner list isn't actually overflowing on first render in some viewports, and `proximity` snap doesn't lock the boundary.
+
+- Switch container to a fixed `h-[19.5rem]` (not `max-h`) so it always overflows when there are 5+ items, guaranteeing the scroll context owns the gesture.
+- Add `touch-action: pan-y` and keep `overscroll-behavior: contain` — together these stop scroll-chaining on iOS.
+- Add a small `onTouchMove` guard that only `stopPropagation()` when the inner list can scroll in the gesture direction (prevents accidental locking when list is short).
+- Keep the soft top/bottom mask but tighten the gradient stops (8% → 92%) so the mask doesn't visually clip the first/last card.
+- Add subtle `↓ scroll` affordance fade-in at the bottom edge when more content is below (CSS only, hides on scroll-end via IntersectionObserver sentinel).
+
+### 4. General polish pass over the Moods surface
+
+Small refinements while we're here:
+
+- Tab row: when you switch tab, the new list should **enter from the top, not all-at-once fade**. Replace `niche-grid-fade` with a 240ms slide-up + fade on the `<ul>`.
+- Card `mini` variant: bump the thumb from 32px → 40px now that it carries real photos, tighten left padding, and add a 1px inner shadow on the circle for depth.
+- Active chip: add the `count` badge to inactive chips too (it already is) — but lighten the active badge from `bg-white/20` to `bg-white/25` for legibility.
+- "See all N" button: only show when `sorted.length > 4` (currently always shows even when the list is fully visible).
+- Remove `card-in` stagger on items past index 3 (they're below the fold, animation just adds jank when user scrolls down).
 
 ### Files
 
-- **New**: `public/mood-covers/{8 themes}/{1,2,3}.webp` (24 images), `scripts/compress-moods.mjs`, `src/data/mood-covers.ts`, `src/components/groups/mood-thumb.tsx`
-- **Edited**: `src/components/groups/moods-collection.tsx` (scrollable list, no slice), `src/components/group-card.tsx` (mini variant uses MoodThumb), `src/styles.css` (`mood-fade` keyframes + scroll mask utility)
+- **New**: ~44 `public/group-covers/{slug}/{1,2}.webp`, `scripts/compress-group-covers.mjs`, `src/data/group-covers.ts`
+- **Edited**: `src/components/groups/mood-thumb.tsx` (resolution order, base-image pattern, load gate), `src/components/groups/moods-collection.tsx` (fixed height, scroll guard, conditional See all, tab transition), `src/components/group-card.tsx` (40px thumb, padding), `src/styles.css` (smoother `mood-fade` curve, mask stops, list slide-in keyframe)
 
 ### Out of scope
-- New mood card variant (reuse `mini`).
-- Backend / data model changes.
-- Generating photos for the ~28 procedural-only cities (separate ask if wanted).
+- New mood themes or category bucketing.
+- Backend/data changes.
+- Touching Niches, Cities, Today, or Pulse surfaces.
