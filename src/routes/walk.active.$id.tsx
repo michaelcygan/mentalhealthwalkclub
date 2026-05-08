@@ -15,7 +15,7 @@ import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
-import { WalkNotesPill, loadStoredNotes, notesToJournalBlock, type WalkNote } from "@/components/walk-notes-sheet";
+import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
