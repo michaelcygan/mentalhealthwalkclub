@@ -10,6 +10,8 @@ import { createLocalWalk } from "@/server/walks.functions";
 import { scheduleAudioWalk } from "@/server/audio.functions";
 import { toast } from "sonner";
 import { MapPin, Headphones, Shuffle } from "lucide-react";
+import { useForecastAt } from "@/hooks/use-weather";
+import { WeatherPill } from "@/components/weather-pill";
 
 type SearchParams = { group?: string; mode?: "irl" | "audio" };
 
@@ -155,6 +157,21 @@ function NewWalk() {
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
+        {mode === "irl" && location?.lat != null && location?.lng != null && date && time && (
+          <ForecastForSchedule
+            lat={location.lat}
+            lng={location.lng}
+            iso={new Date(`${date}T${time}`).toISOString()}
+            onShift={(deltaH) => {
+              const d = new Date(`${date}T${time}`);
+              d.setHours(d.getHours() + deltaH);
+              const hh = String(d.getHours()).padStart(2, "0");
+              const mm = String(d.getMinutes()).padStart(2, "0");
+              setTime(`${hh}:${mm}`);
+              setDate(d.toISOString().slice(0, 10));
+            }}
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Duration (min)</Label>
