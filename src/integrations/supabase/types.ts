@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambient_tracks: {
+        Row: {
+          artist: string | null
+          audio_path: string
+          created_at: string
+          duration_seconds: number
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          artist?: string | null
+          audio_path: string
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          artist?: string | null
+          audio_path?: string
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       audio_room_participants: {
         Row: {
           audio_room_id: string
