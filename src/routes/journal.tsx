@@ -311,6 +311,13 @@ function JournalTab() {
       </section>
 
       <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Still here. Still walking.</p>
+
+      {/* Mobile detail sheet — desktop already shows the sidebar pane */}
+      <Sheet open={!!selectedId} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
+        <SheetContent side="bottom" className="rounded-t-3xl lg:hidden">
+          <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
