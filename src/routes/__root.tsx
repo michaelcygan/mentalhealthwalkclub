@@ -73,6 +73,41 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
+function ModeToggle({ compact }: { compact?: boolean }) {
+  const { isFacilitator, mode, setMode } = useViewMode();
+  const navigate = useNavigate();
+  if (!isFacilitator) return null;
+  const toggle = () => {
+    const next = mode === "facilitator" ? "walker" : "facilitator";
+    setMode(next);
+    navigate({ to: next === "facilitator" ? "/facilitate" : "/" });
+  };
+  if (compact) {
+    return (
+      <button
+        onClick={toggle}
+        title={mode === "facilitator" ? "Switch to Walker view" : "Switch to Facilitator view"}
+        className="flex items-center gap-1 rounded-full border border-forest/30 bg-accent/40 px-2.5 py-1 text-[10px] font-medium text-forest"
+      >
+        <ArrowLeftRight className="h-3 w-3" />
+        {mode === "facilitator" ? "Facilitator" : "Walker"}
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={toggle}
+      className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-forest/30 bg-accent/30 px-3 py-2 text-xs text-forest hover:bg-accent/50"
+    >
+      <span className="flex items-center gap-2">
+        <ArrowLeftRight className="h-3.5 w-3.5" />
+        <span className="font-medium">{mode === "facilitator" ? "Facilitator view" : "Walker view"}</span>
+      </span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">switch</span>
+    </button>
+  );
+}
+
 function TabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
