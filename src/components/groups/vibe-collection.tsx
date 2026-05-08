@@ -35,7 +35,7 @@ export function VibeCollection({ eyebrow, title, blurb, icon: Icon, groups, puls
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-            {Icon ? <Icon className="h-3 w-3" /> : null}{eyebrow}
+            {Icon ? <Icon className={`h-3 w-3 ${Icon === Heart ? "heart-beat text-clay" : Icon === Radio ? "live-pulse text-forest" : ""}`} /> : null}{eyebrow}
           </div>
           <h2 className="mt-0.5 font-serif text-xl">{title}</h2>
           {blurb && <p className="mt-0.5 text-xs text-muted-foreground">{blurb}</p>}
