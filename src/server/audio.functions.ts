@@ -285,7 +285,8 @@ export async function openScheduledRoomImpl(supabase: any, eventId: string) {
       status: "open",
       host_user_id: room.host_user_id,
       group_id: room.group_id,
-      max_participants: ev.breakout_size,
+      max_participants: ev.breakout_size + 1, // walkers + 1 reserved facilitator seat
+      facilitator_seat_reserved: true,
       requires_active_walk: true,
       scheduled_event_id: eventId,
       parent_room_id: room.id,
