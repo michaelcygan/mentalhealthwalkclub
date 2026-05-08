@@ -10,6 +10,9 @@ export interface Group {
   member_count: number;
   theme: string | null;
   city: string | null;
+  state: string | null;
+  country: string | null;
+  location_label: string | null;
 }
 
 export interface GroupPulse {
