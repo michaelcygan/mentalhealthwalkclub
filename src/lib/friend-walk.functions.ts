@@ -163,21 +163,33 @@ export const rescheduleFriendWalk = createServerFn({ method: "POST" })
     return { ok: true, startsAt: startsAt.toISOString() };
   });
 
-/** List the current user's friend walks (scheduled + recently live). */
+/** List the current user's friend walks (scheduled + recently live). Returns empty list when unauthenticated. */
 export const listMyFriendWalks = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data } = await supabase
-      .from("audio_rooms")
-      .select("id, title, share_code, status, starts_at, ends_at, current_participant_count, created_at")
-      .eq("room_type", "friend")
-      .eq("host_user_id", userId)
-      .in("status", ["scheduled", "open"])
-      .order("starts_at", { ascending: true, nullsFirst: false })
-      .limit(20);
-    return { walks: data ?? [] };
+  .handler(async () => {
+    try {
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const request = getRequest();
+      const authHeader = request?.headers?.get("authorization");
+      if (!authHeader?.startsWith("Bearer ")) return { walks: [] };
+      const token = authHeader.slice(7);
+      const { data: claims } = await supabaseAdmin.auth.getClaims(token);
+      const userId = claims?.claims?.sub;
+      if (!userId) return { walks: [] };
+      const { data } = await supabaseAdmin
+        .from("audio_rooms")
+        .select("id, title, share_code, status, starts_at, ends_at, current_participant_count, created_at")
+        .eq("room_type", "friend")
+        .eq("host_user_id", userId)
+        .in("status", ["scheduled", "open"])
+        .order("starts_at", { ascending: true, nullsFirst: false })
+        .limit(20);
+      return { walks: data ?? [] };
+    } catch (e) {
+      console.error("listMyFriendWalks failed:", e);
+      return { walks: [] };
+    }
   });
+
 
 /** Join an existing Friend Walk by share code. Returns walk id to navigate to. */
 export const joinFriendWalk = createServerFn({ method: "POST" })
