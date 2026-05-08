@@ -37,7 +37,7 @@ export function AuthForm({ defaultMode = "signup", onSuccess, suppressRedirect =
         if (error) throw error;
         toast.success("Welcome. Lacing up your walking shoes…");
         onSuccess?.("signup");
-        navigate({ to: "/welcome" });
+        if (!suppressRedirect) navigate({ to: "/welcome" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
