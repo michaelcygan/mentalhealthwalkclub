@@ -212,7 +212,16 @@ function ActiveWalk() {
     return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
   }, []);
 
-  const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
+  // Ambient music: suppress when this walk owns the audio channel (Walk & Talk
+  // or guided walks). Stop on unmount so leaving the walk silences the music.
+  const ambient = useAmbient();
+  useEffect(() => {
+    if (!session) return;
+    const ownsAudio = session.walk_type === "audio" || !!session.guided_track_id;
+    if (ownsAudio) ambient.stop(300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+  useEffect(() => () => { ambient.stop(800); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     if (!user || !session) return;
     await supabase.from("walk_sessions").update({
       status: "completed",
