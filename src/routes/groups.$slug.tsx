@@ -393,3 +393,23 @@ function GroupDetail() {
     </div>
   );
 }
+
+function CoverBand({ cover_set }: { cover_set: string | null }) {
+  const cover = cover_set ? CITY_COVERS[cover_set] : null;
+  const hour = useCityHour(cover?.tz);
+  if (!cover || !cover_set) return null;
+  const state = dayStateFromHour(hour);
+  return (
+    <div aria-hidden className="relative -mx-4 -mt-2 mb-0 h-40 overflow-hidden md:-mx-6 md:rounded-b-3xl">
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${cover.blur[state]})` }} />
+      <img
+        src={coverUrl(cover_set, state)}
+        alt=""
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover ken-burns"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-background/40 to-background" />
+    </div>
+  );
+}
