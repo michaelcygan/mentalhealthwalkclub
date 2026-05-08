@@ -188,7 +188,7 @@ const ScheduleSchema = z.object({
   startsAt: z.string().min(1),
   durationMinutes: z.number().int().min(15).max(180).default(45),
   capacity: z.number().int().min(2).max(32).default(8),
-  breakoutSize: z.number().int().min(0).max(6).default(0),
+  breakoutSize: z.number().int().min(0).max(6).default(4),
   breakoutRotateMinutes: z.number().int().min(0).max(60).nullable().optional(),
 });
 
