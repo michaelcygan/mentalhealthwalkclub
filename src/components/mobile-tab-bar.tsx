@@ -141,9 +141,40 @@ export function MobileTabBar() {
             <ModeButton to="/" icon={Headphones} title="Walk & Talk" sub="Match into a live pod" onTap={() => setSheetOpen(false)} />
             <ModeButton to="/" icon={Sparkles} title="Guided" sub="A voice in your ear" onTap={() => setSheetOpen(false)} />
             <ModeButton to="/events" icon={MapPin} title="Local Walk" sub="Real sidewalks nearby" onTap={() => setSheetOpen(false)} />
+            <button
+              type="button"
+              onClick={() => { haptics.tap(); startFriendWalk(); }}
+              disabled={friendBusy}
+              className="col-span-2 flex items-center gap-3 rounded-2xl border border-clay/40 bg-gradient-to-br from-clay/15 to-cream/30 p-4 text-left transition active:scale-[0.98] hover:border-clay/60 disabled:opacity-60"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-clay/20">
+                <Heart className="h-4 w-4 text-clay" />
+              </span>
+              <div className="flex-1">
+                <div className="font-serif text-base">Friend Walk · share a link</div>
+                <div className="text-[11px] text-muted-foreground">spin up a private room — drop the link in your story</div>
+              </div>
+              <span className="rounded-full bg-clay/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-clay">new</span>
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
+
+      {friendInfo && (
+        <FriendWalkShareCard
+          open={shareOpen}
+          onOpenChange={(v) => {
+            setShareOpen(v);
+            if (!v && friendInfo) {
+              navigate({ to: "/walk/active/$id" as never, params: { id: friendInfo.walkId } as never });
+              setFriendInfo(null);
+            }
+          }}
+          hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "you"}
+          hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
+          shareCode={friendInfo.code}
+        />
+      )}
     </>
   );
 }
