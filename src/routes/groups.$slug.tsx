@@ -113,10 +113,8 @@ function GroupDetail() {
   const isHost = !!user && group.owner_user_id === user.id;
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <Link to={"/groups" as never} className="text-sm text-muted-foreground hover:text-foreground">← All groups</Link>
-
-      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-6 shadow-soft md:p-7`}>
+    <div className="space-y-6">
+      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6`}>
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-card/30 blur-3xl animate-pulse [animation-duration:6s]" />
         <div className="relative">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
