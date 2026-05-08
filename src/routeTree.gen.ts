@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as JournalRouteImport } from './routes/journal'
+import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -38,6 +39,11 @@ const JournalRoute = JournalRouteImport.update({
   path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -54,14 +60,14 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupsIndexRoute = GroupsIndexRouteImport.update({
-  id: '/groups/',
-  path: '/groups/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => GroupsRoute,
 } as any)
 const GroupsSlugRoute = GroupsSlugRouteImport.update({
-  id: '/groups/$slug',
-  path: '/groups/$slug',
-  getParentRoute: () => rootRouteImport,
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => GroupsRoute,
 } as any)
 const EventsNewRoute = EventsNewRouteImport.update({
   id: '/new',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
@@ -126,6 +133,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
@@ -143,6 +151,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
@@ -189,11 +199,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
+  GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
   ProfileRoute: typeof ProfileRoute
   WelcomeRoute: typeof WelcomeRoute
-  GroupsSlugRoute: typeof GroupsSlugRoute
-  GroupsIndexRoute: typeof GroupsIndexRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
   ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
@@ -222,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events': {
       id: '/events'
       path: '/events'
@@ -245,17 +261,17 @@ declare module '@tanstack/react-router' {
     }
     '/groups/': {
       id: '/groups/'
-      path: '/groups'
+      path: '/'
       fullPath: '/groups/'
       preLoaderRoute: typeof GroupsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof GroupsRoute
     }
     '/groups/$slug': {
       id: '/groups/$slug'
-      path: '/groups/$slug'
+      path: '/$slug'
       fullPath: '/groups/$slug'
       preLoaderRoute: typeof GroupsSlugRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof GroupsRoute
     }
     '/events/new': {
       id: '/events/new'
@@ -308,15 +324,27 @@ const EventsRouteChildren: EventsRouteChildren = {
 const EventsRouteWithChildren =
   EventsRoute._addFileChildren(EventsRouteChildren)
 
+interface GroupsRouteChildren {
+  GroupsSlugRoute: typeof GroupsSlugRoute
+  GroupsIndexRoute: typeof GroupsIndexRoute
+}
+
+const GroupsRouteChildren: GroupsRouteChildren = {
+  GroupsSlugRoute: GroupsSlugRoute,
+  GroupsIndexRoute: GroupsIndexRoute,
+}
+
+const GroupsRouteWithChildren =
+  GroupsRoute._addFileChildren(GroupsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
+  GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
   ProfileRoute: ProfileRoute,
   WelcomeRoute: WelcomeRoute,
-  GroupsSlugRoute: GroupsSlugRoute,
-  GroupsIndexRoute: GroupsIndexRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
   ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
@@ -324,3 +352,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
