@@ -6,6 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { GroupCard } from "@/components/group-card";
 import { VibeCollection } from "@/components/groups/vibe-collection";
 import { CityGallery } from "@/components/groups/city-gallery";
+import { PulseRail } from "@/components/groups/pulse-rail";
 import { useGroupsFeed, type Group } from "@/hooks/use-groups-feed";
 import { toast } from "sonner";
 
