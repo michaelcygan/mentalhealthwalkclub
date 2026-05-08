@@ -261,7 +261,6 @@ export const promoteToSpeaker = createServerFn({ method: "POST" })
 // Public audience: guest-friendly listening + reactions
 // ─────────────────────────────────────────────────────────
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const REACTION_KINDS = ["heart", "clap", "leaf", "fire", "tear"] as const;
 
