@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Footprints, Users, CalendarPlus, Headphones, MapPin, Heart, Sparkles, Award } from "lucide-react";
 import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
-import { sendGroupWelcome, sendKudos, getGroupMilestones } from "@/lib/group-signals.functions";
 
 export const Route = createFileRoute("/groups/$slug")({ component: GroupDetail });
 
@@ -34,9 +32,6 @@ function GroupDetail() {
   const [welcomedKey, setWelcomedKey] = useState<string | null>(null);
   const [kudosSent, setKudosSent] = useState<Set<string>>(new Set());
 
-  const callMilestones = useServerFn(getGroupMilestones);
-  const callWelcome = useServerFn(sendGroupWelcome);
-  const callKudos = useServerFn(sendKudos);
 
   useEffect(() => {
     (async () => {
@@ -59,7 +54,41 @@ function GroupDetail() {
       setWalkersWeek(new Set(walks.map((x) => x.user_id)).size);
       setNewMembers((nm ?? []).length);
 
-      try { const m = await callMilestones({ data: { groupId: g.id } }); setMilestones(m.milestones as Milestone[]); } catch {/* anon ok */}
+      // Milestones: badges earned in walks tagged to this group in last 14 days
+      try {
+        const since = new Date(Date.now() - 14 * 86400_000).toISOString();
+        const { data: gw } = await supabase
+          .from("walk_sessions")
+          .select("id,user_id")
+          .eq("group_id", g.id)
+          .eq("status", "completed")
+          .gte("started_at", since);
+        const wIds = (gw ?? []).map((x) => x.id);
+        if (wIds.length) {
+          const { data: ub } = await supabase
+            .from("user_badges")
+            .select("id,user_id,badge_id,earned_at,walk_session_id")
+            .in("walk_session_id", wIds)
+            .order("earned_at", { ascending: false });
+          const byBadge = new Map<string, { badgeId: string; recipients: { userId: string; awardId: string }[] }>();
+          (ub ?? []).forEach((b) => {
+            const v = byBadge.get(b.badge_id) ?? { badgeId: b.badge_id, recipients: [] };
+            if (!v.recipients.find((r) => r.userId === b.user_id)) v.recipients.push({ userId: b.user_id, awardId: b.id });
+            byBadge.set(b.badge_id, v);
+          });
+          const bIds = Array.from(byBadge.keys());
+          if (bIds.length) {
+            const { data: defs } = await supabase
+              .from("badge_definitions")
+              .select("id,name,description,icon,key")
+              .in("id", bIds);
+            setMilestones(((defs ?? []) as { id: string; name: string; description: string | null; icon: string | null; key: string }[]).map((d) => {
+              const v = byBadge.get(d.id)!;
+              return { badgeId: d.id, name: d.name, description: d.description, icon: d.icon, key: d.key, recipients: v.recipients };
+            }));
+          }
+        }
+      } catch {/* anon ok */}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
@@ -79,20 +108,43 @@ function GroupDetail() {
   });
 
   const onWelcome = () => requireAuth(async () => {
-    if (!group) return;
+    if (!group || !user) return;
     try {
-      const r = await callWelcome({ data: { groupId: group.id } });
+      const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const { data: nm } = await supabase
+        .from("group_memberships")
+        .select("user_id")
+        .eq("group_id", group.id)
+        .gte("joined_at", since);
+      const recipients = (nm ?? []).map((r) => r.user_id).filter((id) => id && id !== user.id);
+      if (recipients.length === 0) { toast("No new walkers this week"); return; }
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: existing } = await supabase
+        .from("group_signals")
+        .select("recipient_user_id")
+        .eq("sender_user_id", user.id)
+        .eq("group_id", group.id)
+        .eq("kind", "welcome")
+        .gte("created_at", today);
+      const already = new Set((existing ?? []).map((x) => x.recipient_user_id));
+      const fresh = recipients.filter((r) => !already.has(r));
+      if (fresh.length === 0) { setWelcomedKey(group.id); toast("Already sent today"); return; }
+      const rows = fresh.map((rid) => ({ group_id: group.id, sender_user_id: user.id, recipient_user_id: rid, kind: "welcome" as const }));
+      const { error } = await supabase.from("group_signals").insert(rows);
+      if (error) throw error;
       setWelcomedKey(group.id);
-      toast(r.sent > 0 ? `Welcomed ${r.sent} ${r.sent === 1 ? "walker" : "walkers"}` : "Already sent today");
+      toast(`Welcomed ${fresh.length} ${fresh.length === 1 ? "walker" : "walkers"}`);
     } catch { toast.error("Couldn't send"); }
   });
 
   const onKudos = (m: Milestone) => requireAuth(async () => {
-    if (!group) return;
-    const others = m.recipients.filter((r) => r.userId !== user?.id);
+    if (!group || !user) return;
+    const others = m.recipients.filter((r) => r.userId !== user.id);
     if (others.length === 0) return;
     try {
-      await Promise.all(others.map((r) => callKudos({ data: { groupId: group.id, recipientUserId: r.userId, badgeId: m.badgeId } })));
+      const rows = others.map((r) => ({ group_id: group.id, sender_user_id: user.id, recipient_user_id: r.userId, kind: "kudos" as const, badge_id: m.badgeId }));
+      const { error } = await supabase.from("group_signals").insert(rows);
+      if (error && !/duplicate key/i.test(error.message)) throw error;
       const next = new Set(kudosSent); next.add(m.badgeId); setKudosSent(next);
       toast(`♡ Sent to ${others.length} ${others.length === 1 ? "person" : "people"}`);
     } catch { toast.error("Couldn't send"); }
