@@ -386,6 +386,22 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
     <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
       <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
       <h3 className="mt-1 font-serif text-2xl capitalize">{walk.walk_type.replace(/_/g, " ")} walk</h3>
+      {snapshotUrl && (
+        <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-secondary/40">
+          <img src={snapshotUrl} alt="Route map" className="aspect-square w-full object-cover" loading="lazy" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/55 via-foreground/15 to-transparent p-3 text-primary-foreground">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="font-serif text-xl tabular-nums leading-none">{miles} mi · {mins} min</div>
+                {walk.intention && <div className="mt-1 line-clamp-1 font-serif text-xs italic opacity-90">{walk.intention}</div>}
+              </div>
+              <button type="button" onClick={onShare} className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-cream/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-soft backdrop-blur transition active:scale-95">
+                <Share2 className="h-3.5 w-3.5" /> Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">
         <div><div className="font-serif text-2xl tabular-nums">{mins}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">min</div></div>
         <div><div className="font-serif text-2xl tabular-nums">{miles}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">mi</div></div>
