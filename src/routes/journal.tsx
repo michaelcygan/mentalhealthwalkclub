@@ -104,11 +104,34 @@ function JournalTab() {
     const mins = Math.round((w.duration_seconds ?? 0) / 60);
     const miles = ((w.distance_meters ?? 0) * 0.000621371).toFixed(2);
     const date = new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const snapUrl = snapshotUrls[w.id];
+    const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
+
+    if (snapUrl) {
+      try {
+        const blob = await bakeShareCard(snapUrl, {
+          miles, minutes: mins, steps: w.steps, date,
+          intention: w.intention, moodBefore: w.mood_before, moodAfter: w.mood_after, walkType: w.walk_type,
+        });
+        if (blob) {
+          const file = new File([blob], `walk-${w.id.slice(0, 8)}.png`, { type: "image/png" });
+          if (nav.canShare?.({ files: [file] }) && nav.share) {
+            await nav.share({ files: [file], title: "A walk worth remembering", text: "Walked it through 🌿" });
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = file.name; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+          toast.success("Share card downloaded.");
+          return;
+        }
+      } catch { /* fall through to text share */ }
+    }
     const moodLine = w.mood_before && w.mood_after ? `${w.mood_before} → ${w.mood_after}` : (w.mood_after ?? "");
     const lines = [
       `🌿 ${date} — ${mins} min walk · ${miles} mi`,
       moodLine && `mood: ${moodLine}`,
-      w.reflection_note && `“${w.reflection_note}”`,
+      w.reflection_note && `"${w.reflection_note}"`,
       "— shared from Mental Health Walk Club",
     ].filter(Boolean) as string[];
     await share({ title: "A walk worth remembering", text: lines.join("\n") });
