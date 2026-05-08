@@ -46,7 +46,7 @@ function JournalTab() {
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
     ]).then(([w, b]) => {
-      setWalks(w.data ?? []);
+      setWalks((w.data ?? []) as unknown as Walk[]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBadges((b.data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at })));
       setLoading(false);
