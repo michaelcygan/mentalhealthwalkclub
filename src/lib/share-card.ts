@@ -15,6 +15,7 @@ export interface ShareCardStats {
   moodBefore?: string | null;
   moodAfter?: string | null;
   walkType?: string | null;
+  weather?: { tempF?: number; label?: string } | null;
 }
 
 const FOREST = "#1f3a2c";
@@ -81,6 +82,19 @@ export async function bakeShareCard(snapshotUrl: string, stats: ShareCardStats):
   ctx.fillStyle = FOREST;
   ctx.font = "500 24px ui-sans-serif, system-ui";
   ctx.fillText(stats.date, W - 40 - datePillW + 28, 70);
+
+  // Weather chip — bottom-left of the map, if available
+  if (stats.weather?.tempF != null) {
+    const wx = `${Math.round(stats.weather.tempF)}°${stats.weather.label ? "  ·  " + stats.weather.label : ""}`;
+    ctx.font = "500 26px ui-sans-serif, system-ui";
+    const ww = ctx.measureText(wx).width + 44;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    roundRect(ctx, 40, mapH - 90, ww, 56, 28); ctx.fill();
+    ctx.fillStyle = FOREST;
+    ctx.textBaseline = "middle";
+    ctx.fillText(wx, 62, mapH - 62);
+    ctx.textBaseline = "alphabetic";
+  }
 
   // Headline stats — big serif numbers
   const baseY = mapH + 80;
