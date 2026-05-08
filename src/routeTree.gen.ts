@@ -16,11 +16,13 @@ import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as FacilitateRouteImport } from './routes/facilitate'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as AdminMusicRouteImport } from './routes/admin.music'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
 import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
 import { Route as ApiPublicHooksOpenDueRoomsRouteImport } from './routes/api/public/hooks/open-due-rooms'
@@ -60,6 +62,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -85,6 +92,11 @@ const EventsSlugRoute = EventsSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => EventsRoute,
 } as any)
+const AdminMusicRoute = AdminMusicRouteImport.update({
+  id: '/music',
+  path: '/music',
+  getParentRoute: () => AdminRoute,
+} as any)
 const WalkActiveIdRoute = WalkActiveIdRouteImport.update({
   id: '/walk/active/$id',
   path: '/walk/active/$id',
@@ -105,6 +117,7 @@ const ApiPublicHooksOpenDueRoomsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
   '/facilitate': typeof FacilitateRoute
@@ -112,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
+  '/admin/music': typeof AdminMusicRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
@@ -122,6 +136,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
   '/facilitate': typeof FacilitateRoute
@@ -129,6 +144,7 @@ export interface FileRoutesByTo {
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
+  '/admin/music': typeof AdminMusicRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
@@ -140,6 +156,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
   '/facilitate': typeof FacilitateRoute
@@ -147,6 +164,7 @@ export interface FileRoutesById {
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
+  '/admin/music': typeof AdminMusicRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
@@ -159,6 +177,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/events'
     | '/facilitate'
@@ -166,6 +185,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/profile'
     | '/welcome'
+    | '/admin/music'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
@@ -176,6 +196,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/auth'
     | '/events'
     | '/facilitate'
@@ -183,6 +204,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/profile'
     | '/welcome'
+    | '/admin/music'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
@@ -193,6 +215,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/auth'
     | '/events'
     | '/facilitate'
@@ -200,6 +223,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/profile'
     | '/welcome'
+    | '/admin/music'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
@@ -211,6 +235,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
   FacilitateRoute: typeof FacilitateRoute
@@ -275,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -310,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsSlugRouteImport
       parentRoute: typeof EventsRoute
     }
+    '/admin/music': {
+      id: '/admin/music'
+      path: '/music'
+      fullPath: '/admin/music'
+      preLoaderRoute: typeof AdminMusicRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/walk/active/$id': {
       id: '/walk/active/$id'
       path: '/walk/active/$id'
@@ -333,6 +372,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminMusicRoute: typeof AdminMusicRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminMusicRoute: AdminMusicRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
@@ -360,6 +409,7 @@ const GroupsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
   FacilitateRoute: FacilitateRoute,

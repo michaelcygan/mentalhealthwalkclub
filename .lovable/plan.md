@@ -1,118 +1,103 @@
-# A concentrated level-up pass
+# Ambient music library + light-touch shuffle player (revised)
 
-The app already has the right primitives (Walk, Walk & Talk, Friend Walk, Journal, Groups, Events, badges, mood, reflections). This pass is about **squeezing more out of them** — not adding scope. Three principles drive every change:
-
-1. **Mobile is the canvas.** Use haptics, safe-areas, gestures, system share, install, and motion that respects `prefers-reduced-motion`.
-2. **Reuse, don't add.** No new tables, no new server functions, no new dependencies. Compose existing components into smarter surfaces.
-3. **Calm > clever.** Every visual change should reduce cognitive load, not add ornament.
+Calmer footprint. Music is **a walk thing** — it eases users into the walk at the pre-walk drawer and rides through the active walk, with a one-tap mute. Everywhere else stays silent.
 
 ---
 
-## 1. Quick fixes spotted while exploring (free wins)
+## 1. Admin surface
 
-These are bugs, not features. Bundling them into this pass.
+**Route:** `/admin` (admin-only layout) + `/admin/music` (library page).
+- Gated by `has_role(auth.uid(), 'admin')` in `beforeLoad`; server functions re-check before any write.
+- Discoverable from Profile only when current user is admin.
 
-- `src/routes/index.tsx` line 22 — page title reads `"Walk — Mental Health Mental Health Walk Club"` (duplicated). Fix to `"Mental Health Walk Club"`.
-- `src/components/mobile-tab-bar.tsx` lines 141-170 — the **Add to Home Screen** install button is mis-nested *inside* the "Schedule a Friend Walk" `<button>`. That's invalid HTML and breaks both controls on some browsers. Pull the install block out as a sibling.
-- `src/routes/__root.tsx` mobile top bar still uses an only-logo header → unauthenticated visitors lose the brand wordmark on mobile. Re-add a small wordmark line under the logo, or switch to a horizontal lockup at 14px.
-
----
-
-## 2. The Walk tab — one breathing surface, not three steps
-
-Today the home is `step 0 → step 1 → step 2` with the multi-step mood/intention form taking over the screen. On mobile this feels like a flow, not a home. Convert it into **one calm scroll** with a sticky bottom action.
-
-- Replace the step-machine with a single screen that shows: greeting → mood-check chips → primary "Start a walk" → mode pills → friend walks → live now → weekly ring.
-- Move mood/intention into a **bottom sheet that slides up from the Start CTA** (reuse the existing `Drawer` from shadcn/ui). The sheet has the existing `MoodCloud` + `WeightBar` + intention textarea — no new code, just relocated.
-- Result: home is browse-able at all times, the existing primitives still drive the data, and the "I just want to walk" path is one tap → one drag-to-confirm → walk.
-- Keep guided-walk picker as a separate screen (already perfect on its own).
+**`/admin/music` page:**
+- Drag-and-drop uploader (`.mp3`, `.m4a`, `.ogg`, ~15 MB each, multi-file).
+- Library table: **title**, **artist**, **duration** (auto-extracted client-side), **enabled** toggle, **delete**, inline preview.
+- No tags / no contexts — single global library. Keeps the model simple; we only have one place that plays music.
 
 ---
 
-## 3. The active walk — make the screen itself the experience
+## 2. Database (1 table, 1 bucket)
 
-`/walk/active/$id` already has GPS, sparkline, dock, end flow. Tighten it into a true mobile-first surface.
+**Table `ambient_tracks`:**
+- `id`, `title`, `artist nullable`, `audio_path text`, `duration_seconds int`, `is_active bool default true`, `uploaded_by uuid`, `created_at`, `updated_at`.
 
-- **Hero gradient + live numbers** at the top. Time and distance get the giant tabular-nums treatment (already have `tabular-nums` available). Mood-before pill sits below.
-- **Edge-to-edge `RouteSparkline`** as a soft underlay behind the numbers (currently a small card). Pure CSS — no new component, just reposition + opacity.
-- **One-thumb controls** pinned to the bottom safe-area: pause / end. Hidden swipe-up reveals reflection prompts and the Walk & Talk dock (already components).
-- **Long-press end button** = haptic + confirmation, instead of a separate dialog tap. Reuse `EndWalkFlow` as the sheet content.
-- **Auto-dim** when no interaction for 30s — drop UI to ~40% opacity, tap to bring back. Pure local state, no library.
+**RLS:**
+- `SELECT`: any authenticated user where `is_active = true`; admin sees all.
+- `INSERT / UPDATE / DELETE`: admin only.
 
----
-
-## 4. Mobile system surface (the 2026 part)
-
-These are small but disproportionately premium-feeling and use Web APIs already supported on iOS 17+ / Android 14+:
-
-- **Visual viewport offset** — when the soft keyboard opens (intention textarea, reflection notes, schedule sheet), shift the sticky CTAs above it using `window.visualViewport`. ~15 lines in a `use-keyboard-inset` hook.
-- **Web Share Target** — add `share_target` to `manifest.webmanifest` so users can share a podcast / article / image *to* the app and it lands as an intention seed for the next walk. Manifest-only, no new route needed if we accept text into `/?intention=…`.
-- **Pull-to-refresh** on Journal and Groups — light, native-feeling, using a `touchstart`/`touchmove` overscroll detector (~30 lines, no library).
-- **Edge swipe back** on `/walk/active/$id` to dock the walk into the existing `NowPlayingBar` instead of leaving — uses `pointerdown` near `clientX < 16`.
-- **Dynamic theme-color** — flip `<meta name="theme-color">` to `--forest` while a walk is active so the iOS status bar matches the hero. ~5 lines in `walk.active.$id.tsx`.
+**Storage bucket `ambient-music`:**
+- **Private**. Playback uses signed URLs (1 hour TTL).
+- Read for any authenticated user; write/delete admin only.
 
 ---
 
-## 5. Visual system tightening (no new tokens)
+## 3. Where music plays (only here)
 
-The token system in `src/styles.css` is already strong. We're using ~70% of it. Surface the rest:
+| Surface | Behavior |
+|---|---|
+| **Pre-walk drawer** (mood/intention sheet on home) | On open, fade in a random track at low volume (~0.3). Easing-in cue. Continues seamlessly into… |
+| **Active walk** (`/walk/active/$id`) for **solo** + **guided_solo** | Same shuffle keeps playing. One-tap **mute/unmute** button next to Pause. Suppressed entirely for `walk_type === 'audio'` (Walk & Talk) and when a `guided_track_id` is loaded — those own audio. |
+| **End of walk** | Crossfade out over ~2s when the walk ends. |
 
-- Promote `glass` and `glass-dark` (already defined, barely used) to: mobile top bar, NowPlayingBar, and the active walk hero overlay. Removes the flat opaque feel.
-- Replace ad-hoc `bg-card/80 backdrop-blur-sm` chips with the `glass` utility.
-- Add **one** new utility — `.text-balance { text-wrap: balance }` — and apply to the serif headings in: index hero, welcome dialog, auth, journal empty states. Single line, huge typographic upgrade.
-- Standardize card radius to `rounded-3xl` for hero/feature cards and `rounded-2xl` for content rows. Currently mixed.
-- Replace the static `breathe` animation on the Start CTA with a **reactive** version: scale paused while the user is not on the home tab (saves battery, less visually noisy when not relevant).
-
----
-
-## 6. Smarter use of existing data (no new queries)
-
-Everything below is already being fetched on the home screen — we're just composing it differently.
-
-- **Adaptive greeting block.** Today: `"Good evening, name"`. Add a one-line micro-state read from the same weekly walks query already running:
-  - 0 walks this week → *"A small one tonight?"*
-  - Walked yesterday → *"Two days in a row feels good."*
-  - 4+ days streak → *"Eight minutes is enough — your body knows."*
-  No new fetches; same `weeklyDots` array.
-- **Quick-resume chip.** If the last incomplete walk was within 90 minutes, surface it inline instead of as a separate banner — uses the same `activeWalkId` state.
-- **"From your last walk"** — show the last reflection note (already on `walks` query) on the home as a quiet pull-quote in serif italics. One line of UX, huge emotional payoff.
-- **Friend Walks merged with Live Now.** Today there are two separate strips. Compose them into a single `<NowAndNext />` carousel using existing `LiveNowStrip` + `UpcomingFriendWalks` — chronological, not categorical. Less visual noise.
+That's it. **No music on Journal, Welcome, Profile, Groups, Events, or anywhere else.**
 
 ---
 
-## 7. Journal — make it a place, not a list
+## 4. The shuffle engine
 
-Journal is currently a chronological list with a sparkline. Two reuse-only upgrades:
-
-- **Calendar heatmap** of the last 12 weeks using the data already in `weeklyMins` — replace the line sparkline with a 7×12 dot grid. ~25 lines, zero deps. Apple-Fitness-style.
-- **Tap a walk row → opens an existing `Sheet`** with the full reflection, mood-before/after delta, and (if linked) the badge earned that day. We already track all of this; today it's invisible unless you go to Profile.
-
----
-
-## Out of scope (intentionally)
-
-- No new tables, columns, server functions, or third-party packages.
-- No notification system, no push, no AI generation.
-- No design-token rename or color overhaul.
-- No payment / monetization.
+**`useAmbientShuffle()` hook + `AmbientPlayerProvider` mounted at `__root.tsx`:**
+- Single `<audio>` element survives navigation between the home drawer and the active walk — no restart on transition.
+- Fisher-Yates queue; on `ended`, advance; on queue empty, reshuffle (excluding last played to avoid immediate repeat).
+- Pre-fetch next signed URL ~10s before current ends → no gap.
+- 1.5s linear crossfade between tracks (two pooled audio elements).
+- Volume persisted in `localStorage` (default `0.3`). Mute state also persisted so users who silence it stay silenced across walks.
+- Never autoplays without a user gesture — opening the drawer is the gesture.
 
 ---
 
-## Files touched (estimated)
+## 5. Now-playing pill (walk context only)
 
-**Edited (~12, mostly small):**
-- `src/routes/index.tsx` — flatten step machine, sticky-sheet mood, adaptive greeting, merged now-strip
-- `src/routes/walk.active.$id.tsx` — hero numbers, edge sparkline, dim, dynamic theme-color
-- `src/routes/journal.tsx` — heatmap + walk-detail sheet
-- `src/routes/__root.tsx` — mobile header wordmark, glass surfaces
-- `src/components/mobile-tab-bar.tsx` — fix nested-button bug, glass floor
-- `src/components/now-playing-bar.tsx` — glass, swipe-up to expand
-- `src/styles.css` — single `.text-balance` utility
-- `public/manifest.webmanifest` — `share_target`
+A small pill, **only on the active walk screen**, near the bottom dock:
 
-**New (3 small files, all <50 lines):**
-- `src/hooks/use-keyboard-inset.ts` — visualViewport offset
-- `src/hooks/use-pull-to-refresh.ts` — touch-based refresh
-- `src/components/now-and-next.tsx` — composes existing strips
+```
+♪  Track Title — Artist        [mute]   [skip]
+```
 
-That's it — concentrated, reuse-first, mobile-native, and shipped in a single tight pass.
+- Tap mute → fades out in 400ms, persists. Tap again → fades back in.
+- Long-press the pill → skip to next track.
+- No NowPlayingBar exposure, no global pill, no presence on other tabs. (The existing `NowPlayingBar` is for Walk & Talk presence — left untouched.)
+
+---
+
+## 6. Files
+
+**Edited (3):**
+- `src/routes/__root.tsx` — mount `AmbientPlayerProvider`.
+- `src/routes/index.tsx` — start ambient when mood drawer opens; let it ride into the walk; stop if the user closes the drawer without starting.
+- `src/routes/walk.active.$id.tsx` — render `<AmbientPill />`; suppress for audio/guided walks; crossfade out on end.
+- `src/routes/profile.tsx` — admin-only "Admin" link.
+
+**New (~6 small files):**
+- `supabase/migrations/...sql` — `ambient_tracks` + RLS + private bucket + policies.
+- `src/lib/ambient.functions.ts` — `listActiveTracks`, `signTrackUrl`, `adminUpsertTrack`, `adminDeleteTrack`.
+- `src/hooks/use-ambient-shuffle.ts` — queue + crossfade engine.
+- `src/lib/ambient-context.tsx` — provider + `useAmbient()`.
+- `src/components/ambient-pill.tsx` — the walk-only now-playing control.
+- `src/routes/admin.tsx` + `src/routes/admin.music.tsx` — admin layout + library page.
+
+---
+
+## 7. Out of scope
+
+- No tags, no per-context libraries, no per-walk track choice.
+- No music on journal, welcome, groups, events, etc.
+- No transcoding, no streaming services, no DRM.
+- No global now-playing bar — pill lives on the walk screen only.
+
+---
+
+Ready to build on your green light. Two small confirmations:
+
+1. **Mute persistence:** if a user mutes during a walk, should it stay muted for **future** walks too, or reset to "playing" each time?
+2. **Volume control:** include a small slider behind a tap on the pill, or keep it to just mute/unmute for simplicity?

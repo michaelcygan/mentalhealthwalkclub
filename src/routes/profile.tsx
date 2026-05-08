@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
@@ -38,6 +38,7 @@ function ProfileTab() {
   const [goalId, setGoalId] = useState<string | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
   const [editingGoal, setEditingGoal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -47,6 +48,8 @@ function ProfileTab() {
       .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
+    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
   const savePatch = async (patch: Partial<Profile>) => {
@@ -165,6 +168,13 @@ function ProfileTab() {
           </div>
         </div>
       </section>
+
+      {isAdmin && (
+        <Link to="/admin/music" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
+          <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Music library</span>
+          <span className="text-xs text-muted-foreground">Manage</span>
+        </Link>
+      )}
 
       <Button variant="outline" onClick={signOut} className="rounded-full">
         <LogOut className="mr-2 h-4 w-4" />Sign out

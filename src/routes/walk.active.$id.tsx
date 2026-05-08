@@ -13,6 +13,8 @@ import { GuidedPlayer } from "@/components/guided-player";
 import { ListenerPool } from "@/components/friend-walk/listener-pool";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
+import { AmbientPill } from "@/components/ambient-pill";
+import { useAmbient } from "@/lib/ambient-context";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -210,6 +212,17 @@ function ActiveWalk() {
     return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
   }, []);
 
+  // Ambient music: suppress when this walk owns the audio channel (Walk & Talk
+  // or guided walks). Stop on unmount so leaving the walk silences the music.
+  const ambient = useAmbient();
+  useEffect(() => {
+    if (!session) return;
+    const ownsAudio = session.walk_type === "audio" || !!session.guided_track_id;
+    if (ownsAudio) ambient.stop(300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+  useEffect(() => () => { ambient.stop(800); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
     await supabase.from("walk_sessions").update({
@@ -352,6 +365,13 @@ function ActiveWalk() {
           hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
           shareCode={friendRoom.share_code}
         />
+      )}
+
+      {/* Ambient music pill — only when there's a track playing and this walk doesn't own the audio */}
+      {!(session.walk_type === "audio" || session.guided_track_id) && (
+        <div className="px-4 pt-4 md:px-0">
+          <AmbientPill />
+        </div>
       )}
 
       {/* Sticky control dock */}
