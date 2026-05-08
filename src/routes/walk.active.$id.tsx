@@ -282,10 +282,24 @@ function ActiveWalk() {
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}
 
+        {friendRoom && (
+          <ListenerPool roomId={friendRoom.id} isHost={friendRoom.host_user_id === user?.id} />
+        )}
+
         {session.walk_type === "guided_solo" && session.guided_track_id && (
           <GuidedPlayer trackId={session.guided_track_id} paused={paused} />
         )}
       </div>
+
+      {friendRoom?.share_code && (
+        <FriendWalkShareCard
+          open={friendShareOpen}
+          onOpenChange={setFriendShareOpen}
+          hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "a friend"}
+          hostAvatarUrl={user?.user_metadata?.avatar_url ?? null}
+          shareCode={friendRoom.share_code}
+        />
+      )}
 
       {/* Sticky control dock */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border bg-card/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mt-6 md:border-0 md:bg-transparent md:p-0">
