@@ -107,6 +107,9 @@ export const scheduleFriendWalk = createServerFn({ method: "POST" })
         status: "scheduled",
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
+        audience_mode: "broadcast",
+        allow_guest_listeners: true,
+        reactions_enabled: true,
       })
       .select("id")
       .single();
