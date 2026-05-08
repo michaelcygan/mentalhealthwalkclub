@@ -13,20 +13,16 @@ function GroupsLayout() {
 
   return (
     <>
+      {/* Always show the list underneath; suppress Outlet's own index render */}
       <GroupsTab />
+      <div className="hidden">
+        <Outlet />
+      </div>
       <Sheet open={open} onOpenChange={(o) => { if (!o) navigate({ to: "/groups" as never }); }}>
-        <SheetContent
-          side="right"
-          className="w-full overflow-y-auto p-0 sm:max-w-xl"
-        >
+        <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-xl">
           <SheetHeader className="sr-only">
-            <SheetTitle>
-              <VisuallyHidden>Group detail</VisuallyHidden>
-            </SheetTitle>
+            <SheetTitle><VisuallyHidden>Group detail</VisuallyHidden></SheetTitle>
           </SheetHeader>
-          <div className="px-4 pb-10 pt-5 md:px-6">
-            {open ? <Outlet /> : null}
-          </div>
         </SheetContent>
       </Sheet>
     </>
