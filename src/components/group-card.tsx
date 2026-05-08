@@ -72,16 +72,22 @@ export function GroupCard({
   // ─────── PULSE pill ───────
   if (variant === "pulse") {
     const isLive = live > 0;
+    const needs = !!pulse?.needsCompany;
     return (
       <Link
         to={"/groups/$slug" as never}
         params={{ slug: group.slug } as never}
-        className={`group/pill inline-flex h-9 shrink-0 items-center gap-2 rounded-full border ${isLive ? "border-forest/40 bg-forest/8" : "border-border bg-card"} px-3 text-xs shadow-soft/50 transition hover:-translate-y-px hover:border-forest/50`}
+        className={`group/pill inline-flex h-9 shrink-0 items-center gap-2 rounded-full border ${isLive ? "border-forest/40 bg-forest/8" : needs ? "border-amber-400/50 bg-amber-50/60" : "border-border bg-card"} px-3 text-xs shadow-soft/50 transition hover:-translate-y-px hover:border-forest/50`}
       >
         {isLive ? (
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-forest" />
+          </span>
+        ) : needs ? (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-amber-400/70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
           </span>
         ) : next ? (
           <Calendar className="h-3 w-3 text-forest/80" />
@@ -89,8 +95,8 @@ export function GroupCard({
           <Radio className="h-3 w-3 text-forest/70" />
         )}
         <span className="max-w-[140px] truncate font-serif text-[13px] text-foreground">{group.name}</span>
-        <span className="rounded-full bg-card/80 px-1.5 py-0.5 text-[10px] font-medium text-forest/80">
-          {isLive ? `${live} live` : next ?? "active"}
+        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${needs && !isLive ? "bg-amber-100/80 text-amber-700" : "bg-card/80 text-forest/80"}`}>
+          {isLive ? `${live} live` : needs ? "Needs walkers" : next ?? "active"}
         </span>
       </Link>
     );
