@@ -11,6 +11,8 @@ import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 import { share, haptics } from "@/lib/device";
 import { GroupRoutesMosaic } from "@/components/group-routes-mosaic";
+import { CITY_COVERS, coverUrl, dayStateFromHour } from "@/data/city-covers";
+import { useCityHour } from "@/hooks/use-city-hour";
 
 const GroupLiveMap = lazy(() => import("@/components/group-live-map"));
 
