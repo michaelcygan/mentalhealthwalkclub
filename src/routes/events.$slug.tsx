@@ -10,7 +10,19 @@ import { startLocalWalk, checkInToLocalWalk, endLocalWalk, hostCheckInAttendee, 
 import { joinScheduledWalk, openScheduledRoom, reshufflePods, endScheduledWalk } from "@/server/audio.functions";
 import { MapPin, Play, Square, CheckCircle2, Loader2, Headphones, Shuffle, Users } from "lucide-react";
 
-export const Route = createFileRoute("/events/$slug")({ component: EventDetail });
+export const Route = createFileRoute("/events/$slug")({
+  component: EventDetail,
+  head: ({ params }) => ({
+    meta: [
+      { title: `Walk together — ${params.slug.replace(/-/g, " ")} · Walk Club` },
+      { name: "description", content: "Join this Walk Club gathering — a gentle walk, in-person or by audio. Real people, real sidewalks." },
+      { property: "og:title", content: "You're invited to a walk." },
+      { property: "og:description", content: "A small, peer-supported walk on Walk Club. Tap to RSVP." },
+      { property: "og:type", content: "event" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+});
 
 interface EventRow {
   id: string; title: string; description: string | null; starts_at: string; ends_at: string | null;

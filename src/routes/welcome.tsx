@@ -8,7 +8,14 @@ import { LocationAutosuggest, type LocationValue } from "@/components/location-a
 
 export const Route = createFileRoute("/welcome")({
   component: Welcome,
-  head: () => ({ meta: [{ title: "Welcome — Walk Club" }] }),
+  head: () => ({
+    meta: [
+      { title: "Welcome — Walk Club" },
+      { name: "description", content: "A warmer way to walk through it. Solo, Walk & Talk, or Local — never alone." },
+      { property: "og:title", content: "Welcome to Walk Club" },
+      { property: "og:description", content: "You don't have to walk through it alone." },
+    ],
+  }),
 });
 
 const THEMES = ["anxiety", "burnout", "grief", "loneliness", "new in town", "quiet", "sunday reset", "general wellness"];

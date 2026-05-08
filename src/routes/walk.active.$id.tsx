@@ -10,6 +10,7 @@ import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { GuidedPlayer } from "@/components/guided-player";
+import { wakeLock } from "@/lib/device";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -29,6 +30,13 @@ function ActiveWalk() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/" }); }, [loading, user, navigate]);
+
+  // Keep the screen on while a walk is active
+  useEffect(() => {
+    let release: (() => void) | undefined;
+    wakeLock().then((r) => { release = r; });
+    return () => { release?.(); };
+  }, []);
 
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);

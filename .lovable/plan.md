@@ -1,193 +1,161 @@
-# Facilitator Role — Plan
+## Walk Club — World-Class Pass (2026)
 
-A volunteer account type (therapists / psychology students) who taps **Start facilitating** and is auto-routed through live Walk & Talk pods, one at a time, in the reserved 5th seat. Walks continue to function with zero facilitators online — this layer is purely additive.
+Goal: take what already works and make it feel inevitable. No new tables, no new big features — re-use existing primitives (walks, audio rooms, facilitator visits, groups, events, badges, signals, mood, reflections) and unlock more flow with smaller, sharper UI.
 
----
-
-## 1. Role & access
-
-**Schema**
-- Extend `app_role` enum: add `'facilitator'`.
-- New table `facilitator_profiles`:
-  - `user_id uuid PK → auth.users`
-  - `status text` — `'pending' | 'approved' | 'suspended'` (default `pending`)
-  - `credentials text` (free text: license #, school, supervisor)
-  - `bio text`, `approved_at`, `approved_by uuid`
-- RLS: facilitator can read/update own row; admins manage all.
-
-**Onboarding (out of scope for this pass beyond the stub)**
-- A simple `/facilitate/apply` form that creates the row + assigns `facilitator` role on admin approval. For now: admins grant manually via SQL; the app gates on `has_role(uid, 'facilitator') AND status='approved'`.
+Principle: *less surface, more depth.* Every screen earns its space. Mobile-first, gesture-first, calm-by-default.
 
 ---
 
-## 2. Facilitator session model
+### 1. The Home Tab becomes a "Now" surface
 
-**New table `facilitator_sessions`** — one row per "shift" of being available:
-- `id`, `facilitator_user_id`, `started_at`, `ended_at`
-- `status` — `'available' | 'in_pod' | 'on_break' | 'ended'`
-- `current_audio_room_id uuid` (nullable)
-- `pods_visited int default 0`, `total_seconds int default 0`
+Today `/` is a stack of cards. Make it a single, breathing dashboard tuned to the moment of opening the app.
 
-**New table `facilitator_visits`** — one row per pod drop-in:
-- `id`, `facilitator_session_id`, `audio_room_id`, `joined_at`, `left_at`
-- `planned_duration_seconds int` (the timer value, e.g. 300)
-- `outcome text` — `'completed' | 'reported' | 'left_early' | 'pod_ended'`
-- `notes text` (private to facilitator + admin)
+- **Time-aware hero** — one ambient gradient that shifts dawn / day / dusk / night using existing CSS tokens. One sentence ("a kind morning to walk"), one primary action that adapts: solo · join live · join scheduled.
+- **Live-now strip** becomes horizontally scroll-snapped pods (`snap-x snap-mandatory`) with avatar stacks pulled from existing `audio_room_participants` — tap to drop in. Hides itself when empty (re-uses existing query).
+- **Weekly ring + mood cloud** collapse into one compact "this week" row (ring left, mood dots right). Tap → expands into a sheet with the existing components (no new code, just composition).
+- **Reflection drift** moves below the fold as a quiet, single-line journal entry preview.
+
+Net change: trim ~60 lines on `/` by composing existing components into a tighter layout. Adds a single `useTimeOfDay()` hook.
 
 ---
 
-## 3. Routing logic — "press play, flow through walks"
+### 2. Walk & Talk dock → mobile-native call surface
 
-**Server fn `startFacilitatorShift()`** — creates `facilitator_sessions` row, status `available`.
+The dock is great. Push it to feel like FaceTime + Calm.
 
-**Server fn `nextPodForFacilitator()`** — the heart of the flow. Picks the next live pod:
+- **Drag-to-expand**: bottom dock becomes a `Drawer` (already in shadcn) with a snap-point at peek (current dock) and full ("on the trail" full-screen state). Swipe down to peek.
+- **Active-speaker ring**: re-use the existing per-participant audio level we already pipe through `use-audio-room` to glow the current speaker's avatar (CSS animation only, no new state).
+- **Haptics**: 10ms `navigator.vibrate` on join / mute / facilitator arrives. Tiny helper in `src/lib/haptics.ts`.
+- **Live captions toggle (browser-native)**: a 1-line button using `webkitSpeechRecognition` for personal accessibility — no server cost, falls back gracefully. Off by default.
+- **Pinned context**: while in a pod, a sticky thin bar at the top of every screen (`<NowPlayingBar/>`) shows "you're walking with 3 · 12:04" so users can browse Groups/Journal without losing the call. Re-uses existing dock state.
 
+Net change: refactor dock into a Drawer (replaces ~80 lines, adds ~30). Adds `now-playing-bar.tsx` (~40 lines), `haptics.ts` (~10 lines).
+
+---
+
+### 3. Bottom nav → adaptive command bar
+
+Five static tabs is fine. Make the center tab dynamic.
+
+- The middle slot is contextual: when no walk → big **Walk** FAB (forest disc, slight elevation, haptic). During a walk → mic mute toggle. While a Walk & Talk is live somewhere → pulsing "Live" with count. For facilitators on shift → "Next pod ↗".
+- Long-press on **Walk** opens a radial-style action sheet (Drawer): Solo · Guided · Walk & Talk · Local Walk. Reuses existing routes.
+- Hide the bar on scroll-down, show on scroll-up (single `useScrollDirection` hook). Modern, more vertical room on mobile.
+
+Net change: ~50 lines in `__root.tsx`, one new hook.
+
+---
+
+### 4. Guided audio + ambient pad — finally fused
+
+Right now `guided-player`, `audio/ambient-pad`, and `guided-tracks` live in parallel. Unify behind a single `<AudioStage/>` primitive that:
+
+- Shows the current ambient layer (track or generative pad) as a calm visualizer (CSS conic-gradient driven by the existing analyser node — no canvas).
+- Cross-fades between tracks (already supported by `mesh-transport`).
+- Powers solo guided walks AND the "no one's here yet" state of a Walk & Talk.
+
+Net change: collapses two components into one; ~40-line reduction overall.
+
+---
+
+### 5. Facilitator surface gets two power-ups (no schema changes)
+
+- **Glanceable queue**: in the "searching" state, show 3 ghost cards of the *next likely pods* (highest score) so facilitators feel routed, not idle. Pulled from the same `nextPodForFacilitator` query (already exists), just returning top-N.
+- **Whisper prompts**: the existing `prompt-drawer` becomes a dismissible toast that softly surfaces *one* prompt every 90s while in-pod, instead of a manual drawer. Reuses `facilitatorPrompts`.
+- **Haptic at 60s remaining + 0**: gentle wrap-up cue.
+
+Net change: small; ~30 lines, removes the manual drawer toggle.
+
+---
+
+### 6. Journal becomes a memory ribbon
+
+Today journal is a list. Make it horizontally scroll-snapped "cards of a week" — each card a compact mini-spread (mood arc · steps · one line of reflection · badge earned). Vertical list still available behind a toggle.
+
+- Pull-to-refresh feels handled by browser, but add a subtle `overscroll-behavior: contain` and a snap to "today."
+- Long-press a card → share-as-image (uses `html-to-image` only if requested — otherwise the Web Share API with a text summary, zero new deps).
+
+Net change: rewrite of one page (~150 lines), no schema changes.
+
+---
+
+### 7. Groups tab → "where you'd belong"
+
+- Replace today's flat list with a single **For You** rail (top 3 groups based on existing location + theme overlap, no new data) and an **All groups** grid below. The matching is a one-line scoring function over fields we already store (`city`, `country`, `theme`, `preferred_themes`).
+- Each group card shows a live pulse dot if anyone from that group is currently in a Walk & Talk (re-uses `audio_rooms` with `group_id`).
+- Tap-and-hold a card → quick-join sheet with a one-tap "Walk with this group right now" (creates a spontaneous room scoped to the group — already supported).
+
+Net change: ~80 lines, no new tables.
+
+---
+
+### 8. Mobile capability menu — quietly powerful
+
+One `src/lib/device.ts` exposing safe wrappers; everything else taps in:
+
+- `vibrate(pattern)` — haptics on join, mute, badge earned, walk end.
+- `share(payload)` — Web Share API for "share my walk" / event invite / group invite (replaces 3 ad-hoc copy-link buttons).
+- `wakeLock()` — keep screen on during active walk. Released on end. Single hook in `walk.active.$id.tsx`.
+- `requestPermission()` for notifications — only asked on first explicit "remind me" click (no top-of-funnel friction).
+- Pull-to-refresh → use `overscroll-behavior` + a tiny `useRefresh()` hook tied to `react-query` invalidation where present (no new deps).
+- Install prompt (PWA): listen for `beforeinstallprompt`, surface as a one-time gentle banner after the 3rd walk completes. Manifest already implied.
+
+Net change: one ~80-line `device.ts` enables six features with one-liners across the app.
+
+---
+
+### 9. Visual language tightening
+
+Without rewriting the design system:
+
+- **Type**: lock the serif (`Fraunces`) to display only; bump headings to `tracking-tight`; ensure body uses `Inter` consistently. Audit ~10 files where serif crept into UI labels.
+- **Cards**: standardize on three radii (`rounded-2xl` content, `rounded-3xl` heroes, `rounded-full` pills). Currently mixed.
+- **Color**: introduce two semantic tokens already implied — `--surface-elevated` and `--surface-warm` (pre-blended, no new oklch math) and replace ad-hoc gradients in 6 files.
+- **Motion**: add a `prefers-reduced-motion` guard around the breathing/pulse animations. Adds ~5 lines, big inclusivity win.
+- **Iconography**: keep Lucide; just standardize stroke width (1.8 default, 2.4 active) — already partially done in nav.
+
+Net change: token additions in `styles.css` and ~12 small file edits.
+
+---
+
+### 10. SEO & shareability (root-level only)
+
+- Per-route `head()` already mostly there; tighten `og:title`/`og:description` on `events.$slug.tsx`, `groups.$slug.tsx`, and `welcome.tsx` so a Walk & Talk link previews beautifully when shared in DMs (the dominant share path).
+- Add a tiny dynamic OG image route that composes existing tokens (text + gradient) — only if we keep it server-rendered and free.
+
+Net change: 4 files, 2-line edits each. OG image is optional; only if cheap.
+
+---
+
+### What we are explicitly *not* adding
+
+- No new tables, no new edge functions, no new external services.
+- No notifications backend (browser-only opt-in remind-me).
+- No video. No chat. No DMs. The product is voice + presence.
+- No AI features beyond what already exists in `lovable-ai`. (We can wire AI prompts for the facilitator drawer in a *separate* small pass.)
+
+---
+
+### Sequencing (each step is shippable on its own)
+
+```text
+Step 1   Now-surface Home  (composition only, biggest perceived win)
+Step 2   AudioStage unification + visualizer
+Step 3   Walk & Talk dock → Drawer + active speaker + NowPlayingBar
+Step 4   device.ts (haptics, share, wake-lock) wired into 5 spots
+Step 5   Adaptive bottom command bar
+Step 6   Facilitator: queue preview + whisper prompts
+Step 7   Journal memory ribbon
+Step 8   Groups "for you" rail + live pulse
+Step 9   Visual tightening + reduced-motion
+Step 10  SEO/share polish
 ```
-candidates = audio_rooms
-  WHERE status = 'open'
-    AND scheduled_event_id IS NOT NULL          -- only scheduled walks (groups)
-    AND facilitator_user_id IS NULL              -- no facilitator currently
-    AND current_participant_count >= 2           -- skip empty/solo pods
-    AND id NOT IN (recent visits this shift, last 30 min)  -- don't re-enter
-score by:
-  1. longest time without a facilitator visit (fairness)
-  2. highest walker count (most people benefit)
-  3. event soonest to end (catch before it closes)
-pick top 1
-```
 
-If none available → return `{ status: 'no_pods', retryAfterSeconds: 30 }`. UI shows ambient "listening for walks…" state.
+Estimated net code change across the whole pass: roughly **−400 lines after composition, +600 sharper lines** = small footprint, big leap in feel.
 
-**Server fn `joinPodAsFacilitator({ roomId, plannedDurationSeconds })`**:
-- Set `audio_rooms.facilitator_user_id = uid`
-- Insert `audio_room_participants` with `role='facilitator'`
-- Insert `facilitator_visits` row
-- Update session: `status='in_pod'`, `current_audio_room_id`
-- Broadcast realtime event `facilitator_joined` so walkers see the announcement banner
+### Why this makes it world-class
 
-**Server fn `leavePodAsFacilitator({ visitId, outcome })`**:
-- Mark participant `left_at`, clear `audio_rooms.facilitator_user_id`
-- Close `facilitator_visits` row with outcome + duration
-- Broadcast `facilitator_left`
-- Increment session counters
-- Set session back to `available` (UI auto-fetches next pod)
+- Everything we add is presence-aware, gesture-aware, and momentary — the qualities premium 2026 mobile apps share (Linear Mobile, Granola, Arc Search, Calm).
+- We don't compete by adding features; we win by removing seams between features that already exist.
+- The facilitator/walker/audio system becomes a single fabric with one consistent live-bar, one consistent sheet pattern, one consistent haptic vocabulary.
 
-**Server fn `reportFromPod({ visitId, reportedUserIds[], reason, details })`**:
-- Insert into existing `safety_reports` (one per user)
-- Force-close the audio room: `status='closed'`, `ends_at=now()`
-- Mark visit `outcome='reported'`
-- Walker dock receives realtime close event → "Walk ended by facilitator" toast → returns to home
-
-**Server fn `endFacilitatorShift()`** — sets `ended_at`, `status='ended'`, leaves any active pod cleanly.
-
----
-
-## 4. Walker-side changes (small)
-
-- `walk-talk-dock`: subscribe to `audio_rooms.facilitator_user_id` change. When a facilitator joins, show a soft banner: *"{Name}, facilitator, has joined to listen in"* + small badge on their avatar. When they leave, fade banner.
-- Constellation: facilitator avatar gets a distinct ring color (warm clay) and a small "facilitator" label — no mute icon, no speaking ring change.
-- Pod close from facilitator report → existing leave flow + toast.
-
----
-
-## 5. Facilitator UI — `/facilitate`
-
-Single dedicated route, gated by `has_role(uid, 'facilitator')`. Mobile-first, big touch targets.
-
-**State: `idle`** (before press play)
-- Hero: "Hold space for a walk." Short description.
-- Big primary button: **Start facilitating**
-- Below: today's stats (pods visited, hours held)
-- Optional: time limit selector (15min / 30min / 60min / unlimited shift)
-
-**State: `searching`** (no pod available)
-- Ambient pulse animation (matches walker matching screen)
-- "Listening for live walks… {n} active right now"
-- Auto-polls `nextPodForFacilitator` every 30s
-- Buttons: **End shift** · **Take a break** (pauses polling)
-
-**State: `in-pod`** (active visit)
-- Top: pod title, walker count, "you are facilitating"
-- **Timer**: ring countdown from chosen visit length (default 5 min). Configurable: 3/5/8 min.
-- Audio cockpit (same mic / hands-free / PTT controls as walker, but unmuted by default — facilitators talk)
-- **Suggested prompts** drawer (collapsed by default, swipe up):
-  - Curated by stage (opener / mid-walk / wrap)
-  - "What brought you out walking today?"
-  - "Anyone want to share what's on their mind?"
-  - "We've got a couple minutes left — anything sitting with you?"
-  - Tap to copy / glance only
-- When timer hits 0: pulse animation + **Next walk →** button appears (replaces timer). Facilitator says goodbye, then taps.
-- Persistent secondary actions:
-  - **Report & close** (red, requires confirm + reason + which user(s))
-  - **Leave early** (no report — just exits this pod, returns to searching)
-- Quick-note field: private notes saved to `facilitator_visits.notes`
-
-**State: `between`** (after Next, before next pod loads)
-- 10s breathing screen: "Nice work. Resetting…"
-- Auto-advances to `searching`
-
-**State: `break`**
-- "On a break. Tap when ready."
-- Resume / End shift buttons
-
----
-
-## 6. Suggested prompts (static seed)
-
-Hardcoded JSON in `src/lib/facilitator-prompts.ts`:
-```
-openers:   ["What brought you out today?", "Anyone walking somewhere new?", ...]
-deepening: ["What's been sitting with you this week?", ...]
-gentle:    ["No pressure to share — happy to walk in quiet too.", ...]
-wrap:      ["A couple minutes left — anything you want to land on?", ...]
-```
-Later: AI-generated prompts via Lovable AI based on pod mood/theme (next pass).
-
----
-
-## 7. Edge cases
-
-- **Pod ends mid-visit** (host ends walk, all walkers leave): facilitator's dock shows "This walk ended" + auto-advance to next.
-- **Facilitator disconnects** (closes tab): server cron `rotate-pods` already runs — extend it to clear stale `facilitator_user_id` after 90s of no participant heartbeat.
-- **Two facilitators race for same pod**: `joinPodAsFacilitator` uses `UPDATE … WHERE facilitator_user_id IS NULL RETURNING` — only one wins; loser gets next pod.
-- **Walker reports facilitator**: existing `safety_reports` flow already covers this; admins can suspend via `facilitator_profiles.status='suspended'`.
-- **No pods available for full shift**: facilitator just sees ambient state — fine, this is expected as bandwidth varies.
-
----
-
-## 8. Files to touch
-
-**New**
-- `supabase/migrations/<new>` — enum, two tables, RLS
-- `src/server/facilitator.functions.ts` — all server fns above
-- `src/routes/facilitate.tsx` — main facilitator UI (gated)
-- `src/components/facilitator/timer-ring.tsx`
-- `src/components/facilitator/prompt-drawer.tsx`
-- `src/components/facilitator/report-dialog.tsx`
-- `src/lib/facilitator-prompts.ts`
-
-**Edited**
-- `src/components/walk-talk-dock.tsx` — facilitator-joined banner + avatar styling + force-close handling
-- `src/routes/api/public/hooks/rotate-pods.ts` — clear stale facilitators
-- Bottom nav / profile menu — add "Facilitate" entry visible only to facilitator role
-
----
-
-## 9. Out of scope (next passes)
-
-- Public application form & admin approval UI (manual SQL grant for now)
-- AI-generated prompts tuned to pod mood
-- Post-walk facilitator reflection summary / supervisor review
-- Facilitator scheduling availability calendar
-- Walker preference: "prefer pods with facilitators" / "no facilitators please"
-- Stipend / hours tracking for paid program
-
----
-
-## Why this shape
-
-- **Press-play simplicity**: one button starts the flow, server picks pods, facilitator never has to choose. Matches the walker UX philosophy.
-- **Zero-facilitator resilience**: the reserved 5th seat already exists; everything here is purely additive — walks work identically when no one is facilitating.
-- **Fairness routing**: longest-without-a-facilitator scoring spreads attention across pods instead of clustering on the busiest one.
-- **Timer + Next button** mirrors how a real group therapist rotates through breakouts; the goodbye moment is honored, not rushed.
-- **Report = close**: collapses two safety actions into one decisive control — a facilitator wouldn't leave a harmful pod running while filing paperwork.
+Want me to start at **Step 1 (Now-surface Home)** and **Step 4 (device.ts)** in parallel? Those two unlock the most perceived quality with the least code.
