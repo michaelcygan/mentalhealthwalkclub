@@ -21,6 +21,7 @@ import { haptics } from "@/lib/device";
 import { HeroBand } from "@/components/home/hero-band";
 import { WeatherModule } from "@/components/home/weather-module";
 import { StickyWeekBar } from "@/components/home/sticky-week-bar";
+import { TonightInYourGroups } from "@/components/home/tonight-in-your-groups";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
 import { useLiveCount } from "@/hooks/use-live-count";
@@ -302,6 +303,8 @@ function WalkTab() {
         </Card>
 
         <WeatherModule />
+
+        <TonightInYourGroups />
 
         <WeekInReview userId={user.id} />
 
