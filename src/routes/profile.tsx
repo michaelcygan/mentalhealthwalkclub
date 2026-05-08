@@ -169,6 +169,13 @@ function ProfileTab() {
         </div>
       </section>
 
+      {isAdmin && (
+        <Link to="/admin/music" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
+          <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Music library</span>
+          <span className="text-xs text-muted-foreground">Manage</span>
+        </Link>
+      )}
+
       <Button variant="outline" onClick={signOut} className="rounded-full">
         <LogOut className="mr-2 h-4 w-4" />Sign out
       </Button>
