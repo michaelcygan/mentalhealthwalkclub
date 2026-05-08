@@ -257,9 +257,15 @@ export async function openScheduledRoomImpl(supabase: any, eventId: string) {
 
   await supabase.from("audio_rooms").update({ status: "open" }).eq("id", room.id);
 
-  // Pre-create pods if breakout configured
+  // Pre-create pods sized to actual RSVPs (not nominal capacity)
   if (ev.breakout_size > 0) {
-    const podCount = Math.max(1, Math.ceil((ev.capacity ?? 8) / ev.breakout_size));
+    const { count: rsvpCount } = await supabase
+      .from("event_rsvps")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("status", "going");
+    const N = rsvpCount ?? 0;
+    const podCount = Math.max(1, Math.ceil(N / ev.breakout_size));
     const pods = Array.from({ length: podCount }, (_, i) => ({
       title: `${room.title} · pod ${i + 1}`,
       theme: room.theme,
