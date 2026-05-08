@@ -184,11 +184,8 @@ function TabBar() {
       {/* Mobile top bar — sign in for logged-out visitors */}
       {!user ? (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
-              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-serif text-sm">Walk Club</span>
+          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={32} />
           </Link>
           <div className="flex items-center gap-1">
             <button onClick={openWelcome} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">How it works</button>
@@ -197,11 +194,8 @@ function TabBar() {
         </header>
       ) : (
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/90 px-4 py-2 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest">
-              <Footprints className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-serif text-sm">Walk Club</span>
+          <Link to="/" className="flex items-center" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={32} />
           </Link>
           <div className="flex items-center gap-2">
             <ModeToggle compact />
