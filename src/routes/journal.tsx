@@ -388,3 +388,58 @@ function MoodArc({ points }: { points: (number | null)[] }) {
     </svg>
   );
 }
+
+function Heatmap({ walks }: { walks: Walk[] }) {
+  const grid = useMemo(() => {
+    const cells: { mins: number; date: Date }[][] = Array.from({ length: 7 }, () =>
+      Array.from({ length: 12 }, () => ({ mins: 0, date: new Date() }))
+    );
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    for (let col = 0; col < 12; col++) {
+      const weekStart = new Date(monday); weekStart.setDate(monday.getDate() - (11 - col) * 7);
+      for (let row = 0; row < 7; row++) {
+        const d = new Date(weekStart); d.setDate(weekStart.getDate() + row);
+        cells[row][col] = { mins: 0, date: d };
+      }
+    }
+    walks.forEach((w) => {
+      const d = new Date(w.started_at); d.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 12 * 7) return;
+      const dow = (d.getDay() + 6) % 7;
+      const todayDow = (today.getDay() + 6) % 7;
+      const weekIdxFromToday = Math.floor((diffDays + todayDow - dow) / 7);
+      const col = 11 - weekIdxFromToday;
+      if (col < 0 || col > 11) return;
+      cells[dow][col].mins += Math.round((w.duration_seconds ?? 0) / 60);
+    });
+    return cells;
+  }, [walks]);
+  const max = Math.max(1, ...grid.flat().map((c) => c.mins));
+  const todayStr = new Date().toDateString();
+  return (
+    <div className="grid grid-cols-12 gap-[3px]" role="img" aria-label="Walks heatmap, last 12 weeks">
+      {Array.from({ length: 12 }).map((_, col) => (
+        <div key={col} className="grid grid-rows-7 gap-[3px]">
+          {grid.map((row, r) => {
+            const c = row[col];
+            const intensity = c.mins / max;
+            const isToday = c.date.toDateString() === todayStr;
+            const bg = c.mins === 0
+              ? "color-mix(in oklab, var(--forest) 8%, transparent)"
+              : `color-mix(in oklab, var(--forest) ${Math.round(20 + intensity * 75)}%, transparent)`;
+            return (
+              <div
+                key={r}
+                title={`${c.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${c.mins} min`}
+                className={`aspect-square rounded-[3px] ${isToday ? "ring-1 ring-forest" : ""}`}
+                style={{ background: bg }}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
