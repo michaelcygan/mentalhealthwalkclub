@@ -575,3 +575,13 @@ function haversine(a: {lat:number;lng:number}, b: {lat:number;lng:number}) {
   const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(x));
 }
+
+function WalkWeatherChip({ coords }: { coords: { lat: number; lng: number } | null }) {
+  const { data } = useCurrentWeather(coords);
+  if (!data) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs backdrop-blur">
+      <WeatherPill tempF={data.tempF} tone={data.tone} isDay={data.isDay} className="bg-transparent px-0 py-0" />
+    </span>
+  );
+}
