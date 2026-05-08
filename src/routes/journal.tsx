@@ -36,7 +36,7 @@ function JournalTab() {
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     Promise.all([
-      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type")
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention")
         .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
