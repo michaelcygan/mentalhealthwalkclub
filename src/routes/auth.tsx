@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Footprints } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
+import { LogoStamp } from "@/components/logo-stamp";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
