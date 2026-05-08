@@ -306,6 +306,7 @@ function FacilitatePage() {
             {overview?.livePodCount ?? 0} live walks right now
           </p>
         </div>
+        <FacilitatorQueue />
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleBreak(true)} className="flex-1 rounded-full">
             <Pause className="mr-2 h-4 w-4" /> Take a break
