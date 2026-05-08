@@ -12,7 +12,7 @@ import { EndWalkFlow } from "@/components/end-walk-flow";
 import { GuidedPlayer } from "@/components/guided-player";
 import { ListenerPool } from "@/components/friend-walk/listener-pool";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
-import { wakeLock } from "@/lib/device";
+import { wakeLock, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
