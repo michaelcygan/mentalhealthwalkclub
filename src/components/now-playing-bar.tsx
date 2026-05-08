@@ -96,7 +96,7 @@ export function NowPlayingBar() {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-cream" />
         </span>
-        <Radio className="h-3.5 w-3.5 shrink-0 opacity-80" />
+        <Radio className="h-3.5 w-3.5 shrink-0 opacity-80 live-pulse" />
         <div className="min-w-0 flex-1 text-xs leading-tight">
           <div className="truncate font-medium">{active.roomTitle}</div>
           <div className="flex items-center gap-1.5 opacity-80">

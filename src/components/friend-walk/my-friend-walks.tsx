@@ -111,7 +111,7 @@ export function MyFriendWalks() {
                 <div className="flex shrink-0 items-center gap-1">
                   {isLive && (
                     <Link to={"/w/$code" as never} params={{ code: w.share_code! } as never} className="rounded-lg p-2 text-forest hover:bg-accent" aria-label="Open">
-                      <Radio className="h-4 w-4" />
+                      <Radio className="h-4 w-4 live-pulse" />
                     </Link>
                   )}
                   {w.share_code && (

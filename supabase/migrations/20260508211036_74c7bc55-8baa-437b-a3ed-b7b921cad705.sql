@@ -1,0 +1,1 @@
+UPDATE public.groups SET cover_set = slug WHERE theme = 'chapter' AND cover_set IS NULL AND slug <> 'empty-nesters';
