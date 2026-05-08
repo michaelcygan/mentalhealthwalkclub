@@ -230,7 +230,7 @@ function GroupDetail() {
 
       {/* Sticky inline action bar */}
       <div className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border/60 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:rounded-2xl md:border md:bg-card/60 md:px-3">
-        <Button onClick={() => startSoloWalk(group)} disabled={busy} size="sm" className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
+        <Button onClick={() => startSoloWalk(group)} disabled={busy} size="sm" className="ember-spark tap-press rounded-full bg-forest text-primary-foreground hover:opacity-90">
           <Footprints className="mr-1.5 h-4 w-4" /> {busy ? "Starting…" : "Walk now"}
         </Button>
         <Popover>
