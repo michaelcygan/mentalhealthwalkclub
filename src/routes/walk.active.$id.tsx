@@ -222,6 +222,8 @@ function ActiveWalk() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
   useEffect(() => () => { ambient.stop(800); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
     await supabase.from("walk_sessions").update({
       status: "completed",
