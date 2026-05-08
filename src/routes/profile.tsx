@@ -139,6 +139,10 @@ function ProfileTab() {
         </div>
       </section>
 
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <MyFriendWalks />
+      </section>
+
       <section className="rounded-2xl border border-border bg-card p-5">
         <SectionHeading eyebrow="Affinities" title="Your groups" />
         {groups.length === 0 ? (
