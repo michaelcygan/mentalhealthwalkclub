@@ -42,10 +42,6 @@ export function FriendWalkShareCard({ open, onOpenChange, hostName, hostAvatarUr
     });
     if (ok) toast("link shared");
   };
-
-    if (ok) toast("link shared");
-  };
-
   const onCopy = async () => {
     haptics.tap();
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); toast("link copied"); } catch { /* noop */ }
