@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
 import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
+import { ProfileRouteMosaic } from "@/components/profile-route-mosaic";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
