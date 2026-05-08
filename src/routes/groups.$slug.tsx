@@ -198,7 +198,8 @@ function GroupDetail() {
 
   return (
     <div className="space-y-5">
-      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6`}>
+      <CoverBand cover_set={group.cover_set} />
+      <header className={`relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${grad} p-5 shadow-soft md:p-6 ${group.cover_set ? "-mt-10 backdrop-blur-md bg-card/80" : ""}`}>
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-card/30 blur-3xl animate-pulse [animation-duration:6s]" />
         <div className="relative">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
@@ -206,7 +207,7 @@ function GroupDetail() {
             {walkersWeek > 0 && <> · {walkersWeek} this week</>}
           </div>
           <div className="flex items-start justify-between gap-3">
-            <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">{group.name}</h1>
+            <h1 className="mt-2 font-serif text-[28px] leading-tight tracking-tight md:text-3xl">{group.name}</h1>
             <button
               onClick={async () => {
                 haptics.tap();
@@ -218,7 +219,7 @@ function GroupDetail() {
                 if (ok) toast("Invite ready to share.");
               }}
               aria-label="Share group"
-              className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur transition hover:border-forest/40 hover:text-forest"
+              className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur transition hover:border-forest/40 hover:text-forest tap-press"
             >
               <Share2 className="h-4 w-4" />
             </button>
