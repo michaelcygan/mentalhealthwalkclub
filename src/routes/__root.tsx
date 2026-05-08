@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
+import { NowPlayingBar } from "@/components/now-playing-bar";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { haptics } from "@/lib/device";
 
@@ -264,7 +265,10 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div className="mx-auto max-w-5xl px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-10">{children}</div>
+        <div className="mx-auto max-w-5xl px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-10">
+          <NowPlayingBar />
+          {children}
+        </div>
       </main>
     </div>
   );

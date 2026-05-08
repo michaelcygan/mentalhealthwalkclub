@@ -61,6 +61,31 @@ function JournalTab() {
   }, [walks]);
   const maxWk = Math.max(1, ...weeklyMins);
 
+  // Memory ribbon — group walks into 8 most-recent weeks for a horizontal "cards of a week" scroll
+  const ribbonWeeks = useMemo(() => {
+    const weekMap = new Map<number, Walk[]>();
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    walks.forEach((w) => {
+      const days = Math.floor((monday.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      const wk = Math.max(0, Math.floor(days / 7) + (days < 0 ? -1 : 0));
+      const list = weekMap.get(wk) ?? [];
+      list.push(w);
+      weekMap.set(wk, list);
+    });
+    const weeks: { offset: number; walks: Walk[]; label: string; mins: number; reflect?: string; mood?: string | null }[] = [];
+    for (let i = 0; i < 8; i++) {
+      const ws = weekMap.get(i) ?? [];
+      const start = new Date(monday); start.setDate(monday.getDate() - i * 7);
+      const label = i === 0 ? "This week" : i === 1 ? "Last week" : start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      const mins = ws.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
+      const reflect = ws.find((w) => w.reflection_note)?.reflection_note ?? undefined;
+      const mood = ws.find((w) => w.mood_after)?.mood_after ?? null;
+      weeks.push({ offset: i, walks: ws, label, mins, reflect: reflect ?? undefined, mood });
+    }
+    return weeks;
+  }, [walks]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, Walk[]>();
     walks.forEach((w) => {
@@ -112,6 +137,58 @@ function JournalTab() {
           </div>
         </div>
       </div>
+
+      {/* Memory ribbon — horizontally scroll-snapped weeks */}
+      {walks.length > 0 && (
+        <section className="space-y-2">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Memory ribbon</div>
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0" style={{ scrollPaddingLeft: "1rem" }}>
+            {ribbonWeeks.map((w) => {
+              const empty = w.walks.length === 0;
+              return (
+                <article
+                  key={w.offset}
+                  className={`group relative w-[78%] shrink-0 snap-start overflow-hidden rounded-3xl border p-4 transition active:scale-[0.99] sm:w-[55%] md:w-[40%] lg:w-[32%] ${
+                    empty ? "border-dashed border-border bg-card/60" : "border-border bg-gradient-to-br from-card via-card to-accent/30 shadow-soft"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span>{w.label}</span>
+                    <span className="tabular-nums">{w.walks.length} walk{w.walks.length === 1 ? "" : "s"}</span>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-1.5">
+                    <span className="font-serif text-3xl tabular-nums">{w.mins}</span>
+                    <span className="text-xs text-muted-foreground">min</span>
+                  </div>
+                  {/* mini bar of the 7 days */}
+                  <div className="mt-3 flex h-7 items-end gap-1">
+                    {Array.from({ length: 7 }).map((_, i) => {
+                      const dayMins = w.walks
+                        .filter((wk) => {
+                          const d = new Date(wk.started_at);
+                          const dow = (d.getDay() + 6) % 7; // Mon=0
+                          return dow === i;
+                        })
+                        .reduce((s, wk) => s + Math.round((wk.duration_seconds ?? 0) / 60), 0);
+                      const max = Math.max(1, ...w.walks.map((wk) => Math.round((wk.duration_seconds ?? 0) / 60)));
+                      return <div key={i} className="flex-1 rounded-sm bg-forest/70" style={{ height: `${Math.max(6, (dayMins / max) * 100)}%`, opacity: dayMins === 0 ? 0.18 : 0.55 + (dayMins / max) * 0.45 }} />;
+                    })}
+                  </div>
+                  {w.mood && (
+                    <div className="mt-3 inline-flex rounded-full bg-accent/60 px-2.5 py-0.5 text-[11px] capitalize">{w.mood}</div>
+                  )}
+                  {w.reflect && (
+                    <p className="mt-2 line-clamp-2 font-serif text-sm italic leading-snug text-foreground/80">"{w.reflect}"</p>
+                  )}
+                  {empty && (
+                    <p className="mt-3 font-serif text-sm italic text-muted-foreground">A quiet week. Rest counts too.</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {badges.length > 0 && (
         <section className="space-y-3">
