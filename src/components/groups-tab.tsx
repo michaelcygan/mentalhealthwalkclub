@@ -266,7 +266,7 @@ export function GroupsTab() {
           {nearYou.length > 0 && (
             <section className="space-y-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                <MapPin className="h-3 w-3" /> Near you · {myCity}
+                <MapPin className="h-3 w-3 pin-drop" /> Near you · {myCity}
               </div>
               <div className="relative -mx-4 px-4">
                 <ul className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1.5">
