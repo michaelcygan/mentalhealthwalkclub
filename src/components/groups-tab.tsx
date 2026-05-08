@@ -105,12 +105,25 @@ export function GroupsTab() {
   ]);
   const niches = useMemo(() => discover.filter((g) => NICHE_KEYS.has(g.slug)), [discover]);
 
+  // Aggregate live counter for header
+  const totalWalkers = useMemo(() => groups.reduce((s, g) => s + (g.member_count || 0), 0), [groups]);
+  const cityCount = useMemo(() => new Set(groups.filter((g) => g.theme === "chapter" && g.city).map((g) => g.city)).size, [groups]);
+  const liveNow = useMemo(() => Array.from(pulse.values()).reduce((s, p) => s + (p.live || 0), 0), [pulse]);
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-0">
       <header className="space-y-3">
-        <div>
+        <div className="eyebrow-rise">
           <h1 className="font-serif text-3xl">Groups</h1>
-          <p className="mt-1 text-muted-foreground">Quiet affinity tags. They surface walks that fit you.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {totalWalkers > 0 ? (
+              <>
+                <span className="text-foreground">{totalWalkers.toLocaleString()}</span> walkers
+                {cityCount > 0 && <> across <span className="text-foreground">{cityCount}</span> {cityCount === 1 ? "city" : "cities"}</>}
+                {liveNow > 0 && <> · <span className="text-forest">{liveNow} walking right now</span></>}
+              </>
+            ) : "Quiet affinity tags. They surface walks that fit you."}
+          </p>
         </div>
 
         <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
