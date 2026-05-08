@@ -32,6 +32,7 @@ function JournalTab() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [snapshotUrls, setSnapshotUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -47,6 +48,26 @@ function JournalTab() {
       setLoading(false);
     });
   }, [user]);
+
+  // Bulk-sign snapshot URLs for the list thumbnails
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const need = walks.filter((w) => w.route_snapshot_path && !snapshotUrls[w.id]);
+      if (need.length === 0) return;
+      const entries = await Promise.all(need.map(async (w) => {
+        const { data } = await supabase.storage.from("walk-snapshots").createSignedUrl(w.route_snapshot_path!, 3600);
+        return [w.id, data?.signedUrl] as const;
+      }));
+      if (cancelled) return;
+      setSnapshotUrls((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of entries) if (url) next[id] = url;
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [walks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
@@ -257,25 +278,34 @@ function JournalTab() {
                       const active = selectedId === w.id;
                       return (
                         <li key={w.id} className="relative">
-                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 pr-12 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
+                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`flex w-full gap-3 rounded-2xl border p-3 pr-12 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
+                            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-secondary/40">
+                              {snapshotUrls[w.id] ? (
+                                <img src={snapshotUrls[w.id]} alt="" loading="lazy" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="grid h-full w-full place-items-center text-muted-foreground"><Footprints className="h-5 w-5" /></div>
+                              )}
                             </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
-                            </div>
-                            {(w.mood_before || w.mood_after) && (
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                                {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
-                                <span className="text-muted-foreground">→</span>
-                                {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
-                                {delta !== null && (
-                                  <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
-                                )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
                               </div>
-                            )}
-                            {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps
+                              </div>
+                              {(w.mood_before || w.mood_after) && (
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                  {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
+                                  <span className="text-muted-foreground">→</span>
+                                  {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
+                                  {delta !== null && (
+                                    <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
+                                  )}
+                                </div>
+                              )}
+                              {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
+                            </div>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); onShareEntry(w); }}
