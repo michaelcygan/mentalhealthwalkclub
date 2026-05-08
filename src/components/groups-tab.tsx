@@ -212,22 +212,20 @@ export function GroupsTab() {
         </section>
       ) : (
         <>
-          {/* ─── Pulse strip ─── */}
-          {pulseGroups.length > 0 && (
-            <section className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Radio className="h-3.5 w-3.5 text-forest live-pulse" />
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
-              </div>
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
-                {pulseGroups.map(({ g, p }, i) => (
-                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
-                    <GroupCard group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {/* ─── Pulse rail (auto-drift) ─── */}
+          <PulseRail
+            groups={[...pulseGroups.map((x) => x.g),
+              // also include "needs walkers" candidates that aren't already live
+              ...discover.filter((g) => {
+                const p = pulse.get(g.id);
+                if (!p?.nextStart || p.live > 0) return false;
+                const ms = new Date(p.nextStart).getTime() - Date.now();
+                return ms > -5 * 60_000 && ms < 90 * 60_000 && p.walkersWeek < 3;
+              })]}
+            pulse={pulse}
+            mine={mine}
+            onToggle={toggleJoin}
+          />
 
           {/* ─── Your groups (mini grid) ─── */}
           {yours.length > 0 && (
