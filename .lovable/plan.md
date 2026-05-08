@@ -1,135 +1,80 @@
-# Home Tab — World-Class Pass
+# Groups Expansion — Locations + Viral Niches
 
-The home tab today is a long vertical list of small components stacked by hand. The fix is not to add features — it's to **promote the home page into a deliberate module feed** where each card is sized for its signal strength, mobile gestures are first-class, and the weather + live walks become real modules instead of inline text.
+Goal: turn the Groups tab into a place where almost every walker finds a "that's me" group on day one — and a few that are weird/specific enough to share. All seeded via a single `INSERT` (no schema change, no UI change). Existing `groups-tab.tsx` already handles `theme`, `city`, `country`, "Near me", and theme buckets, so new rows light up automatically.
 
-Everything below reuses existing primitives. Net new code is ~3 small components and a layout refactor of `src/routes/index.tsx`.
+## What gets added
 
----
+### 1. US metro chapters (~55)
+One group per top US metropolitan area, theme `chapter`, with `city`, `state`, `country='US'`, and a friendly `location_label` (e.g. "Chicagoland"). Slugs like `chapter-nyc`, `chapter-chicagoland`, `chapter-dfw`.
 
-## The new module order (logged-in)
+Tier A (top 25 metros): NYC, LA, Chicagoland, Dallas–Fort Worth, Houston, DC Metro, Bay Area, Philadelphia, Miami–South Florida, Atlanta, Boston, Phoenix, SF, Riverside–San Bernardino (Inland Empire), Detroit, Seattle, Minneapolis–St. Paul (Twin Cities), San Diego, Tampa Bay, Denver, St. Louis, Baltimore, Charlotte, Orlando, San Antonio.
 
-```text
-┌─────────────────────────────────────┐
-│  HERO BAND  (greeting + level ring) │  ← merges greeting + walker level
-├─────────────────────────────────────┤
-│  ▶ ACTIVE WALK  (only if active)    │
-│  ⤴ COMEBACK NUDGE (only if 7d gap)  │
-├─────────────────────────────────────┤
-│  ⬛ START A WALK  (primary CTA)      │
-│  ··  Other ways to walk (chips)     │
-├─────────────────────────────────────┤
-│  THIS WEEK  (ring + streak + dots)  │
-│   ↳ weather chip lives here, inline │
-├─────────────────────────────────────┤
-│  HAPPENING NOW  (horizontal feed)   │  ← live rooms + scheduled <60min
-├─────────────────────────────────────┤
-│  WEATHER MODULE  (full card)        │  ← collapsed → expand for forecast
-├─────────────────────────────────────┤
-│  WEEK IN REVIEW (Sun only)          │
-│  YOUR LAST REFLECTION (if any)      │
-└─────────────────────────────────────┘
-```
+Tier B (26–50): Portland OR, Sacramento, Pittsburgh, Las Vegas, Austin, Cincinnati, Kansas City, Columbus, Cleveland, Indianapolis, San Jose, Nashville, Virginia Beach–Hampton Roads, Providence, Milwaukee, Jacksonville, Oklahoma City, Raleigh–Durham (Triangle), Memphis, Richmond, New Orleans, Louisville, Salt Lake City, Hartford, Buffalo.
 
-Visibility rules: every module returns `null` when its signal is empty. The page never feels half-built.
+Plus a few high-signal sub-metros: Chicagoland Suburbs, NYC–Brooklyn (already exists, keep), NYC–Queens, LA–South Bay, LA–Valley, Bay Area–East Bay, DC–NoVA.
 
----
+### 2. Lifestyle / geography (~8)
+- **Rural Walkers** (theme `quiet`, no city) — country roads, gravel, big sky
+- **Small Town Walkers**
+- **Suburban Loop**
+- **Coastal Walkers**
+- **Mountain Town Walkers**
+- **Desert Walkers**
+- **Snow Walkers** (cold-weather)
+- **City Block Walkers** (urban dense)
 
-## Module-by-module changes
+### 3. Viral niche groups (~25)
+Designed to be screenshot-able and tribe-forming. Each maps to an existing `theme` so filters keep working.
 
-### 1. Hero Band — merge greeting + walker level
-Today the greeting is a `HeroGradient` and the level lives only on /profile. Pull the level ring into the hero so the user *sees their progress at the top*.
+Identity / life-stage:
+- **5am Club** (`reset`)
+- **Night Owls** (`quiet`) — post-10pm walkers
+- **Lunchbreak Walkers** (`reset`)
+- **Dog Parents** (`connection`)
+- **Stroller Crew** (`connection`)
+- **Empty Nesters** (`chapter`)
+- **Solo Travelers** (`connection`)
+- **Remote Workers** (`burnout`)
+- **Shift Workers** (`burnout`)
+- **Grad School Survival** (`burnout`)
+- **First-Year Teachers** (`burnout`)
+- **Healthcare Workers** (`burnout`)
+- **Founders Walk** (`burnout`)
+- **Caregivers** (`grief`)
 
-- Left: greeting + microState copy (unchanged).
-- Right (mobile: top-right inside hero; desktop: aligned right): a small `LevelRing` (40px) — reuses `walker-level.ts` math + the ring SVG already in `walker-card-header.tsx`. Tap → `/profile`.
-- Adds **time-of-day tinting** to the hero gradient using the existing tone tokens (dawn/day/dusk/night) so the page feels alive across the day.
+Mind / mood:
+- **Walk Instead of Doomscroll** (`reset`) — viral hook
+- **Phone-Free Walkers** (`quiet`)
+- **One Podcast, One Walk** (`quiet`)
+- **Audiobook Walkers** (`quiet`)
+- **Hot Girl Walk** (`reset`) — known meme, broad appeal
+- **Silent Walking** (`quiet`) — TikTok trend
+- **Rage Walk** (`burnout`)
+- **Gratitude Walk** (`reset`)
+- **Walk & Pray** (`quiet`)
+- **Sunset Chasers** (`reset`)
+- **Sunrise Club** (`reset`)
+- **Rainy Day Walkers** (`quiet`) — pairs with the new `weather_warrior` badge
 
-### 2. "This Week" card — pull weather into it
-The weather chip currently floats above NowAndNext as a button. Move it **inside the This Week card** as a small inline chip beside the streak line — it's a status signal, not a destination.
+### 4. International chapters (~10)
+Toronto, Vancouver, Montréal, Mexico City, London (exists), Manchester, Dublin, Berlin, Amsterdam, Paris, Barcelona, Madrid, Sydney, Melbourne, Auckland, Tokyo, Singapore.
 
-```text
-┌────────────────────────────────────┐
-│  ◐ 27/90 min     This week         │
-│                  Small walks count │
-│  · · · · ● ● ·                     │
-│  ─────────────                     │
-│  3-day streak · ☀ 62° clear        │  ← weather chip inline
-└────────────────────────────────────┘
-```
+## Technical details
 
-Reuses `WeeklyRing` + `WeatherPill`. Tapping the weather chip scrolls to the full Weather module below.
+- **One `supabase--insert` call** with `INSERT ... ON CONFLICT (slug) DO NOTHING` so it's idempotent and safe to re-run.
+- Columns: `name, slug, description, theme, city, state, country, location_label, group_type, is_active`. No `owner_user_id` (admin-seeded). `member_count` defaults to 0; the existing trigger keeps it accurate as people join.
+- Descriptions kept to one calm sentence each (≤120 chars) — the GroupCard already truncates to 2 lines.
+- `theme` uses only existing values (`anxiety, burnout, grief, depression, loneliness, reset, quiet, connection, chapter`) so theme buckets in `GroupsTab` light up without code changes.
+- "Near me" already keys off `profiles.city` exact match — for metros we use the canonical city name (e.g. `Chicago`, not `Chicagoland`) but set `location_label='Chicagoland'` so the card reads naturally while matching commuters.
 
-### 3. Happening Now — promote into a real join-feed
-`LiveNowStrip` already does this — but it's buried inside `NowAndNext` and styled like a footer. Promote it:
+## What does NOT change
 
-- **New section heading** with live dot + count: "3 walking now · 2 starting soon".
-- **Larger snap-scroll cards** (260px, snap-x mandatory) with pressed states + haptics on tap.
-- **One-tap join** for live rooms: tap → starts a Walk & Talk session and routes into the room (calls existing `openSheet("audio")` flow with the room id pre-selected). No middleman screen.
-- **"Starting in 8 min"** countdown updates live (already polled).
-- Empty state: "All quiet right now — be the first" with a one-tap "Start a Walk & Talk" pill.
+- No schema migration, no new columns, no RLS changes.
+- No edits to `groups-tab.tsx`, `group-card.tsx`, or `use-groups-feed.ts` — they already render everything.
+- Pulse/live counts populate naturally as walks happen.
 
-### 4. Weather Module — full card, not a chip
-Replace inline weather with a proper card. Collapsed by default (single row), tap to expand:
+## Open questions before I run the insert
 
-- Collapsed: `☀ 62° · clear · good walking weather` + chevron.
-- Expanded: existing `WeatherStrip` with 6-hour forecast + a `RainSoonBanner` if rain ≤ 2h.
-- "Best window today" pill — finds the next 90-min block of best `tone` from the forecast and surfaces it: `best window · 4–6pm`.
-- Long-press → "Set a reminder for 4pm" (uses existing notification scaffolding if present, else a toast for now).
-
-Uses existing `useCurrentWeather`, `useHourlyForecast`, `WeatherStrip`, `RainSoonBanner`. Net new: ~60 lines for the card shell + best-window calc.
-
-### 5. Start CTA — gesture-rich
-Current `StartCta` is a single button. Level it up without bloating it:
-
-- **Long-press** the big button → opens the mode sheet directly (skip default solo).
-- **Swipe left/right on the button** → cycles mode (Solo → Guided → Walk & Talk) with haptic ticks; the button label morphs.
-- Press-down state uses a spring scale (0.98) + subtle shadow lift.
-- Sub-chips ("Other ways to walk") become a single horizontal snap-scroll row with mini-icons; saves vertical space.
-
-### 6. Pull-to-refresh
-The `use-pull-to-refresh.ts` hook already exists. Wire it on the home scroll container — refreshes weekly stats, live rooms, weather. Subtle leaf/footprint icon descends on overscroll.
-
-### 7. Sticky weekly progress (micro)
-When the user scrolls past the This Week card, a 24px-tall sticky bar appears under the header showing `▮▮▮▮◯◯◯ 27/90` — disappears when they scroll back up. Uses existing `useScrollDirection`. Single dependency, ~30 lines.
-
----
-
-## What we are NOT adding
-- No new database tables.
-- No new RPC.
-- No new routes.
-- No new dependencies.
-- No new badges or features beyond surfacing what exists.
-
-## Files
-
-**Edit:**
-- `src/routes/index.tsx` — module feed layout (~80 line refactor, mostly removing/reordering).
-- `src/components/now-and-next.tsx` — split: weather goes into the new WeeklyCard, LiveNowStrip is promoted as its own section.
-- `src/components/live-now-strip.tsx` — bigger cards, snap-scroll, one-tap join, empty state.
-- `src/components/weekly-ring.tsx` — accepts an optional `weatherSlot` prop for the inline chip.
-
-**New (small):**
-- `src/components/home/hero-band.tsx` — greeting + level ring + time-of-day tint (~80 lines).
-- `src/components/home/weather-module.tsx` — collapsible card with best-window pill (~110 lines).
-- `src/components/home/sticky-week-bar.tsx` — scroll-revealed mini progress (~40 lines).
-
-Total: ~330 lines new, ~150 lines moved/removed. Net add ≈ 180 lines for a substantially better mobile home.
-
----
-
-## Mobile capabilities used
-- **Haptics** on every meaningful tap (already in `lib/device.ts`).
-- **Pull-to-refresh** (existing hook).
-- **Long-press** on Start CTA + Weather card.
-- **Swipe-to-cycle** mode on Start CTA.
-- **Snap-scroll** with `scroll-snap-type: x mandatory` on Happening Now and chips.
-- **Safe-area aware** padding (already throughout).
-- **Time-of-day tint** — hero tint shifts every few hours; subtle cue you're in a living app, not a static page.
-- **Reduced motion respected** — all springs gated on `prefers-reduced-motion`.
-
-## Why this is "world-class 2026"
-- Every module earns its place: zero-state hides, signal-state grows. The page reorganizes itself around what you actually have today.
-- Weather and live walks become *modules*, not afterthoughts — matching how Apple Weather, Headspace Today, and Strava feed treat ambient context.
-- One-tap join from the home page collapses 3 screens of friction into a single gesture.
-- The hero shows progress (level), the card shows commitment (this week + weather), the feed shows community (happening now). Three jobs, three modules, no clutter.
-- Tone stays care-first: no red, no shame, no streak loss screams. The weather hint is a friend, not a notification.
+1. Total target — is **~120 groups** the right magnitude, or do you want me to push toward **200+** (e.g. add top-100 US cities + more international)?
+2. For metros that span states (DC Metro, NYC tri-state, KC, Memphis), should "Near me" match the **core city only** (simplest) or should I also seed sibling chapters like `chapter-nyc-nj`?
+3. Any niches you want **in or out**? Anything on your "viral plan" I should mirror in the seed names so launch lines up?
