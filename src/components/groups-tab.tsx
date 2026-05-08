@@ -149,6 +149,13 @@ export function GroupsTab() {
               const on = active.has(id);
               const dim = id === "near" && !myCity;
               const isLive = id === "live";
+              const idleAnim = on
+                ? ""
+                : id === "near" ? "pin-drop"
+                : id === "upcoming" || id === "quiet" ? "sparkle-twinkle"
+                : id === "audio" ? "headphones-bob"
+                : isLive ? "live-pulse"
+                : "";
               return (
                 <button
                   key={id}
@@ -159,7 +166,7 @@ export function GroupsTab() {
                        : "border-border bg-card text-foreground/80 hover:border-forest/40"
                   } ${dim ? "opacity-40" : ""}`}
                 >
-                  <Icon className={`h-3 w-3 ${isLive && !on ? "live-pulse text-forest" : ""}`} />{label}
+                  <Icon className={`h-3 w-3 ${idleAnim} ${isLive && !on ? "text-forest" : ""}`} />{label}
                 </button>
               );
             })}
