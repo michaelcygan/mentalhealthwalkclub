@@ -149,6 +149,8 @@ export function MobileTabBar() {
               <div className="flex-1">
                 <div className="font-serif text-base">Schedule a Friend Walk</div>
                 <div className="text-[11px] text-muted-foreground">pick a time later this week — share the invite now</div>
+              </div>
+            </button>
             {pwa.canInstall && (
               <button
                 type="button"
@@ -165,8 +167,6 @@ export function MobileTabBar() {
                 <span className="text-[10px] font-medium uppercase tracking-wider text-forest">Install</span>
               </button>
             )}
-          </div>
-            </button>
           </div>
         </DrawerContent>
       </Drawer>
