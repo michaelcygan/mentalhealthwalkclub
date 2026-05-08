@@ -10,7 +10,18 @@ import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
 import { useGroupActions } from "@/hooks/use-group-actions";
 
-export const Route = createFileRoute("/groups/$slug")({ component: GroupDetail });
+export const Route = createFileRoute("/groups/$slug")({
+  component: GroupDetail,
+  head: ({ params }) => ({
+    meta: [
+      { title: `${params.slug.replace(/-/g, " ")} — Walk Club group` },
+      { name: "description", content: "A quiet affinity group on Walk Club. Walks, Walk & Talks, and Local meetups for people who get it." },
+      { property: "og:title", content: `Join the ${params.slug.replace(/-/g, " ")} walking group` },
+      { property: "og:description", content: "Find your people on Walk Club — by city, by theme, by feeling." },
+      { property: "og:type", content: "website" },
+    ],
+  }),
+});
 
 interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
 interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; }
