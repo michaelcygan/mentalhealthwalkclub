@@ -1,11 +1,12 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
+import { ViewModeProvider, useViewMode } from "@/lib/view-mode";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, Headphones } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, Headphones, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 
