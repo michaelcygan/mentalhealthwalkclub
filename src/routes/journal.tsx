@@ -62,6 +62,43 @@ function JournalTab() {
   }, [walks]);
   const maxWk = Math.max(1, ...weeklyMins);
 
+  // 30-day mood arc — average mood_after_score per day, smoothed sparkline
+  const moodArc = useMemo(() => {
+    const days: { score: number | null }[] = Array.from({ length: 30 }, () => ({ score: null }));
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const buckets = new Map<number, number[]>();
+    walks.forEach((w) => {
+      if (w.mood_after_score == null) return;
+      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 30) return;
+      const k = 29 - diffDays;
+      const arr = buckets.get(k) ?? [];
+      arr.push(w.mood_after_score);
+      buckets.set(k, arr);
+    });
+    buckets.forEach((arr, k) => { days[k] = { score: arr.reduce((s, n) => s + n, 0) / arr.length }; });
+    return days;
+  }, [walks]);
+  const moodAvg = useMemo(() => {
+    const vals = moodArc.map((d) => d.score).filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : null;
+  }, [moodArc]);
+
+  const onShareEntry = async (w: Walk) => {
+    haptics.tap();
+    const mins = Math.round((w.duration_seconds ?? 0) / 60);
+    const miles = ((w.distance_meters ?? 0) * 0.000621371).toFixed(2);
+    const date = new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const moodLine = w.mood_before && w.mood_after ? `${w.mood_before} → ${w.mood_after}` : (w.mood_after ?? "");
+    const lines = [
+      `🌿 ${date} — ${mins} min walk · ${miles} mi`,
+      moodLine && `mood: ${moodLine}`,
+      w.reflection_note && `“${w.reflection_note}”`,
+      "— shared from Walk Club",
+    ].filter(Boolean) as string[];
+    await share({ title: "A walk worth remembering", text: lines.join("\n") });
+  };
+
   // Memory ribbon — group walks into 8 most-recent weeks for a horizontal "cards of a week" scroll
   const ribbonWeeks = useMemo(() => {
     const weekMap = new Map<number, Walk[]>();
