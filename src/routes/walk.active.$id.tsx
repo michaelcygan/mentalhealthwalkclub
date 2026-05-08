@@ -355,15 +355,14 @@ function ActiveWalk() {
       )}
 
       {/* Sticky control dock */}
-      <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border bg-card/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mt-6 md:border-0 md:bg-transparent md:p-0">
+      <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border glass px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 md:static md:mt-6 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setPaused((p) => !p)} className="h-14 flex-1 rounded-2xl touch-manipulation md:h-12">
             {paused ? <><Play className="mr-2 h-4 w-4" />Resume</> : <><Pause className="mr-2 h-4 w-4" />Pause</>}
           </Button>
-          <Button onClick={() => setEnding(true)} className="h-14 flex-1 rounded-2xl bg-clay text-primary-foreground touch-manipulation hover:opacity-90 md:h-12">
-            <Square className="mr-2 h-4 w-4" />End walk
-          </Button>
+          <LongPressEndButton onEnd={() => setEnding(true)} />
         </div>
+        <p className="mt-1.5 text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 md:hidden">hold to end</p>
       </div>
     </div>
   );
