@@ -10,8 +10,7 @@ import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, ArrowL
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 import { NowPlayingBar } from "@/components/now-playing-bar";
-import { useScrollDirection } from "@/hooks/use-scroll-direction";
-import { haptics } from "@/lib/device";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 
 function NotFoundComponent() {
   return (
