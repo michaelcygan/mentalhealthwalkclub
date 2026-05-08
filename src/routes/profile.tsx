@@ -45,6 +45,8 @@ function ProfileTab() {
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
   const [editingGoal, setEditingGoal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const stats = useProfileStats(user?.id);
 
   useEffect(() => {
     if (!user) return;
