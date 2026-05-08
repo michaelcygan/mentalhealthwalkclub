@@ -200,10 +200,26 @@ function EventDetail() {
     setBusy("join");
     try {
       const res = await joinScheduledFn({ data: { eventId: event.id } });
+      if (res.requiresJoin) {
+        toast(`${res.groupName} members only — join to enter.`);
+        setBusy(null);
+        return;
+      }
       toast.success(res.podIndex ? `You're in pod ${res.podIndex}.` : "You're in the circle.");
       navigate({ to: "/walk/active/$id" as never, params: { id: res.walkSessionId } as never });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not join"); setBusy(null); }
   });
+
+  const endAudio = async () => {
+    if (!event) return;
+    setBusy("end-audio");
+    try {
+      await endAudioFn({ data: { eventId: event.id } });
+      toast.success("Walk ended. Thank you for hosting.");
+      refresh();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not end"); }
+    finally { setBusy(null); }
+  };
 
   const openEarly = async () => {
     if (!event) return;
