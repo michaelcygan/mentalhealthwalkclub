@@ -32,7 +32,10 @@ export function MyFriendWalks() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const reload = useCallback(() => { list().then((r) => setWalks(r.walks as FW[])); }, [list]);
+  const reload = useCallback(() => {
+    if (!user) { setWalks([]); return; }
+    list().then((r) => setWalks(r.walks as FW[])).catch(() => setWalks([]));
+  }, [list, user]);
   useEffect(() => { reload(); }, [reload]);
 
   const onCancel = async (w: FW) => {
