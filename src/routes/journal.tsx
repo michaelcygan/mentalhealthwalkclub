@@ -20,7 +20,8 @@ interface Walk {
   id: string; started_at: string; duration_seconds: number | null; distance_meters: number | null;
   steps: number | null; mood_before: string | null; mood_after: string | null;
   mood_before_score: number | null; mood_after_score: number | null;
-  reflection_note: string | null; walk_type: string;
+  reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
+  privacy: string; share_map: boolean | null; intention: string | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
 
@@ -35,7 +36,7 @@ function JournalTab() {
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     Promise.all([
-      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type")
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention")
         .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
@@ -324,28 +325,57 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
   const [photos, setPhotos] = useState<{ url: string; t: number }[]>([]);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setPhotos([]);
+    setSnapshotUrl(null);
     if (!walk) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("walk_photos")
-        .select("storage_path, taken_at_seconds")
-        .eq("walk_session_id", walk.id)
-        .order("taken_at_seconds", { ascending: true });
-      if (!data || cancelled) return;
-      const signed = await Promise.all(
-        data.map(async (p) => {
-          const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p.storage_path, 3600);
-          return s?.signedUrl ? { url: s.signedUrl, t: p.taken_at_seconds ?? 0 } : null;
-        })
-      );
-      if (!cancelled) setPhotos(signed.filter(Boolean) as { url: string; t: number }[]);
+      const tasks: Promise<unknown>[] = [];
+      tasks.push((async () => {
+        const { data } = await supabase
+          .from("walk_photos")
+          .select("storage_path, taken_at_seconds")
+          .eq("walk_session_id", walk.id)
+          .order("taken_at_seconds", { ascending: true });
+        if (!data || cancelled) return;
+        const signed = await Promise.all(
+          data.map(async (p) => {
+            const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p.storage_path, 3600);
+            return s?.signedUrl ? { url: s.signedUrl, t: p.taken_at_seconds ?? 0 } : null;
+          })
+        );
+        if (!cancelled) setPhotos(signed.filter(Boolean) as { url: string; t: number }[]);
+      })());
+      if (walk.route_snapshot_path) {
+        tasks.push((async () => {
+          const { data } = await supabase.storage.from("walk-snapshots").createSignedUrl(walk.route_snapshot_path!, 3600);
+          if (!cancelled && data?.signedUrl) setSnapshotUrl(data.signedUrl);
+        })());
+      }
+      await Promise.all(tasks);
     })();
     return () => { cancelled = true; };
   }, [walk?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onShare = async () => {
+    if (!snapshotUrl || !walk) return;
+    haptics.tap();
+    try {
+      const res = await fetch(snapshotUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title: "My walk", text: "Walked it through 🌿" });
+        return;
+      }
+      // Fallback: download
+      const a = document.createElement("a"); a.href = snapshotUrl; a.download = file.name; a.click();
+    } catch { /* user cancel */ }
+  };
 
   if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
   const delta = walk.mood_before_score && walk.mood_after_score ? walk.mood_after_score - walk.mood_before_score : null;
@@ -356,6 +386,22 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
     <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
       <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
       <h3 className="mt-1 font-serif text-2xl capitalize">{walk.walk_type.replace(/_/g, " ")} walk</h3>
+      {snapshotUrl && (
+        <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-secondary/40">
+          <img src={snapshotUrl} alt="Route map" className="aspect-square w-full object-cover" loading="lazy" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/55 via-foreground/15 to-transparent p-3 text-primary-foreground">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="font-serif text-xl tabular-nums leading-none">{miles} mi · {mins} min</div>
+                {walk.intention && <div className="mt-1 line-clamp-1 font-serif text-xs italic opacity-90">{walk.intention}</div>}
+              </div>
+              <button type="button" onClick={onShare} className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-cream/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-soft backdrop-blur transition active:scale-95">
+                <Share2 className="h-3.5 w-3.5" /> Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">
         <div><div className="font-serif text-2xl tabular-nums">{mins}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">min</div></div>
         <div><div className="font-serif text-2xl tabular-nums">{miles}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">mi</div></div>

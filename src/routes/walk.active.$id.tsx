@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2 } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
@@ -16,6 +16,9 @@ import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
 import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
+import { renderRouteSnapshot } from "@/lib/route-snapshot";
+
+const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -24,7 +27,7 @@ const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 interface Session {
   id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
   intention: string | null; started_at: string; status: string; guided_track_id: string | null;
-  audio_room_id: string | null;
+  audio_room_id: string | null; group_id: string | null; privacy: string; share_map: boolean;
 }
 interface FriendRoom { id: string; share_code: string | null; host_user_id: string | null; }
 
@@ -78,11 +81,14 @@ function ActiveWalk() {
 
   const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
   const [friendShareOpen, setFriendShareOpen] = useState(false);
+  const [shareMap, setShareMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
 
   useEffect(() => {
     supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
       if (!data) return;
       setSession(data as Session);
+      setShareMap(!!(data as Session).share_map);
       if (data.audio_room_id) {
         const { data: room } = await supabase
           .from("audio_rooms")
@@ -240,13 +246,27 @@ function ActiveWalk() {
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
       reflection_note: merged || null,
     }).eq("id", session.id);
+    let snapshotPath: string | null = null;
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
+      try {
+        const blob = await renderRouteSnapshot(points.current, { width: 1080, height: 1080 });
+        if (blob) {
+          const path = `${user.id}/${session.id}.png`;
+          const { error } = await supabase.storage.from("walk-snapshots").upload(path, blob, { contentType: "image/png", upsert: true });
+          if (!error) snapshotPath = path;
+        }
+      } catch { /* snapshot is best-effort */ }
+    }
+    if (snapshotPath) {
+      await supabase.from("walk_sessions").update({ route_snapshot_path: snapshotPath }).eq("id", session.id);
     }
     if (walkPhotos.length > 0) {
       try { await uploadWalkPhotos({ supabase, userId: user.id, walkSessionId: session.id, photos: walkPhotos }); }
       catch { toast.error("Some photos couldn't upload"); }
     }
+    // Clean up any live pings (also auto-fade by 2-min select filter)
+    await supabase.from("walk_live_pings").delete().eq("walk_session_id", session.id);
     clearWalkCaptures(session.id);
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
@@ -354,6 +374,48 @@ function ActiveWalk() {
       </section>
 
       <div className="space-y-4 px-4 pt-5 md:px-0">
+        {/* Live map — collapsible, lazy. Visible to walker only; opt-in to broadcast. */}
+        <section className="rounded-2xl border border-border bg-card p-3 shadow-soft">
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <button
+              type="button"
+              onClick={() => setShowMap((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
+              aria-expanded={showMap}
+            >
+              <MapIcon className="h-3.5 w-3.5" /> {showMap ? "Hide map" : "Show map"}
+            </button>
+            {session.privacy === "public" && session.group_id && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const next = !shareMap;
+                  setShareMap(next);
+                  haptics.tap();
+                  const { error } = await supabase.from("walk_sessions").update({ share_map: next }).eq("id", session.id);
+                  if (error) { setShareMap(!next); toast.error("Couldn't update sharing"); return; }
+                  toast(next ? "Visible on group map" : "Hidden from group map");
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition ${shareMap ? "bg-forest text-primary-foreground" : "border border-border bg-background text-muted-foreground"}`}
+              >
+                {shareMap ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                {shareMap ? "On group map" : "Private"}
+              </button>
+            )}
+          </div>
+          {showMap && (
+            <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-secondary/60" />}>
+              <WalkLiveMap
+                points={points.current.slice()}
+                walkSessionId={session.id}
+                userId={user?.id ?? null}
+                groupId={session.group_id}
+                shareToGroup={shareMap}
+              />
+            </Suspense>
+          )}
+        </section>
+
         {isAudio && (
           <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
         )}

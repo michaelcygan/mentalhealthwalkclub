@@ -1322,6 +1322,39 @@ export type Database = {
           },
         ]
       }
+      walk_live_pings: {
+        Row: {
+          group_id: string | null
+          heading: number | null
+          id: string
+          lat: number
+          lng: number
+          pinged_at: string
+          user_id: string
+          walk_session_id: string
+        }
+        Insert: {
+          group_id?: string | null
+          heading?: number | null
+          id?: string
+          lat: number
+          lng: number
+          pinged_at?: string
+          user_id: string
+          walk_session_id: string
+        }
+        Update: {
+          group_id?: string | null
+          heading?: number | null
+          id?: string
+          lat?: number
+          lng?: number
+          pinged_at?: string
+          user_id?: string
+          walk_session_id?: string
+        }
+        Relationships: []
+      }
       walk_photos: {
         Row: {
           bytes: number | null
@@ -1421,6 +1454,8 @@ export type Database = {
           mood_before_score: number | null
           privacy: string
           reflection_note: string | null
+          route_snapshot_path: string | null
+          share_map: boolean
           started_at: string
           status: string
           steps: number | null
@@ -1445,6 +1480,8 @@ export type Database = {
           mood_before_score?: number | null
           privacy?: string
           reflection_note?: string | null
+          route_snapshot_path?: string | null
+          share_map?: boolean
           started_at?: string
           status?: string
           steps?: number | null
@@ -1469,6 +1506,8 @@ export type Database = {
           mood_before_score?: number | null
           privacy?: string
           reflection_note?: string | null
+          route_snapshot_path?: string | null
+          share_map?: boolean
           started_at?: string
           status?: string
           steps?: number | null

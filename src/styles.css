@@ -273,3 +273,40 @@
 @media (prefers-reduced-motion: reduce) {
   .speaker-glow { animation: none !important; }
 }
+
+/* Live walk map: pulsing dot at current position */
+.walk-live-dot {
+  width: 14px; height: 14px; border-radius: 9999px;
+  background: oklch(0.36 0.05 155);
+  box-shadow: 0 0 0 4px oklch(0.36 0.05 155 / 0.18), 0 0 0 1.5px #fff inset;
+  position: relative;
+}
+.walk-live-dot::after {
+  content: ""; position: absolute; inset: -8px; border-radius: 9999px;
+  border: 2px solid oklch(0.36 0.05 155 / 0.55);
+  animation: walk-live-ping 1.8s ease-out infinite;
+}
+@keyframes walk-live-ping {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .walk-live-dot::after { animation: none; opacity: 0.4; }
+}
+/* MapLibre attribution: keep it subtle and themed */
+.maplibregl-ctrl-attrib { font-size: 9px !important; background: transparent !important; }
+.maplibregl-ctrl-attrib a { color: oklch(0.45 0.02 155); }
+
+/* Group live map: avatar markers */
+.group-walker-marker {
+  width: 36px; height: 36px; border-radius: 9999px;
+  background-color: oklch(0.36 0.05 155);
+  background-size: cover; background-position: center;
+  color: #fff; font-weight: 600; font-size: 13px;
+  display: grid; place-items: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25), 0 0 0 1px oklch(0.36 0.05 155 / 0.45);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.group-walker-marker:hover, .group-walker-marker:focus { transform: scale(1.08); outline: none; }
