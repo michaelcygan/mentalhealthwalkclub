@@ -13,6 +13,7 @@ import { NowPlayingBar } from "@/components/now-playing-bar";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { LogoStamp } from "@/components/logo-stamp";
+import { AmbientPlayerProvider } from "@/lib/ambient-context";
 
 function NotFoundComponent() {
   return (
