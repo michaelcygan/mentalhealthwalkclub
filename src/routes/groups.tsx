@@ -1,28 +1,29 @@
 import { createFileRoute, Outlet, useNavigate, useMatches } from "@tanstack/react-router";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { GroupsTab } from "./groups.index";
+import { GroupsTab } from "@/components/groups-tab";
 
-export const Route = createFileRoute("/groups")({ component: GroupsLayout });
+export const Route = createFileRoute("/groups")({
+  component: GroupsLayout,
+  head: () => ({ meta: [{ title: "Groups — Walk Club" }] }),
+});
 
 function GroupsLayout() {
   const navigate = useNavigate();
   const matches = useMatches();
-  const detailMatch = matches.find((m) => m.routeId === "/groups/$slug");
-  const open = !!detailMatch;
+  const open = matches.some((m) => m.routeId === "/groups/$slug");
 
   return (
     <>
-      {/* Always show the list underneath; suppress Outlet's own index render */}
       <GroupsTab />
-      <div className="hidden">
-        <Outlet />
-      </div>
       <Sheet open={open} onOpenChange={(o) => { if (!o) navigate({ to: "/groups" as never }); }}>
         <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-xl">
           <SheetHeader className="sr-only">
             <SheetTitle><VisuallyHidden>Group detail</VisuallyHidden></SheetTitle>
           </SheetHeader>
+          <div className="px-4 pb-10 pt-5 md:px-6">
+            <Outlet />
+          </div>
         </SheetContent>
       </Sheet>
     </>

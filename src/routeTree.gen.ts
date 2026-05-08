@@ -16,7 +16,6 @@ import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as GroupsIndexRouteImport } from './routes/groups.index'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
@@ -58,11 +57,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const GroupsIndexRoute = GroupsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => GroupsRoute,
 } as any)
 const GroupsSlugRoute = GroupsSlugRouteImport.update({
   id: '/$slug',
@@ -108,7 +102,6 @@ export interface FileRoutesByFullPath {
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
-  '/groups/': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -117,13 +110,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
-  '/groups': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -140,7 +133,6 @@ export interface FileRoutesById {
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
-  '/groups/': typeof GroupsIndexRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
@@ -158,7 +150,6 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
-    | '/groups/'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -167,13 +158,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/journal'
     | '/profile'
     | '/welcome'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
-    | '/groups'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -189,7 +180,6 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
-    | '/groups/'
     | '/walk/active/$id'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-pods'
@@ -259,13 +249,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/groups/': {
-      id: '/groups/'
-      path: '/'
-      fullPath: '/groups/'
-      preLoaderRoute: typeof GroupsIndexRouteImport
-      parentRoute: typeof GroupsRoute
-    }
     '/groups/$slug': {
       id: '/groups/$slug'
       path: '/$slug'
@@ -326,12 +309,10 @@ const EventsRouteWithChildren =
 
 interface GroupsRouteChildren {
   GroupsSlugRoute: typeof GroupsSlugRoute
-  GroupsIndexRoute: typeof GroupsIndexRoute
 }
 
 const GroupsRouteChildren: GroupsRouteChildren = {
   GroupsSlugRoute: GroupsSlugRoute,
-  GroupsIndexRoute: GroupsIndexRoute,
 }
 
 const GroupsRouteWithChildren =
@@ -352,3 +333,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
