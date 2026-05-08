@@ -55,6 +55,30 @@ export function MobileTabBar() {
 
   const walkActive = isActive("/", true);
 
+  // Friend Walk: create + open share card
+  const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
+  const navigate = useNavigate();
+  const createFriend = useServerFn(createFriendWalk);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string } | null>(null);
+  const [friendBusy, setFriendBusy] = useState(false);
+
+  const startFriendWalk = () =>
+    requireAuth(async () => {
+      setFriendBusy(true);
+      try {
+        const r = await createFriend();
+        setFriendInfo({ code: r.code, walkId: r.walkId });
+        setSheetOpen(false);
+        setShareOpen(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "couldn't start walk");
+      } finally {
+        setFriendBusy(false);
+      }
+    });
+
   return (
     <>
       <nav
