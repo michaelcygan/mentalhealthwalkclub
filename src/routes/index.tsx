@@ -17,7 +17,7 @@ import { ComebackNudge } from "@/components/comeback-nudge";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
-import { HeroGradient } from "@/components/hero-gradient";
+
 import { HeroBand } from "@/components/home/hero-band";
 import { WeatherModule } from "@/components/home/weather-module";
 import { StickyWeekBar } from "@/components/home/sticky-week-bar";
