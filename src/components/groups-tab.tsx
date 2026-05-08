@@ -210,9 +210,11 @@ export function GroupsTab() {
                 <Radio className="h-3.5 w-3.5 text-forest" />
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
               </div>
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-                {pulseGroups.map(({ g, p }) => (
-                  <GroupCard key={g.id} group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 fade-edge-x md:mx-0 md:px-0">
+                {pulseGroups.map(({ g, p }, i) => (
+                  <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}>
+                    <GroupCard group={g} pulse={p} joined={mine.has(g.id)} onToggle={() => toggleJoin(g)} variant="pulse" />
+                  </div>
                 ))}
               </div>
             </section>
