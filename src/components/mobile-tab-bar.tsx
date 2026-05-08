@@ -149,7 +149,23 @@ export function MobileTabBar() {
               <div className="flex-1">
                 <div className="font-serif text-base">Schedule a Friend Walk</div>
                 <div className="text-[11px] text-muted-foreground">pick a time later this week — share the invite now</div>
-              </div>
+            {pwa.canInstall && (
+              <button
+                type="button"
+                onClick={async () => { haptics.tap(); const ok = await pwa.install(); if (ok) { setSheetOpen(false); toast("Added to your home screen"); } }}
+                className="col-span-2 flex items-center gap-3 rounded-2xl border border-forest/30 bg-accent/20 p-3 text-left transition active:scale-[0.98] hover:border-forest/50"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-forest/15">
+                  <DownloadCloud className="h-4 w-4 text-forest" />
+                </span>
+                <div className="flex-1">
+                  <div className="font-serif text-sm">Add to home screen</div>
+                  <div className="text-[11px] text-muted-foreground">one-tap launch, no app store</div>
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-forest">Install</span>
+              </button>
+            )}
+          </div>
             </button>
           </div>
         </DrawerContent>
