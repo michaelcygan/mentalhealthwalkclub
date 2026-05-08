@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Plus, Radio, Calendar, MapPin, Users } from "lucide-react";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
 import { CityTile } from "@/components/groups/city-tile";
+import { MoodThumb } from "@/components/groups/mood-thumb";
 
 const themeTint: Record<string, string> = {
   anxiety: "from-sky-100/60",
@@ -112,7 +113,7 @@ export function GroupCard({
           aria-label={`Open ${group.name}`}
           className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest/50"
         />
-        <span className={`relative h-8 w-8 shrink-0 rounded-lg ${band}`} aria-hidden />
+        <MoodThumb theme={group.theme} groupId={group.id} fallbackBand={band} size={36} />
         <div className="relative min-w-0 flex-1">
           <div className="truncate font-serif text-sm leading-tight">{group.name}</div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">

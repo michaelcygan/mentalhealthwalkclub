@@ -1,100 +1,43 @@
-# Groups — Pass 7: density, surface consolidation, mobile-native
+## Pass 8 — Moods polish + locations audit
 
-The page works. It just sprawls. We have **4 Vibe sections** + **Yours / For you / Near you / Trending** = 8 stacked horizontal rails, each with its own eyebrow, title, blurb, "See all" button, and a row of 220px cards where mobile sees ~2 at a time. That's the screenshot's core problem: enormous chrome-to-content ratio.
+### 1. Mood list: scrollable, ~4 visible
 
-Two structural collapses, one new mode, and a tight set of mobile-native primitives — almost entirely reusing existing components.
+Currently `MoodsCollection` slices to 6 in a 2-col grid, with a separate "See all" sheet. On 390px the user sees ~3 rows comfortably and the rest pushes the page long.
 
-## 1. Collapse "Today for you" — fold 4 sections into 1 stacked surface
+Change to a **single-column, vertically scrollable list** capped to a fixed height that shows ~4 rows, then scrolls in-place:
 
-**New: `src/components/groups/today-panel.tsx`** (replaces inline Yours / For you / Near you / Trending blocks in `groups-tab.tsx`).
+- Replace the 2-col grid with a 1-col list inside a `max-h-[19rem] overflow-y-auto` container with `scroll-snap-type: y proximity`, `overscroll-behavior: contain`, soft top/bottom mask (`mask-image: linear-gradient(...)`), and `no-scrollbar`.
+- Render **all** groups in the active mood (no slice). The sheet "See all" stays available as a fullscreen browse, but is no longer required to discover the list.
+- Each item is the existing `variant="mini"` card (no new variant), with the circle thumbnail upgraded (see §2).
+- Tab switch keeps `viewTransition()` so the list cross-fades.
 
-A single section titled **"Today"** with a **segmented control** (sister of NicheCollection's tabs):
+### 2. Mood thumbnails: photo circles with gentle slideshow
 
-`Yours · For you · Near you · Trending`
+Each `mini` card today shows a flat colored square (`themeBand`). Replace with a circular photo that slowly cross-fades through 3 images, similar to niches but slower and offset per card so the whole list breathes.
 
-- Tabs only render if their bucket is non-empty; default is whichever has the most weight (Yours > For you > Near > Trending).
-- Body is the existing `variant="rail"` carousel — but rail cards get tightened from `w-[220px]` → `w-[176px]` and gain a **route sparkline thumbnail** (reuses `route-sparkline.tsx`) + tiny weather glyph when relevant. Same primitive, denser surface.
-- A small "See all →" link beside the segmented control opens the existing VibeCollection-style bottom sheet for the active tab.
-- **Net win:** 4 sections × (eyebrow + h2 + carousel ≈ 180px) → 1 section ≈ 220px. ~500px reclaimed, no info lost.
+- **Generate 3 square images per theme** (8 themes × 3 = 24 webps), 384×384, saved to `public/mood-covers/{theme}/{1,2,3}.webp`. Themes: `anxiety, burnout, grief, depression, loneliness, reset, quiet, connection`. Style brief: soft, abstract, on-brand (muted, painterly, no people-faces, no text), each tinted toward the existing themeTint hue so they harmonize with the card.
+- **Compress + LQIP**: new `scripts/compress-moods.mjs` (mirror of `compress-niches.mjs`) → writes `src/data/mood-covers.ts` with `{ count, blur[] }` and a `moodUrl(theme, i)` helper.
+- **New tiny component** `src/components/groups/mood-thumb.tsx` — a 32px circle that:
+  - Renders all 3 images stacked, opacity-cycled via CSS `@keyframes mood-fade` (15s cycle, 5s per slide).
+  - Uses `animation-delay: -{hash(group.id) % 15}s` so adjacent cards are out of phase.
+  - Pauses via `animation-play-state: paused` when off-screen using IntersectionObserver (same pattern as `CityTile`).
+  - Falls back to the existing `themeBand` color if the theme has no covers.
+- **Wire into `GroupCard` `mini` variant**: replace the `<span class="...band">` with `<MoodThumb theme={group.theme} groupId={group.id} fallbackBand={band} />`. No other variant touched.
+- Respect `prefers-reduced-motion`: drop to a static first image.
 
-## 2. Collapse the 4 Vibe sections into 1 "Moods" surface
+### 3. Location coverage audit (read-only)
 
-**New: `src/components/groups/moods-collection.tsx`** — same shape as `NicheCollection`, replacing the four `<VibeCollection />` calls in `groups-tab.tsx`.
+Verified all chapters:
+- ~42 chapters have photo cover sets (`src/data/city-covers.ts`).
+- All remaining chapters fall back to procedural sky + silhouette in `CityTile` (`src/data/city-procedural.ts`) — no chapter renders blank.
+- Coverage looks complete; recommend **no new image generation** for locations this pass. If you want photo coverage for everything, I can queue a follow-up to generate the ~28 missing cities (4 day-states each = ~112 images, heavier job).
 
-- One section: eyebrow `MOODS` + serif title "By how it feels" + segmented strip:  
-  `When it's heavy · Daily resets · Slow & silent · With others`
-- Body: a 2-col grid of **horizontal mini cards** (reuse `variant="mini"`) so mobile shows 6+ groups at a glance instead of 2 rail cards. Density ~3×.
-- Active tab persists in `useState` (no URL sync). Tab swap uses the same 200ms crossfade (`niche-grid-fade` keyframe already exists).
-- Keeps the 4-vibe taxonomy intact in a single section instead of four. **Saves ~700px** on mobile.
+### Files
 
-## 3. New mode: **Map view toggle** at the header
+- **New**: `public/mood-covers/{8 themes}/{1,2,3}.webp` (24 images), `scripts/compress-moods.mjs`, `src/data/mood-covers.ts`, `src/components/groups/mood-thumb.tsx`
+- **Edited**: `src/components/groups/moods-collection.tsx` (scrollable list, no slice), `src/components/group-card.tsx` (mini variant uses MoodThumb), `src/styles.css` (`mood-fade` keyframes + scroll mask utility)
 
-A two-pill segmented in the sticky filter row: `Feed · Map`. (Reuses existing `group-live-map.tsx` primitive — already in-repo.)
-
-- Map mode renders a single full-width `GroupLiveMap` showing every group with `live > 0` or `nextStart < 90 min` as pins, sized by `walkersWeek`. Tap a pin → bottom-sheet `GroupCard` (mini variant) with Join + Open.
-- Feed mode = current page.
-- State is local; toggle pill uses the same `chip-spring` micro-bounce.
-- Lets the user *spatially* browse what's happening — a 2026-feel move that costs ~30 lines because the map and pulse data already exist.
-
-## 4. Mobile-native primitives (small, surgical)
-
-A new helper `src/lib/mobile.ts` exporting:
-
-```ts
-export const haptic = (ms = 8) => navigator.vibrate?.(ms);
-export const share = (data: ShareData) => navigator.share?.(data) ?? Promise.reject();
-```
-
-Wired in:
-- **Haptic on Join/Leave** — `useGroupActions.toggleJoin` triggers an 8ms tick on success. iOS Safari ignores `vibrate` (no penalty), Android responds.
-- **Native share** on group cards — long-press a card on touch (≥500ms via `pointerdown`/`pointerup` + timeout) opens `navigator.share` with `{ title, text, url: /groups/<slug> }`. Falls back to copy-link toast.
-- **Long-press peek** — same long-press on niche/rail cards (when not sharing) opens a tiny popover sheet (reuse `Sheet` side="bottom" snap) showing description + Join/Open. Avoids navigation for browse-y taps.
-- **Pull-to-refresh** — `use-pull-to-refresh.ts` already exists; wire into `groups-tab.tsx` calling `refresh()` from `useGroupsFeed`. Visible chevron + haptic on threshold.
-- **Scroll-driven section eyebrows** — already partially in via `eyebrow-rise`; extend to all section eyebrows with `animation-timeline: view()` (progressive enhancement, ~6 lines in `styles.css`).
-
-## 5. Header & search — tighter, more alive
-
-- Header collapses to a single line on scroll (`use-scroll-direction.ts` is already in-repo): "Groups · {totalWalkers} · {liveDisplay} live" with the search bar staying sticky. Saves ~80px once scrolled.
-- Search bar gains an inline **"Try:" rotator** showing one of `quiet · sunrise · dog parents · phone-free · {myCity}` every 4s as a placeholder hint when the input is empty. Reduces decision paralysis; zero net height.
-- Filter chips get a leading **count badge** when active (`Live now · 3`) so users see what they've narrowed to without re-reading.
-
-## 6. Rail card upgrade — same primitive, more signal
-
-Edit `variant="rail"` in `group-card.tsx`:
-- Width: `w-[220px]` → `w-[176px]`.
-- Add a 38px-tall thumbnail strip at the top: route sparkline if available, else theme-tinted gradient with the city/niche emoji floating bottom-right.
-- Keep the join button — but make the whole card a single tap target with a separate Join chip (12px tall, top-right).
-- Live ring ticks visually at 1.2s intervals (`city-pulse-ring` exists).
-
-## 7. 2026 polish (tiny moves, big feel)
-
-- **View Transitions API** on tab swaps in TodayPanel/MoodsCollection/NicheCollection — wraps `setTab` in `document.startViewTransition` when supported. Section content morphs instead of flickers.
-- **`color-mix`** for live ring opacity by tab age — older tabs fade their ring tone slightly.
-- **`@container` queries** on the MoodsCollection grid → switches to 3-col on tablets without a media query.
-- **`scroll-snap-stop: always`** on the Pulse rail so swipes settle on the next pill, not coast past it.
-- **Prefetch on `pointerenter`** already added in NicheTile; extend to TodayPanel rail cards (one-line addition).
-- **`text-wrap: balance`** on all serif h2s.
-
-## File map
-
-**New**
-- `src/components/groups/today-panel.tsx` — segmented "Today" surface
-- `src/components/groups/moods-collection.tsx` — segmented "Moods" surface
-- `src/components/groups/groups-map-view.tsx` — wraps existing GroupLiveMap with bottom-sheet card peek
-- `src/lib/mobile.ts` — `haptic` + `share` (~10 lines)
-
-**Edited**
-- `src/components/groups-tab.tsx` — replace 4 vibes + 4 for-you blocks with the two new surfaces; add Feed/Map toggle; sticky-collapse header; PTR wiring
-- `src/components/group-card.tsx` — rail variant tightening + thumbnail; long-press handler in tile/rail
-- `src/components/groups/pulse-rail.tsx` — `scroll-snap-stop: always`
-- `src/hooks/use-group-actions.ts` — haptic on join/leave success
-- `src/styles.css` — view-timeline eyebrow extension, container query helper
-
-## Out of scope
-- Backend / RLS / data shape changes
-- Group detail route (already polished this pass)
-- New imagery (we have niche + city covers already)
-- Removing primitives — every change reuses existing variants/components
-
-## Net effect on the screenshot's pain
-Two side-by-side rail cards per section × 4 sections becomes **one segmented surface with 6+ visible cards**. Page length on mobile drops by an estimated 35–40%, and the surfaces that remain feel intentional rather than repetitive.
+### Out of scope
+- New mood card variant (reuse `mini`).
+- Backend / data model changes.
+- Generating photos for the ~28 procedural-only cities (separate ask if wanted).

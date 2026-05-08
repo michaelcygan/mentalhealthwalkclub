@@ -39,7 +39,6 @@ export function MoodsCollection({ groups, pulse, mine, onToggle, onSeeAll }: Pro
       || ((pb?.walkersWeek ?? 0) - (pa?.walkersWeek ?? 0))
       || (b.member_count - a.member_count);
   });
-  const visible = sorted.slice(0, 6);
 
   return (
     <section className="space-y-2.5 moods-section">
@@ -48,11 +47,9 @@ export function MoodsCollection({ groups, pulse, mine, onToggle, onSeeAll }: Pro
           <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Moods</div>
           <h2 className="mt-0.5 font-serif text-xl text-balance">By how it feels</h2>
         </div>
-        {sorted.length > visible.length && (
-          <button onClick={() => onSeeAll(active.key, active.themes, active.label)} className="inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-xs text-forest hover:bg-forest/5">
-            See all {sorted.length}<ChevronRight className="h-3 w-3" />
-          </button>
-        )}
+        <button onClick={() => onSeeAll(active.key, active.themes, active.label)} className="inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-xs text-forest hover:bg-forest/5">
+          See all {sorted.length}<ChevronRight className="h-3 w-3" />
+        </button>
       </div>
 
       <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
@@ -76,9 +73,14 @@ export function MoodsCollection({ groups, pulse, mine, onToggle, onSeeAll }: Pro
         })}
       </div>
 
-      <ul key={active.key} className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 niche-grid-fade @container">
-        {visible.map((g, i) => (
-          <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 35}ms` }}>
+      {/* Scrollable list — shows ~4, scrolls in place */}
+      <ul
+        key={active.key}
+        className="scroll-soft-mask max-h-[19rem] space-y-1.5 overflow-y-auto pr-0.5 no-scrollbar niche-grid-fade"
+        style={{ scrollSnapType: "y proximity", overscrollBehavior: "contain" }}
+      >
+        {sorted.map((g, i) => (
+          <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 35}ms`, scrollSnapAlign: "start" }}>
             <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="mini" />
           </div>
         ))}
