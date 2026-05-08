@@ -111,6 +111,67 @@ export const scheduleFriendWalk = createServerFn({ method: "POST" })
     return { code, roomId: room.id, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
   });
 
+/** Cancel a scheduled or open Friend Walk (host only). */
+export const cancelFriendWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ roomId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: room } = await supabase.from("audio_rooms").select("host_user_id, status").eq("id", data.roomId).maybeSingle();
+    if (!room) throw new Error("walk not found");
+    if (room.host_user_id !== userId) throw new Error("only the host can cancel");
+    if (room.status === "closed" || room.status === "canceled") return { ok: true };
+    await supabase.from("audio_rooms").update({ status: "canceled", ends_at: new Date().toISOString() }).eq("id", data.roomId);
+    return { ok: true };
+  });
+
+/** Reschedule a scheduled Friend Walk to a new start time (host only). */
+export const rescheduleFriendWalk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      roomId: z.string().uuid(),
+      startsAt: z.string().datetime(),
+      durationMinutes: z.number().int().min(15).max(240).default(45),
+      title: z.string().trim().max(80).optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: room } = await supabase.from("audio_rooms").select("host_user_id, status").eq("id", data.roomId).maybeSingle();
+    if (!room) throw new Error("walk not found");
+    if (room.host_user_id !== userId) throw new Error("only the host can reschedule");
+    if (room.status !== "scheduled") throw new Error("only scheduled walks can be rescheduled");
+
+    const startsAt = new Date(data.startsAt);
+    if (startsAt.getTime() < Date.now() - 60_000) throw new Error("pick a future time");
+    const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60_000);
+
+    const patch: { starts_at: string; ends_at: string; title?: string } = {
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+    };
+    if (data.title) patch.title = data.title;
+    await supabase.from("audio_rooms").update(patch).eq("id", data.roomId);
+    return { ok: true, startsAt: startsAt.toISOString() };
+  });
+
+/** List the current user's friend walks (scheduled + recently live). */
+export const listMyFriendWalks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("audio_rooms")
+      .select("id, title, share_code, status, starts_at, ends_at, current_participant_count, created_at")
+      .eq("room_type", "friend")
+      .eq("host_user_id", userId)
+      .in("status", ["scheduled", "open"])
+      .order("starts_at", { ascending: true, nullsFirst: false })
+      .limit(20);
+    return { walks: data ?? [] };
+  });
+
 /** Join an existing Friend Walk by share code. Returns walk id to navigate to. */
 export const joinFriendWalk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

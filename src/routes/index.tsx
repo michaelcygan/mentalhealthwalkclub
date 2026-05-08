@@ -13,6 +13,7 @@ import { WeeklyRing } from "@/components/weekly-ring";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
+import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
@@ -212,6 +213,8 @@ function WalkTab() {
             <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
           </div>
         </div>
+
+        <UpcomingFriendWalks />
 
         <LiveNowStrip />
 

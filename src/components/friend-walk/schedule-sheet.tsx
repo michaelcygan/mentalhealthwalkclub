@@ -1,60 +1,92 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarClock } from "lucide-react";
-import { scheduleFriendWalk } from "@/lib/friend-walk.functions";
+import { scheduleFriendWalk, rescheduleFriendWalk } from "@/lib/friend-walk.functions";
 import { haptics } from "@/lib/device";
 import { toast } from "sonner";
 
-interface Props {
+interface BaseProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  /** Called once a scheduled walk is created — parent opens the share card. */
+}
+interface CreateProps extends BaseProps {
+  mode?: "create";
   onScheduled: (info: { code: string; roomId: string; startsAt: string }) => void;
 }
+interface RescheduleProps extends BaseProps {
+  mode: "reschedule";
+  roomId: string;
+  initial: { startsAt: string; title: string | null };
+  onRescheduled: (info: { startsAt: string }) => void;
+}
+type Props = CreateProps | RescheduleProps;
 
 const DURATIONS = [30, 45, 60, 90];
 
-function defaultStart(): string {
-  // Next round 30-min slot, +1h ahead, formatted for datetime-local
-  const d = new Date(Date.now() + 60 * 60_000);
-  d.setMinutes(d.getMinutes() < 30 ? 30 : 0, 0, 0);
-  if (d.getMinutes() === 0) d.setHours(d.getHours() + 1);
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function FriendWalkScheduleSheet({ open, onOpenChange, onScheduled }: Props) {
+function defaultStart(): string {
+  const d = new Date(Date.now() + 60 * 60_000);
+  d.setMinutes(d.getMinutes() < 30 ? 30 : 0, 0, 0);
+  if (d.getMinutes() === 0) d.setHours(d.getHours() + 1);
+  return isoToLocalInput(d.toISOString());
+}
+
+export function FriendWalkScheduleSheet(props: Props) {
+  const isReschedule = props.mode === "reschedule";
   const schedule = useServerFn(scheduleFriendWalk);
-  const [startsLocal, setStartsLocal] = useState(defaultStart);
+  const reschedule = useServerFn(rescheduleFriendWalk);
+
+  const [startsLocal, setStartsLocal] = useState(() => isReschedule ? isoToLocalInput((props as RescheduleProps).initial.startsAt) : defaultStart());
   const [duration, setDuration] = useState(45);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(() => isReschedule ? ((props as RescheduleProps).initial.title ?? "") : "");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (isReschedule && props.open) {
+      const r = props as RescheduleProps;
+      setStartsLocal(isoToLocalInput(r.initial.startsAt));
+      setTitle(r.initial.title ?? "");
+    }
+  }, [props, isReschedule]);
 
   const submit = async () => {
     haptics.tap();
     setBusy(true);
     try {
       const startsAt = new Date(startsLocal).toISOString();
-      const r = await schedule({ data: { startsAt, durationMinutes: duration, title: title || undefined } });
-      onScheduled({ code: r.code, roomId: r.roomId, startsAt: r.startsAt });
-      onOpenChange(false);
+      if (isReschedule) {
+        const r = props as RescheduleProps;
+        await reschedule({ data: { roomId: r.roomId, startsAt, durationMinutes: duration, title: title || undefined } });
+        r.onRescheduled({ startsAt });
+        toast.success("Walk rescheduled.");
+      } else {
+        const c = props as CreateProps;
+        const r = await schedule({ data: { startsAt, durationMinutes: duration, title: title || undefined } });
+        c.onScheduled({ code: r.code, roomId: r.roomId, startsAt: r.startsAt });
+      }
+      props.onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "couldn't schedule");
+      toast.error(e instanceof Error ? e.message : "couldn't save");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={props.open} onOpenChange={props.onOpenChange}>
       <DrawerContent className="md:max-w-md md:mx-auto">
         <DrawerHeader className="text-center">
-          <DrawerTitle className="font-serif text-xl">Schedule a Friend Walk</DrawerTitle>
-          <DrawerDescription>Pick a time — share the link now, walk together later.</DrawerDescription>
+          <DrawerTitle className="font-serif text-xl">{isReschedule ? "Reschedule walk" : "Schedule a Friend Walk"}</DrawerTitle>
+          <DrawerDescription>{isReschedule ? "Pick a new time — your link stays the same." : "Pick a time — share the link now, walk together later."}</DrawerDescription>
         </DrawerHeader>
 
         <div className="space-y-4 px-4 pb-6">
@@ -65,12 +97,7 @@ export function FriendWalkScheduleSheet({ open, onOpenChange, onScheduled }: Pro
 
           <div className="space-y-1.5">
             <Label htmlFor="fw-when" className="text-xs">When</Label>
-            <Input
-              id="fw-when"
-              type="datetime-local"
-              value={startsLocal}
-              onChange={(e) => setStartsLocal(e.target.value)}
-            />
+            <Input id="fw-when" type="datetime-local" value={startsLocal} onChange={(e) => setStartsLocal(e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
@@ -91,9 +118,9 @@ export function FriendWalkScheduleSheet({ open, onOpenChange, onScheduled }: Pro
 
           <Button onClick={submit} disabled={busy} className="h-12 w-full rounded-2xl bg-forest text-primary-foreground hover:opacity-90">
             <CalendarClock className="mr-2 h-4 w-4" />
-            {busy ? "scheduling…" : "Schedule & get link"}
+            {busy ? "saving…" : isReschedule ? "Save new time" : "Schedule & get link"}
           </Button>
-          <p className="text-center text-[11px] text-muted-foreground">Your friends can RSVP from the link. They'll be able to join when it's time.</p>
+          {!isReschedule && <p className="text-center text-[11px] text-muted-foreground">Your friends can RSVP from the link. They'll be able to join when it's time.</p>}
         </div>
       </DrawerContent>
     </Drawer>
