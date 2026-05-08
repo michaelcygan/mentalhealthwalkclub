@@ -61,6 +61,31 @@ function JournalTab() {
   }, [walks]);
   const maxWk = Math.max(1, ...weeklyMins);
 
+  // Memory ribbon — group walks into 8 most-recent weeks for a horizontal "cards of a week" scroll
+  const ribbonWeeks = useMemo(() => {
+    const weekMap = new Map<number, Walk[]>();
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    walks.forEach((w) => {
+      const days = Math.floor((monday.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      const wk = Math.max(0, Math.floor(days / 7) + (days < 0 ? -1 : 0));
+      const list = weekMap.get(wk) ?? [];
+      list.push(w);
+      weekMap.set(wk, list);
+    });
+    const weeks: { offset: number; walks: Walk[]; label: string; mins: number; reflect?: string; mood?: string | null }[] = [];
+    for (let i = 0; i < 8; i++) {
+      const ws = weekMap.get(i) ?? [];
+      const start = new Date(monday); start.setDate(monday.getDate() - i * 7);
+      const label = i === 0 ? "This week" : i === 1 ? "Last week" : start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      const mins = ws.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
+      const reflect = ws.find((w) => w.reflection_note)?.reflection_note ?? undefined;
+      const mood = ws.find((w) => w.mood_after)?.mood_after ?? null;
+      weeks.push({ offset: i, walks: ws, label, mins, reflect: reflect ?? undefined, mood });
+    }
+    return weeks;
+  }, [walks]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, Walk[]>();
     walks.forEach((w) => {
