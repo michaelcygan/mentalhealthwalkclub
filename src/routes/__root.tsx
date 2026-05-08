@@ -291,7 +291,7 @@ function LiveSidebarPill() {
   if (count === 0) return null;
   return (
     <Link to="/" className="mt-4 flex items-center gap-2 rounded-full border border-forest/30 bg-accent/40 px-3 py-1.5 text-xs text-forest hover:bg-accent/60">
-      <Radio className="h-3 w-3" />
+      <Radio className="h-3 w-3 live-pulse" />
       <span className="font-medium">{count} walking & talking now</span>
     </Link>
   );
