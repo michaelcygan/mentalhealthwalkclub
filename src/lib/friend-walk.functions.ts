@@ -186,6 +186,11 @@ export const joinFriendWalk = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!room) throw new Error("walk not found");
     if (room.status === "closed") throw new Error("this walk has ended");
+    if (room.status === "canceled") throw new Error("this walk was called off");
+    // re-fetch lock state
+    const { data: roomLock } = await supabase.from("audio_rooms").select("is_locked").eq("id", room.id).maybeSingle();
+    const isHost = room.host_user_id === userId;
+    if (roomLock?.is_locked && !isHost) throw new Error("the host has locked this walk");
 
     // Scheduled flow: host opens it on first join; others must wait until start time.
     if (room.status === "scheduled") {
