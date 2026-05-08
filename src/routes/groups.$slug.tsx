@@ -32,9 +32,6 @@ function GroupDetail() {
   const [welcomedKey, setWelcomedKey] = useState<string | null>(null);
   const [kudosSent, setKudosSent] = useState<Set<string>>(new Set());
 
-  const callMilestones = useServerFn(getGroupMilestones);
-  const callWelcome = useServerFn(sendGroupWelcome);
-  const callKudos = useServerFn(sendKudos);
 
   useEffect(() => {
     (async () => {
