@@ -1,6 +1,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Footprints, Headphones, MapPin, Lock, HeartHandshake } from "lucide-react";
+import { Headphones, MapPin, Lock, HeartHandshake, Footprints } from "lucide-react";
+import { LogoStamp } from "@/components/logo-stamp";
 
 interface Props {
   open: boolean;
