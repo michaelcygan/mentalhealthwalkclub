@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import { useLiveCount } from "@/hooks/use-live-count";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -27,32 +27,11 @@ export function MobileTabBar() {
   const hidden = scrollDir === "down";
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
-  // Live walkers count — light poll every 45s
-  const [liveCount, setLiveCount] = useState(0);
-  useEffect(() => {
-    const load = () =>
-      supabase.from("audio_rooms").select("current_participant_count").eq("status", "open").gt("current_participant_count", 0)
-        .then(({ data }) => setLiveCount((data ?? []).reduce((s, r) => s + (r.current_participant_count ?? 0), 0)));
-    load();
-    const t = setInterval(load, 45_000);
-    return () => clearInterval(t);
-  }, []);
+  const liveCount = useLiveCount();
 
-  // Long-press → walk-mode sheet
+  // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
-  const pressTimerRef = useRef<number | null>(null);
   const longPressedRef = useRef(false);
-  const startPress = () => {
-    longPressedRef.current = false;
-    pressTimerRef.current = window.setTimeout(() => {
-      longPressedRef.current = true;
-      haptics.soft();
-      setSheetOpen(true);
-    }, 380);
-  };
-  const cancelPress = () => {
-    if (pressTimerRef.current) { window.clearTimeout(pressTimerRef.current); pressTimerRef.current = null; }
-  };
 
   const walkActive = isActive("/", true);
 
