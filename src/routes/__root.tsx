@@ -260,7 +260,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div className="mx-auto max-w-5xl px-4 pb-24 pt-5 md:px-8 md:pb-12 md:pt-10">
+        <div className="mx-auto max-w-5xl px-4 pt-5 md:px-8 md:pt-10 md:pb-12 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-12">
           <NowPlayingBar />
           {children}
         </div>
