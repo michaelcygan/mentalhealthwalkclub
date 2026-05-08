@@ -5,12 +5,17 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Trophy, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
 import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
 import { ProfileRouteMosaic } from "@/components/profile-route-mosaic";
+import { WalkerCardHeader } from "@/components/walker-card-header";
+import { BadgeWall } from "@/components/badge-wall";
+import { ProfileStatsGrid } from "@/components/profile-stats-grid";
+import { useProfileStats } from "@/hooks/use-profile-stats";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
