@@ -46,8 +46,10 @@ export function CityGallery({ groups, pulse, mine, onToggle }: Props) {
         </button>
       </div>
       <ul className="grid grid-cols-3 gap-2 md:grid-cols-5">
-        {featured.map((g) => (
-          <GroupCard key={g.id} group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="gallery" />
+        {featured.map((g, i) => (
+          <div key={g.id} className="card-in" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
+            <GroupCard group={g} pulse={pulse.get(g.id)} joined={mine.has(g.id)} onToggle={() => onToggle(g)} variant="gallery" />
+          </div>
         ))}
       </ul>
 

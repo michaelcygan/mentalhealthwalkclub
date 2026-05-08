@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, Radio, Calendar, MapPin, Users } from "lucide-react";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
+import { CityTile } from "@/components/groups/city-tile";
 
 const themeTint: Record<string, string> = {
   anxiety: "from-sky-100/60",
@@ -157,6 +158,9 @@ export function GroupCard({
 
   // ─────── GALLERY tile (square) ───────
   if (variant === "gallery") {
+    if (group.cover_set) {
+      return <CityTile group={group} pulse={pulse} joined={joined} onToggle={onToggle} />;
+    }
     const flag = group.country ? FLAG[group.country] : null;
     const sub = group.location_label ?? group.city ?? group.theme;
     return (

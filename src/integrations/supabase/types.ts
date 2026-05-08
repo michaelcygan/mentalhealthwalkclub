@@ -787,6 +787,8 @@ export type Database = {
           auto_join: boolean
           city: string | null
           country: string | null
+          cover_credit: string | null
+          cover_set: string | null
           created_at: string
           description: string | null
           ghost_cadence_override: number | null
@@ -811,6 +813,8 @@ export type Database = {
           auto_join?: boolean
           city?: string | null
           country?: string | null
+          cover_credit?: string | null
+          cover_set?: string | null
           created_at?: string
           description?: string | null
           ghost_cadence_override?: number | null
@@ -835,6 +839,8 @@ export type Database = {
           auto_join?: boolean
           city?: string | null
           country?: string | null
+          cover_credit?: string | null
+          cover_set?: string | null
           created_at?: string
           description?: string | null
           ghost_cadence_override?: number | null
