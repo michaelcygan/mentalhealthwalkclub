@@ -17,6 +17,7 @@ import { haptics } from "@/lib/device";
 import { HeroGradient } from "@/components/hero-gradient";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
+import { useAmbient } from "@/lib/ambient-context";
 
 export const Route = createFileRoute("/")({
   component: WalkTab,
