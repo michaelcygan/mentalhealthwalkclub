@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Bell, Heart, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { getInbox, markInboxRead } from "@/lib/group-signals.functions";
+
+type InboxGroup = { id: string; name: string; slug: string };
+type InboxBadge = { id: string; name: string; icon: string | null };
+type InboxSignal = {
+  id: string;
+  group_id: string;
+  kind: string;
+  badge_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
 
 type InboxItem = {
   ids: string[];
@@ -20,17 +30,73 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [unread, setUnread] = useState(0);
-  const fetchInbox = useServerFn(getInbox);
-  const markRead = useServerFn(markInboxRead);
 
   const refresh = async () => {
-    if (!session?.access_token) return;
+    if (!session?.access_token || !user?.id) return;
     try {
-      const r = await fetchInbox();
-      setItems(Array.isArray(r?.items) ? (r.items as InboxItem[]) : []);
-      setUnread(typeof r?.unread === "number" ? r.unread : 0);
+      const { data: signals, error } = await supabase
+        .from("group_signals")
+        .select("id,group_id,kind,badge_id,created_at,read_at")
+        .eq("recipient_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+
+      const all = (signals ?? []) as InboxSignal[];
+      const unreadRows = all.filter((s) => !s.read_at);
+      if (unreadRows.length === 0) {
+        setItems([]);
+        setUnread(0);
+        return;
+      }
+
+      const groupIds = [...new Set(all.map((s) => s.group_id))];
+      const badgeIds = [...new Set(all.map((s) => s.badge_id).filter(Boolean) as string[])];
+      const { data: groups, error: groupsError } = await supabase
+        .from("groups")
+        .select("id,name,slug")
+        .in("id", groupIds);
+      if (groupsError) throw groupsError;
+
+      let badges: InboxBadge[] = [];
+      if (badgeIds.length) {
+        const { data: badgeRows, error: badgesError } = await supabase
+          .from("badge_definitions")
+          .select("id,name,icon")
+          .in("id", badgeIds);
+        if (badgesError) throw badgesError;
+        badges = (badgeRows ?? []) as InboxBadge[];
+      }
+
+      const gMap = new Map(((groups ?? []) as InboxGroup[]).map((g) => [g.id, g]));
+      const bMap = new Map(badges.map((b) => [b.id, b]));
+      const agg = new Map<string, InboxItem>();
+
+      all.forEach((s) => {
+        const group = gMap.get(s.group_id);
+        if (!group) return;
+        const key = `${s.group_id}:${s.kind}:${s.badge_id ?? ""}`;
+        const cur = agg.get(key) ?? {
+          ids: [],
+          group,
+          kind: s.kind,
+          badge: s.badge_id ? bMap.get(s.badge_id) : undefined,
+          count: 0,
+          latest: s.created_at,
+          unread: 0,
+        };
+        cur.ids.push(s.id);
+        cur.count += 1;
+        if (!s.read_at) cur.unread += 1;
+        if (s.created_at > cur.latest) cur.latest = s.created_at;
+        agg.set(key, cur);
+      });
+
+      setItems(Array.from(agg.values()).filter((x) => x.unread > 0).sort((a, b) => b.latest.localeCompare(a.latest)));
+      setUnread(unreadRows.length);
     } catch {
-      // Likely 401 before session hydrates; ignore.
+      // Keep the inbox decorative if the private signal feed is unavailable.
     }
   };
 
@@ -45,9 +111,18 @@ export function InboxBell({ variant = "mobile" }: { variant?: "mobile" | "deskto
 
   const onOpenChange = (o: boolean) => {
     setOpen(o);
-    if (!o && items.length) {
+    if (!o && items.length && user?.id) {
       const ids = items.flatMap((i) => i.ids);
-      if (ids.length) markRead({ data: { ids } }).then(() => { setUnread(0); }).catch(() => {});
+      if (ids.length) {
+        supabase
+          .from("group_signals")
+          .update({ read_at: new Date().toISOString() })
+          .in("id", ids)
+          .eq("recipient_user_id", user.id)
+          .is("read_at", null)
+          .then(({ error }) => { if (!error) setUnread(0); })
+          .catch(() => {});
+      }
     }
   };
 
