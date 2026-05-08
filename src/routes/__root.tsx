@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
 import { NowPlayingBar } from "@/components/now-playing-bar";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { useLiveCount } from "@/hooks/use-live-count";
 
 function NotFoundComponent() {
   return (
