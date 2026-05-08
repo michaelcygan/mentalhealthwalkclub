@@ -32,7 +32,7 @@ export async function renderRouteSnapshot(points: RoutePoint[], opts: SnapshotOp
     zoom: 14,
     interactive: false,
     attributionControl: false,
-    preserveDrawingBuffer: true,
+    canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
     fadeDuration: 0,
   });
 
