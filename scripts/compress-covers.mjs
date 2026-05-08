@@ -30,6 +30,18 @@ const TZ = {
   'chapter-montreal': 'America/Toronto',
   'chapter-amsterdam': 'Europe/Amsterdam',
   'chapter-dublin': 'Europe/Dublin',
+  'chapter-tokyo': 'Asia/Tokyo',
+  'chapter-singapore': 'Asia/Singapore',
+  'chapter-melbourne': 'Australia/Melbourne',
+  'chapter-cdmx': 'America/Mexico_City',
+  'chapter-madrid': 'Europe/Madrid',
+  'chapter-barcelona': 'Europe/Madrid',
+  'chapter-manchester': 'Europe/London',
+  'chapter-baltimore': 'America/New_York',
+  'chapter-pittsburgh': 'America/New_York',
+  'chapter-charlotte': 'America/New_York',
+  'chapter-orlando': 'America/New_York',
+  'chapter-san-jose': 'America/Los_Angeles',
 };
 
 const cities = readdirSync(ROOT).filter(d => {
