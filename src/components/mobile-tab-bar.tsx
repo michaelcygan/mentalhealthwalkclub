@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
+import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock, DownloadCloud } from "lucide-react";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { useLiveCount } from "@/hooks/use-live-count";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
