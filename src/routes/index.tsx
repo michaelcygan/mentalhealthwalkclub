@@ -108,6 +108,10 @@ function WalkTab() {
         guided_track_id: track?.id ?? null,
       }).select("id").single();
       if (error) throw error;
+      // If this walk owns the audio channel, stop ambient. Otherwise, let it ride.
+      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && track?.id);
+      if (ownsAudio) ambient.stop(400);
+      beganWalkRef.current = true;
       navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't start walk");
@@ -120,8 +124,24 @@ function WalkTab() {
     haptics.soft();
     setWalkType(type);
     setPickGuide(false);
+    beganWalkRef.current = false;
     setSheetOpen(true);
+    // Ease-in: start ambient music when the pre-walk drawer opens, but only
+    // for walk types that don't own the audio channel.
+    if (type !== "audio") {
+      // Fire and forget; first audio play needs the user-gesture chain from openSheet.
+      void ambient.start();
+    }
   });
+
+  const handleSheetChange = (v: boolean) => {
+    setSheetOpen(v);
+    if (!v) {
+      setPickGuide(false);
+      // Closed without starting a walk → fade music out
+      if (!beganWalkRef.current) ambient.stop(600);
+    }
+  };
 
   const proceed = () => {
     if (walkType === "guided_solo") setPickGuide(true);
