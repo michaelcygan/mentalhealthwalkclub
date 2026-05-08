@@ -50,18 +50,8 @@ function JournalTab() {
   const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
   const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
 
-  // 12 week sparkline
-  const weeklyMins = useMemo(() => {
-    const weeks = Array(12).fill(0);
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    walks.forEach((w) => {
-      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
-      const wk = Math.floor(diffDays / 7);
-      if (wk >= 0 && wk < 12) weeks[11 - wk] += Math.round((w.duration_seconds ?? 0) / 60);
-    });
-    return weeks;
-  }, [walks]);
-  const maxWk = Math.max(1, ...weeklyMins);
+  // (heatmap below derives its own per-day grid)
+
 
   // 30-day mood arc — average mood_after_score per day, smoothed sparkline
   const moodArc = useMemo(() => {
