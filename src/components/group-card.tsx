@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, Radio, Calendar, MapPin, Users } from "lucide-react";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
+import { CityTile } from "@/components/groups/city-tile";
 
 const themeTint: Record<string, string> = {
   anxiety: "from-sky-100/60",
