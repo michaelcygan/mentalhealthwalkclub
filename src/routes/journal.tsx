@@ -265,8 +265,8 @@ function JournalTab() {
                       const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
                       const active = selectedId === w.id;
                       return (
-                        <li key={w.id}>
-                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
+                        <li key={w.id} className="relative">
+                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`w-full rounded-2xl border p-4 pr-12 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
                               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
@@ -285,6 +285,13 @@ function JournalTab() {
                               </div>
                             )}
                             {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onShareEntry(w); }}
+                            aria-label="Share walk"
+                            className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-accent/60 hover:text-forest"
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
                           </button>
                         </li>
                       );
