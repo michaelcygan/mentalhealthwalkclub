@@ -143,6 +143,8 @@ function ProfileTab() {
         </div>
       </section>
 
+      <ProfileRouteMosaic userId={user.id} />
+
       <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <MyFriendWalks />
       </section>
