@@ -308,7 +308,21 @@ function EventDetail() {
       </div>
 
       {/* Action area */}
-      {!completed && (
+      {!completed && memberGated && (
+        <div className="rounded-2xl border border-forest/20 bg-accent/40 p-5 text-center">
+          <p className="font-serif text-base">
+            Reserved for {groupInfo?.name ?? "the group"}.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Join the group to RSVP and walk together.
+          </p>
+          <Button onClick={() => requireAuth(joinGroup)} className="mt-4 h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+            Join {groupInfo?.name ?? "group"} to RSVP
+          </Button>
+        </div>
+      )}
+
+      {!completed && !memberGated && (
         <div className="space-y-3">
           {isAudio ? (
             <>
@@ -333,8 +347,8 @@ function EventDetail() {
                 </Button>
               )}
               {isHost && (
-                <Button onClick={endWalk} disabled={busy === "end"} variant="ghost" className="h-10 w-full rounded-full text-muted-foreground">
-                  {busy === "end" ? "Wrapping…" : "End this walk"}
+                <Button onClick={endAudio} disabled={busy === "end-audio"} variant="ghost" className="h-10 w-full rounded-full text-muted-foreground">
+                  {busy === "end-audio" ? "Wrapping…" : "End this walk"}
                 </Button>
               )}
             </>
