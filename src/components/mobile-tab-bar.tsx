@@ -31,7 +31,6 @@ export function MobileTabBar() {
 
   // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
-  const longPressedRef = useRef(false);
 
   const walkActive = isActive("/", true);
 
@@ -85,7 +84,7 @@ export function MobileTabBar() {
             <li className="relative flex justify-center">
               <button
                 type="button"
-                onClick={() => { if (longPressedRef.current) return; haptics.tap(); setSheetOpen(true); }}
+                onClick={() => { haptics.tap(); setSheetOpen(true); }}
                 aria-label="New walk"
                 className="group relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated ring-4 ring-background transition active:scale-95"
               >
