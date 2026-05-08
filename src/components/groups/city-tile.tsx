@@ -82,7 +82,7 @@ export function CityTile({ group, pulse, joined }: Props) {
           {live > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-medium text-forest backdrop-blur-sm">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-forest/70" />
+                <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
               </span>
               {live}
