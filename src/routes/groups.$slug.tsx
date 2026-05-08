@@ -28,7 +28,7 @@ export const Route = createFileRoute("/groups/$slug")({
 });
 
 interface Group { id: string; name: string; description: string | null; member_count: number; city: string | null; theme: string | null; owner_user_id: string | null; }
-interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; }
+interface Event { id: string; title: string; slug: string; starts_at: string; city: string | null; event_type: string; attendee_count: number; host_user_id: string | null; host_name?: string | null; }
 interface Room { id: string; title: string; theme: string | null; current_participant_count: number; max_participants: number; }
 interface Milestone { badgeId: string; name: string; description: string | null; icon: string | null; key: string; recipients: { userId: string; awardId: string }[] }
 
@@ -63,7 +63,7 @@ function GroupDetail() {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
       const dayIso = startOfDay.toISOString();
       const [{ data: e }, { data: r }, { data: w }, { data: nm }, { count: actCount }, { count: todayCount }, mem] = await Promise.all([
-        supabase.from("events").select("id,title,slug,starts_at,city,event_type").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
+        supabase.from("events").select("id,title,slug,starts_at,city,event_type,attendee_count,host_user_id").eq("group_id", g.id).eq("status", "published").gte("starts_at", now).order("starts_at").limit(10),
         supabase.from("audio_rooms").select("id,title,theme,current_participant_count,max_participants").eq("group_id", g.id).eq("status","open").is("parent_room_id", null),
         supabase.from("walk_sessions").select("user_id,duration_seconds").eq("group_id", g.id).eq("status","completed").gte("started_at", weekAgo),
         supabase.from("group_memberships").select("user_id").eq("group_id", g.id).gte("joined_at", weekAgo),
@@ -72,7 +72,14 @@ function GroupDetail() {
         user ? supabase.from("group_memberships").select("id").eq("group_id", g.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as { data: unknown }),
       ]);
       if (cancel) return;
-      setEvents(e ?? []);
+      const evs = (e ?? []) as Event[];
+      const hostIds = Array.from(new Set(evs.map((x) => x.host_user_id).filter(Boolean) as string[]));
+      if (hostIds.length) {
+        const { data: hosts } = await supabase.from("profiles").select("id,display_name").in("id", hostIds);
+        const map = new Map((hosts ?? []).map((h) => [h.id, h.display_name]));
+        evs.forEach((x) => { x.host_name = x.host_user_id ? map.get(x.host_user_id) ?? null : null; });
+      }
+      setEvents(evs);
       setRooms(r ?? []);
       const walks = w ?? [];
       setWalksWeek(walks.length);
@@ -350,6 +357,11 @@ function GroupDetail() {
                   </div>
                   <Link to={"/events/$slug" as never} params={{ slug: e.slug } as never} className="font-medium hover:text-forest">{e.title}</Link>
                   <div className="text-xs text-muted-foreground">{new Date(e.starts_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}{e.city ? ` · ${e.city}` : ""}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {e.host_name ? <>Hosted by {e.host_name}</> : null}
+                    {e.host_name && (e.attendee_count ?? 0) >= 0 ? " · " : null}
+                    {(e.attendee_count ?? 0) === 0 ? <span className="text-forest">0 going · be the first</span> : <>{e.attendee_count} going</>}
+                  </div>
                 </li>
               ))}
             </ul>

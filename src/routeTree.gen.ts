@@ -25,8 +25,11 @@ import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminMusicRouteImport } from './routes/admin.music'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
+import { Route as ApiPublicHooksSeedWalksRouteImport } from './routes/api/public/hooks/seed-walks'
 import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
+import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
 import { Route as ApiPublicHooksOpenDueRoomsRouteImport } from './routes/api/public/hooks/open-due-rooms'
+import { Route as ApiPublicHooksCancelEmptyWalksRouteImport } from './routes/api/public/hooks/cancel-empty-walks'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -108,16 +111,33 @@ const WalkActiveIdRoute = WalkActiveIdRouteImport.update({
   path: '/walk/active/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSeedWalksRoute = ApiPublicHooksSeedWalksRouteImport.update({
+  id: '/api/public/hooks/seed-walks',
+  path: '/api/public/hooks/seed-walks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksRotatePodsRoute =
   ApiPublicHooksRotatePodsRouteImport.update({
     id: '/api/public/hooks/rotate-pods',
     path: '/api/public/hooks/rotate-pods',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRotateCommonsRoute =
+  ApiPublicHooksRotateCommonsRouteImport.update({
+    id: '/api/public/hooks/rotate-commons',
+    path: '/api/public/hooks/rotate-commons',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksOpenDueRoomsRoute =
   ApiPublicHooksOpenDueRoomsRouteImport.update({
     id: '/api/public/hooks/open-due-rooms',
     path: '/api/public/hooks/open-due-rooms',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksCancelEmptyWalksRoute =
+  ApiPublicHooksCancelEmptyWalksRouteImport.update({
+    id: '/api/public/hooks/cancel-empty-walks',
+    path: '/api/public/hooks/cancel-empty-walks',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -138,8 +158,11 @@ export interface FileRoutesByFullPath {
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
+  '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -158,8 +181,11 @@ export interface FileRoutesByTo {
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
+  '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -179,8 +205,11 @@ export interface FileRoutesById {
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
+  '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
+  '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -201,8 +230,11 @@ export interface FileRouteTypes {
     | '/groups/$slug'
     | '/w/$code'
     | '/walk/active/$id'
+    | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
+    | '/api/public/hooks/seed-walks'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -221,8 +253,11 @@ export interface FileRouteTypes {
     | '/groups/$slug'
     | '/w/$code'
     | '/walk/active/$id'
+    | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
+    | '/api/public/hooks/seed-walks'
   id:
     | '__root__'
     | '/'
@@ -241,8 +276,11 @@ export interface FileRouteTypes {
     | '/groups/$slug'
     | '/w/$code'
     | '/walk/active/$id'
+    | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
+    | '/api/public/hooks/seed-walks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -258,8 +296,11 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
+  ApiPublicHooksCancelEmptyWalksRoute: typeof ApiPublicHooksCancelEmptyWalksRoute
   ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
+  ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
+  ApiPublicHooksSeedWalksRoute: typeof ApiPublicHooksSeedWalksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -376,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkActiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/seed-walks': {
+      id: '/api/public/hooks/seed-walks'
+      path: '/api/public/hooks/seed-walks'
+      fullPath: '/api/public/hooks/seed-walks'
+      preLoaderRoute: typeof ApiPublicHooksSeedWalksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/rotate-pods': {
       id: '/api/public/hooks/rotate-pods'
       path: '/api/public/hooks/rotate-pods'
@@ -383,11 +431,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRotatePodsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/rotate-commons': {
+      id: '/api/public/hooks/rotate-commons'
+      path: '/api/public/hooks/rotate-commons'
+      fullPath: '/api/public/hooks/rotate-commons'
+      preLoaderRoute: typeof ApiPublicHooksRotateCommonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/open-due-rooms': {
       id: '/api/public/hooks/open-due-rooms'
       path: '/api/public/hooks/open-due-rooms'
       fullPath: '/api/public/hooks/open-due-rooms'
       preLoaderRoute: typeof ApiPublicHooksOpenDueRoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/cancel-empty-walks': {
+      id: '/api/public/hooks/cancel-empty-walks'
+      path: '/api/public/hooks/cancel-empty-walks'
+      fullPath: '/api/public/hooks/cancel-empty-walks'
+      preLoaderRoute: typeof ApiPublicHooksCancelEmptyWalksRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -440,8 +502,11 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
+  ApiPublicHooksCancelEmptyWalksRoute: ApiPublicHooksCancelEmptyWalksRoute,
   ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
+  ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
+  ApiPublicHooksSeedWalksRoute: ApiPublicHooksSeedWalksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

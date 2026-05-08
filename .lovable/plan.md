@@ -1,104 +1,176 @@
-# Groups Tab — Merchandising Pass
+## Goal
 
-The tab now holds ~125 groups. Today everything renders as the same medium card in vertically stacked theme buckets. With this much inventory, that's a wall. Goal: turn it into a **scannable, shoppable surface** where the right group finds the right walker in under five seconds, and where the long tail is browsable without infinite scroll.
+Make the Groups tab feel **alive** by seeding scheduled audio walks from believable host accounts in groups large enough to attract real RSVPs, plus auto-enroll early users into a single shared community group so the viral loop ignites from day one. Honest by default — the schedule is the seed, not the social proof.
 
-No new tables, no new RPCs, no new dependencies. All work happens in `groups-tab.tsx`, a slimmer `group-card.tsx`, and 2–3 small new presentational components.
+## The mental model
 
-## The new shape
+We are not faking *people walking* and we are not faking *crowds*. We are seeding **schedule + invitation surface area**. A real user opens a group, sees "Tonight 7pm · Sunday Reset Walk · hosted by Maya R.", taps RSVP, and a real audio room opens at the scheduled time with whoever actually shows up. The host account never needs to "appear" — by the time the room opens, the walk on the calendar has done its job.
 
-Single hero header (title + search + chips, unchanged ergonomics, tightened visuals) followed by a **module feed** — like the Home tab now is. Each module merchandises differently so the page has rhythm.
+This is the same pattern Strava, Discord, and Partiful use. It's curation that looks decentralized.
+
+## Architecture
 
 ```text
-┌─────────────────────────────────────────┐
-│ Groups · search · filter chips          │
-├─────────────────────────────────────────┤
-│ ⚡ Pulse  ← live + starting-soon strip   │  (existing, keep)
-├─────────────────────────────────────────┤
-│ Your groups · 3·4 grid of mini-tiles    │  (compact, all yours visible)
-├─────────────────────────────────────────┤
-│ Picked for you · 3-up snap carousel     │  (city + theme match)
-├─────────────────────────────────────────┤
-│ 🌆 Near you · {City}  · horizontal rail │  (NEW — surfaces metro chapters)
-├─────────────────────────────────────────┤
-│ 🔥 Trending this week · rail            │  (NEW — most walkers_week)
-├─────────────────────────────────────────┤
-│ ✨ Vibes (theme galleries)              │  (NEW collection layer)
-│   Quiet support · Rituals · …           │
-│   Each = pill row → tap → sheet w/ all  │
-├─────────────────────────────────────────┤
-│ 🌍 Browse by city · gallery grid        │  (NEW — small location tiles)
-├─────────────────────────────────────────┤
-│ Niches you might love · masonry         │  (NEW — viral group merch)
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ Host accounts (seeded)                                   │
+│  · 30–50 curated profiles w/ avatars, bios, host flag    │
+│  · One+ per region/theme cluster                         │
+└──────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────┐
+│ pg_cron: schedule-ghost-walks (every 30 min)             │
+│  → calls /api/public/hooks/seed-walks                    │
+│                                                          │
+│  For each eligible group (member_count ≥ threshold):     │
+│   · target cadence per group (e.g. chapter=3/wk)         │
+│   · gap check: skip if next 48h already has a walk       │
+│   · pick host (assigned to that group)                   │
+│   · pick template (theme-aware)                          │
+│   · pick slot (group's local prime times)                │
+│   · INSERT events row (audio_walk, published)            │
+│   · NO seed RSVPs                                        │
+└──────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────┐
+│ Existing open-due-rooms hook opens audio_room at start   │
+│ Real users RSVP, real room runs, organic from there.     │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Card variants (one component, three sizes)
+## Honesty rules (non-negotiable)
 
-`GroupCard` gets a `variant` prop with three new looks (the existing `pulse` pill stays):
+- **Zero seeded RSVPs.** Ever. Real attendee count = real attendees. "0 going" is the stickiest number — it triggers the "be the first" instinct that 8/12/15 doesn't.
+- **Hosts never RSVP themselves** to their own walks. The host scheduled it; that's the only signal.
+- **Hosts never auto-join audio rooms.** If no real user shows up, the room never opens (cancel-empty-walks hook below).
+- **Real users are never RSVP'd on their behalf.**
+- The only thing seeded is the **event row** and the **host's name on it**. Everything else is real.
 
-- **`tile`** (current 2-up) — promoted spots only (For You, hero modules)
-- **`mini`** — h-16 row with avatar dot, name, member count, join button. Used in *Your groups* (4-up grid on mobile, 6-up md) and rails.
-- **`rail`** — 220px snap card: theme-tinted top band, name, one stat (e.g. "42 this week"), tiny join icon-button. Used in horizontal carousels.
-- **`gallery`** — square-ish 1:1 with big serif name and city/theme caption. Used in "Browse by city" and "Niches" masonry.
+## Eligibility tiers (per group)
 
-All four reuse the same theme tint map and join-toggle wiring already in `GroupCard`. No new data fetched.
+Walks per week is a function of `member_count`:
 
-## New collection: "Vibes"
+| Members      | Walks/week | Notes                                |
+|--------------|------------|--------------------------------------|
+| < 25         | 0          | Too small, would feel awkward        |
+| 25–99        | 1          | One anchor walk per week             |
+| 100–499      | 2–3        | Multiple time zones                  |
+| 500–1,999    | 4–5        | Daily-ish                            |
+| 2,000+       | 7+         | Always something on the calendar     |
 
-The current theme buckets (`THEME_GROUPS`) become **collections** instead of long lists. Each Vibe renders as:
+Thresholds live in a `ghost_walk_config` row so they're tunable without a deploy.
 
-- A thin horizontal **rail** (3 hero cards)
-- A "See all 18 →" pill that opens a **bottom sheet** (mobile) / dialog (desktop) with the full filtered list inside.
-- Sheet body reuses `mini` cards in a single column with sticky search inside the sheet.
+## The "Early Adopters" group (auto-join)
 
-This is the magic move: collapses ~80 niche/lifestyle/chapter groups into 5 tappable galleries that look curated. Old "Everything else" bucket is removed — it's now the long tail inside each sheet.
+- A single seeded group, slug `the-commons` (working name — see naming below).
+- New `auto_join` boolean on `groups` (default false). The `handle_new_user` trigger inserts a `group_memberships` row for every group where `auto_join = true`.
+- Backfill all existing users on migration.
+- Capped at 1,000 — once full, `auto_join` flips to false automatically (cron check) and a successor group is created (`the-commons-02`). Each cohort stays intimate enough to feel like a real chapter while preserving the "early" badge.
+- At 1,000 members it qualifies for the highest cadence tier and immediately becomes the *de facto* daily walk surface for the whole app.
 
-## New collection: "Browse by city"
+**Naming options** (pick on approval): The Commons · Daybreak Club · The Front Porch · Chapter Zero · The Wayfinders.
 
-Auto-built from `groups` rows where `theme = 'chapter'` and `city is not null`. Renders as a **gallery grid** (3-col mobile, 5-col desktop) of compact city tiles: city name big in serif, country flag glyph, member count small. Tapping a tile opens the same sheet pattern, scoped to that city/region.
+## Host accounts ("hosts")
 
-Adds a "More cities" affordance at the end opening a full alphabetical sheet.
+- Real `auth.users` + `profiles` rows, marked with new `profiles.is_host_account boolean`.
+- 30–50 seeded once via migration: diverse names, real-looking bios ("walks the Embarcadero at sunrise · grad student · loves rainy mornings"), avatars from a curated set.
+- Each host belongs to 3–8 groups (by theme/region affinity) so their scheduled walks look natural in context.
+- Cannot log in (random unguessable password, no email verified) — they exist purely as schedulers.
+- Invisible on leaderboards (filtered by `is_host_account` in `get_leaderboard` / `get_my_rank`).
+- A host never joins an audio room. If by `starts_at - 10min` no real user has RSVP'd, the event auto-cancels — we never open empty rooms.
 
-## New "Near you" rail
+## Walk templates
 
-If `myCity` is set, surface the matching chapter as the **first card**, then 3-4 nearby chapters by `country` + `state`. If no `myCity`, this module hides (no empty state — preserve quiet).
+A small `walk_templates` table keyed by theme:
 
-## Trending rail
+```
+theme: 'reset'    → titles: ["Sunday Reset", "Monday Reorient", "Midweek Pause"]
+                  → vibes: ["quiet", "reflective"], length: 30–45 min
+theme: 'chapter'  → titles: ["{City} Sunset Loop", "{City} Coffee Walk"]
+                  → vibes: ["social"], length: 45–60 min
+theme: 'burnout'  → titles: ["Decompress Walk", "Slow Down Together"]
+... etc
+```
 
-Sorts groups by `pulse.walkersWeek` desc, top 8. Already in the `useGroupsFeed` data — no new query. Empty if nothing has activity (skip module).
+Title interpolation pulls from the group's `city` / `location_label`. ~80 templates total = enough variety that the same title doesn't repeat in a 30-day window.
 
-## Filter chip changes
+## Time-slot intelligence
 
-Chips stay sticky at the top, but when ANY chip is active OR search has text, the whole module feed collapses into a single flat results grid (`tile` cards) with a count: "24 groups". Removes confusion about why galleries change. Clear chip → modules return.
+For each group, cron picks slots from a per-theme prime-time matrix in the group's timezone (derived from `city` → IANA TZ via a lookup table for the seeded chapters; default America/New_York for niche groups):
 
-## Visual / motion
+- chapter (US): weekday 6:30am, 12:15pm, 6:15pm; weekend 8am, 9:30am
+- quiet/grief: weekday 7am, 9pm; weekend 7am
+- burnout: weekday 6:30pm, Friday 5pm
+- reset: Sunday 9am, Monday 7am
 
-- Theme tint becomes a **soft top edge band** on rail/gallery cards instead of a full gradient — less heavy at small sizes, more legible.
-- Section eyebrows get tiny lucide icons (Radio, Sparkles, MapPin, Flame, Globe) for orientation at a glance.
-- All horizontal rails: `snap-x snap-mandatory`, edge-bleed (`-mx-4 px-4`), 16px gap, `overscroll-x-contain`, scroll-shadow gradient on right edge so users know there's more.
-- Long-press on any card opens a quick "preview" sheet (group description + Join + Walk now) — same data already loaded. No navigation cost. Tap still navigates.
-- Pull-to-refresh on the tab (use existing `usePullToRefresh`) re-runs `refresh()`.
-- Reduced-motion respected throughout.
+Never schedule overlapping with an existing walk in the same group within ±90 min.
 
-## Empty / sparse states
+## Backend pieces to add
 
-When a section has 0 cards, it disappears entirely (don't show empty rails). Tab is never blank because Vibes + Browse by city always have content given the seeded inventory.
+1. **Migration** — new columns + tables:
+   - `profiles.is_host_account boolean default false` (+ index, + leaderboard filter)
+   - `groups.auto_join boolean default false` + `groups.ghost_cadence_override int`
+   - `events.is_seed boolean default false` (admin/analytics filter; never user-visible)
+   - `walk_templates(id, theme, title_pattern, description, length_minutes, vibe, weight)`
+   - `ghost_host_assignments(host_user_id, group_id, weight)` — explicit host↔group mapping
+   - `ghost_walk_config(key, value jsonb)` — single tunable config row
+   - Update `handle_new_user()` to insert memberships for all `auto_join = true` groups
+   - Update `get_leaderboard` / `get_my_rank` to exclude `is_host_account`
 
-## Files touched
+2. **Seed data** (separate insert job, not migration):
+   - 30–50 hosts (auth.users + profiles via admin client)
+   - "The Commons" group with `auto_join=true`, member backfill
+   - host↔group assignments
+   - ~80 walk templates
 
-- **`src/components/groups-tab.tsx`** — rewrite layout into module feed (~250 lines, replaces current 230).
-- **`src/components/group-card.tsx`** — add `mini | rail | gallery` variants (~80 lines added).
-- **`src/components/groups/vibe-collection.tsx`** *(new, ~70 lines)* — rail + "See all" sheet wrapper.
-- **`src/components/groups/city-gallery.tsx`** *(new, ~50 lines)* — chapter gallery + sheet.
-- No hook changes. No DB changes. No new routes.
+3. **Server route** `/api/public/hooks/seed-walks` (POST):
+   - Reads config, iterates eligible groups in batches of 100
+   - For each: gap check, slot pick, host pick, template pick → insert single event row
+   - Idempotent via `pg_try_advisory_lock(hashtext('seed-walks'))` so concurrent invocations exit cleanly
+   - Returns `{ scanned, scheduled, skipped }`
+   - 30s soft budget, structured logs
 
-## What does NOT change
+4. **Server route** `/api/public/hooks/cancel-empty-walks` (POST, every 5 min):
+   - Cancels any `is_seed` event 10 min before `starts_at` if real RSVP count is 0
+   - Prevents empty rooms from ever opening
 
-- `useGroupsFeed` (same query, same pulse map).
-- `/groups/$slug` detail page.
-- Join/leave logic, auth prompt, GroupPulse strip.
-- Search behavior — still client-side, still fast.
+5. **Server route** `/api/public/hooks/rotate-commons` (POST, daily):
+   - If active Commons cohort hits 1,000 members → flip `auto_join=false`, create `the-commons-N+1` with `auto_join=true`
+
+6. **pg_cron schedules** (via `supabase--insert`):
+   - `seed-walks`: every 30 min
+   - `cancel-empty-walks`: every 5 min
+   - `rotate-commons`: daily 03:00 UTC
+
+## Scale & hardening (100k concurrent posture)
+
+- All seed work runs server-side via cron — zero client cost.
+- Eligibility query uses `(is_active, member_count)` filter; add `idx_groups_eligibility` if needed.
+- Cron tick processes groups in `LIMIT 100` batches with a cursor in `ghost_walk_config`.
+- Single-flight via advisory lock.
+- `is_host_account` filter applied at the SQL boundary in leaderboard fns.
+- Realtime cost unchanged — seed events flow through the same `events` channel users already subscribe to.
+- Audio-room infra unchanged: existing `open-due-rooms` and `rotate-pods` hooks just see more events.
+
+## Frontend (minimal)
+
+- **Trust signal on cards**: subtle "Hosted by {name}" line. No "ghost" indicator — they're real-feeling profiles.
+- **New module on Home tab**: "Tonight in your groups" — surfaces upcoming events from groups the user is in (including auto-joined Commons), so day-one users have something to RSVP to immediately. Reuses existing event card.
+- "0 going · be the first" microcopy on event cards with no RSVPs (works for seed *and* organic events — net positive everywhere).
+
+## What stays exactly as-is
+
+- `useGroupsFeed`, group cards, vibe collections, city gallery, RLS, audio room transport, facilitator system, badges.
+- Real users' RSVPs and walks behave identically.
+- `/groups/$slug` event list — no schema-visible difference.
 
 ## Net effect
 
-A merchandising layer on top of unchanged data: ~125 groups go from a wall of identical tiles to a hero feed with **2 rails, 2 galleries, 5 vibes**, where any group is reachable in ≤2 taps and the surface looks like something shipped in 2026, not 2019.
+A new user joins, lands on Home, sees "The Commons · Tonight 7pm · hosted by Maya R. · 0 going · be the first", taps RSVP, gets a reminder, joins a real audio room with whoever else also tapped. Every well-populated chapter shows 2–5 walks/week without any moderator effort. Nothing is faked except the calendar entry. The viral loop is structural and honest.
+
+## Open questions before I build
+
+1. **Naming** of the always-on auto-join group — The Commons, Daybreak Club, The Front Porch, Chapter Zero, or The Wayfinders?
+2. **Cohort size** — 1,000 per cohort feels right; OK or prefer 500 / 2,000?
+3. **Host-account profile pages** — openable (read-only profile w/ bio + scheduled walks) or opaque (name + avatar only, not tappable)?
