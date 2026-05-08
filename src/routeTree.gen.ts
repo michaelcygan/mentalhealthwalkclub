@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as FacilitateRouteImport } from './routes/facilitate'
@@ -35,6 +36,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JournalRoute = JournalRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/facilitate': typeof FacilitateRoute
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/facilitate'
     | '/groups'
     | '/journal'
+    | '/leaderboard'
     | '/profile'
     | '/welcome'
     | '/admin/music'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/facilitate'
     | '/groups'
     | '/journal'
+    | '/leaderboard'
     | '/profile'
     | '/welcome'
     | '/admin/music'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/facilitate'
     | '/groups'
     | '/journal'
+    | '/leaderboard'
     | '/profile'
     | '/welcome'
     | '/admin/music'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   FacilitateRoute: typeof FacilitateRoute
   GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/journal': {
@@ -415,6 +435,7 @@ const rootRouteChildren: RootRouteChildren = {
   FacilitateRoute: FacilitateRoute,
   GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
+  LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,

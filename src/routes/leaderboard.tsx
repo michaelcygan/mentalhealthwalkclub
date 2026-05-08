@@ -42,8 +42,8 @@ function LeaderboardPage() {
     if (!user) return;
     setRows(null);
     Promise.all([
-      supabase.rpc("get_leaderboard", { _period: period, _group_id: null }),
-      supabase.rpc("get_my_rank", { _period: period, _group_id: null }),
+      supabase.rpc("get_leaderboard", { _period: period, _group_id: undefined }),
+      supabase.rpc("get_my_rank", { _period: period, _group_id: undefined }),
     ]).then(([lb, mr]) => {
       const lbRows = (lb.data ?? []) as Row[];
       lbRows.forEach((r) => { r.rank = Number(r.rank); r.total_minutes = Number(r.total_minutes); r.total_walks = Number(r.total_walks); r.badge_count = Number(r.badge_count); });
