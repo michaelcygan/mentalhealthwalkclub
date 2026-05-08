@@ -229,19 +229,6 @@ function GroupDetail() {
         </section>
       )}
 
-      {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-14 z-30 px-4 pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="mx-auto flex max-w-md gap-2 rounded-full border border-border bg-card/95 p-1.5 shadow-soft backdrop-blur">
-          <Button onClick={walkWithGroup} disabled={busy} className="flex-1 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-            <Footprints className="mr-2 h-4 w-4" /> {busy ? "Starting…" : "Walk now"}
-          </Button>
-          {isHost && (
-            <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never} className="inline-flex items-center justify-center rounded-full border border-border px-4 text-sm">
-              <CalendarPlus className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
