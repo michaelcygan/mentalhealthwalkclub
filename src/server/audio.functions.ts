@@ -100,7 +100,7 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
     // Only match into spontaneous rooms (no scheduled_event_id, no parent_room_id)
     const { data: rooms } = await supabase
       .from("audio_rooms")
-      .select("id,title,max_participants,current_participant_count,scheduled_event_id,parent_room_id")
+      .select("id,title,max_participants,current_participant_count,scheduled_event_id,parent_room_id,facilitator_seat_reserved")
       .eq("status", "open")
       .gt("current_participant_count", 0)
       .is("scheduled_event_id", null)
@@ -108,9 +108,13 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
       .order("current_participant_count", { ascending: true })
       .limit(8);
 
-    const warm = (rooms ?? []).find((r) => r.current_participant_count < r.max_participants);
+    const walkerCapOf = (r: any) =>
+      Math.max(1, r.max_participants - (r.facilitator_seat_reserved ? 1 : 0));
+    const warm = (rooms ?? []).find(
+      (r: any) => r.current_participant_count < walkerCapOf(r),
+    );
     if (warm) {
-      return { roomId: warm.id, title: warm.title, capacity: warm.max_participants, created: false };
+      return { roomId: warm.id, title: warm.title, capacity: walkerCapOf(warm), created: false };
     }
 
     const bucket = timeOfDayBucket();
@@ -123,13 +127,14 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
         room_type: "open",
         status: "open",
         host_user_id: userId,
-        max_participants: 8,
+        max_participants: 5, // 4 walkers + 1 reserved facilitator seat
+        facilitator_seat_reserved: true,
         requires_active_walk: true,
       })
       .select("id,title,max_participants")
       .single();
     if (error || !created) throw new Error(error?.message ?? "Could not open a walk");
-    return { roomId: created.id, title: created.title, capacity: created.max_participants, created: true };
+    return { roomId: created.id, title: created.title, capacity: 4, created: true };
   });
 
 const LeaveSchema = z.object({ roomId: z.string().uuid() });
