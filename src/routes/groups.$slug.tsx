@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Footprints, Users, CalendarPlus, Headphones, MapPin, Heart, Sparkles, Award } from "lucide-react";
 import { toast } from "sonner";
 import { GroupPulse } from "@/components/group-pulse";
-import { sendGroupWelcome, sendKudos, getGroupMilestones } from "@/lib/group-signals.functions";
 
 export const Route = createFileRoute("/groups/$slug")({ component: GroupDetail });
 
