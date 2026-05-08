@@ -62,7 +62,8 @@ export function MobileTabBar() {
   const navigate = useNavigate();
   const createFriend = useServerFn(createFriendWalk);
   const [shareOpen, setShareOpen] = useState(false);
-  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string } | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [friendInfo, setFriendInfo] = useState<{ code: string; walkId: string | null; startsAt: string | null } | null>(null);
   const [friendBusy, setFriendBusy] = useState(false);
 
   const startFriendWalk = () =>
