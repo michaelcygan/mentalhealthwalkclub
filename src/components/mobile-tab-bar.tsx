@@ -71,7 +71,7 @@ export function MobileTabBar() {
       setFriendBusy(true);
       try {
         const r = await createFriend();
-        setFriendInfo({ code: r.code, walkId: r.walkId });
+        setFriendInfo({ code: r.code, walkId: r.walkId, startsAt: null });
         setSheetOpen(false);
         setShareOpen(true);
       } catch (e) {
@@ -79,6 +79,12 @@ export function MobileTabBar() {
       } finally {
         setFriendBusy(false);
       }
+    });
+
+  const openSchedule = () =>
+    requireAuth(() => {
+      setSheetOpen(false);
+      setScheduleOpen(true);
     });
 
   return (
