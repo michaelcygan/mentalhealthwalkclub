@@ -15,6 +15,7 @@ import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
+import { WalkNotesPill, loadStoredNotes, notesToJournalBlock, type WalkNote } from "@/components/walk-notes-sheet";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -68,6 +69,7 @@ function ActiveWalk() {
   const watchId = useRef<number | null>(null);
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
   const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
+  const [walkNotes, setWalkNotes] = useState<WalkNote[]>(() => loadStoredNotes(id));
   const handleSavePrompt = (text: string) => {
     setSavedPrompts((arr) => (arr.includes(text) ? arr : [...arr, text]));
     toast(`saved: "${text.length > 40 ? text.slice(0, 40) + "…" : text}"`, { duration: 2000 });
@@ -225,6 +227,8 @@ function ActiveWalk() {
 
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
+    const notesBlock = notesToJournalBlock(walkNotes);
+    const merged = [out.reflection?.trim(), notesBlock].filter(Boolean).join("\n\n");
     await supabase.from("walk_sessions").update({
       status: "completed",
       ended_at: new Date().toISOString(),
@@ -233,11 +237,12 @@ function ActiveWalk() {
       steps,
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
-      reflection_note: out.reflection || null,
+      reflection_note: merged || null,
     }).eq("id", session.id);
     if (points.current.length > 1) {
       await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
     }
+    try { sessionStorage.removeItem(`walk-notes:${session.id}`); } catch {}
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
@@ -367,12 +372,13 @@ function ActiveWalk() {
         />
       )}
 
-      {/* Ambient music pill — only when there's a track playing and this walk doesn't own the audio */}
-      {!(session.walk_type === "audio" || session.guided_track_id) && (
-        <div className="px-4 pt-4 md:px-0">
+      {/* In-walk utility row: private notes + ambient music pill */}
+      <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 md:px-0">
+        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} onChange={setWalkNotes} />
+        {!(session.walk_type === "audio" || session.guided_track_id) && (
           <AmbientPill />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Sticky control dock */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border glass px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 md:static md:mt-6 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">

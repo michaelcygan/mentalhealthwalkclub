@@ -1,103 +1,112 @@
-# Ambient music library + light-touch shuffle player (revised)
+# World-Class Pass — Revised
 
-Calmer footprint. Music is **a walk thing** — it eases users into the walk at the pre-walk drawer and rides through the active walk, with a one-tap mute. Everywhere else stays silent.
-
----
-
-## 1. Admin surface
-
-**Route:** `/admin` (admin-only layout) + `/admin/music` (library page).
-- Gated by `has_role(auth.uid(), 'admin')` in `beforeLoad`; server functions re-check before any write.
-- Discoverable from Profile only when current user is admin.
-
-**`/admin/music` page:**
-- Drag-and-drop uploader (`.mp3`, `.m4a`, `.ogg`, ~15 MB each, multi-file).
-- Library table: **title**, **artist**, **duration** (auto-extracted client-side), **enabled** toggle, **delete**, inline preview.
-- No tags / no contexts — single global library. Keeps the model simple; we only have one place that plays music.
+Tighten what exists, lean into mobile where it matters, and add one new primitive: **quick walk notes**. No gesture-feature creep.
 
 ---
 
-## 2. Database (1 table, 1 bucket)
+## 1. Home as a Living Surface
 
-**Table `ambient_tracks`:**
-- `id`, `title`, `artist nullable`, `audio_path text`, `duration_seconds int`, `is_active bool default true`, `uploaded_by uuid`, `created_at`, `updated_at`.
+- **Hero unification.** Collapse `HeroGradient` + `WeeklyRing` + `LiveNowStrip` into one above-the-fold "Today" stage. Ring sits inside the gradient; live-now becomes a single softly-animated line ("3 walking now · join one").
+- **One primary CTA.** Replace the four mode buttons with a single **"Begin walk"** pill that opens the existing drawer. Mode selection moves *into* the drawer as a segmented control (uses existing `ToggleGroup`).
+- **Now & Next promoted** to directly under the hero — the app's heartbeat. Today it's buried.
+- **Mood Cloud → ambient header.** When a recent reflection exists, render `MoodCloud` faintly behind the hero copy instead of as its own card.
 
-**RLS:**
-- `SELECT`: any authenticated user where `is_active = true`; admin sees all.
-- `INSERT / UPDATE / DELETE`: admin only.
-
-**Storage bucket `ambient-music`:**
-- **Private**. Playback uses signed URLs (1 hour TTL).
-- Read for any authenticated user; write/delete admin only.
+Net: one card removed, calmer first paint, fewer decisions before motion.
 
 ---
 
-## 3. Where music plays (only here)
+## 2. Active Walk: Cinematic Mode
 
-| Surface | Behavior |
-|---|---|
-| **Pre-walk drawer** (mood/intention sheet on home) | On open, fade in a random track at low volume (~0.3). Easing-in cue. Continues seamlessly into… |
-| **Active walk** (`/walk/active/$id`) for **solo** + **guided_solo** | Same shuffle keeps playing. One-tap **mute/unmute** button next to Pause. Suppressed entirely for `walk_type === 'audio'` (Walk & Talk) and when a `guided_track_id` is loaded — those own audio. |
-| **End of walk** | Crossfade out over ~2s when the walk ends. |
-
-That's it. **No music on Journal, Welcome, Profile, Groups, Events, or anywhere else.**
+- **Wake Lock** already exists for audio walks — extend it to all walks.
+- **Big-number typography.** Elapsed time as the hero (already mostly there — finish the type ramp).
+- **Live route sparkline** continues to use the in-progress points (already wired); add a faint full-bleed bottom strip so the path stays visible as you walk.
+- **Floating action cluster.** Pause / End / `AmbientPill` collapse into one bottom cluster. Frees the screen.
+- **Status-bar tint** already in place — verify dark mode parity.
 
 ---
 
-## 4. The shuffle engine
+## 3. NEW: Quick Walk Notes (the headline feature)
 
-**`useAmbientShuffle()` hook + `AmbientPlayerProvider` mounted at `__root.tsx`:**
-- Single `<audio>` element survives navigation between the home drawer and the active walk — no restart on transition.
-- Fisher-Yates queue; on `ended`, advance; on queue empty, reshuffle (excluding last played to avoid immediate repeat).
-- Pre-fetch next signed URL ~10s before current ends → no gap.
-- 1.5s linear crossfade between tracks (two pooled audio elements).
-- Volume persisted in `localStorage` (default `0.3`). Mute state also persisted so users who silence it stay silenced across walks.
-- Never autoplays without a user gesture — opening the drawer is the gesture.
+A private, mid-walk notepad that attaches everything you wrote to the walk's journal entry on completion. Built almost entirely from existing primitives.
 
----
+**Behavior**
+- A small **"Note"** pill in the active-walk control cluster (paper icon). Tap → bottom `Sheet` opens with a single `Textarea`, big touch target, autofocus, keyboard-aware (uses existing `useKeyboardInset`).
+- "Save & close" or swipe-down dismiss → note is added to a local list and the sheet closes for privacy. A subtle counter on the pill ("Note · 3") shows how many you've captured.
+- Long-form is fine, but the design encourages short captures — each note becomes its own timestamped fragment ("00:14:22 · the light through the trees").
+- Notes are **kept entirely client-side during the walk** (in-memory + `sessionStorage` backup so a refresh doesn't lose them). Never sent over the wire mid-walk.
+- On **End walk**, notes are concatenated (with timestamps) into the existing `reflection_note` field — or, if the user already wrote a reflection, appended below it under a "Captured along the way" heading. Zero schema changes.
+- Tapping the pill again reopens the same note pad to keep adding.
 
-## 5. Now-playing pill (walk context only)
+**UI details**
+- Sheet has a paper-feel tint (cream surface token) — distinguishes it from the walking screen.
+- Each saved fragment shows in a small scrollable list above the input, oldest at top, with the elapsed-time badge.
+- Swipe a fragment left to delete (uses existing radix sheet patterns; no new gesture libs).
+- Optional one-tap voice dictation via the platform mic button on iOS/Android keyboards — no extra code, just `inputMode` hints.
 
-A small pill, **only on the active walk screen**, near the bottom dock:
+**Why it matters**
+- Captures the actual reason people walk: thoughts surface in motion. Today they evaporate before End-of-Walk reflection.
+- Privacy by default — pop open, pop closed.
+- End-walk reflection becomes richer with zero extra work.
 
-```
-♪  Track Title — Artist        [mute]   [skip]
-```
-
-- Tap mute → fades out in 400ms, persists. Tap again → fades back in.
-- Long-press the pill → skip to next track.
-- No NowPlayingBar exposure, no global pill, no presence on other tabs. (The existing `NowPlayingBar` is for Walk & Talk presence — left untouched.)
-
----
-
-## 6. Files
-
-**Edited (3):**
-- `src/routes/__root.tsx` — mount `AmbientPlayerProvider`.
-- `src/routes/index.tsx` — start ambient when mood drawer opens; let it ride into the walk; stop if the user closes the drawer without starting.
-- `src/routes/walk.active.$id.tsx` — render `<AmbientPill />`; suppress for audio/guided walks; crossfade out on end.
-- `src/routes/profile.tsx` — admin-only "Admin" link.
-
-**New (~6 small files):**
-- `supabase/migrations/...sql` — `ambient_tracks` + RLS + private bucket + policies.
-- `src/lib/ambient.functions.ts` — `listActiveTracks`, `signTrackUrl`, `adminUpsertTrack`, `adminDeleteTrack`.
-- `src/hooks/use-ambient-shuffle.ts` — queue + crossfade engine.
-- `src/lib/ambient-context.tsx` — provider + `useAmbient()`.
-- `src/components/ambient-pill.tsx` — the walk-only now-playing control.
-- `src/routes/admin.tsx` + `src/routes/admin.music.tsx` — admin layout + library page.
+**Scope**
+- ~1 new component: `walk-notes-sheet.tsx` (~120 lines).
+- ~10 lines added to `walk.active.$id.tsx` to mount the pill + merge notes into `reflection_note` on save.
+- No DB migration. No new RLS. No new dependencies.
 
 ---
 
-## 7. Out of scope
+## 4. Journal: from List to Memory
 
-- No tags, no per-context libraries, no per-walk track choice.
-- No music on journal, welcome, groups, events, etc.
-- No transcoding, no streaming services, no DRM.
-- No global now-playing bar — pill lives on the walk screen only.
+- **Sticky month headers** with the week's mood gradient bleeding into the divider (uses `MoodCloud` color logic).
+- **`view-transition-name`** on entry cards → smooth iOS-style hero transition into a full-screen entry view. Pure CSS in 2026 browsers.
+- **Search** via existing `Input` at top, debounced filter on note text. Five lines, big utility.
+- Surface walk notes nicely: when a journal entry has the "Captured along the way" block, render it as a quoted timeline within the card so the moments shine.
 
 ---
 
-Ready to build on your green light. Two small confirmations:
+## 5. Design System Tightening
 
-1. **Mute persistence:** if a user mutes during a walk, should it stay muted for **future** walks too, or reset to "playing" each time?
-2. **Volume control:** include a small slider behind a tap on the pill, or keep it to just mute/unmute for simplicity?
+- Sweep components for `text-white`, `bg-black`, raw hex → semantic tokens.
+- Add two motion presets in `styles.css` (`--ease-out-soft`, `--ease-spring`) and standardize sheet/drawer/pill animations.
+- Type scale: collapse to 3 sizes (display / title / body).
+- Dark-mode pass on every route, especially gradient + glass surfaces.
+
+---
+
+## 6. Cutting-Edge 2026 Capabilities (small adds, high signal)
+
+- **Wake Lock** on all walks (above).
+- **View Transitions API** for journal entry → detail.
+- **Scroll-driven CSS animations** on hero parallax (zero JS).
+- **`navigator.share()`** on completed walks (existing native share sheet).
+- **App Badging API** for unread inbox count — `inbox-bell.tsx` already tracks it.
+
+---
+
+## 7. Explicitly NOT included
+
+- No swipe-to-begin, long-press tab bar, or edge-swipe back. (Per your call — gesture overkill.)
+- No new routes, tables, or dependencies.
+- No streaks/notification spam.
+- No AI features in this pass.
+
+---
+
+## Files touched
+
+Edited (~9): `src/routes/index.tsx`, `src/routes/walk.active.$id.tsx`, `src/routes/journal.tsx`, `src/components/hero-gradient.tsx`, `src/components/now-and-next.tsx`, `src/components/route-sparkline.tsx`, `src/components/mobile-tab-bar.tsx` (minor), `src/styles.css`, plus a small token sweep in `ui/`.
+
+New (1): `src/components/walk-notes-sheet.tsx`.
+
+---
+
+## Suggested execution order
+
+1. Walk notes (highest user value, fully isolated).
+2. Active walk polish + Wake Lock everywhere.
+3. Home recomposition.
+4. Journal view-transitions, search, and notes rendering.
+5. Design-system sweep + motion presets.
+6. 2026 API sprinkle.
+
+Each step ships independently. We can do all six in one pass or stop after any step and feel the upgrade.
