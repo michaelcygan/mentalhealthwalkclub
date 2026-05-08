@@ -67,13 +67,13 @@ export function CityTile({ group, pulse, joined }: Props) {
         decoding="async"
         width={480}
         height={600}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${inView ? "opacity-100 animate-ken-burns" : "opacity-100"}`}
+        className="absolute inset-0 h-full w-full object-cover ken-burns"
         style={{ animationPlayState: inView ? "running" : "paused" }}
       />
       {/* Bottom gradient for legibility */}
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
       {/* Time-of-day glyph */}
-      <div className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 backdrop-blur-sm animate-glyph-float">
+      <div className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 backdrop-blur-sm glyph-float">
         <Glyph className="h-3.5 w-3.5" />
       </div>
       {/* Live / joined badges */}
