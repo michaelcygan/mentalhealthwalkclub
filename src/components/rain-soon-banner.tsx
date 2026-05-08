@@ -26,7 +26,7 @@ export function RainSoonBanner({ coords, active, currentlyRaining }: Props) {
   useEffect(() => {
     if (trigger && !shown) {
       setShown(true);
-      haptics(8);
+      haptics.soft();
     }
   }, [trigger, shown]);
 
