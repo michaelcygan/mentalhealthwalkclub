@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import { useLiveCount } from "@/hooks/use-live-count";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -27,32 +27,10 @@ export function MobileTabBar() {
   const hidden = scrollDir === "down";
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
-  // Live walkers count — light poll every 45s
-  const [liveCount, setLiveCount] = useState(0);
-  useEffect(() => {
-    const load = () =>
-      supabase.from("audio_rooms").select("current_participant_count").eq("status", "open").gt("current_participant_count", 0)
-        .then(({ data }) => setLiveCount((data ?? []).reduce((s, r) => s + (r.current_participant_count ?? 0), 0)));
-    load();
-    const t = setInterval(load, 45_000);
-    return () => clearInterval(t);
-  }, []);
+  const liveCount = useLiveCount();
 
-  // Long-press → walk-mode sheet
+  // Sheet state — center FAB tap opens the new-walk picker.
   const [sheetOpen, setSheetOpen] = useState(false);
-  const pressTimerRef = useRef<number | null>(null);
-  const longPressedRef = useRef(false);
-  const startPress = () => {
-    longPressedRef.current = false;
-    pressTimerRef.current = window.setTimeout(() => {
-      longPressedRef.current = true;
-      haptics.soft();
-      setSheetOpen(true);
-    }, 380);
-  };
-  const cancelPress = () => {
-    if (pressTimerRef.current) { window.clearTimeout(pressTimerRef.current); pressTimerRef.current = null; }
-  };
 
   const walkActive = isActive("/", true);
 
@@ -102,31 +80,25 @@ export function MobileTabBar() {
               <TabItem key={to} to={to} label={label} Icon={Icon} active={isActive(to, exact)} />
             ))}
 
-            {/* Center FAB slot */}
+            {/* Center FAB slot — simple tap opens the new-walk picker */}
             <li className="relative flex justify-center">
-              <Link
-                to="/"
-                onPointerDown={startPress}
-                onPointerUp={cancelPress}
-                onPointerCancel={cancelPress}
-                onPointerLeave={cancelPress}
-                onClick={(e) => {
-                  if (longPressedRef.current) { e.preventDefault(); return; }
-                  haptics.tap();
-                }}
-                aria-label="Walk"
-                className={`group -mt-6 flex h-14 w-14 items-center justify-center rounded-full shadow-elevated ring-4 ring-background transition active:scale-95 ${
-                  walkActive ? "bg-forest text-primary-foreground" : "bg-forest text-primary-foreground"
-                }`}
+              <button
+                type="button"
+                onClick={() => { haptics.tap(); setSheetOpen(true); }}
+                aria-label="New walk"
+                className="group relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated ring-4 ring-background transition active:scale-95"
               >
+                {liveCount > 0 && (
+                  <span aria-hidden className="pointer-events-none absolute inset-0 -m-0.5 rounded-full pulse-ring" />
+                )}
                 <Footprints className="h-6 w-6" strokeWidth={2.2} />
                 {liveCount > 0 && (
                   <span className="absolute -top-1 right-1.5 flex items-center gap-0.5 rounded-full bg-clay px-1.5 py-0.5 text-[9px] font-semibold leading-none text-background shadow">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-background/90" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-background/90" />
                     {liveCount}
                   </span>
                 )}
-              </Link>
+              </button>
               <span className={`absolute bottom-1 text-[10px] font-medium ${walkActive ? "text-primary" : "text-muted-foreground"}`}>Walk</span>
             </li>
 

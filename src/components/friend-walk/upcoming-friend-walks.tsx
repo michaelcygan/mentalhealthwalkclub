@@ -1,36 +1,18 @@
-import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, Radio } from "lucide-react";
-import { listMyFriendWalks } from "@/lib/friend-walk.functions";
-import { useAuth } from "@/lib/auth-context";
+import { useFriendWalks } from "@/hooks/use-friend-walks";
 
-interface FW {
-  id: string;
-  title: string;
-  share_code: string | null;
-  status: string;
-  starts_at: string | null;
-}
-
-/** Compact banner on Walk home — surfaces the user's own upcoming/live friend walks. */
+/** Compact rail on Walk home — surfaces the user's own upcoming/live friend walks. */
 export function UpcomingFriendWalks() {
-  const { user } = useAuth();
-  const list = useServerFn(listMyFriendWalks);
-  const [walks, setWalks] = useState<FW[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-    list().then((r) => setWalks((r.walks as FW[]).slice(0, 3))).catch(() => { /* noop */ });
-  }, [user, list]);
-
-  if (!user || walks.length === 0) return null;
+  const { walks } = useFriendWalks();
+  if (!walks || walks.length === 0) return null;
+  const top = walks.slice(0, 3);
 
   return (
     <section className="space-y-2">
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your friend walks</div>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-        {walks.map((w) => {
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 edge-fade no-scrollbar md:mx-0 md:px-0">
+        {top.map((w) => {
           const isLive = w.status === "open";
           const startMs = w.starts_at ? new Date(w.starts_at).getTime() : 0;
           const when = isLive ? "live now" : w.starts_at

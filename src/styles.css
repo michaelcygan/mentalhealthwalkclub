@@ -58,6 +58,8 @@
 
   --shadow-soft: 0 1px 2px oklch(0.2 0.02 100 / 0.04), 0 8px 24px -8px oklch(0.2 0.02 100 / 0.08);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 100 / 0.05), 0 24px 48px -16px oklch(0.2 0.02 100 / 0.18);
+  --shadow-pressed: inset 0 1px 2px oklch(0.2 0.02 100 / 0.10);
+  --blur-glass: saturate(140%) blur(14px);
 }
 
 :root {
@@ -153,6 +155,7 @@
 }
 
 @layer base {
+  :root { color-scheme: light dark; }
   * {
     border-color: var(--color-border);
   }
@@ -161,6 +164,8 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
   }
   h1, h2, h3, .font-serif {
     font-family: var(--font-serif);
@@ -185,6 +190,41 @@
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-pressed { box-shadow: var(--shadow-pressed); }
+  .glass {
+    background-color: color-mix(in oklab, var(--card) 78%, transparent);
+    -webkit-backdrop-filter: var(--blur-glass);
+    backdrop-filter: var(--blur-glass);
+  }
+  .glass-dark {
+    background-color: color-mix(in oklab, var(--forest) 70%, transparent);
+    -webkit-backdrop-filter: var(--blur-glass);
+    backdrop-filter: var(--blur-glass);
+  }
+  /* horizontal-scroll edge fade */
+  .edge-fade {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+            mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.018); }
+}
+.breathe { animation: breathe 4s ease-in-out infinite; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--clay) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 14px color-mix(in oklab, var(--clay) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--clay) 0%, transparent); }
+}
+.pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe, .pulse-ring { animation: none !important; }
 }
 
 @keyframes drift {

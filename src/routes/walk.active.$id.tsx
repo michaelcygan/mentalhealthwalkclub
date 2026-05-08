@@ -12,7 +12,7 @@ import { EndWalkFlow } from "@/components/end-walk-flow";
 import { GuidedPlayer } from "@/components/guided-player";
 import { ListenerPool } from "@/components/friend-walk/listener-pool";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
-import { wakeLock } from "@/lib/device";
+import { wakeLock, haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -133,13 +133,14 @@ function ActiveWalk() {
     return () => { lock?.release().catch(() => {}); };
   }, [session]);
 
-  // Milestone toasts
+  // Milestone toasts + soft haptic so phones in pockets still register
   useEffect(() => {
     const mins = Math.floor(elapsed / 60);
     const fire = (k: string, msg: string) => {
       if (milestonesHit.current.has(k)) return;
       milestonesHit.current.add(k);
       toast(msg, { duration: 3500 });
+      haptics.soft();
     };
     if (mins >= 5) fire("5m", "5 minutes in · let your shoulders drop");
     if (mins >= 10) fire("10m", "10 minutes · this is the hard part");
@@ -182,6 +183,24 @@ function ActiveWalk() {
   const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
   const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
 
+  // Rotating "hero stat" — softly cycles through the four every 5s
+  const [statIdx, setStatIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setStatIdx((i) => (i + 1) % 4), 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Calm/dim mode: after 60s without interaction, fade non-essential UI to ~35% opacity.
+  const [dim, setDim] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const reset = () => { setDim(false); clearTimeout(t); t = setTimeout(() => setDim(true), 60_000); };
+    reset();
+    const evs: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+    evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
+  }, []);
+
   const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
     if (!user || !session) return;
     await supabase.from("walk_sessions").update({
@@ -220,17 +239,28 @@ function ActiveWalk() {
   const gpsDot = gps === "live" ? "bg-forest" : gps === "weak" ? "bg-amber-400" : gps === "denied" ? "bg-muted-foreground/40" : "bg-muted-foreground/40";
   const gpsLabel = gps === "live" ? "GPS live" : gps === "weak" ? "GPS searching" : gps === "denied" ? "GPS off" : "GPS waking";
 
+  const paceStr = paceMinPerMi > 0 && paceMinPerMi < 60
+    ? `${Math.floor(paceMinPerMi)}'${String(Math.round((paceMinPerMi % 1) * 60)).padStart(2, "0")}"`
+    : "—";
+  const stats = [
+    { label: "miles", value: miles.toFixed(2) },
+    { label: "steps", value: steps.toLocaleString() },
+    { label: "pace", value: paceStr },
+    { label: "cadence", value: cadence > 0 ? cadence.toString() : "—" },
+  ] as const;
+  const heroStat = stats[statIdx];
+
   return (
     <div className="-mx-4 md:mx-0">
-      {/* Hero */}
+      {/* Hero — full-bleed route ribbon as backdrop */}
       <section className="relative overflow-hidden gradient-forest px-5 pb-8 pt-7 text-primary-foreground md:rounded-3xl md:px-7 md:pt-8 md:shadow-elevated">
         {points.current.length >= 2 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 opacity-20">
-            <RouteSparkline points={points.current} key={routeTick} />
+          <div className="pointer-events-none absolute inset-0 opacity-25">
+            <RouteSparkline points={points.current} key={routeTick} height={260} />
           </div>
         )}
 
-        <div className="relative flex items-start justify-between gap-2">
+        <div className={`relative flex items-start justify-between gap-2 transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}>
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
           <div className="flex items-center gap-2">
             {friendRoom?.share_code && (
@@ -247,8 +277,8 @@ function ActiveWalk() {
         </div>
 
         <div className="relative mt-8 text-center">
-          <div aria-live="off" className="font-serif text-7xl tabular-nums tracking-tight" style={{ animation: paused ? "none" : "breathe 4s ease-in-out infinite" }}>{fmt(elapsed)}</div>
-          <div className="mt-1 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.22em] opacity-80">
+          <div aria-live="off" className={`font-serif text-7xl tabular-nums tracking-tight ${paused ? "" : "breathe"}`}>{fmt(elapsed)}</div>
+          <div className={`mt-1 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.22em] transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-80"}`}>
             <span>{paused ? "paused" : "elapsed"}</span>
             <span aria-hidden className="opacity-50">·</span>
             <span className="inline-flex items-center gap-1">
@@ -269,11 +299,25 @@ function ActiveWalk() {
           </div>
         )}
 
-        <div className="relative mt-7 grid grid-cols-4 gap-2 text-center">
-          <Mini label="mi" value={miles.toFixed(2)} />
-          <Mini label="steps" value={steps.toLocaleString()} />
-          <Mini label="pace" value={paceMinPerMi > 0 && paceMinPerMi < 60 ? `${Math.floor(paceMinPerMi)}'${String(Math.round((paceMinPerMi % 1) * 60)).padStart(2,"0")}"` : "—"} />
-          <Mini label="cadence" value={cadence > 0 ? cadence.toString() : "—"} />
+        {/* Hero stat dial — one big number, three quiet satellites. Tap or hover to expand all four. */}
+        <div className={`group/dial relative mt-7 transition-opacity duration-700 ${dim ? "opacity-50" : "opacity-100"}`}>
+          <button
+            type="button"
+            onClick={() => setStatIdx((i) => (i + 1) % 4)}
+            className="block w-full text-center"
+            aria-label={`${heroStat.label}: ${heroStat.value} — tap to cycle`}
+          >
+            <div key={heroStat.label} className="font-serif text-5xl tabular-nums leading-none animate-[fade-in_0.5s_ease-out]">{heroStat.value}</div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] opacity-75">{heroStat.label}</div>
+          </button>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center opacity-60 transition-opacity group-hover/dial:opacity-90">
+            {stats.filter((_, i) => i !== statIdx).map((s) => (
+              <button key={s.label} type="button" onClick={() => setStatIdx(stats.findIndex((x) => x.label === s.label))} className="rounded-xl px-1 py-1 transition hover:bg-primary-foreground/5">
+                <div className="font-serif text-base tabular-nums leading-none">{s.value}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-wider opacity-75">{s.label}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -312,17 +356,6 @@ function ActiveWalk() {
           </Button>
         </div>
       </div>
-
-      <style>{`@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.018); } }`}</style>
-    </div>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="font-serif text-xl tabular-nums leading-none">{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-wider opacity-75">{label}</div>
     </div>
   );
 }
