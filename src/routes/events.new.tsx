@@ -245,7 +245,7 @@ function NewWalk() {
         )}
 
         <Button disabled={busy} onClick={submit} className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
-          {busy ? "Scheduling…" : mode === "audio" ? "Open the circle" : "Schedule walk"}
+          {busy ? "Scheduling…" : mode === "audio" ? "Open the Walk & Talk" : "Schedule walk"}
         </Button>
       </div>
     </div>
