@@ -114,6 +114,7 @@ function JournalTab() {
         const blob = await bakeShareCard(snapUrl, {
           miles, minutes: mins, steps: w.steps, date,
           intention: w.intention, moodBefore: w.mood_before, moodAfter: w.mood_after, walkType: w.walk_type,
+          weather: w.weather_at_end ? { tempF: w.weather_at_end.tempF, label: w.weather_at_end.label } : null,
         });
         if (blob) {
           const file = new File([blob], `walk-${w.id.slice(0, 8)}.png`, { type: "image/png" });
