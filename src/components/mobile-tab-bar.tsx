@@ -70,12 +70,12 @@ export function MobileTabBar() {
   return (
     <>
       <nav
-        className={`fixed bottom-0 left-0 right-0 z-40 md:hidden transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
+        className={`fixed inset-x-0 bottom-0 z-40 md:hidden transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >
-        {/* Translucent floor */}
-        <div className="relative border-t border-border/60 glass">
+        {/* Solid floor (with subtle blur) so content can't bleed through */}
+        <div className="relative border-t border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
           <ul className="grid grid-cols-5 items-end">
             {/* Left two */}
             {SIDE_TABS.slice(0, 2).map(({ to, label, icon: Icon, exact }) => (
