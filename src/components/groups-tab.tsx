@@ -320,7 +320,7 @@ export function GroupsTab() {
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">
-                    <Sparkles className="h-3 w-3" /> Niches
+                    <Sparkles className="h-3 w-3 sparkle-twinkle" /> Niches
                   </div>
                   <h2 className="mt-0.5 font-serif text-xl">Find your tribe</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">The weirdly specific ones. They tend to hit hardest.</p>
