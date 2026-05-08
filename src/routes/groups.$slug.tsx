@@ -191,7 +191,7 @@ function GroupDetail() {
       )}
       <Link to={"/events/new" as never} search={{ group: group.id, mode: "audio" } as never}
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40 hover:text-forest transition">
-        <Headphones className="h-3.5 w-3.5" /> Walk & Talk
+        <Headphones className="h-3.5 w-3.5 headphones-bob" /> Walk & Talk
       </Link>
     </div>
   );
