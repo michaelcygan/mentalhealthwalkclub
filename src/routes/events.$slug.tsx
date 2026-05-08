@@ -290,7 +290,7 @@ function EventDetail() {
       <div className="rounded-2xl border border-border bg-card p-5 text-sm">
         {isAudio ? (
           <>
-            <Row label="Format" value={event.breakout_size === 0 ? `One open circle · ${event.capacity ?? 8} spots` : `${event.breakout_size === 2 ? "Pairs" : event.breakout_size === 3 ? "Trios" : "Quads"} · up to ${event.capacity ?? 8} walkers`} />
+            <Row label="Format" value={event.breakout_size === 0 ? `One open circle · ${event.capacity ?? 8} spots` : `${event.breakout_size === 2 ? "Pairs" : event.breakout_size === 3 ? "Trios" : "Quads"} of ${event.breakout_size} · facilitator seat reserved`} />
             {event.breakout_rotate_minutes && <Row label="Mixing" value={`Walkers shuffle every ${event.breakout_rotate_minutes} min`} />}
             {event.vibe && <Row label="Theme" value={event.vibe} />}
             {livePodCount && livePodCount.walkers > 0 && (

@@ -41,7 +41,7 @@ function NewWalk() {
   const [location, setLocation] = useState<LocationValue | null>(null);
   // audio
   const [theme, setTheme] = useState<string | null>(null);
-  const [breakoutSize, setBreakoutSize] = useState<0 | 2 | 3 | 4>(0);
+  const [breakoutSize, setBreakoutSize] = useState<0 | 2 | 3 | 4>(4);
   const [rotateMinutes, setRotateMinutes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -222,6 +222,11 @@ function NewWalk() {
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {breakoutSize === 0 ? "Everyone in one open circle." : `Walkers split into ${breakoutSize === 2 ? "pairs" : breakoutSize === 3 ? "trios" : "quads"} for closer conversation.`}
               </p>
+              {breakoutSize > 0 && (
+                <p className="mt-1 text-[11px] text-muted-foreground/80">
+                  Each pod reserves one seat for a facilitator who may drop in.
+                </p>
+              )}
             </div>
             {breakoutSize > 0 && (
               <div>

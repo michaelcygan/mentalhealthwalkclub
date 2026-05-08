@@ -24,20 +24,27 @@ export const joinAudioRoom = createServerFn({ method: "POST" })
 
     const { data: room, error: roomErr } = await supabase
       .from("audio_rooms")
-      .select("id,max_participants,status")
+      .select("id,max_participants,status,facilitator_seat_reserved")
       .eq("id", data.roomId)
       .single();
     if (roomErr || !room) throw new Error("Walk & Talk not found");
     if (room.status !== "open") throw new Error("This walk is closed");
 
-    const { count } = await supabase
+    // Walker cap = total seats minus the reserved facilitator seat (if any)
+    const walkerCap = Math.max(
+      1,
+      room.max_participants - (room.facilitator_seat_reserved ? 1 : 0),
+    );
+
+    const { count: walkerCount } = await supabase
       .from("audio_room_participants")
       .select("id", { count: "exact", head: true })
       .eq("audio_room_id", data.roomId)
-      .eq("status", "active");
+      .eq("status", "active")
+      .neq("role", "facilitator");
 
-    if ((count ?? 0) >= room.max_participants) {
-      throw new Error(`This walk is full (${room.max_participants} of ${room.max_participants})`);
+    if ((walkerCount ?? 0) >= walkerCap) {
+      throw new Error(`This pod is full (${walkerCap} of ${walkerCap})`);
     }
 
     const { data: existing } = await supabase
@@ -57,7 +64,7 @@ export const joinAudioRoom = createServerFn({ method: "POST" })
       if (insertErr) throw new Error(insertErr.message);
     }
 
-    return { ok: true, capacity: room.max_participants, current: (count ?? 0) + (existing ? 0 : 1) };
+    return { ok: true, capacity: walkerCap, current: (walkerCount ?? 0) + (existing ? 0 : 1) };
   });
 
 const MatchSchema = z.object({
@@ -93,7 +100,7 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
     // Only match into spontaneous rooms (no scheduled_event_id, no parent_room_id)
     const { data: rooms } = await supabase
       .from("audio_rooms")
-      .select("id,title,max_participants,current_participant_count,scheduled_event_id,parent_room_id")
+      .select("id,title,max_participants,current_participant_count,scheduled_event_id,parent_room_id,facilitator_seat_reserved")
       .eq("status", "open")
       .gt("current_participant_count", 0)
       .is("scheduled_event_id", null)
@@ -101,9 +108,13 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
       .order("current_participant_count", { ascending: true })
       .limit(8);
 
-    const warm = (rooms ?? []).find((r) => r.current_participant_count < r.max_participants);
+    const walkerCapOf = (r: any) =>
+      Math.max(1, r.max_participants - (r.facilitator_seat_reserved ? 1 : 0));
+    const warm = (rooms ?? []).find(
+      (r: any) => r.current_participant_count < walkerCapOf(r),
+    );
     if (warm) {
-      return { roomId: warm.id, title: warm.title, capacity: warm.max_participants, created: false };
+      return { roomId: warm.id, title: warm.title, capacity: walkerCapOf(warm), created: false };
     }
 
     const bucket = timeOfDayBucket();
@@ -116,13 +127,14 @@ export const matchOrCreateAudioRoom = createServerFn({ method: "POST" })
         room_type: "open",
         status: "open",
         host_user_id: userId,
-        max_participants: 8,
+        max_participants: 5, // 4 walkers + 1 reserved facilitator seat
+        facilitator_seat_reserved: true,
         requires_active_walk: true,
       })
       .select("id,title,max_participants")
       .single();
     if (error || !created) throw new Error(error?.message ?? "Could not open a walk");
-    return { roomId: created.id, title: created.title, capacity: created.max_participants, created: true };
+    return { roomId: created.id, title: created.title, capacity: 4, created: true };
   });
 
 const LeaveSchema = z.object({ roomId: z.string().uuid() });
@@ -176,7 +188,7 @@ const ScheduleSchema = z.object({
   startsAt: z.string().min(1),
   durationMinutes: z.number().int().min(15).max(180).default(45),
   capacity: z.number().int().min(2).max(32).default(8),
-  breakoutSize: z.number().int().min(0).max(6).default(0),
+  breakoutSize: z.number().int().min(0).max(6).default(4),
   breakoutRotateMinutes: z.number().int().min(0).max(60).nullable().optional(),
 });
 
@@ -273,7 +285,8 @@ export async function openScheduledRoomImpl(supabase: any, eventId: string) {
       status: "open",
       host_user_id: room.host_user_id,
       group_id: room.group_id,
-      max_participants: ev.breakout_size,
+      max_participants: ev.breakout_size + 1, // walkers + 1 reserved facilitator seat
+      facilitator_seat_reserved: true,
       requires_active_walk: true,
       scheduled_event_id: eventId,
       parent_room_id: room.id,
@@ -377,7 +390,8 @@ export const joinScheduledWalk = createServerFn({ method: "POST" })
         .eq("status", "open")
         .order("current_participant_count", { ascending: true });
       podCount = pods?.length ?? 0;
-      const open = (pods ?? []).find((p) => p.current_participant_count < p.max_participants);
+      // Walker cap = breakout_size (the +1 seat is reserved for facilitator)
+      const open = (pods ?? []).find((p) => p.current_participant_count < ev.breakout_size);
       if (open) {
         targetRoomId = open.id;
         podIndex = open.pod_index;

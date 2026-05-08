@@ -312,7 +312,11 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
           </div>
           <div className="mt-0.5 font-serif text-lg leading-tight">{room?.title}</div>
           <div className="text-xs text-muted-foreground">
-            {status === "connecting" || status === "requesting-mic" ? "connecting…" : alone ? "you're the first one here" : `${participants.length} walking together`}
+            {status === "connecting" || status === "requesting-mic"
+              ? "connecting…"
+              : alone
+                ? "walking with you · others may join"
+                : `${participants.length} walking together${participants.length >= 4 ? " · full pod" : ""}`}
           </div>
         </div>
         <button onClick={handleSkip} className="flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition hover:border-forest/40 hover:text-foreground">
