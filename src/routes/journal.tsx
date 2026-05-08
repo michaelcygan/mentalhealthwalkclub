@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
 import { share, haptics } from "@/lib/device";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { bakeShareCard } from "@/lib/share-card";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
