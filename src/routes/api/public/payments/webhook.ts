@@ -21,7 +21,7 @@ function pickPriceId(item: any): string | undefined {
   );
 }
 
-async function handleSubscriptionUpsert(subscription: any, env: StripeEnv) {
+async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, eventCreated: number) {
   const userId = subscription.metadata?.userId;
   if (!userId) {
     console.error("No userId in subscription metadata");
@@ -32,6 +32,18 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv) {
   const productId = item?.price?.product;
   const periodStart = item?.current_period_start ?? subscription.current_period_start;
   const periodEnd = item?.current_period_end ?? subscription.current_period_end;
+  const eventAtIso = new Date(eventCreated * 1000).toISOString();
+
+  // Out-of-order guard: skip if a newer event has already been applied.
+  const { data: existing } = await getSupabase()
+    .from("subscriptions")
+    .select("last_event_at")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+  if (existing?.last_event_at && existing.last_event_at > eventAtIso) {
+    console.log("Skipping stale event for", subscription.id);
+    return;
+  }
 
   await getSupabase()
     .from("subscriptions")
@@ -51,29 +63,43 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv) {
           : null,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
         environment: env,
+        last_event_at: eventAtIso,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" },
     );
 }
 
-async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
+async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, eventCreated: number) {
+  const eventAtIso = new Date(eventCreated * 1000).toISOString();
+  const { data: existing } = await getSupabase()
+    .from("subscriptions")
+    .select("last_event_at")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+  if (existing?.last_event_at && existing.last_event_at > eventAtIso) return;
+
   await getSupabase()
     .from("subscriptions")
-    .update({ status: "canceled", updated_at: new Date().toISOString() })
+    .update({
+      status: "canceled",
+      last_event_at: eventAtIso,
+      updated_at: new Date().toISOString(),
+    })
     .eq("stripe_subscription_id", subscription.id)
     .eq("environment", env);
 }
 
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
+  const eventCreated = (event as { created?: number }).created ?? Math.floor(Date.now() / 1000);
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
-      await handleSubscriptionUpsert(event.data.object, env);
+      await handleSubscriptionUpsert(event.data.object, env, eventCreated);
       break;
     case "customer.subscription.deleted":
-      await handleSubscriptionDeleted(event.data.object, env);
+      await handleSubscriptionDeleted(event.data.object, env, eventCreated);
       break;
     default:
       console.log("Unhandled event:", event.type);
