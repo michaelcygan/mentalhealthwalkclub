@@ -4,6 +4,8 @@ export type DayState = "dawn" | "day" | "golden" | "night";
 export interface CityCover {
   tz: string;
   blur: Record<DayState, string>;
+  /** Number of photos available per state (1 = base only; 2/3 = base + alternates). */
+  count?: Partial<Record<DayState, number>>;
 }
 
 export const CITY_COVERS: Record<string, CityCover> = {
