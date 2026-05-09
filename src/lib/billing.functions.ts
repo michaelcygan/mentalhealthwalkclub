@@ -91,15 +91,19 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
     return session.client_secret;
   });
 
+type PortalFlow = "payment_method_update" | "subscription_cancel" | "subscription_update";
+
 export const createBillingPortalSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { returnUrl?: string; environment: StripeEnv }) => data)
+  .inputValidator(
+    (data: { returnUrl?: string; environment: StripeEnv; flow?: PortalFlow }) => data,
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: sub, error } = await supabase
       .from("subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, stripe_subscription_id, status")
       .eq("user_id", userId)
       .eq("environment", data.environment)
       .order("created_at", { ascending: false })
@@ -108,9 +112,52 @@ export const createBillingPortalSession = createServerFn({ method: "POST" })
     if (error || !sub?.stripe_customer_id) throw new Error("No subscription found");
 
     const stripe = createStripeClient(data.environment);
+
+    let flowData: Record<string, unknown> | undefined;
+    if (data.flow && sub.stripe_subscription_id) {
+      if (data.flow === "payment_method_update") {
+        flowData = { type: "payment_method_update" };
+      } else if (data.flow === "subscription_cancel") {
+        flowData = {
+          type: "subscription_cancel",
+          subscription_cancel: { subscription: sub.stripe_subscription_id },
+        };
+      } else if (data.flow === "subscription_update") {
+        flowData = {
+          type: "subscription_update",
+          subscription_update: { subscription: sub.stripe_subscription_id },
+        };
+      }
+    }
+
     const portal = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id as string,
       ...(data.returnUrl && { return_url: data.returnUrl }),
+      ...(flowData && { flow_data: flowData as never }),
     });
     return portal.url;
+  });
+
+export const resumePlusSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { environment: StripeEnv }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: sub, error } = await supabase
+      .from("subscriptions")
+      .select("stripe_subscription_id, status, cancel_at_period_end")
+      .eq("user_id", userId)
+      .eq("environment", data.environment)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !sub?.stripe_subscription_id) throw new Error("No subscription found");
+    if (!sub.cancel_at_period_end) return { ok: true, alreadyActive: true };
+
+    const stripe = createStripeClient(data.environment);
+    await stripe.subscriptions.update(sub.stripe_subscription_id as string, {
+      cancel_at_period_end: false,
+    });
+    return { ok: true, alreadyActive: false };
   });
