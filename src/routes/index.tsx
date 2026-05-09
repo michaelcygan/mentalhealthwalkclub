@@ -45,7 +45,7 @@ const MODE_PREFACE: Record<string, string> = {
 type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { requireAuth, openWelcome } = useAuthPrompt();
   const ambient = useAmbient();
@@ -156,6 +156,21 @@ function WalkTab() {
     if (walkType === "guided_solo") setPickGuide(true);
     else beginWalk();
   };
+
+  // While restoring session from storage, render a neutral placeholder so
+  // returning (logged-in) users don't see a flash of the marketing landing.
+  if (authLoading) {
+    return (
+      <div className="space-y-6" aria-busy="true" aria-label="Loading">
+        <div className="h-72 w-full animate-pulse rounded-3xl bg-muted/50 md:h-96" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+        </div>
+      </div>
+    );
+  }
 
   // Logged-out marketing landing
   if (!user) {
