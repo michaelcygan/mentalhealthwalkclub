@@ -10,7 +10,7 @@ interface Props {
   onToggle: (g: Group) => void;
 }
 
-const SPEED_PX_PER_SEC = 22;
+const SPEED_PX_PER_SEC = 17;
 const INTERACTION_PAUSE_MS = 1500;
 const MAX_ITEMS = 12;
 
@@ -93,10 +93,19 @@ export function PulseRail({ groups, pulse, mine, onToggle }: Props) {
   if (items.length === 0) return null;
 
   const onInteract = () => { lastInteractRef.current = performance.now(); };
+  const holdTimer = useRef<number | null>(null);
+  const onHoldStart = () => {
+    if (holdTimer.current) window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => setPaused(true), 350);
+  };
+  const onHoldEnd = () => {
+    if (holdTimer.current) { window.clearTimeout(holdTimer.current); holdTimer.current = null; }
+    setPaused(false);
+  };
   const doubled = [...items, ...items];
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-2" aria-label="Pulse — happening now">
       <div className="flex items-center gap-2">
         <Radio className="h-3.5 w-3.5 text-forest live-pulse" />
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Pulse · happening now</span>
@@ -105,6 +114,10 @@ export function PulseRail({ groups, pulse, mine, onToggle }: Props) {
         ref={ref}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        onPointerDown={onHoldStart}
+        onPointerUp={onHoldEnd}
+        onPointerCancel={onHoldEnd}
+        onPointerLeave={onHoldEnd}
         onTouchStart={onInteract}
         onPointerMove={onInteract}
         onWheel={onInteract}
