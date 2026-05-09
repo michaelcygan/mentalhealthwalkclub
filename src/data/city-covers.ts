@@ -63,6 +63,8 @@ export function dayStateFromHour(hour: number): DayState {
   return "night";
 }
 
-export function coverUrl(slug: string, state: DayState): string {
-  return `/city-covers/${slug}/${state}.webp`;
+export function coverUrl(slug: string, state: DayState, idx = 0): string {
+  const suffix = idx === 0 ? "" : `-${idx + 1}`;
+  return `/city-covers/${slug}/${state}${suffix}.webp`;
 }
+
