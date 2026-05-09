@@ -16,6 +16,7 @@ import { WalkerCardHeader } from "@/components/walker-card-header";
 import { BadgeWall } from "@/components/badge-wall";
 import { ProfileStatsGrid } from "@/components/profile-stats-grid";
 import { useProfileStats } from "@/hooks/use-profile-stats";
+import { BillingCard } from "@/components/billing/billing-card";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
@@ -157,6 +158,8 @@ function ProfileTab() {
           )}
         </div>
       </section>
+
+      <BillingCard />
 
       <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <MyFriendWalks />
