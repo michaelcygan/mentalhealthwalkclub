@@ -18,10 +18,16 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
         <div className="gradient-warm rounded-t-3xl px-7 pb-6 pt-7">
           <div className="flex items-center gap-3">
             <LogoStamp tone="dark" size={48} />
-            <div>
+            <div className="flex-1">
               <h2 className="font-serif text-xl leading-tight text-foreground">Mental Health Walk Club</h2>
               <p className="text-xs text-muted-foreground">Movement is the medicine. Company is the cure.</p>
             </div>
+            <button
+              onClick={onSignIn}
+              className="shrink-0 rounded-full border border-forest/30 bg-card/70 px-3 py-1.5 text-xs font-medium text-forest backdrop-blur-sm transition hover:bg-card"
+            >
+              Sign in
+            </button>
           </div>
           <p className="mt-4 font-serif text-lg leading-snug text-foreground">
             Take the walk. Let it count. Show up for someone — or have someone show up for you.
