@@ -100,7 +100,7 @@ export function MoodsCollection({ groups, pulse, mine, onToggle, onSeeAll }: Pro
           height: overflows ? listHeight : undefined,
           maxHeight: listHeight,
           scrollSnapType: "y proximity",
-          overscrollBehavior: "contain",
+          overscrollBehavior: "auto",
           touchAction: "pan-y",
           WebkitOverflowScrolling: "touch",
         }}
