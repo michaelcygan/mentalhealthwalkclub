@@ -37,11 +37,21 @@ async function resolveOrCreateCustomer(
   return created.id;
 }
 
+export type PlusPlan = "plus_monthly" | "plus_yearly";
+
 export const createPlusCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { returnUrl: string; environment: StripeEnv }) => data)
+  .inputValidator(
+    (data: { returnUrl: string; environment: StripeEnv; plan?: PlusPlan }) => {
+      if (data.plan && data.plan !== "plus_monthly" && data.plan !== "plus_yearly") {
+        throw new Error("Invalid plan");
+      }
+      return data;
+    },
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const plan: PlusPlan = data.plan ?? "plus_monthly";
 
     // Don't double-subscribe
     const { data: existing } = await supabase
@@ -61,7 +71,7 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
 
     const stripe = createStripeClient(data.environment);
 
-    const prices = await stripe.prices.list({ lookup_keys: ["plus_monthly"] });
+    const prices = await stripe.prices.list({ lookup_keys: [plan] });
     if (!prices.data.length) throw new Error("Plus price not configured");
     const stripePrice = prices.data[0];
 

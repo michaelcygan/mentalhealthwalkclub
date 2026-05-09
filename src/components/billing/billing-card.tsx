@@ -1,24 +1,76 @@
-import { useState } from "react";
-import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { createBillingPortalSession, resumePlusSubscription } from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { trackBillingEvent } from "@/lib/billing-analytics";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
 type Flow = "payment_method_update" | "subscription_cancel" | "subscription_update" | undefined;
 
+interface BillingNotice {
+  id: string;
+  event_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export function BillingCard() {
   const { loading, isPlus, isTrialing, cancelAtPeriodEnd, currentPeriodEnd, raw, refresh } = useSubscription();
   const { openPlusCheckout } = useAuthPrompt();
+  const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<BillingNotice | null>(null);
+
+  // Surface most recent unacknowledged payment_failed / trial_will_end event
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("billing_events" as never)
+        .select("id,event_type,metadata,created_at")
+        .eq("user_id", user.id)
+        .eq("environment", getStripeEnvironment())
+        .in("event_type", ["payment_failed", "trial_will_end"])
+        .is("acknowledged_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (active) setNotice((data as unknown as BillingNotice) ?? null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, raw?.status]);
 
   if (loading) return null;
+
+  const dismissNotice = async () => {
+    if (!notice) return;
+    const id = notice.id;
+    setNotice(null);
+    await supabase
+      .from("billing_events" as never)
+      .update({ acknowledged_at: new Date().toISOString() } as never)
+      .eq("id", id);
+  };
 
   const openPortal = async (flow: Flow, key: string) => {
     setBusy(key);
     try {
+      void trackBillingEvent(
+        flow === "subscription_cancel"
+          ? "subscription_cancel_clicked"
+          : flow === "payment_method_update"
+            ? "payment_method_update_clicked"
+            : "billing_portal_opened",
+        { flow: flow ?? null },
+      );
       const url = await createBillingPortalSession({
         data: {
           returnUrl: `${window.location.origin}/profile`,
@@ -38,6 +90,7 @@ export function BillingCard() {
     setBusy("resume");
     try {
       await resumePlusSubscription({ data: { environment: getStripeEnvironment() } });
+      void trackBillingEvent("subscription_resumed");
       toast.success("Your Plus plan is back on.");
       await refresh();
     } catch (e) {
@@ -59,7 +112,9 @@ export function BillingCard() {
             <p className="mt-0.5 text-sm text-muted-foreground">
               Unlimited Walk &amp; Talks, RSVP to in-person Local Walks, early access to new chapters.
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">30 days free, then $4.99/mo. Cancel anytime.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              30 days free, then $4.99/mo or $49.99/yr. Cancel anytime.
+            </p>
             <Button onClick={openPlusCheckout} className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90">
               Start free trial
             </Button>
@@ -89,6 +144,47 @@ export function BillingCard() {
 
   return (
     <section className="rounded-3xl border border-forest/40 bg-card p-5 shadow-soft">
+      {notice && (
+        <div
+          className={`mb-4 flex items-start gap-3 rounded-2xl border p-3 ${
+            notice.event_type === "payment_failed"
+              ? "border-clay/50 bg-clay/10 text-foreground"
+              : "border-forest/40 bg-accent/40 text-foreground"
+          }`}
+        >
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-card">
+            {notice.event_type === "payment_failed" ? (
+              <AlertTriangle className="h-4 w-4 text-clay" />
+            ) : (
+              <Clock className="h-4 w-4 text-forest" />
+            )}
+          </span>
+          <div className="flex-1 text-sm">
+            {notice.event_type === "payment_failed" ? (
+              <>
+                <div className="font-medium">A recent payment didn't go through.</div>
+                <p className="text-muted-foreground">Update your card to keep your Plus access.</p>
+              </>
+            ) : (
+              <>
+                <div className="font-medium">Your free trial ends soon.</div>
+                <p className="text-muted-foreground">
+                  First charge on {periodEndStr ?? "your renewal date"}. Cancel anytime before then.
+                </p>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={dismissNotice}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="flex items-start gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-forest text-primary-foreground">
           <Sparkles className="h-4 w-4" />
