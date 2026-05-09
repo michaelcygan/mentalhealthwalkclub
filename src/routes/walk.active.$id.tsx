@@ -120,8 +120,9 @@ function ActiveWalk() {
     if (rehydrated.current || !session) return;
     rehydrated.current = true;
     supabase.from("walk_routes").select("points").eq("walk_session_id", session.id).maybeSingle().then(({ data }) => {
-      const pts = (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
-      if (!pts || pts.length === 0) return;
+      const raw = (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
+      if (!raw || raw.length === 0) return;
+      const pts = raw.map((p) => ({ lat: p.lat, lng: p.lng, t: typeof p.t === "number" ? p.t : Date.now() }));
       points.current = pts;
       let total = 0;
       for (let i = 1; i < pts.length; i++) total += haversine(pts[i - 1], pts[i]);
