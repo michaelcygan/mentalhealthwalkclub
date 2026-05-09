@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requirePlus } from "@/lib/plus-guard.server";
 
 // short, URL-friendly, unambiguous (no 0/O/1/l)
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -16,6 +17,7 @@ export const createFriendWalk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    await requirePlus(supabase, userId as string);
 
     // Get a unique code (retry up to 5x)
     let code = "";
@@ -79,6 +81,7 @@ export const scheduleFriendWalk = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await requirePlus(supabase, userId as string);
 
     const startsAt = new Date(data.startsAt);
     if (startsAt.getTime() < Date.now() - 60_000) throw new Error("pick a future time");

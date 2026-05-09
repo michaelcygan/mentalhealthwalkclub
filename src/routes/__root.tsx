@@ -14,6 +14,7 @@ import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { LogoStamp } from "@/components/logo-stamp";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
+import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 
 function NotFoundComponent() {
   return (
@@ -279,6 +280,7 @@ function RootComponent() {
       <ViewModeProvider>
         <AuthPromptProvider>
           <AmbientPlayerProvider>
+            <PaymentTestModeBanner />
             <AppFrame>
               <Outlet />
             </AppFrame>

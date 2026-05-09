@@ -3,11 +3,15 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Footprints } from "lucide-react";
+import { Footprints, Sparkles } from "lucide-react";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 
 export const Route = createFileRoute("/welcome")({
   component: Welcome,
+  validateSearch: (search: Record<string, unknown>): { upgraded?: string; session_id?: string } => ({
+    upgraded: typeof search.upgraded === "string" ? search.upgraded : undefined,
+    session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Welcome — Mental Health Walk Club" },
@@ -34,6 +38,7 @@ const COMFORT = [
 function Welcome() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { upgraded } = Route.useSearch();
   const [step, setStep] = useState(0);
   const [location, setLocation] = useState<LocationValue | null>(null);
   const [themes, setThemes] = useState<string[]>([]);
@@ -74,6 +79,17 @@ function Welcome() {
   return (
     <div className="min-h-screen gradient-warm">
       <div className="mx-auto max-w-lg px-6 py-12">
+        {upgraded === "1" && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-forest/40 bg-card p-4 shadow-soft">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-forest text-primary-foreground">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div className="text-sm">
+              <div className="font-serif text-base text-foreground">You're in — Walk Club Plus is on.</div>
+              <p className="mt-0.5 text-muted-foreground">Your 30-day free trial started. Cancel anytime from your profile.</p>
+            </div>
+          </div>
+        )}
         <div className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-forest">
             <Footprints className="h-5 w-5 text-primary-foreground" />
