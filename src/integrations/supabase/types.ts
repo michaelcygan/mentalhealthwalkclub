@@ -265,6 +265,45 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_events: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          environment: string
+          event_type: string
+          id: string
+          metadata: Json
+          source: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          environment?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          source?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          environment?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          source?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_user_id: string
