@@ -34,7 +34,7 @@ export function CityTile({ group, pulse, joined }: Props) {
   const state: DayState = dayStateFromHour(hour);
   const Glyph = STATE_GLYPH[state];
 
-  // Pause Ken-Burns when off-screen.
+  // Visibility for pausing animations.
   const ref = useRef<HTMLLIElement>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -44,6 +44,32 @@ export function CityTile({ group, pulse, joined }: Props) {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  // Slow rotate between base + alternates for photo cities.
+  const photoCount = Math.max(1, photoCover?.count?.[state] ?? 1);
+  const [baseLoaded, setBaseLoaded] = useState(false);
+  // Reset when state (time-of-day) changes.
+  useEffect(() => { setBaseLoaded(false); }, [state]);
+  // Local rotation (lightweight: no shared hook needed since we already have IO above).
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    if (!photoCover || photoCount <= 1 || !baseLoaded) return;
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    let timer = 0;
+    const tick = () => {
+      const ms = 7000 + Math.random() * 4000;
+      timer = window.setTimeout(() => {
+        if (inView && document.visibilityState === "visible") {
+          setActiveIdx((i) => (i + 1) % photoCount);
+        }
+        tick();
+      }, ms);
+    };
+    const startId = window.setTimeout(tick, Math.random() * 4000);
+    return () => { window.clearTimeout(startId); window.clearTimeout(timer); };
+  }, [photoCover, photoCount, baseLoaded, inView]);
 
   if (!photoCover && !procCover) return null;
 
@@ -65,17 +91,39 @@ export function CityTile({ group, pulse, joined }: Props) {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${photoCover.blur[state]})` }}
           />
-          {/* Crisp image w/ Ken Burns */}
+          {/* Base photo (always opaque, with Ken Burns) */}
           <img
-            src={coverUrl(slug, state)}
+            src={coverUrl(slug, state, 0)}
             alt=""
             loading="lazy"
             decoding="async"
             width={480}
             height={600}
+            onLoad={() => setBaseLoaded(true)}
             className="absolute inset-0 h-full w-full object-cover ken-burns"
             style={{ animationPlayState: inView ? "running" : "paused" }}
           />
+          {/* Alternates — only mount after base loads, crossfade via opacity */}
+          {baseLoaded && photoCount > 1 && Array.from({ length: photoCount - 1 }).map((_, i) => {
+            const idx = i + 1;
+            return (
+              <img
+                key={`${state}-${idx}`}
+                src={coverUrl(slug, state, idx)}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={480}
+                height={600}
+                className="absolute inset-0 h-full w-full object-cover ken-burns transition-opacity"
+                style={{
+                  transitionDuration: "1400ms",
+                  opacity: activeIdx === idx ? 1 : 0,
+                  animationPlayState: inView ? "running" : "paused",
+                }}
+              />
+            );
+          })}
         </>
       ) : (
         <>
@@ -85,6 +133,7 @@ export function CityTile({ group, pulse, joined }: Props) {
             className="absolute inset-0 ken-burns"
             style={{ background: proceduralBackground(procCover!.hue, state), animationPlayState: inView ? "running" : "paused" }}
           />
+
           {/* Abstract skyline silhouette */}
           <div
             aria-hidden
