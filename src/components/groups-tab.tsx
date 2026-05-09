@@ -44,7 +44,10 @@ export function GroupsTab() {
     return () => window.clearInterval(id);
   }, [q]);
 
-  const toggleChip = (c: Chip) => setActive((s) => { const n = new Set(s); n.has(c) ? n.delete(c) : n.add(c); return n; });
+  const toggleChip = (c: Chip) => {
+    haptic(6);
+    setActive((s) => { const n = new Set(s); n.has(c) ? n.delete(c) : n.add(c); return n; });
+  };
 
   const toggleJoin = (g: Group) => requireAuth(async () => {
     if (!user) return;
@@ -157,16 +160,6 @@ export function GroupsTab() {
         </div>
 
         <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-          {collapsed && liveNow > 0 && (
-            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
-              </span>
-              <span className="text-forest">{liveDisplay} live</span>
-              <span>· {totalWalkers.toLocaleString()} walkers</span>
-            </div>
-          )}
           <div className="relative focus-hue-drift rounded-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -175,13 +168,21 @@ export function GroupsTab() {
               inputMode="search"
               enterKeyHint="search"
               placeholder={PLACEHOLDERS[phIdx]}
-              className="placeholder-rotate h-11 w-full rounded-full border border-border bg-card pl-10 pr-10 text-sm outline-none transition focus:border-forest/40"
+              className="placeholder-rotate h-11 w-full rounded-full border border-border bg-card pl-10 pr-24 text-sm outline-none transition focus:border-forest/40"
             />
-            {q && (
+            {q ? (
               <button onClick={() => setQ("")} aria-label="Clear" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary">
                 <X className="h-3.5 w-3.5" />
               </button>
-            )}
+            ) : liveNow > 0 ? (
+              <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-full bg-forest/10 px-2 py-1 text-[10px] text-forest">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full city-pulse-ring rounded-full bg-forest/70" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-forest" />
+                </span>
+                <span className="font-medium tabular-nums">{liveDisplay}</span> live
+              </div>
+            ) : null}
           </div>
           <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {CHIPS.map(({ id, label, icon: Icon }) => {
@@ -224,7 +225,32 @@ export function GroupsTab() {
       </header>
 
       {loading && groups.length === 0 && (
-        <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-secondary/60" />)}</div>
+        <div className="space-y-5" aria-hidden>
+          {/* PulseRail skeleton */}
+          <div className="space-y-2">
+            <div className="h-3 w-32 animate-pulse rounded-full bg-secondary/60" />
+            <div className="-mx-4 flex gap-2 px-4 overflow-hidden">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-20 w-56 shrink-0 animate-pulse rounded-2xl bg-secondary/60" />
+              ))}
+            </div>
+          </div>
+          {/* Today skeleton */}
+          <div className="space-y-2">
+            <div className="h-4 w-40 animate-pulse rounded-full bg-secondary/60" />
+            <div className="flex gap-1.5">
+              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-20 animate-pulse rounded-full bg-secondary/60" />)}
+            </div>
+            <div className="-mx-4 flex gap-2 px-4 overflow-hidden">
+              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-28 w-48 shrink-0 animate-pulse rounded-2xl bg-secondary/60" />)}
+            </div>
+          </div>
+          {/* Moods skeleton */}
+          <div className="space-y-2">
+            <div className="h-4 w-32 animate-pulse rounded-full bg-secondary/60" />
+            <div className="space-y-1.5">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-2xl bg-secondary/60" />)}</div>
+          </div>
+        </div>
       )}
 
       {/* ─── Filter / search results ─── */}
@@ -244,6 +270,9 @@ export function GroupsTab() {
               <div className="font-serif text-base text-foreground">Nothing matches that yet.</div>
               <p className="mt-1 text-xs text-muted-foreground">Try a softer word, or open the door wider.</p>
               <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                {myThemes.length > 0 && (
+                  <button onClick={() => { setQ(myThemes[0]); setActive(new Set()); }} className="chip-spring rounded-full border border-forest/40 bg-forest/5 px-3 py-1.5 text-xs text-forest hover:bg-forest/10">Try <span className="italic">{myThemes[0]}</span></button>
+                )}
                 <button onClick={() => { setQ("quiet"); setActive(new Set()); }} className="chip-spring rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Try <span className="italic">quiet</span></button>
                 {myCity && <button onClick={() => { setQ(""); setActive(new Set(["near"] as Chip[])); }} className="chip-spring rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-forest/40">Near {myCity}</button>}
                 <button onClick={() => { setQ(""); setActive(new Set()); }} className="chip-spring rounded-full bg-forest px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90">Show all</button>
