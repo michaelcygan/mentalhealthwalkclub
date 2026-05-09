@@ -35,7 +35,7 @@ import { useEffect, useRef, useState } from "react";
 export function useSlowRotate<T extends Element>(
   count: number,
   opts: { minMs?: number; maxMs?: number; startJitterMs?: number; enabled?: boolean } = {},
-): [number, React.RefObject<T>, boolean] {
+): [number, React.RefObject<T | null>, boolean] {
   const { minMs = 7000, maxMs = 11000, startJitterMs = 4000, enabled = true } = opts;
   const ref = useRef<T>(null);
   const [active, setActive] = useState(0);
