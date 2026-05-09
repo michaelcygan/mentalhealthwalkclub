@@ -356,7 +356,7 @@ function ActiveWalk() {
         moodBefore={session.mood_before}
         moodBeforeScore={session.mood_before_score}
         elapsed={elapsed}
-        miles={miles}
+        miles={displayMiles}
         savedPrompts={savedPrompts}
         onSave={endWalk}
       />
