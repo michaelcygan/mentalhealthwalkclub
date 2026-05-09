@@ -22,6 +22,7 @@ export function QuickSignupSheet({ open, onOpenChange, onSuccess, reason }: Prop
           <AuthForm
             defaultMode="signup"
             suppressRedirect
+            showPlanSelector={false}
             onSuccess={() => { onOpenChange(false); onSuccess?.(); }}
           />
         </div>
