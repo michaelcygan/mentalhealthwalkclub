@@ -298,7 +298,12 @@ export function GroupsTab() {
           {/* ─── Niches ─── */}
           {niches.length > 0 && (
             <div className="cv-auto">
-              <NicheCollection groups={niches} pulse={pulse} mine={mine} />
+              <NicheCollection
+                groups={niches}
+                pulse={pulse}
+                mine={mine}
+                onSeeAll={(label, gs) => setSheet({ title: label, groups: gs })}
+              />
             </div>
           )}
 
