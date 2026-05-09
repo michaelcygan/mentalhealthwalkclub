@@ -45,7 +45,7 @@ const MODE_PREFACE: Record<string, string> = {
 type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { requireAuth, openWelcome } = useAuthPrompt();
   const ambient = useAmbient();
