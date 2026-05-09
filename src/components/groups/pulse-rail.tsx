@@ -58,6 +58,7 @@ export function PulseRail({ groups, pulse, mine, onToggle }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
   const lastInteractRef = useRef(0);
+  const holdTimer = useRef<number | null>(null);
 
   // Auto-drift via rAF; seamless wrap because items are duplicated.
   useEffect(() => {
@@ -93,7 +94,6 @@ export function PulseRail({ groups, pulse, mine, onToggle }: Props) {
   if (items.length === 0) return null;
 
   const onInteract = () => { lastInteractRef.current = performance.now(); };
-  const holdTimer = useRef<number | null>(null);
   const onHoldStart = () => {
     if (holdTimer.current) window.clearTimeout(holdTimer.current);
     holdTimer.current = window.setTimeout(() => setPaused(true), 350);
