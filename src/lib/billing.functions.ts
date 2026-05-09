@@ -79,13 +79,14 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
-      managed_payments: { enabled: true },
       metadata: { userId: userId as string, managed_payments: "true" },
       subscription_data: {
         trial_period_days: PLUS_TRIAL_DAYS,
         metadata: { userId: userId as string },
       },
-    });
+      // Full compliance handling — Stripe acts as merchant of record (tax + fraud + disputes + support).
+      managed_payments: { enabled: true },
+    } as any);
 
     return session.client_secret;
   });
