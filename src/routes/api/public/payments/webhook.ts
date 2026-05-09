@@ -90,6 +90,109 @@ async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, even
     .eq("environment", env);
 }
 
+// Resolve userId from a subscription/invoice payload (metadata first, then DB lookup).
+async function resolveUserId(opts: {
+  subscriptionId?: string;
+  customerId?: string;
+  metadataUserId?: string;
+  env: StripeEnv;
+}): Promise<string | null> {
+  if (opts.metadataUserId) return opts.metadataUserId;
+  if (opts.subscriptionId) {
+    const { data } = await getSupabase()
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_subscription_id", opts.subscriptionId)
+      .eq("environment", opts.env)
+      .maybeSingle();
+    if (data?.user_id) return data.user_id;
+  }
+  if (opts.customerId) {
+    const { data } = await getSupabase()
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_customer_id", opts.customerId)
+      .eq("environment", opts.env)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.user_id) return data.user_id;
+  }
+  return null;
+}
+
+async function recordBillingEvent(params: {
+  userId: string;
+  env: StripeEnv;
+  eventType: "payment_failed" | "trial_will_end";
+  subscriptionId?: string;
+  customerId?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  await getSupabase().from("billing_events").insert({
+    user_id: params.userId,
+    event_type: params.eventType,
+    environment: params.env,
+    source: "webhook",
+    stripe_subscription_id: params.subscriptionId ?? null,
+    stripe_customer_id: params.customerId ?? null,
+    metadata: params.metadata ?? {},
+  });
+}
+
+async function handleInvoicePaymentFailed(invoice: any, env: StripeEnv) {
+  const subscriptionId = invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
+  const customerId = invoice.customer;
+  const userId = await resolveUserId({
+    subscriptionId,
+    customerId,
+    metadataUserId: invoice.metadata?.userId,
+    env,
+  });
+  if (!userId) {
+    console.warn("payment_failed: no userId resolved");
+    return;
+  }
+  await recordBillingEvent({
+    userId,
+    env,
+    eventType: "payment_failed",
+    subscriptionId,
+    customerId,
+    metadata: {
+      invoice_id: invoice.id,
+      amount_due: invoice.amount_due,
+      currency: invoice.currency,
+      attempt_count: invoice.attempt_count,
+      next_payment_attempt: invoice.next_payment_attempt,
+    },
+  });
+}
+
+async function handleTrialWillEnd(subscription: any, env: StripeEnv) {
+  const userId = await resolveUserId({
+    subscriptionId: subscription.id,
+    customerId: subscription.customer,
+    metadataUserId: subscription.metadata?.userId,
+    env,
+  });
+  if (!userId) {
+    console.warn("trial_will_end: no userId resolved");
+    return;
+  }
+  await recordBillingEvent({
+    userId,
+    env,
+    eventType: "trial_will_end",
+    subscriptionId: subscription.id,
+    customerId: subscription.customer,
+    metadata: {
+      trial_end: subscription.trial_end,
+      status: subscription.status,
+    },
+  });
+}
+
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
   const eventCreated = (event as { created?: number }).created ?? Math.floor(Date.now() / 1000);
@@ -100,6 +203,12 @@ async function handleWebhook(req: Request, env: StripeEnv) {
       break;
     case "customer.subscription.deleted":
       await handleSubscriptionDeleted(event.data.object, env, eventCreated);
+      break;
+    case "customer.subscription.trial_will_end":
+      await handleTrialWillEnd(event.data.object, env);
+      break;
+    case "invoice.payment_failed":
+      await handleInvoicePaymentFailed(event.data.object, env);
       break;
     default:
       console.log("Unhandled event:", event.type);
