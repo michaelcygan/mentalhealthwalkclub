@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
@@ -21,6 +21,7 @@ import { WeatherPill } from "@/components/weather-pill";
 import { RainSoonBanner } from "@/components/rain-soon-banner";
 import { useCurrentWeather } from "@/hooks/use-weather";
 import { getNow as getWeatherNow } from "@/lib/weather";
+import { useStepCounter } from "@/hooks/use-step-counter";
 
 const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
 
@@ -112,34 +113,62 @@ function ActiveWalk() {
     return () => clearInterval(t);
   }, [session, paused]);
 
+  // Rehydrate any previously-saved route for this session so a tab kill /
+  // refresh doesn't wipe the walk.
+  const rehydrated = useRef(false);
+  useEffect(() => {
+    if (rehydrated.current || !session) return;
+    rehydrated.current = true;
+    supabase.from("walk_routes").select("points").eq("walk_session_id", session.id).maybeSingle().then(({ data }) => {
+      const raw = (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
+      if (!raw || raw.length === 0) return;
+      const pts = raw.map((p) => ({ lat: p.lat, lng: p.lng, t: typeof p.t === "number" ? p.t : Date.now() }));
+      points.current = pts;
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) total += haversine(pts[i - 1], pts[i]);
+      setMeters((m) => Math.max(m, total));
+      lastPos.current = pts[pts.length - 1];
+      setWalkerCoords({ lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng });
+      setRouteTick((x) => x + 1);
+    });
+  }, [session]);
+
   useEffect(() => {
     if (!navigator.geolocation) { setGps("denied"); return; }
     watchId.current = navigator.geolocation.watchPosition((pos) => {
       const acc = pos.coords.accuracy ?? 999;
-      // Drop low-confidence fixes that cause Wi-Fi drift on desktop
-      if (acc > 30) { setGps((g) => g === "live" ? "live" : "weak"); return; }
+      // Accept fixes up to ~60m (handles GPS warm-up + phone-in-pocket noise).
+      // Anything worse is treated as "weak" but not dropped silently.
+      if (acc > 60) { setGps((g) => g === "live" ? "live" : "weak"); return; }
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
+      // Tighter delta when fix is fuzzy, looser when sharp — kills jitter
+      // without dropping real motion in the warm-up window.
+      const minDelta = acc > 30 ? Math.max(4, acc * 0.18) : 2;
       if (lastPos.current) {
         const d = haversine(lastPos.current, p);
-        // Min 2m delta kills jitter; max 200m kills teleports
-        if (d >= 2 && d < 200) {
+        if (d >= minDelta && d < 200) {
           setMeters((m) => m + d);
           points.current.push(p);
           setRouteTick((x) => x + 1);
           lastPos.current = p;
-          setGps("live");
+          setWalkerCoords({ lat: p.lat, lng: p.lng });
+          setGps(acc <= 30 ? "live" : "weak");
         }
       } else {
         lastPos.current = p;
         points.current.push(p);
-        setGps("live");
+        setGps(acc <= 30 ? "live" : "weak");
         setWalkerCoords({ lat: p.lat, lng: p.lng });
       }
     }, (err) => {
       setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
     return () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
   }, []);
+
+  // Accelerometer step counter — fires while not paused. On iOS we surface
+  // an "Enable motion" button below; Android grants automatically on https.
+  const motion = useStepCounter(!paused);
 
   // Manual "I'm walking" affordance after 25s if we never got a confident fix
   useEffect(() => {
@@ -147,7 +176,7 @@ function ActiveWalk() {
     return () => clearTimeout(t);
   }, [hasMoved]);
 
-  useEffect(() => { if (meters > 15) setHasMoved(true); }, [meters]);
+  useEffect(() => { if (meters > 15 || motion.steps > 25) setHasMoved(true); }, [meters, motion.steps]);
 
   // Wake Lock — keep screen alive on audio walks (released on unmount)
   useEffect(() => {
@@ -203,11 +232,43 @@ function ActiveWalk() {
     }
   }, [elapsed]);
 
-  const miles = meters * 0.000621371;
   const stride = 0.78;
-  const steps = Math.round(meters / stride);
-  const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
+  const gpsSteps = Math.round(meters / stride);
+  // Use whichever is higher: GPS-derived or accelerometer. The pedometer
+  // keeps working when GPS is denied / weak / phone-in-pocket.
+  const steps = Math.max(gpsSteps, motion.steps);
+  // If motion outpaces GPS, infer distance from steps so miles/pace stay sane.
+  const inferredMeters = motion.steps > gpsSteps ? motion.steps * stride : meters;
+  const displayMiles = inferredMeters * 0.000621371;
+  const paceMinPerMi = displayMiles > 0.05 ? (elapsed / 60) / displayMiles : 0;
   const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
+
+  // Persist progress to Supabase every ~30s so a tab kill / refresh doesn't
+  // lose the walk. Distance + steps + duration go on walk_sessions; the
+  // points array goes on walk_routes (one row per session, upserted).
+  useEffect(() => {
+    if (!session || !user) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || paused) return;
+      const dur = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000);
+      const distance = Math.round(Math.max(meters, motion.steps * stride));
+      await supabase.from("walk_sessions").update({
+        distance_meters: distance,
+        steps,
+        duration_seconds: dur,
+      }).eq("id", session.id);
+      if (points.current.length > 1) {
+        await supabase.from("walk_routes").upsert({
+          walk_session_id: session.id,
+          user_id: user.id,
+          points: points.current,
+        }, { onConflict: "walk_session_id" });
+      }
+    };
+    const id = setInterval(tick, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [session, user, paused, meters, motion.steps, steps]);
 
   // Rotating "hero stat" — softly cycles through the four every 5s
   const [statIdx, setStatIdx] = useState(0);
@@ -254,7 +315,7 @@ function ActiveWalk() {
       status: "completed",
       ended_at: new Date().toISOString(),
       duration_seconds: elapsed,
-      distance_meters: Math.round(meters),
+      distance_meters: Math.round(Math.max(meters, motion.steps * stride)),
       steps,
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
@@ -263,7 +324,11 @@ function ActiveWalk() {
     }).eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
-      await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
+      // Use upsert so periodic-save row from this session is updated, not duped.
+      await supabase.from("walk_routes").upsert(
+        { walk_session_id: session.id, user_id: user.id, points: points.current },
+        { onConflict: "walk_session_id" }
+      );
       try {
         const blob = await renderRouteSnapshot(points.current, { width: 1080, height: 1080 });
         if (blob) {
@@ -295,7 +360,7 @@ function ActiveWalk() {
         moodBefore={session.mood_before}
         moodBeforeScore={session.mood_before_score}
         elapsed={elapsed}
-        miles={miles}
+        miles={displayMiles}
         savedPrompts={savedPrompts}
         onSave={endWalk}
       />
@@ -310,7 +375,7 @@ function ActiveWalk() {
     ? `${Math.floor(paceMinPerMi)}'${String(Math.round((paceMinPerMi % 1) * 60)).padStart(2, "0")}"`
     : "—";
   const stats = [
-    { label: "miles", value: miles.toFixed(2) },
+    { label: "miles", value: displayMiles.toFixed(2) },
     { label: "steps", value: steps.toLocaleString() },
     { label: "pace", value: paceStr },
     { label: "cadence", value: cadence > 0 ? cadence.toString() : "—" },
@@ -357,12 +422,27 @@ function ActiveWalk() {
         </div>
 
         {showManualStart && !hasMoved && (
-          <div className="relative mt-5 flex justify-center">
+          <div className="relative mt-5 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => { setHasMoved(true); setShowManualStart(false); toast("On your feet — counting you in."); }}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
             >
               <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
+            </button>
+          </div>
+        )}
+
+        {motion.permissionState === "needed" && (
+          <div className="relative mt-3 flex justify-center">
+            <button
+              onClick={async () => {
+                const r = await motion.request();
+                if (r === "granted") toast("Motion sensor on — counting your steps");
+                else if (r === "denied") toast("Motion blocked — using GPS only");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
+            >
+              <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
             </button>
           </div>
         )}

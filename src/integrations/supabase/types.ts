@@ -1498,7 +1498,7 @@ export type Database = {
           {
             foreignKeyName: "walk_routes_walk_session_id_fkey"
             columns: ["walk_session_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "walk_sessions"
             referencedColumns: ["id"]
           },
