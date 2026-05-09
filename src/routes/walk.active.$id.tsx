@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff } from "lucide-react";
+import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { RouteSparkline } from "@/components/route-sparkline";
 import { WalkTalkDock } from "@/components/walk-talk-dock";
@@ -21,6 +21,7 @@ import { WeatherPill } from "@/components/weather-pill";
 import { RainSoonBanner } from "@/components/rain-soon-banner";
 import { useCurrentWeather } from "@/hooks/use-weather";
 import { getNow as getWeatherNow } from "@/lib/weather";
+import { useStepCounter } from "@/hooks/use-step-counter";
 
 const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
 
@@ -112,34 +113,61 @@ function ActiveWalk() {
     return () => clearInterval(t);
   }, [session, paused]);
 
+  // Rehydrate any previously-saved route for this session so a tab kill /
+  // refresh doesn't wipe the walk.
+  const rehydrated = useRef(false);
+  useEffect(() => {
+    if (rehydrated.current || !session) return;
+    rehydrated.current = true;
+    supabase.from("walk_routes").select("points").eq("walk_session_id", session.id).maybeSingle().then(({ data }) => {
+      const pts = (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
+      if (!pts || pts.length === 0) return;
+      points.current = pts;
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) total += haversine(pts[i - 1], pts[i]);
+      setMeters((m) => Math.max(m, total));
+      lastPos.current = pts[pts.length - 1];
+      setWalkerCoords({ lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng });
+      setRouteTick((x) => x + 1);
+    });
+  }, [session]);
+
   useEffect(() => {
     if (!navigator.geolocation) { setGps("denied"); return; }
     watchId.current = navigator.geolocation.watchPosition((pos) => {
       const acc = pos.coords.accuracy ?? 999;
-      // Drop low-confidence fixes that cause Wi-Fi drift on desktop
-      if (acc > 30) { setGps((g) => g === "live" ? "live" : "weak"); return; }
+      // Accept fixes up to ~60m (handles GPS warm-up + phone-in-pocket noise).
+      // Anything worse is treated as "weak" but not dropped silently.
+      if (acc > 60) { setGps((g) => g === "live" ? "live" : "weak"); return; }
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
+      // Tighter delta when fix is fuzzy, looser when sharp — kills jitter
+      // without dropping real motion in the warm-up window.
+      const minDelta = acc > 30 ? Math.max(4, acc * 0.18) : 2;
       if (lastPos.current) {
         const d = haversine(lastPos.current, p);
-        // Min 2m delta kills jitter; max 200m kills teleports
-        if (d >= 2 && d < 200) {
+        if (d >= minDelta && d < 200) {
           setMeters((m) => m + d);
           points.current.push(p);
           setRouteTick((x) => x + 1);
           lastPos.current = p;
-          setGps("live");
+          setWalkerCoords({ lat: p.lat, lng: p.lng });
+          setGps(acc <= 30 ? "live" : "weak");
         }
       } else {
         lastPos.current = p;
         points.current.push(p);
-        setGps("live");
+        setGps(acc <= 30 ? "live" : "weak");
         setWalkerCoords({ lat: p.lat, lng: p.lng });
       }
     }, (err) => {
       setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
     return () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
   }, []);
+
+  // Accelerometer step counter — fires while not paused. On iOS we surface
+  // an "Enable motion" button below; Android grants automatically on https.
+  const motion = useStepCounter(!paused);
 
   // Manual "I'm walking" affordance after 25s if we never got a confident fix
   useEffect(() => {
