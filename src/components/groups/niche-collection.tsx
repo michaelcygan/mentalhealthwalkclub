@@ -121,7 +121,7 @@ export function NicheCollection({ groups, pulse, mine, onSeeAll }: Props) {
         style={overflows ? {
           // 4 rows of square tiles + 3 gaps; container width assumed = viewport - 2rem padding.
           maxHeight: `calc((100vw - 2rem - ${cols - 1} * 0.5rem) / ${cols} * ${ROWS_VISIBLE} + ${ROWS_VISIBLE - 1} * 0.5rem)`,
-          overscrollBehavior: "contain",
+          overscrollBehavior: "auto",
           touchAction: "pan-y",
           WebkitOverflowScrolling: "touch",
         } : undefined}
