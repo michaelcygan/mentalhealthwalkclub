@@ -1,6 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Headphones, MapPin, Lock, HeartHandshake, Footprints } from "lucide-react";
+import { Footprints, Headphones, MapPin, Mic, Sparkles, Check } from "lucide-react";
 import { LogoStamp } from "@/components/logo-stamp";
 
 interface Props {
@@ -14,65 +14,125 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border-border bg-card p-0 sm:max-w-lg">
-        <div className="gradient-warm rounded-t-3xl px-7 py-8">
+        {/* Header */}
+        <div className="gradient-warm rounded-t-3xl px-7 pb-6 pt-7">
           <div className="flex items-center gap-3">
-            <LogoStamp tone="dark" size={52} />
+            <LogoStamp tone="dark" size={48} />
             <div>
-              <h2 className="font-serif text-2xl leading-tight text-foreground">Mental Health Walk Club</h2>
-              <p className="text-xs text-muted-foreground">You don't have to walk through it alone.</p>
+              <h2 className="font-serif text-xl leading-tight text-foreground">Mental Health Walk Club</h2>
+              <p className="text-xs text-muted-foreground">Movement is the medicine. Company is the cure.</p>
             </div>
           </div>
-          <p className="mt-5 font-serif text-lg italic leading-relaxed text-foreground/85">
-            Take the walk. Let it count.
+          <p className="mt-4 font-serif text-lg leading-snug text-foreground">
+            Take the walk. Let it count. Show up for someone — or have someone show up for you.
           </p>
         </div>
 
-        <div className="space-y-5 px-7 pb-7 pt-6">
-          <Item
-            icon={HeartHandshake}
-            title="Peer support, on your feet"
-            body="A warm community of people who walk through the hard stuff. Not therapy — just movement, air, and the company of people who get it. If you're in crisis, call or text 988."
-          />
-          <Item
-            icon={Headphones}
-            title="Walks that fit your day"
-            body="Walk solo. Slip into a guided Walk & Talk. Step into a live Walk & Talk — only after you're actually moving. Or meet real people on a real sidewalk at a Local Walk."
-          />
-          <Item
-            icon={MapPin}
-            title="Groups are quiet, not loud"
-            body="No feeds. No chat. Groups are gentle affinity tags (Anxiety, Burnout, Sunday Reset, your city) that help us surface walks that fit you. The socializing happens in person or on an Walk & Talk."
-          />
-          <Item
-            icon={Lock}
-            title="Your walk is yours"
-            body="Routes, moods, and reflections stay private to you. Always."
-          />
-
-          <div className="grid gap-2 pt-2">
-            <Button onClick={onSignUp} className="h-12 rounded-full bg-forest text-primary-foreground hover:opacity-90">
-              Create your account
-            </Button>
-            <Button variant="ghost" onClick={onSignIn} className="rounded-full">
-              I already have one
-            </Button>
+        {/* What you get */}
+        <div className="px-7 pt-5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Four ways to walk</p>
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            <Feature icon={Footprints} title="Solo" body="Track every walk. Mood, route, reflection." />
+            <Feature icon={Headphones} title="Guided" body="A calm voice in your ear when you need it." />
+            <Feature icon={Mic} title="Walk & Talk" body="Live audio rooms — only joinable while walking." />
+            <Feature icon={MapPin} title="Local Walks" body="RSVP to in-person meetups in your city." />
           </div>
+        </div>
+
+        {/* Plans */}
+        <div className="px-7 pt-6">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Membership</p>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            <PlanCard
+              name="Free"
+              price="$0"
+              tagline="Walk forever, on the house."
+              items={[
+                "Unlimited Solo walks",
+                "Unlimited Guided walks",
+                "5 Walk & Talk rooms / month",
+                "Private route + mood history",
+              ]}
+            />
+            <PlanCard
+              name="Plus"
+              price="$4.99/mo"
+              highlight
+              tagline="30 days free. Cancel anytime."
+              items={[
+                "Everything in Free",
+                "Unlimited Walk & Talks",
+                "RSVP to in-person Local Walks",
+                "Early access to new chapters",
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* CTAs */}
+        <div className="space-y-2 px-7 pb-7 pt-6">
+          <Button onClick={onSignUp} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+            Create your account
+          </Button>
+          <Button variant="ghost" onClick={onSignIn} className="w-full rounded-full">
+            I already have one — sign in
+          </Button>
+          <p className="pt-1 text-center font-serif text-xs italic text-muted-foreground">
+            Peer support, not therapy. If you're in crisis, call or text 988.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function Item({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
+function Feature({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
   return (
-    <div className="flex gap-3">
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent">
+    <div className="rounded-2xl border border-border bg-card/60 p-3">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent">
         <Icon className="h-4 w-4 text-forest" />
       </div>
-      <div>
-        <h3 className="font-medium text-foreground">{title}</h3>
-        <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+      <h3 className="mt-2 text-sm font-medium text-foreground">{title}</h3>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function PlanCard({
+  name,
+  price,
+  tagline,
+  items,
+  highlight,
+}: {
+  name: string;
+  price: string;
+  tagline: string;
+  items: string[];
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        highlight ? "border-forest bg-accent/40" : "border-border bg-card/60"
+      }`}
+    >
+      <div className="flex items-baseline justify-between">
+        <span className="flex items-center gap-1.5 font-serif text-base font-medium text-foreground">
+          {highlight && <Sparkles className="h-3.5 w-3.5 text-forest" />}
+          {name}
+        </span>
+        <span className="text-sm font-semibold text-foreground">{price}</span>
       </div>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{tagline}</p>
+      <ul className="mt-3 space-y-1.5">
+        {items.map((it) => (
+          <li key={it} className="flex items-start gap-1.5 text-[12px] leading-snug text-foreground/80">
+            <Check className="mt-0.5 h-3 w-3 shrink-0 text-forest" />
+            <span>{it}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
