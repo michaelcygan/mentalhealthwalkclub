@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { AuthForm } from "@/components/auth-form";
+import { AuthForm, type AuthPlan } from "@/components/auth-form";
 import { WelcomeDialog } from "@/components/welcome-dialog";
 import { useAuth } from "@/lib/auth-context";
 
 interface Ctx {
-  openAuth: (mode?: "signin" | "signup") => void;
+  openAuth: (mode?: "signin" | "signup", plan?: AuthPlan) => void;
   openWelcome: () => void;
   requireAuth: (action: () => void) => void;
 }
@@ -22,6 +22,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+  const [authPlan, setAuthPlan] = useState<AuthPlan>("free");
   const [welcomeOpen, setWelcomeOpen] = useState(false);
 
   // Auto-open welcome modal once for first-time visitors who aren't signed in
@@ -36,8 +37,9 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [loading, user]);
 
-  const openAuth = useCallback((mode: "signin" | "signup" = "signup") => {
+  const openAuth = useCallback((mode: "signin" | "signup" = "signup", plan: AuthPlan = "free") => {
     setAuthMode(mode);
+    setAuthPlan(plan);
     setWelcomeOpen(false);
     setAuthOpen(true);
   }, []);
@@ -55,12 +57,12 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
       <WelcomeDialog
         open={welcomeOpen}
         onOpenChange={setWelcomeOpen}
-        onSignUp={() => openAuth("signup")}
+        onSignUp={(plan) => openAuth("signup", plan)}
         onSignIn={() => openAuth("signin")}
       />
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent className="rounded-3xl border-border bg-card p-7 sm:max-w-md">
-          <AuthForm defaultMode={authMode} onSuccess={() => setAuthOpen(false)} />
+          <AuthForm defaultMode={authMode} defaultPlan={authPlan} onSuccess={() => setAuthOpen(false)} />
         </DialogContent>
       </Dialog>
     </AuthPromptCtx.Provider>
