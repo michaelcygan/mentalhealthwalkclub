@@ -71,12 +71,22 @@ export function CityTile({ group, pulse, joined }: Props) {
     return () => { window.clearTimeout(startId); window.clearTimeout(timer); };
   }, [photoCover, photoCount, baseLoaded, inView]);
 
+  // Transient caption (fades in after each rotation, fades out after 3s).
+  const [showCaption, setShowCaption] = useState(false);
+  useEffect(() => {
+    if (!baseLoaded) return;
+    setShowCaption(true);
+    const id = window.setTimeout(() => setShowCaption(false), 3000);
+    return () => window.clearTimeout(id);
+  }, [baseLoaded, activeIdx]);
+
   if (!photoCover && !procCover) return null;
 
   const live = pulse?.live ?? 0;
   const flag = group.country ? FLAG[group.country] : null;
   const sub = group.location_label ?? group.city;
   const isNight = state === "night";
+  const timeLabel = formatTime(hour);
 
   return (
     <li
@@ -167,6 +177,14 @@ export function CityTile({ group, pulse, joined }: Props) {
       {/* Time-of-day glyph */}
       <div className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 backdrop-blur-sm glyph-float">
         <Glyph className="h-3.5 w-3.5" />
+      </div>
+      {/* Transient time caption */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-10 top-2 inline-flex h-7 items-center rounded-full bg-black/30 px-2 text-[10px] text-white/90 backdrop-blur-sm transition-opacity duration-700"
+        style={{ opacity: showCaption ? 1 : 0 }}
+      >
+        {timeLabel} · {state}
       </div>
       {/* Live / joined badges */}
       {(live > 0 || joined) && (
