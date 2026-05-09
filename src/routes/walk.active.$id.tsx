@@ -315,7 +315,7 @@ function ActiveWalk() {
       status: "completed",
       ended_at: new Date().toISOString(),
       duration_seconds: elapsed,
-      distance_meters: Math.round(meters),
+      distance_meters: Math.round(Math.max(meters, motion.steps * stride)),
       steps,
       mood_after: out.moodAfter || pulseRecord.current?.mood || null,
       mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
@@ -324,7 +324,11 @@ function ActiveWalk() {
     }).eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
-      await supabase.from("walk_routes").insert({ walk_session_id: session.id, user_id: user.id, points: points.current });
+      // Use upsert so periodic-save row from this session is updated, not duped.
+      await supabase.from("walk_routes").upsert(
+        { walk_session_id: session.id, user_id: user.id, points: points.current },
+        { onConflict: "walk_session_id" }
+      );
       try {
         const blob = await renderRouteSnapshot(points.current, { width: 1080, height: 1080 });
         if (blob) {
