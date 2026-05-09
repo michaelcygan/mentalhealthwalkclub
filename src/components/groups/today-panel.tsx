@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Sparkles, MapPin, Flame, Bookmark, ChevronRight } from "lucide-react";
 import { GroupCard } from "@/components/group-card";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
-import { viewTransition } from "@/lib/mobile";
+import { viewTransition, haptic } from "@/lib/mobile";
 
 type TabKey = "yours" | "for-you" | "near" | "trending";
 
@@ -37,7 +37,7 @@ export function TodayPanel({ yours, forYou, nearYou, trending, myCity, pulse, mi
   if (buckets.length === 0) return null;
 
   const active = buckets.find((b) => b.key === tab) ?? buckets[0];
-  const setTabAnimated = (k: TabKey) => viewTransition(() => setTab(k));
+  const setTabAnimated = (k: TabKey) => { haptic(6); viewTransition(() => setTab(k)); };
 
   const prefetch = (slug: string) => {
     try { router.preloadRoute({ to: "/groups/$slug" as never, params: { slug } as never }); } catch { /* */ }
@@ -57,13 +57,15 @@ export function TodayPanel({ yours, forYou, nearYou, trending, myCity, pulse, mi
         )}
       </div>
 
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
+      <div role="tablist" aria-label="Today filters" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
         {buckets.map((b) => {
           const on = b.key === active.key;
           const Icon = b.icon;
           return (
             <button
               key={b.key}
+              role="tab"
+              aria-selected={on}
               onClick={() => setTabAnimated(b.key)}
               className={`chip-spring shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                 on
@@ -79,7 +81,10 @@ export function TodayPanel({ yours, forYou, nearYou, trending, myCity, pulse, mi
       </div>
 
       <div className="relative -mx-4 px-4">
-        <ul key={active.key} className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1.5 niche-grid-fade">
+        {active.key === "yours" && (
+          <div aria-hidden className="pointer-events-none absolute left-4 top-0 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-forest/70 via-forest/40 to-transparent" />
+        )}
+        <ul key={active.key} className={`flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1.5 niche-grid-fade ${active.key === "yours" ? "pl-2" : ""}`}>
           {active.groups.slice(0, 12).map((g, i) => (
             <div
               key={g.id}

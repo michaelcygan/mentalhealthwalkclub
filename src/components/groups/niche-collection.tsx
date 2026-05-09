@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { Sparkles, ChevronRight } from "lucide-react";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
 import { NicheTile } from "./niche-tile";
-import { viewTransition } from "@/lib/mobile";
+import { viewTransition, haptic } from "@/lib/mobile";
 
 interface Props {
   groups: Group[];
@@ -93,13 +93,15 @@ export function NicheCollection({ groups, pulse, mine, onSeeAll }: Props) {
         )}
       </div>
 
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
+      <div role="tablist" aria-label="Niche categories" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
         {TABS.map((t) => {
           const on = tab === t.key;
           return (
             <button
               key={t.key}
-              onClick={() => viewTransition(() => setTab(t.key))}
+              role="tab"
+              aria-selected={on}
+              onClick={() => { haptic(6); viewTransition(() => setTab(t.key)); }}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
                 on
                   ? "border-forest bg-forest text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
