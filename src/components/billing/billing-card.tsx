@@ -98,6 +98,18 @@ export function BillingCard() {
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
 
           <div className="mt-4 grid gap-2">
+            {status === "past_due" && (
+              <Button
+                disabled={busy === "card"}
+                onClick={() => openPortal("payment_method_update", "card")}
+                className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {busy === "card" ? "Opening…" : "Update payment method"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5" />
+              </Button>
+            )}
+
             {endingSoon ? (
               <Button
                 disabled={busy === "resume"}
@@ -120,16 +132,18 @@ export function BillingCard() {
               </Button>
             )}
 
-            <Button
-              variant="outline"
-              disabled={busy === "card"}
-              onClick={() => openPortal("payment_method_update", "card")}
-              className="justify-start rounded-full"
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              {busy === "card" ? "Opening…" : "Update payment method"}
-              <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
+            {status !== "past_due" && (
+              <Button
+                variant="outline"
+                disabled={busy === "card"}
+                onClick={() => openPortal("payment_method_update", "card")}
+                className="justify-start rounded-full"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {busy === "card" ? "Opening…" : "Update payment method"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
 
             <Button
               variant="ghost"
