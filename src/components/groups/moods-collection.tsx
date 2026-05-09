@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, Sparkles, Moon, Compass, ChevronRight } from "lucide-react";
 import { GroupCard } from "@/components/group-card";
 import type { Group, GroupPulse } from "@/hooks/use-groups-feed";
-import { viewTransition } from "@/lib/mobile";
+import { viewTransition, haptic } from "@/lib/mobile";
 
 type MoodKey = "support" | "rituals" | "quiet" | "connection";
 
@@ -68,14 +68,16 @@ export function MoodsCollection({ groups, pulse, mine, onToggle, onSeeAll }: Pro
         )}
       </div>
 
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
+      <div role="tablist" aria-label="Moods" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:px-0">
         {buckets.map((b) => {
           const on = b.key === active.key;
           const Icon = b.icon;
           return (
             <button
               key={b.key}
-              onClick={() => viewTransition(() => setTab(b.key))}
+              role="tab"
+              aria-selected={on}
+              onClick={() => { haptic(6); viewTransition(() => setTab(b.key)); }}
               className={`chip-spring shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                 on
                   ? "border-forest bg-forest text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
