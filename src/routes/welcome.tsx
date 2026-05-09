@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Footprints, Sparkles } from "lucide-react";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
+import { trackBillingEvent } from "@/lib/billing-analytics";
 
 export const Route = createFileRoute("/welcome")({
   component: Welcome,
@@ -49,6 +50,14 @@ function Welcome() {
   useEffect(() => {
     if (!user) navigate({ to: "/auth" });
   }, [user, navigate]);
+
+  const trackedRef = useRef(false);
+  useEffect(() => {
+    if (upgraded === "1" && !trackedRef.current) {
+      trackedRef.current = true;
+      void trackBillingEvent("checkout_completed");
+    }
+  }, [upgraded]);
 
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
