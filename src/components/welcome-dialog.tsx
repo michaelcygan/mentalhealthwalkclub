@@ -1,16 +1,20 @@
+import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Footprints, Headphones, MapPin, Mic, Sparkles, Check } from "lucide-react";
 import { LogoStamp } from "@/components/logo-stamp";
+import type { AuthPlan } from "@/components/auth-form";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSignUp: () => void;
+  onSignUp: (plan: AuthPlan) => void;
   onSignIn: () => void;
 }
 
 export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props) {
+  const [plan, setPlan] = useState<AuthPlan>("plus");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border-border bg-card p-0 sm:max-w-lg">
@@ -47,8 +51,8 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
 
         {/* Plans */}
         <div className="px-7 pt-6">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Membership</p>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Choose your plan</p>
+          <div role="radiogroup" aria-label="Membership plan" className="mt-3 grid gap-2.5 sm:grid-cols-2">
             <PlanCard
               name="Free"
               price="$0"
@@ -59,6 +63,8 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
                 "5 Walk & Talk rooms / month",
                 "Private route + mood history",
               ]}
+              selected={plan === "free"}
+              onSelect={() => setPlan("free")}
             />
             <PlanCard
               name="Plus"
@@ -71,15 +77,25 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
                 "RSVP to in-person Local Walks",
                 "Early access to new chapters",
               ]}
+              selected={plan === "plus"}
+              onSelect={() => setPlan("plus")}
             />
           </div>
         </div>
 
         {/* CTAs */}
         <div className="space-y-2 px-7 pb-7 pt-6">
-          <Button onClick={onSignUp} className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
-            Create your account
+          <Button
+            onClick={() => onSignUp(plan)}
+            className="h-12 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90"
+          >
+            {plan === "plus" ? "Start your 1-month free trial" : "Create your free account"}
           </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            {plan === "plus"
+              ? "No card needed today. $4.99/mo after 30 days. Cancel anytime."
+              : "Free forever. Upgrade to Plus anytime."}
+          </p>
           <Button variant="ghost" onClick={onSignIn} className="w-full rounded-full">
             I already have one — sign in
           </Button>
@@ -110,17 +126,31 @@ function PlanCard({
   tagline,
   items,
   highlight,
+  selected,
+  onSelect,
 }: {
   name: string;
   price: string;
   tagline: string;
   items: string[];
   highlight?: boolean;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   return (
-    <div
-      className={`rounded-2xl border p-4 ${
-        highlight ? "border-forest bg-accent/40" : "border-border bg-card/60"
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={`relative rounded-2xl border p-4 text-left transition ${
+        selected
+          ? highlight
+            ? "border-forest bg-accent/60 ring-2 ring-forest/40"
+            : "border-forest bg-card ring-2 ring-forest/40"
+          : highlight
+            ? "border-border bg-accent/30 hover:border-forest/40"
+            : "border-border bg-card/60 hover:border-forest/40"
       }`}
     >
       <div className="flex items-baseline justify-between">
@@ -139,6 +169,11 @@ function PlanCard({
           </li>
         ))}
       </ul>
-    </div>
+      {selected && (
+        <span className="absolute right-3 top-3 rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          Selected
+        </span>
+      )}
+    </button>
   );
 }
