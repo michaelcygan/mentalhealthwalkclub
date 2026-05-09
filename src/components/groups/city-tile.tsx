@@ -222,3 +222,9 @@ export function CityTile({ group, pulse, joined }: Props) {
     </li>
   );
 }
+
+function formatTime(hour: number): string {
+  const h = ((hour + 11) % 12) + 1;
+  const ampm = hour < 12 ? "am" : "pm";
+  return `${h}${ampm}`;
+}
