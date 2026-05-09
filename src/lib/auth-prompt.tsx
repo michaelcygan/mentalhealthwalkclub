@@ -5,6 +5,8 @@ import { WelcomeDialog } from "@/components/welcome-dialog";
 import { PlusCheckout } from "@/components/billing/plus-checkout";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { useAuth } from "@/lib/auth-context";
+import type { PlusPlan } from "@/lib/billing.functions";
+import { trackBillingEvent } from "@/lib/billing-analytics";
 
 interface Ctx {
   openAuth: (mode?: "signin" | "signup", plan?: AuthPlan) => void;
@@ -29,6 +31,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const [authPlan, setAuthPlan] = useState<AuthPlan>("free");
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [plan, setPlan] = useState<PlusPlan>("plus_monthly");
 
   // Auto-open welcome modal once for first-time visitors who aren't signed in
   useEffect(() => {
@@ -48,7 +51,11 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
     const intent = window.localStorage.getItem(PLAN_INTENT_KEY);
     if (intent === "plus") {
       window.localStorage.removeItem(PLAN_INTENT_KEY);
-      const t = setTimeout(() => setCheckoutOpen(true), 350);
+      const t = setTimeout(() => {
+        setPlan("plus_monthly");
+        setCheckoutOpen(true);
+        void trackBillingEvent("checkout_opened", { plan: "plus_monthly" });
+      }, 350);
       return () => clearTimeout(t);
     }
   }, [user]);
@@ -63,6 +70,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const openWelcome = useCallback(() => setWelcomeOpen(true), []);
 
   const openPlusCheckout = useCallback(() => {
+    void trackBillingEvent("plus_intent_selected");
     if (!user) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(PLAN_INTENT_KEY, "plus");
@@ -70,7 +78,9 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
       openAuth("signup", "plus");
       return;
     }
+    setPlan("plus_monthly");
     setCheckoutOpen(true);
+    void trackBillingEvent("checkout_opened", { plan: "plus_monthly" });
   }, [user, openAuth]);
 
   const requireAuth = useCallback((action: () => void) => {
@@ -92,17 +102,56 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
           <AuthForm defaultMode={authMode} defaultPlan={authPlan} onSuccess={() => setAuthOpen(false)} />
         </DialogContent>
       </Dialog>
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+      <Dialog
+        open={checkoutOpen}
+        onOpenChange={(open) => {
+          setCheckoutOpen(open);
+          if (!open) void trackBillingEvent("checkout_dismissed", { plan });
+        }}
+      >
         <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border-border bg-card p-0 sm:max-w-xl">
           <PaymentTestModeBanner />
           <div className="px-6 pb-6 pt-5">
             <h2 className="font-serif text-xl text-foreground">Start your 1-month free trial</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              30 days free, then $4.99/mo. Cancel anytime — no charge until day 30.
+              30 days free, then{" "}
+              {plan === "plus_yearly" ? "$49.99/yr (save ~16%)" : "$4.99/mo"}. Cancel anytime — no
+              charge until day 30.
             </p>
+
+            <div
+              role="tablist"
+              aria-label="Choose plan"
+              className="mt-4 inline-flex rounded-full border border-border bg-muted/40 p-1 text-sm"
+            >
+              {(["plus_monthly", "plus_yearly"] as PlusPlan[]).map((p) => {
+                const active = plan === p;
+                return (
+                  <button
+                    key={p}
+                    role="tab"
+                    aria-selected={active}
+                    type="button"
+                    onClick={() => {
+                      if (p === plan) return;
+                      setPlan(p);
+                      void trackBillingEvent("checkout_opened", { plan: p });
+                    }}
+                    className={`rounded-full px-4 py-1.5 transition ${
+                      active
+                        ? "bg-forest text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {p === "plus_monthly" ? "Monthly" : "Yearly · save ~16%"}
+                  </button>
+                );
+              })}
+            </div>
+
             {checkoutOpen && (
               <div className="mt-5">
-                <PlusCheckout />
+                <PlusCheckout plan={plan} />
               </div>
             )}
           </div>
