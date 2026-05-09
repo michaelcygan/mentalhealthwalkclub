@@ -176,7 +176,7 @@ function ActiveWalk() {
     return () => clearTimeout(t);
   }, [hasMoved]);
 
-  useEffect(() => { if (meters > 15) setHasMoved(true); }, [meters]);
+  useEffect(() => { if (meters > 15 || motion.steps > 25) setHasMoved(true); }, [meters, motion.steps]);
 
   // Wake Lock — keep screen alive on audio walks (released on unmount)
   useEffect(() => {
@@ -232,11 +232,43 @@ function ActiveWalk() {
     }
   }, [elapsed]);
 
-  const miles = meters * 0.000621371;
   const stride = 0.78;
-  const steps = Math.round(meters / stride);
-  const paceMinPerMi = miles > 0.05 ? (elapsed / 60) / miles : 0;
+  const gpsSteps = Math.round(meters / stride);
+  // Use whichever is higher: GPS-derived or accelerometer. The pedometer
+  // keeps working when GPS is denied / weak / phone-in-pocket.
+  const steps = Math.max(gpsSteps, motion.steps);
+  // If motion outpaces GPS, infer distance from steps so miles/pace stay sane.
+  const inferredMeters = motion.steps > gpsSteps ? motion.steps * stride : meters;
+  const displayMiles = inferredMeters * 0.000621371;
+  const paceMinPerMi = displayMiles > 0.05 ? (elapsed / 60) / displayMiles : 0;
   const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
+
+  // Persist progress to Supabase every ~30s so a tab kill / refresh doesn't
+  // lose the walk. Distance + steps + duration go on walk_sessions; the
+  // points array goes on walk_routes (one row per session, upserted).
+  useEffect(() => {
+    if (!session || !user) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || paused) return;
+      const dur = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000);
+      const distance = Math.round(Math.max(meters, motion.steps * stride));
+      await supabase.from("walk_sessions").update({
+        distance_meters: distance,
+        steps,
+        duration_seconds: dur,
+      }).eq("id", session.id);
+      if (points.current.length > 1) {
+        await supabase.from("walk_routes").upsert({
+          walk_session_id: session.id,
+          user_id: user.id,
+          points: points.current,
+        }, { onConflict: "walk_session_id" });
+      }
+    };
+    const id = setInterval(tick, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [session, user, paused, meters, motion.steps, steps]);
 
   // Rotating "hero stat" — softly cycles through the four every 5s
   const [statIdx, setStatIdx] = useState(0);
