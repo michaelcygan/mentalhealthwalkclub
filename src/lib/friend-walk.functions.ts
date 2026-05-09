@@ -81,8 +81,7 @@ export const scheduleFriendWalk = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-
-    const startsAt = new Date(data.startsAt);
+    await requirePlus(supabase, userId as string);
     if (startsAt.getTime() < Date.now() - 60_000) throw new Error("pick a future time");
     const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60_000);
 
