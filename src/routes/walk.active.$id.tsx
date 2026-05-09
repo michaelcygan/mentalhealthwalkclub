@@ -339,7 +339,7 @@ function ActiveWalk() {
     ? `${Math.floor(paceMinPerMi)}'${String(Math.round((paceMinPerMi % 1) * 60)).padStart(2, "0")}"`
     : "—";
   const stats = [
-    { label: "miles", value: miles.toFixed(2) },
+    { label: "miles", value: displayMiles.toFixed(2) },
     { label: "steps", value: steps.toLocaleString() },
     { label: "pace", value: paceStr },
     { label: "cadence", value: cadence > 0 ? cadence.toString() : "—" },
@@ -386,12 +386,27 @@ function ActiveWalk() {
         </div>
 
         {showManualStart && !hasMoved && (
-          <div className="relative mt-5 flex justify-center">
+          <div className="relative mt-5 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => { setHasMoved(true); setShowManualStart(false); toast("On your feet — counting you in."); }}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
             >
               <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
+            </button>
+          </div>
+        )}
+
+        {motion.permissionState === "needed" && (
+          <div className="relative mt-3 flex justify-center">
+            <button
+              onClick={async () => {
+                const r = await motion.request();
+                if (r === "granted") toast("Motion sensor on — counting your steps");
+                else if (r === "denied") toast("Motion blocked — using GPS only");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
+            >
+              <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
             </button>
           </div>
         )}
