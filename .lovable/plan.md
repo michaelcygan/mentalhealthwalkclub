@@ -1,139 +1,108 @@
-## Reframe
+## Goal
 
-The walk is the soul. The Journal is where that soul accumulates — part **tracking dashboard** (daily pull), part **reflection space** (weekly/monthly pull). Photos and writing are quiet accents, not the headline. Each walk is a single entry; the entry card itself should be beautiful enough that 90% of users never need to open it.
-
-Two passes, scoped tighter than before.
+One unified entry flow — the welcome screen — that branches based on user choice. No separate `/welcome` and `/onboarding` routes. Sign-in is **always one tap away** at every step, in every state.
 
 ---
 
-## Pass 1 — In-walk: pull back, don't expand
+## The unified flow: `/` (signed-out) is a multi-slide welcome
 
-The current "Capture this moment" pill stays as a single, optional, quiet affordance. **No always-open notebook** — that pulls attention away from the walk. Only two real changes:
+When `!user`, `/` renders a **full-page slide flow** (not a modal) with persistent **"Sign in"** buttons at top header AND bottom of every slide's scroll. Slides advance with arrows / swipe / Continue button.
 
-- **Rename** the pill from "Capture this moment" → **"Note this"** (one icon: a small pen, not a camera). Photos are still reachable inside the sheet but not the primary verb.
-- **Auto-collapse** to a tiny floating dot in the corner after 8s of no interaction; tap re-expands. Writing/shooting remains possible but never courts the user.
+```
+                    ┌──── (any slide) ────┐
+                    │   "Sign in" → auth   │
+                    │   modal at any time  │
+                    └──────────────────────┘
 
-That's it for the walk screen. The walk is left alone.
+Slide 1: Welcome ───┬──> [Create account] ──> Slide 2a (signed-up fork)
+(today's            │
+ welcome popup      ├──> [Start free trial] ──> checkout ──> Slide 2a
+ content)           │
+                    └──> [Preview the app →] ──> Demo state
+                                                  │
+                                                  └─ persistent "Log in" pill
+                                                     in top-right + demo banner
+                                                     ──> back into auth at any time
+                                                         (which then enters Slide 2a)
 
----
-
-## Pass 2 — Journal tab: tracking + reflection, one surface
-
-Reorganize around three layers, top to bottom. Nothing here adds new data — it's a UI pass that makes the existing analytics and walk history feel like a complete tool.
-
-### Layer A — Tracking header (the daily-return hook)
-
-Replace the current stats card + heatmap with a denser, Strava-grade **tracking strip** that rewards opening the tab.
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Journal                                  [ week ▾ month all]│
-│                                                             │
-│  ●●●○●●●  this week · 4 of 7   ↑ 18 min vs last week        │ ← week ring
-│                                                             │
-│   142          11.4         18,402        +1.6              │
-│   minutes      miles        steps         mood arc          │
-│   ── 12 wk heatmap ──   ── 30d mood arc ──                  │
-│                                                             │
-│  🏅 Sunday Reset · #12 in your circle · 3-week streak       │ ← signals row
-└─────────────────────────────────────────────────────────────┘
+Signed-up fork (slides 2a → 5a):
+  2a. Name yourself        (display_name)
+  3a. Where you walking from?  (location)
+  4a. What's been on your shoulders? (themes)
+  5a. Find your people     (suggested groups, soft nudge)
+  Final. "You're set. Take your first walk?"  (Start a walk / Maybe later)
 ```
 
-- **Period toggle** (week / month / all) drives every number above the entry feed — the same one filter, no per-card duplication.
-- **Week ring** (reuse `WeeklyRing`) becomes the focal "did I show up" object; the dot pattern matches days walked.
-- **Vs. previous period delta** — small but addictive. Pulled from the same query, no new endpoint.
-- **Heatmap + mood arc** kept, but shrunk and side-by-side instead of stacked, so the whole header fits one viewport on mobile.
-- **Signals row** (one line, scrollable): newest badge · current leaderboard rank in user's primary group · streak · any unread `group_signals`. This is where the lite social lives — never a tab, always a glance. Tapping a chip deep-links (badge → wall, rank → leaderboard, signal → sender's walk). No new components beyond a thin chip wrapper.
+**Off-ramps everywhere:**
+- Every slide has a quiet **Skip** link (advances to next slide).
+- Every slide has a **"Skip onboarding"** link in the corner (jumps to Final → home).
+- Every slide has **Sign in** in the header (for returning users who landed in the flow by mistake).
+- In demo state, a persistent **Log in** pill replaces the "create account" CTA when `wc_last_auth` is present.
 
-### Layer B — Memory ribbon (unchanged, slimmed)
+## Key consolidation point (this addresses your concern)
 
-Keep today's 8-week ribbon, shrink to ~88px tall, and snap-scroll. It's the bridge between dashboard and entries — a calendar with feeling.
+There is **one flow component** (`<EntryFlow />`) with a `step` state machine. The "welcome popup" content IS slide 1 of the same flow — not a separate modal. Today's `/welcome` route's location/themes/comfort questions become slides 3a/4a of the same flow (no second route, no second visual language).
 
-### Layer C — Entries feed (the walk-as-entry primitive)
+- Old `/welcome` route → redirects into `/` flow (or is deleted; new users go straight from signup into the next slide of the same flow they were already in).
+- The slide index persists in `sessionStorage` so a refresh mid-flow resumes where they were.
+- Comfort question (Walk & Talk listener/talker) is **kept in the flow** as a one-tap choice on slide 4a (added next to themes), since you flagged removing it as a concern. Themes + comfort on the same slide keeps it to 4 collected-data slides.
 
-Each completed walk = one **EntryCard**. Most users will live here visually without ever tapping in.
+## Demo state — same flow, different fork
 
-#### The standard EntryCard (the hero design)
+Choosing "Preview the app →" doesn't leave the flow conceptually — it sets `sessionStorage: wc_demo_mode = "1"` and renders the real `WalkTab` shell with seeded generic data (Jordan, neutral landscape photos, one distant group shot). Persistent UI that ties demo back to the flow:
 
-A 16:10 card with the **monochrome route snapshot as the background** (mono `mapStyles.mono()` already exists — the snapshot pipeline in `route-snapshot.ts` already paints in this style; we just surface it bigger). Soft duotone overlay (forest → cream) for legibility. No traffic, no labels, no pins — just the line of where you walked, treated as art.
+- Top-right pill: **Log in** (or **Create account** if no `wc_last_auth`).
+- Top banner: "Previewing as Jordan — Make it yours" + dismissible.
+- Mobile tab bar: replaces Profile tab with Create account.
+- Every write action (`Start a walk`, `Save to journal`, `RSVP`, `Join group`, `Join Walk & Talk`) opens the auth sheet via `requireAuth()` with contextual reason copy. After successful auth, the user is dropped into Slide 2a of the same flow (so onboarding picks up where signup left off).
 
-```text
-┌─────────────────────────────────────────┐
-│  ░░░ monochrome route snapshot ░░░░░░░░ │
-│  ░░░░░░░╱─────╲░░░░░░░░░░░░░░░░░░░░░░░ │
-│  ░░░░░░╱       ╲░░░░░░░░░░░░░░░░░░░░░░ │
-│                                         │
-│  Sun · Nov 9 · 7:14am          ☁ 48°    │ ← top meta
-│                                         │
-│  42 min   ·   2.8 mi   ·   4,210 steps  │ ← stat trio (serif tabular)
-│                                         │
-│  solo · Riverside loop                  │ ← context
-│  anxious → settled    +2                │ ← mood delta chip (only if set)
-│  "the wind shifted halfway through"     │ ← reflection one-liner (only if any)
-│  · 2 photos                             │ ← thin marker if photos exist
-└─────────────────────────────────────────┘
-```
+## Returning-user behavior
 
-- **One layout for all walks.** No variants. Empty fields just don't render — quiet walks become quiet cards. This kills the "is this user a power user?" branching from the previous plan.
-- **Walk context line** uses what's already in `walk_sessions`: walk type (solo / guided / walk-talk / friend / event), and any group/event/route name we already store (or "no group" silence).
-- **Photos shown as a count** ("· 3 photos"), not a mosaic. Photos belong inside the entry, not on top of it.
-- **Share button** floats in the corner (already implemented).
-- Cards group under sticky **month** labels (existing pattern).
+- `localStorage: wc_last_auth = "email" | "google" | …` set on every successful auth.
+- If present and signed-out: header **Sign in** button is the primary affordance (label: "Welcome back — Sign in"); Create account becomes secondary.
+- This makes the entry screen double as the **log-in page**.
 
-#### EntryCard tap → detail pane (the reflection space)
+## State persistence
 
-The detail pane (existing `WalkDetailPane`) gets one focused upgrade:
+- `sessionStorage: wc_flow_step` — current slide index (0–5).
+- `sessionStorage: wc_demo_mode` — `"1"` while previewing.
+- `localStorage: wc_seen_welcome` — collapses Slide 1's long form to a condensed hero on repeat visits.
+- `profiles.onboarded_at` — set when user reaches the Final slide (or hits "Skip onboarding"). Skips slides 2a–5a on next sign-in.
 
-- **Story view**: route snapshot at top (same mono treatment), then a single chronological column interleaving photos (when present) and notes (when present) by timestamp. If neither exist, the column is just the reflection paragraph + a "Add a reflection" inline editor.
-- **Edit reflection only** (no editing of distance/time/mood — those are walk facts). Inline serif textarea with debounced save, optimistic toast — same plumbing as `end-walk-flow.tsx`.
-- Existing share-card flow stays.
-- **No "add photos later"** — captures stay tied to the walk as it happened.
+## Slide-by-slide detail
 
-### Layer D — Lightweight search & filter (above feed)
+| # | State | Content | Primary CTAs | Off-ramps |
+|---|---|---|---|---|
+| 1 | Signed-out | Logo, tagline, Four ways to walk grid, plan picker (Free / Plus) | Create account · Start free trial · Preview the app | Sign in (header + footer) |
+| 2a | Signed-in, !onboarded | "What should we call you?" | Continue (display_name) | Skip · Skip onboarding |
+| 3a | " | Location autosuggest | Continue | Skip · Skip onboarding |
+| 4a | " | Themes chips + comfort one-tap (listener / sometimes / talker) | Continue | Skip · Skip onboarding |
+| 5a | " | 3–6 suggested groups (theme + location ranked) with one-tap Join + small search | Continue | Skip · Skip onboarding |
+| Final | " | "You're set. Take your first walk?" | Start a walk · Maybe later — go home | — |
 
-- One search input: matches reflection text, walk type, group/event name, mood.
-- Three pill filters: **All · Felt heavier · Felt lighter** (uses existing `mood_before_score` → `mood_after_score` delta — turns analytics into curiosity). Keeping it emotional, not categorical.
-- State held in URL params for back-button restore.
-
-### Layer E — Badges + leaderboard, woven in (not added)
-
-These already exist in the app. Don't add tabs, don't add cards — surface them inside the Journal:
-
-- The existing **Badges** strip stays where it is, but rendered after the ribbon and before the feed, as a single horizontal scroller with the newest 6 + a "see all" link (route already exists).
-- **Non-competitive leaderboard** (`get_leaderboard` already in DB): one collapsed section under badges titled **"Walking with you this week"** — shows user's group rank + 2 above / 2 below, no podium, no medals. Tapping expands to the full list inline.
+Soft-gating: pulsing arrow on the primary CTA stays until tapped or Skip pressed. No hard block.
 
 ---
 
-## Technical Details
+## Files
 
-**Edited files**
-- `src/components/walk-notes-sheet.tsx` — pill copy "Note this", icon swap, auto-collapse to dot after 8s idle.
-- `src/routes/journal.tsx` — restructure into Layer A→E. Replace stats card + heatmap with the tracking strip; add period toggle (`week | month | all`) state that drives header aggregations only (entries feed always shows full history with search/filters).
-- `src/components/journal/entry-card.tsx` *(new)* — single hero card primitive that consumes one `Walk` row + signed snapshot URL + photo count. Mono route snapshot as bg, duotone overlay, stat trio, optional context/mood/reflection lines.
-- `src/components/journal/tracking-strip.tsx` *(new)* — Layer A; reuses `WeeklyRing`, existing `Heatmap`, `MoodArc`; computes period totals + previous-period delta from the already-fetched `walks` array (no new query).
-- `src/components/journal/signals-row.tsx` *(new)* — chip row (latest badge, group rank, streak, unread signals).
-- `src/components/journal/walking-with-you.tsx` *(new)* — calls `get_leaderboard` RPC scoped to user's primary group; shows ±2 around the user.
-- `src/components/journal/entry-search.tsx` *(new)* — input + 3 mood-delta filter pills, URL param state.
+**New:**
+- `src/components/entry-flow/entry-flow.tsx` — the slide state machine (rendered by `/` when `!user || !onboarded`)
+- `src/components/entry-flow/slides/{welcome,name,location,themes,groups,first-walk}.tsx`
+- `src/components/entry-flow/{flow-header,flow-footer,pulse-arrow,sign-in-pill}.tsx` — shared chrome with persistent Sign in / Skip
+- `src/components/demo-banner.tsx`
+- `src/hooks/use-demo-mode.ts`
+- `src/hooks/use-entry-flow.ts` — step state + sessionStorage persistence + last-auth memory
+- `src/lib/demo-data.ts` — Jordan + sample walks/photos/groups (generic, no faces except one distant group shot)
 
-**No new files for**: photo mosaic, photo essay variants, "add photo later", in-walk notebook. All cut.
+**Edit:**
+- `src/routes/index.tsx` — branch: signed-in→WalkTab; signed-out OR (signed-in & !onboarded)→`<EntryFlow />`; demo mode→WalkTab with sample data
+- `src/lib/auth-prompt.tsx` — remove auto-modal; keep openAuth (called by Sign in pill); after auth, set flow step to 2a; keep checkout-after-signup
+- `src/components/welcome-dialog.tsx` — repurpose its content into Slide 1
+- `src/components/mobile-tab-bar.tsx` — demo-mode swap (Profile → Create account)
+- `src/lib/auth-context.tsx` — on sign-in, fetch `profiles.onboarded_at`; pass to flow
+- `src/routes/welcome.tsx` — delete (or redirect to `/`)
 
-**Data**
-- Zero schema changes.
-- One new lightweight fetch in journal: photo *counts* per walk (`select walk_session_id, count(*) … group by walk_session_id`) so EntryCard can show "· N photos" without N requests. Cached alongside existing snapshot URL bulk fetch.
-- `get_my_rank` and `get_leaderboard` RPCs already exist — wire them in.
+**Migration:** add `profiles.onboarded_at timestamptz`.
 
-**Visual rules**
-- Map snapshots use `mapStyles.mono()` (already the snapshot default in `route-snapshot.ts`). No labels, no traffic, no POIs — confirm the mono style strips them; if not, add `"visibility": "none"` filters in the snapshot path.
-- Card height fixed at 16:10 so the feed has rhythm; reflection text truncates at 2 lines on the card (full text in detail view).
-- Stat trio in cards uses the same serif-tabular treatment as `WalkStatTrio` — visual continuity from walking → journaling.
-
----
-
-## Out of scope (explicit)
-
-- In-walk always-open notebook (cut)
-- Photo mosaic / photo essay card variants (cut)
-- Add-photos-later (cut)
-- Editing walk facts (distance, time, mood) — never
-- Full-text search backend, audio notes, drawings — not this pass
-- New badges, new leaderboard logic — surface only
+No other schema or RLS changes. Suggested groups read from existing `groups`; joins use existing `group_memberships` policies.
