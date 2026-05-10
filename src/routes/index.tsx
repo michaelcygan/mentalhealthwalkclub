@@ -79,14 +79,19 @@ function WalkTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("walk_sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "completed").then(({ count }) => setTotalWalks(count ?? 0));
-    supabase.from("walk_sessions").select("reflection_note").eq("user_id", user.id).eq("status","completed").not("reflection_note","is",null).order("started_at",{ ascending:false }).limit(1).maybeSingle().then(({ data }) => setLastReflection(data?.reflection_note ?? null));
+    // Single query: pulls last 7d of sessions + active session + total count via separate head query.
+    // (Reflection note is derived from the last completed row in the same window when present;
+    //  otherwise we fall back to a tiny query for the most recent reflection ever.)
     const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0,0,0,0);
-    supabase.from("walk_sessions").select("started_at,duration_seconds,status")
-      .eq("user_id", user.id).gte("started_at", since.toISOString())
+    supabase.from("walk_sessions")
+      .select("id,started_at,duration_seconds,status,reflection_note")
+      .eq("user_id", user.id)
+      .gte("started_at", since.toISOString())
+      .order("started_at", { ascending: false })
       .then(({ data }) => {
         const rows = data ?? [];
-        const mins = rows.filter(r => r.status === "completed").reduce((s, r) => s + Math.round((r.duration_seconds ?? 0) / 60), 0);
+        const completed = rows.filter(r => r.status === "completed");
+        const mins = completed.reduce((s, r) => s + Math.round((r.duration_seconds ?? 0) / 60), 0);
         setWeeklyMinutes(mins);
         const today = new Date(); today.setHours(0,0,0,0);
         const dots = Array.from({ length: 7 }, (_, i) => {
@@ -96,11 +101,21 @@ function WalkTab() {
         });
         setWeeklyDots(dots);
         const active = rows.find(r => r.status === "active");
-        if (active) {
-          supabase.from("walk_sessions").select("id").eq("user_id", user.id).eq("status","active").order("started_at",{ascending:false}).limit(1).maybeSingle()
-            .then(({ data: a }) => setActiveWalkId(a?.id ?? null));
-        } else setActiveWalkId(null);
+        setActiveWalkId(active?.id ?? null);
+        const recent = completed.find(r => r.reflection_note);
+        if (recent) {
+          setLastReflection(recent.reflection_note);
+        } else {
+          // No reflection in the past 7d — fall back to the most recent ever (one extra query, but rare).
+          supabase.from("walk_sessions")
+            .select("reflection_note").eq("user_id", user.id).eq("status","completed")
+            .not("reflection_note","is",null).order("started_at",{ ascending:false }).limit(1).maybeSingle()
+            .then(({ data: r }) => setLastReflection(r?.reflection_note ?? null));
+        }
       });
+    supabase.from("walk_sessions").select("id", { count: "exact", head: true })
+      .eq("user_id", user.id).eq("status", "completed")
+      .then(({ count }) => setTotalWalks(count ?? 0));
   }, [user, refreshTick]);
 
   const { pull, refreshing } = usePullToRefresh({

@@ -36,12 +36,20 @@ export function GroupsTab() {
   const dir = useScrollDirection(8);
   const collapsed = dir === "down";
 
-  // Search placeholder rotator
+  // Search placeholder rotator (paused when tab hidden — saves wakeups)
   const [phIdx, setPhIdx] = useState(0);
   useEffect(() => {
     if (q) return;
-    const id = window.setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 4000);
-    return () => window.clearInterval(id);
+    let id: number | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = window.setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 4000);
+    };
+    const stop = () => { if (id != null) { window.clearInterval(id); id = null; } };
+    const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
+    start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, [q]);
 
   const toggleChip = (c: Chip) => {
@@ -82,18 +90,20 @@ export function GroupsTab() {
     });
   }, [groups, pulse, q, active, myCity]);
 
-  // Counts for chip badges
-  const chipCount = (id: Chip): number => {
-    return groups.reduce((n, g) => {
+  // Counts for chip badges (memoized — recomputed only when groups/pulse/myCity change)
+  const chipCounts = useMemo(() => {
+    const counts: Record<Chip, number> = { near: 0, live: 0, upcoming: 0, quiet: 0, audio: 0 };
+    for (const g of groups) {
       const p = pulse.get(g.id);
-      if (id === "live" && p?.live) return n + 1;
-      if (id === "upcoming" && p?.nextStart) return n + 1;
-      if (id === "near" && myCity && g.city === myCity) return n + 1;
-      if (id === "quiet" && (g.theme === "quiet" || g.theme === "reset")) return n + 1;
-      if (id === "audio" && (p?.live || p?.nextStart)) return n + 1;
-      return n;
-    }, 0);
-  };
+      if (p?.live) counts.live += 1;
+      if (p?.nextStart) counts.upcoming += 1;
+      if (myCity && g.city === myCity) counts.near += 1;
+      if (g.theme === "quiet" || g.theme === "reset") counts.quiet += 1;
+      if (p?.live || p?.nextStart) counts.audio += 1;
+    }
+    return counts;
+  }, [groups, pulse, myCity]);
+  const chipCount = (id: Chip): number => chipCounts[id];
 
   // ─── Module data ───
   const yours = useMemo(() => groups.filter((g) => mine.has(g.id)), [groups, mine]);
@@ -297,32 +307,36 @@ export function GroupsTab() {
           />
 
           {/* ─── Today (collapses Yours/For-you/Near/Trending) ─── */}
-          <TodayPanel
-            yours={yours}
-            forYou={forYou}
-            nearYou={nearYou}
-            trending={trending}
-            myCity={myCity}
-            pulse={pulse}
-            mine={mine}
-            onToggle={toggleJoin}
-            onSeeAll={(key) => {
-              const map = { yours, "for-you": forYou, near: nearYou, trending } as const;
-              const titles = { yours: "Your groups", "for-you": "Picked for you", near: `Near ${myCity ?? "you"}`, trending: "Trending this week" } as const;
-              setSheet({ title: titles[key], groups: map[key] });
-            }}
-          />
+          <div className="cv-auto">
+            <TodayPanel
+              yours={yours}
+              forYou={forYou}
+              nearYou={nearYou}
+              trending={trending}
+              myCity={myCity}
+              pulse={pulse}
+              mine={mine}
+              onToggle={toggleJoin}
+              onSeeAll={(key) => {
+                const map = { yours, "for-you": forYou, near: nearYou, trending } as const;
+                const titles = { yours: "Your groups", "for-you": "Picked for you", near: `Near ${myCity ?? "you"}`, trending: "Trending this week" } as const;
+                setSheet({ title: titles[key], groups: map[key] });
+              }}
+            />
+          </div>
 
           {/* ─── Moods (collapses 4 vibe sections) ─── */}
-          <MoodsCollection
-            groups={discover}
-            pulse={pulse}
-            mine={mine}
-            onToggle={toggleJoin}
-            onSeeAll={(_k, themes, label) => {
-              setSheet({ title: label, groups: discover.filter((g) => g.theme && themes.includes(g.theme)) });
-            }}
-          />
+          <div className="cv-auto">
+            <MoodsCollection
+              groups={discover}
+              pulse={pulse}
+              mine={mine}
+              onToggle={toggleJoin}
+              onSeeAll={(_k, themes, label) => {
+                setSheet({ title: label, groups: discover.filter((g) => g.theme && themes.includes(g.theme)) });
+              }}
+            />
+          </div>
 
           {/* ─── Niches ─── */}
           {niches.length > 0 && (

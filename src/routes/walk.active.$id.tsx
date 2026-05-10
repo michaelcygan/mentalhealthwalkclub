@@ -117,7 +117,7 @@ function ActiveWalk() {
   useEffect(() => {
     supabase
       .from("walk_sessions")
-      .select("*")
+      .select("id,walk_type,mood_before,mood_before_score,intention,started_at,status,guided_track_id,audio_room_id,group_id,privacy,share_map")
       .eq("id", id)
       .single()
       .then(async ({ data }) => {
