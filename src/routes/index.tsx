@@ -30,6 +30,7 @@ import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { useAmbient } from "@/lib/ambient-context";
 import { EntryFlow } from "@/components/entry-flow/entry-flow";
+import { DemoPreview } from "@/components/entry-flow/demo-preview";
 import { DemoBanner } from "@/components/demo-banner";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
@@ -49,7 +50,6 @@ function HomeRoute() {
       .then(({ data }) => setOnboarded(!!data?.onboarded_at));
   }, [user]);
 
-  // Loading auth
   if (loading) {
     return (
       <div className="space-y-6" aria-busy="true">
@@ -63,20 +63,12 @@ function HomeRoute() {
     );
   }
 
-  // Signed-out and not previewing → unified entry flow
-  if (!user && !demo) return <EntryFlow />;
-
-  // Signed-in but not onboarded → entry flow starting at slide 1
-  if (user && onboarded === false) return <EntryFlow startAtOnboarding />;
-
-  // Demo or fully onboarded → real Walk tab (with banner if demo)
-  return (
-    <>
-      {demo && <DemoBanner />}
-      <WalkTab />
-    </>
-  );
+  if (!user && demo) return (<><DemoBanner /><DemoPreview /></>);
+  if (!user) return <EntryFlow />;
+  if (onboarded === false) return <EntryFlow startAtOnboarding />;
+  return <WalkTab />;
 }
+
 
 const MODE_PREFACE: Record<string, string> = {
   solo: "Walking alone still counts.",
