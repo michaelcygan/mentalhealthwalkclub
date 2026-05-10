@@ -364,21 +364,15 @@ function JournalTab() {
 
       <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Still here. Still walking.</p>
 
-      {/* Mobile detail sheet */}
-      <Sheet open={!!selectedId} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
-        <SheetContent
-          side="bottom"
-          className="flex max-h-[90dvh] flex-col rounded-t-3xl p-0 lg:hidden"
-        >
-          {/* Drag handle */}
-          <div className="flex shrink-0 justify-center pt-2 pb-1">
-            <div className="h-1.5 w-10 rounded-full bg-border" aria-hidden />
-          </div>
+      {/* Mobile detail drawer — vaul gives swipe-to-close out of the box */}
+      <Drawer open={!!selectedId} onOpenChange={(v: boolean) => { if (!v) setSelectedId(null); }} shouldScaleBackground>
+        <DrawerContent className="max-h-[90dvh] rounded-t-3xl border-border bg-background p-0 lg:hidden">
+          <DrawerTitle className="sr-only">Walk details</DrawerTitle>
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
             <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
