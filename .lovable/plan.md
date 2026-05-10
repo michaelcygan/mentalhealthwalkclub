@@ -1,88 +1,128 @@
-## Final polish plan
+# Item 7 — Unify the On-Walk Screen
 
-Seven items, grouped by surface. Each is small-to-medium, no schema changes.
+Goal: every walk format (Solo, Walk & Talk, Local/friend, Guided) lives inside **one** consistent shell, so the screen feels designed instead of improvised. Same chrome, same timer, same map, same action bar — only the **middle module** changes per format.
 
-### 1. "Start a walk" opens the composer (not solo)
-Today the big button on Home jumps straight into a Solo walk. That hides Walk & Talk and Local from new users.
+This pass also fixes the Pause-clipped-by-tab-bar bug, the busy hero, and the inconsistent meta row.
 
-- Rewire both "Start a walk" buttons in `src/routes/index.tsx` (lines 188 + 487) to open a **Walk Composer sheet** instead of starting solo.
-- Composer sheet (new `src/components/walk-composer-sheet.tsx`) shows three large choices in one place: **Solo**, **Walk & Talk**, **Local**. Each has a one-line description and a primary CTA.
-- The "OTHER WAYS TO WALK" row stays as a quiet shortcut, but the primary path now teaches the three formats.
-- Default focus = Solo (one-tap if that's what they want), so we don't add friction for repeat users.
+---
 
-### 2. App must open to Home for signed-in users (persistence)
-Currently the app re-shows the marketing landing on every cold open because the auth session hasn't restored yet (and on iOS home-screen apps, localStorage can be evicted).
-
-- Auth IndexedDB backup is already in place (`src/lib/auth-persistence.ts`).
-- Add a lightweight **"last known signed-in" flag** in `localStorage` + IndexedDB (`wc_was_authed`). Set on sign-in, clear on sign-out.
-- In `src/routes/index.tsx`, while `authLoading` is true **and** the flag is set, render the Home skeleton (already added) instead of ever flashing the marketing landing. Only show the marketing hero once we've confirmed there's no session.
-- Net effect: if you've ever signed in on this device, opening the app goes straight to Home — no marketing flash, no welcome modal.
-
-### 3. Paywall copy: lead with Walk & Talk
-In `src/components/auth-form.tsx` (line 146) and `src/components/welcome-dialog.tsx` (Plus tile), change:
-- From: "Free 30 days · then $4.99/mo · Local Walk RSVPs"
-- To: "Free 30 days · then $4.99/mo · Unlimited Walk & Talks + Local RSVPs"
-Mirror the same positioning in `PlusCheckout` headline copy so Walk & Talk is the hero benefit everywhere.
-
-### 4. "Save to journal" button — fix tap target
-In `src/components/end-walk-flow.tsx`:
-- Increase the button to full-width on mobile, min-height 56px, larger font.
-- Wrap with `touch-action: manipulation` and remove any parent that's intercepting taps (the circled area in the screenshot suggests a transparent overlay — audit the ending screen container for stray `pointer-events`).
-- Add a subtle pressed-state (`active:scale-[0.98]`) so the user gets feedback on first tap.
-
-### 5. Flip the heaviness meter
-In the arrival/reflection meter (the "HOW HEAVY DOES IT FEEL?" component — likely `src/components/reflection-drift.tsx` or end-walk flow):
-- Swap labels and value mapping so **LIGHT is on the left, HEAVY on the right**. This matches the universal "low → high" reading direction and how sliders behave elsewhere in the app.
-- Keep stored values consistent (remap on save so historical data still aligns).
-
-### 6. On-walk screen: GPS path + map polish
-In `src/components/walk-live-map.tsx` and the active walk route (`src/routes/walk.active.$id.tsx`):
-- **Z-index fix**: ensure the live route polyline renders **above** the map tiles and below only the user puck. The current overlay (the dark green stats panel) sits on top of the map area — reduce its opacity to ~70% with a soft blur, or move it to a true bottom sheet so the map breathes.
-- **Smoothing**: add a simple GPS smoother — drop points with `accuracy > 25m`, require min movement of ~3m between points, and apply a 3-point moving average before drawing. Result: the line stops looking squiggly.
-- **Path styling**: thicker stroke (4px), rounded caps, soft glow using `--forest`, so it reads as a deliberate trail not a debug overlay.
-
-### 7. On-walk screen: unify into one template for all walk formats
-This is the bigger one — the current screen feels half-baked because each format (Solo, Walk & Talk, Local, Guided) is improvising its own layout.
-
-Design a **single ActiveWalkShell** component that all formats render inside:
+## 1. The shell (target structure)
 
 ```text
-┌─────────────────────────────────┐
-│  context chip  ·  weather  ·  safety │   ← top meta row
-├─────────────────────────────────┤
-│                                 │
-│         BIG TIMER               │   ← always present
-│       elapsed · GPS state       │
-│                                 │
-│   pace   ·   miles   ·   steps  │   ← always present
-├─────────────────────────────────┤
-│   [ format module ]             │   ← swappable slot
-│   • Solo:  intention card       │
-│   • W&T:   audio dock + pool    │
-│   • Local: RSVP roster + ETA    │
-│   • Guided: prompt + timer ring │
-├─────────────────────────────────┤
-│   live map (collapsible)        │
-├─────────────────────────────────┤
-│   [ Pause ]      [ End walk ]   │   ← sticky action bar
-└─────────────────────────────────┘
+┌─ MetaRow ────────────────────────────────────┐
+│ format chip · weather · safety               │  ← always present, quiet
+├─ Hero ───────────────────────────────────────┤
+│            00:24                             │
+│       elapsed · GPS live                     │  ← timer + status only
+├─ StatTrio ───────────────────────────────────┤
+│   miles    ·    steps    ·    pace           │  ← always 3 stats (no rotator)
+├─ FormatModule (swappable slot) ──────────────┤
+│  Solo:   intention card + saved prompts      │
+│  W&T:    audio dock + listener pool          │
+│  Local:  RSVP roster + ETA                   │
+│  Guided: prompt + timer ring                 │
+├─ Map (collapsible) ──────────────────────────┤
+│  WalkLiveMap                                 │
+├─ Utility row ────────────────────────────────┤
+│  notes · ambient pill                        │
+├─ Sticky ActionBar (always above tab bar) ────┤
+│  [ Pause ]              [ Hold to end ]      │
+└──────────────────────────────────────────────┘
 ```
 
-- Extract shared chrome (header, timer, stat trio, map, action bar) into `src/components/active-walk-shell.tsx`.
-- Each format passes a `formatModule` prop that fills the swappable slot.
-- Action bar is **sticky at the bottom above the tab bar** with safe-area padding, big tap targets, and clear primary/secondary hierarchy (Pause = secondary, End = primary clay color).
-- The "On your feet." headline and weather chip move into the meta row so they're consistent across formats.
+The current screen jams the intention, weather, safety, manual-start, motion-permission, and a 4-stat rotator into the green hero. The new hero is just timer + GPS — everything else moves into its proper row.
 
-This refactor also fixes the screenshot's circled bug (the Pause button was clipped behind the tab bar) because the action bar will reserve its own space.
+---
 
-### Order of work
-1. Persistence + open-to-Home (item 2) — biggest UX win, smallest change.
-2. Composer sheet (item 1) + paywall copy (item 3) + Save-to-journal fix (item 4) + heaviness flip (item 5) — quick polish batch.
-3. On-walk shell + map polish (items 6 + 7) — the deeper refactor, done last so it benefits from the cleared decks.
+## 2. New / changed files
 
-### Out of scope for this batch
-- No DB or billing changes.
-- No new format types — just unifying the existing four under one shell.
-- Marketing landing copy stays as-is.
+**New `src/components/active-walk/` directory:**
+- `active-walk-shell.tsx` — the layout container. Owns hero, meta row, stat trio, map section, action bar. Accepts a `formatModule` ReactNode slot + props (elapsed, paused, stats, gps, intention, weather coords, safety session id, onPause, onEnd).
+- `walk-meta-row.tsx` — format chip + WalkWeatherChip + SafetyButton (extracted from current route).
+- `walk-hero-timer.tsx` — big `fmt(elapsed)` + GPS dot/label + breathe animation.
+- `walk-stat-trio.tsx` — 3 fixed stats (miles, steps, pace). No rotator. Cadence drops to a tooltip on long-press of pace, since cadence on mobile is a power-user stat.
+- `walk-action-bar.tsx` — sticky bar with Pause + LongPressEnd. Owns its own safe-area padding so it never sits under `MobileTabBar`. Tab bar already auto-hides on `/walk/active/*` (done in batch 1), but the action bar still respects `env(safe-area-inset-bottom)`.
+- `format-modules/solo-module.tsx` — intention card, manual-start affordance, saved prompts list.
+- `format-modules/walk-talk-module.tsx` — wraps `WalkTalkDock` + `ListenerPool` (when friend room) + invite share button.
+- `format-modules/guided-module.tsx` — wraps `GuidedPlayer` with a small "current prompt" header.
+- `format-modules/local-module.tsx` — placeholder for Local walks (RSVP roster). Today there's no Local-specific UI; this slot reserves the pattern.
 
-Reply "go" and I'll start with batch 1.
+**Edited:**
+- `src/routes/walk.active.$id.tsx` — slim down to: data fetching, geolocation, persistence, end-walk handler. Render `<ActiveWalkShell …>` with the right `formatModule` based on `session.walk_type` / `friendRoom` / `guided_track_id`. ~400 lines → ~250.
+
+No other files change. No DB, no schema, no routes.
+
+---
+
+## 3. Format → module mapping
+
+```ts
+function pickModule(session, friendRoom) {
+  if (session.walk_type === "audio")            return <WalkTalkModule … />; // W&T
+  if (session.guided_track_id)                  return <GuidedModule … />;
+  if (friendRoom)                               return <WalkTalkModule … />; // friend = audio room
+  if (session.group_id && session.privacy === "public") return <LocalModule … />;
+  return <SoloModule … />;
+}
+```
+
+Solo is the default — every walk has an intention + (optional) saved prompts, so the Solo module is also the **base** that other modules extend.
+
+---
+
+## 4. Hero simplification
+
+Current hero crams 6 things into the green band. New hero:
+- Line 1 (meta row, *above* the green band, neutral background): format chip · weather · safety.
+- Inside the green band: timer + "elapsed · GPS live".
+- That's it. Intention moves into the Solo module card. Manual-start and motion-permission move into a single **"setup nudges"** strip *below* the hero, only visible when relevant.
+
+Rationale: the hero was doing too much. A timer + status line is what every running/walking app converges on because it's the one thing the user glances at mid-walk.
+
+---
+
+## 5. Stat trio (fixed, not rotating)
+
+Replace the auto-cycling 4-stat dial with three fixed stats: **miles · steps · pace**. The rotator was clever but the user shouldn't have to wait 5s to see their distance. Cadence is rarely useful in real time and gets demoted (long-press pace to peek).
+
+All three render in a single row, equal width, large tabular nums, same typographic weight — a proper "stat shelf" pattern.
+
+---
+
+## 6. Action bar (the bug fix)
+
+Today the sticky dock uses `sticky bottom-0 … md:static`. On mobile it sits flush with the bottom and the `MobileTabBar` was overlapping it (the screenshot the user circled). Batch 1 hid the tab bar on this route, but the action bar still needs:
+- `position: sticky; bottom: 0` (mobile)
+- `padding-bottom: max(env(safe-area-inset-bottom), 12px)`
+- A subtle top border + `glass` blur so the map underneath stays visible
+- 56px tap targets (already done)
+- "hold to end" hint moves *inside* the End button (subtitle text) so it doesn't add a separate row
+
+Result: action bar is always reachable, never clipped, and reads as one element, not two stacked controls + a caption.
+
+---
+
+## 7. Calm/dim mode kept, scoped properly
+
+Move the 60s-idle dimmer into `active-walk-shell.tsx`. Dim everything except hero timer + action bar. Currently dim is applied to many sub-elements with separate classes; centralizing it in the shell means modules don't need to know about it.
+
+---
+
+## 8. Order of work inside this pass
+
+1. Build the shell + meta row + hero + stat trio + action bar (presentation only, no logic moved).
+2. Extract Solo / Walk-Talk / Guided modules from current route.
+3. Swap the route to render `<ActiveWalkShell formatModule={…} />`.
+4. Smoke test each format: Solo, W&T (with and without friend room), Guided.
+5. Verify Pause + End buttons are above safe-area on iOS notch + tab bar removed.
+
+---
+
+## 9. Out of scope
+
+- No new walk type. Local module is a stub for now (no Local-specific data model exists yet).
+- No changes to `WalkLiveMap`, `EndWalkFlow`, `GuidedPlayer`, `WalkTalkDock`, `ListenerPool` — these get *wrapped*, not rewritten.
+- No new analytics events.
+- No copy changes beyond removing the rotator caption.
+
+Reply "go" and I'll build it.

@@ -1,40 +1,57 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Shield, Pause, Play, Square, AlertTriangle, Footprints, Share2, MapIcon, Eye, EyeOff, Smartphone } from "lucide-react";
+import { Footprints, Smartphone } from "lucide-react";
 import { toast } from "sonner";
-import { RouteSparkline } from "@/components/route-sparkline";
-import { WalkTalkDock } from "@/components/walk-talk-dock";
 import { EndWalkFlow } from "@/components/end-walk-flow";
-import { GuidedPlayer } from "@/components/guided-player";
-import { ListenerPool } from "@/components/friend-walk/listener-pool";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
-import { WalkNotesPill, loadStoredNotes, loadStoredPhotos, notesToJournalBlock, clearWalkCaptures, uploadWalkPhotos, type WalkNote, type WalkPhoto } from "@/components/walk-notes-sheet";
+import {
+  WalkNotesPill,
+  loadStoredNotes,
+  loadStoredPhotos,
+  notesToJournalBlock,
+  clearWalkCaptures,
+  uploadWalkPhotos,
+  type WalkNote,
+  type WalkPhoto,
+} from "@/components/walk-notes-sheet";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
-import { WeatherPill } from "@/components/weather-pill";
-import { RainSoonBanner } from "@/components/rain-soon-banner";
-import { useCurrentWeather } from "@/hooks/use-weather";
 import { getNow as getWeatherNow } from "@/lib/weather";
 import { useStepCounter } from "@/hooks/use-step-counter";
-
-const WalkLiveMap = lazy(() => import("@/components/walk-live-map"));
+import { ActiveWalkShell } from "@/components/active-walk/active-walk-shell";
+import type { WalkFormat } from "@/components/active-walk/walk-meta-row";
+import { SoloModule } from "@/components/active-walk/format-modules/solo-module";
+import { WalkTalkModule } from "@/components/active-walk/format-modules/walk-talk-module";
+import { GuidedModule } from "@/components/active-walk/format-modules/guided-module";
+import { LocalModule } from "@/components/active-walk/format-modules/local-module";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
 const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 
 interface Session {
-  id: string; walk_type: string; mood_before: string | null; mood_before_score: number | null;
-  intention: string | null; started_at: string; status: string; guided_track_id: string | null;
-  audio_room_id: string | null; group_id: string | null; privacy: string; share_map: boolean;
+  id: string;
+  walk_type: string;
+  mood_before: string | null;
+  mood_before_score: number | null;
+  intention: string | null;
+  started_at: string;
+  status: string;
+  guided_track_id: string | null;
+  audio_room_id: string | null;
+  group_id: string | null;
+  privacy: string;
+  share_map: boolean;
 }
-interface FriendRoom { id: string; share_code: string | null; host_user_id: string | null; }
+interface FriendRoom {
+  id: string;
+  share_code: string | null;
+  host_user_id: string | null;
+}
 
 type GpsState = "idle" | "live" | "weak" | "denied";
 
@@ -44,22 +61,30 @@ function ActiveWalk() {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/" }); }, [loading, user, navigate]);
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/" });
+  }, [loading, user, navigate]);
 
   // Keep the screen on while a walk is active
   useEffect(() => {
     let release: (() => void) | undefined;
-    wakeLock().then((r) => { release = r; });
-    return () => { release?.(); };
+    wakeLock().then((r) => {
+      release = r;
+    });
+    return () => {
+      release?.();
+    };
   }, []);
 
-  // Dynamic theme-color: tint the iOS/Android status bar to forest while walking
+  // Tint the iOS/Android status bar to forest while walking
   useEffect(() => {
     if (typeof document === "undefined") return;
     const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
     const prev = meta?.getAttribute("content") ?? null;
     if (meta) meta.setAttribute("content", "#1f3a2c");
-    return () => { if (meta && prev !== null) meta.setAttribute("content", prev); };
+    return () => {
+      if (meta && prev !== null) meta.setAttribute("content", prev);
+    };
   }, []);
 
   const [elapsed, setElapsed] = useState(0);
@@ -68,13 +93,13 @@ function ActiveWalk() {
   const [walkerCoords, setWalkerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [hasMoved, setHasMoved] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [routeTick, setRouteTick] = useState(0);
+  const [, setRouteTick] = useState(0);
   const [gps, setGps] = useState<GpsState>("idle");
   const [showManualStart, setShowManualStart] = useState(false);
   const milestonesHit = useRef<Set<string>>(new Set());
   const pulseHit = useRef<Set<number>>(new Set());
-  const lastPos = useRef<{lat:number;lng:number;t:number} | null>(null);
-  const points = useRef<Array<{lat:number;lng:number;t:number}>>([]);
+  const lastPos = useRef<{ lat: number; lng: number; t: number } | null>(null);
+  const points = useRef<Array<{ lat: number; lng: number; t: number }>>([]);
   const watchId = useRef<number | null>(null);
   const pulseRecord = useRef<{ mood: string; score: number } | null>(null);
   const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
@@ -88,114 +113,152 @@ function ActiveWalk() {
   const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
   const [friendShareOpen, setFriendShareOpen] = useState(false);
   const [shareMap, setShareMap] = useState(false);
-  const [showMap, setShowMap] = useState(true);
 
   useEffect(() => {
-    supabase.from("walk_sessions").select("*").eq("id", id).single().then(async ({ data }) => {
-      if (!data) return;
-      setSession(data as Session);
-      setShareMap(!!(data as Session).share_map);
-      if (data.audio_room_id) {
-        const { data: room } = await supabase
-          .from("audio_rooms")
-          .select("id, share_code, host_user_id, room_type")
-          .eq("id", data.audio_room_id)
-          .maybeSingle();
-        if (room && room.room_type === "friend") setFriendRoom(room);
-      }
-    });
+    supabase
+      .from("walk_sessions")
+      .select("*")
+      .eq("id", id)
+      .single()
+      .then(async ({ data }) => {
+        if (!data) return;
+        setSession(data as Session);
+        setShareMap(!!(data as Session).share_map);
+        if (data.audio_room_id) {
+          const { data: room } = await supabase
+            .from("audio_rooms")
+            .select("id, share_code, host_user_id, room_type")
+            .eq("id", data.audio_room_id)
+            .maybeSingle();
+          if (room && room.room_type === "friend") setFriendRoom(room);
+        }
+      });
   }, [id]);
 
   useEffect(() => {
     if (!session) return;
     const start = new Date(session.started_at).getTime();
-    const t = setInterval(() => { if (!paused) setElapsed(Math.floor((Date.now() - start) / 1000)); }, 1000);
+    const t = setInterval(() => {
+      if (!paused) setElapsed(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
     return () => clearInterval(t);
   }, [session, paused]);
 
-  // Rehydrate any previously-saved route for this session so a tab kill /
-  // refresh doesn't wipe the walk.
+  // Rehydrate any previously-saved route for this session
   const rehydrated = useRef(false);
   useEffect(() => {
     if (rehydrated.current || !session) return;
     rehydrated.current = true;
-    supabase.from("walk_routes").select("points").eq("walk_session_id", session.id).maybeSingle().then(({ data }) => {
-      const raw = (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
-      if (!raw || raw.length === 0) return;
-      const pts = raw.map((p) => ({ lat: p.lat, lng: p.lng, t: typeof p.t === "number" ? p.t : Date.now() }));
-      points.current = pts;
-      let total = 0;
-      for (let i = 1; i < pts.length; i++) total += haversine(pts[i - 1], pts[i]);
-      setMeters((m) => Math.max(m, total));
-      lastPos.current = pts[pts.length - 1];
-      setWalkerCoords({ lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng });
-      setRouteTick((x) => x + 1);
-    });
+    supabase
+      .from("walk_routes")
+      .select("points")
+      .eq("walk_session_id", session.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const raw =
+          (data?.points as Array<{ lat: number; lng: number; t?: number }> | null) ?? null;
+        if (!raw || raw.length === 0) return;
+        const pts = raw.map((p) => ({
+          lat: p.lat,
+          lng: p.lng,
+          t: typeof p.t === "number" ? p.t : Date.now(),
+        }));
+        points.current = pts;
+        let total = 0;
+        for (let i = 1; i < pts.length; i++) total += haversine(pts[i - 1], pts[i]);
+        setMeters((m) => Math.max(m, total));
+        lastPos.current = pts[pts.length - 1];
+        setWalkerCoords({ lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng });
+        setRouteTick((x) => x + 1);
+      });
   }, [session]);
 
   useEffect(() => {
-    if (!navigator.geolocation) { setGps("denied"); return; }
-    watchId.current = navigator.geolocation.watchPosition((pos) => {
-      const acc = pos.coords.accuracy ?? 999;
-      // Drop fixes worse than ~30m — they're the cause of squiggly lines.
-      // Anything between 30 and 60 still updates GPS state but isn't drawn.
-      if (acc > 60) { setGps((g) => g === "live" ? "live" : "weak"); return; }
-      if (acc > 30) { setGps("weak"); return; }
-      const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
-      // Require ≥5m of movement before adding a point — kills GPS jitter
-      // entirely and produces a clean trail rather than a scribble.
-      const minDelta = 5;
-      if (lastPos.current) {
-        const d = haversine(lastPos.current, p);
-        if (d >= minDelta && d < 200) {
-          // 3-point moving average smoother on the new point
-          const prev = points.current[points.current.length - 1];
-          const prev2 = points.current[points.current.length - 2];
-          const smoothed = prev2 && prev
-            ? { lat: (prev2.lat + prev.lat + p.lat) / 3, lng: (prev2.lng + prev.lng + p.lng) / 3, t: p.t }
-            : p;
-          setMeters((m) => m + d);
-          points.current.push(smoothed);
-          setRouteTick((x) => x + 1);
-          lastPos.current = p;
-          setWalkerCoords({ lat: smoothed.lat, lng: smoothed.lng });
-          setGps("live");
+    if (!navigator.geolocation) {
+      setGps("denied");
+      return;
+    }
+    watchId.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const acc = pos.coords.accuracy ?? 999;
+        if (acc > 60) {
+          setGps((g) => (g === "live" ? "live" : "weak"));
+          return;
         }
-      } else {
-        lastPos.current = p;
-        points.current.push(p);
-        setGps("live");
-        setWalkerCoords({ lat: p.lat, lng: p.lng });
-      }
-    }, (err) => {
-      setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
-    return () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
+        if (acc > 30) {
+          setGps("weak");
+          return;
+        }
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
+        const minDelta = 5;
+        if (lastPos.current) {
+          const d = haversine(lastPos.current, p);
+          if (d >= minDelta && d < 200) {
+            const prev = points.current[points.current.length - 1];
+            const prev2 = points.current[points.current.length - 2];
+            const smoothed =
+              prev2 && prev
+                ? {
+                    lat: (prev2.lat + prev.lat + p.lat) / 3,
+                    lng: (prev2.lng + prev.lng + p.lng) / 3,
+                    t: p.t,
+                  }
+                : p;
+            setMeters((m) => m + d);
+            points.current.push(smoothed);
+            setRouteTick((x) => x + 1);
+            lastPos.current = p;
+            setWalkerCoords({ lat: smoothed.lat, lng: smoothed.lng });
+            setGps("live");
+          }
+        } else {
+          lastPos.current = p;
+          points.current.push(p);
+          setGps("live");
+          setWalkerCoords({ lat: p.lat, lng: p.lng });
+        }
+      },
+      (err) => {
+        setGps(err.code === err.PERMISSION_DENIED ? "denied" : "weak");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    return () => {
+      if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    };
   }, []);
 
-  // Accelerometer step counter — fires while not paused. On iOS we surface
-  // an "Enable motion" button below; Android grants automatically on https.
   const motion = useStepCounter(!paused);
 
-  // Manual "I'm walking" affordance after 25s if we never got a confident fix
   useEffect(() => {
-    const t = setTimeout(() => { if (!hasMoved) setShowManualStart(true); }, 25_000);
+    const t = setTimeout(() => {
+      if (!hasMoved) setShowManualStart(true);
+    }, 25_000);
     return () => clearTimeout(t);
   }, [hasMoved]);
 
-  useEffect(() => { if (meters > 15 || motion.steps > 25) setHasMoved(true); }, [meters, motion.steps]);
+  useEffect(() => {
+    if (meters > 15 || motion.steps > 25) setHasMoved(true);
+  }, [meters, motion.steps]);
 
-  // Wake Lock — keep screen alive on audio walks (released on unmount)
   useEffect(() => {
     if (!session || session.walk_type !== "audio") return;
     type WakeLockSentinel = { release: () => Promise<void> };
     let lock: WakeLockSentinel | null = null;
-    const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<WakeLockSentinel> } };
-    nav.wakeLock?.request("screen").then((l) => { lock = l; }).catch(() => {});
-    return () => { lock?.release().catch(() => {}); };
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (t: "screen") => Promise<WakeLockSentinel> };
+    };
+    nav.wakeLock
+      ?.request("screen")
+      .then((l) => {
+        lock = l;
+      })
+      .catch(() => {});
+    return () => {
+      lock?.release().catch(() => {});
+    };
   }, [session]);
 
-  // Milestone toasts + soft haptic so phones in pockets still register
   useEffect(() => {
     const mins = Math.floor(elapsed / 60);
     const fire = (k: string, msg: string) => {
@@ -213,46 +276,59 @@ function ActiveWalk() {
 
   const recordPulse = (label: string) => {
     const map: Record<string, { mood: string; score: number }> = {
-      lighter: { mood: "hopeful", score: Math.min(10, (session?.mood_before_score ?? 5) + 2) },
-      same: { mood: session?.mood_before ?? "okay", score: session?.mood_before_score ?? 5 },
-      heavier: { mood: "still heavy", score: Math.max(1, (session?.mood_before_score ?? 5) - 1) },
+      lighter: {
+        mood: "hopeful",
+        score: Math.min(10, (session?.mood_before_score ?? 5) + 2),
+      },
+      same: {
+        mood: session?.mood_before ?? "okay",
+        score: session?.mood_before_score ?? 5,
+      },
+      heavier: {
+        mood: "still heavy",
+        score: Math.max(1, (session?.mood_before_score ?? 5) - 1),
+      },
     };
     pulseRecord.current = map[label];
     toast(`Noted · feeling ${label}`);
   };
 
-  // Pulse check-in as a toast every 10 minutes (no longer pushing layout)
   useEffect(() => {
     const mins = Math.floor(elapsed / 60);
     if (mins > 0 && mins % 10 === 0 && elapsed % 60 === 0 && !pulseHit.current.has(mins)) {
       pulseHit.current.add(mins);
-      toast.custom((t) => (
-        <div className="flex items-center gap-2 rounded-2xl border border-forest/30 bg-card/95 p-3 shadow-elevated backdrop-blur">
-          <span className="text-xs font-medium text-forest">Quick check-in</span>
-          {PULSE_FEELINGS.map((f) => (
-            <button key={f} onClick={() => { recordPulse(f); toast.dismiss(t); }} className="rounded-full border border-border bg-background px-2.5 py-1 text-xs hover:border-forest/40">
-              {f}
-            </button>
-          ))}
-        </div>
-      ), { duration: 30_000 });
+      toast.custom(
+        (t) => (
+          <div className="flex items-center gap-2 rounded-2xl border border-forest/30 bg-card/95 p-3 shadow-elevated backdrop-blur">
+            <span className="text-xs font-medium text-forest">Quick check-in</span>
+            {PULSE_FEELINGS.map((f) => (
+              <button
+                key={f}
+                onClick={() => {
+                  recordPulse(f);
+                  toast.dismiss(t);
+                }}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs hover:border-forest/40"
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        ),
+        { duration: 30_000 },
+      );
     }
   }, [elapsed]);
 
   const stride = 0.78;
   const gpsSteps = Math.round(meters / stride);
-  // Use whichever is higher: GPS-derived or accelerometer. The pedometer
-  // keeps working when GPS is denied / weak / phone-in-pocket.
   const steps = Math.max(gpsSteps, motion.steps);
-  // If motion outpaces GPS, infer distance from steps so miles/pace stay sane.
   const inferredMeters = motion.steps > gpsSteps ? motion.steps * stride : meters;
   const displayMiles = inferredMeters * 0.000621371;
-  const paceMinPerMi = displayMiles > 0.05 ? (elapsed / 60) / displayMiles : 0;
+  const paceMinPerMi = displayMiles > 0.05 ? elapsed / 60 / displayMiles : 0;
   const cadence = elapsed > 30 && steps > 50 ? Math.round((steps / elapsed) * 60) : 0;
 
-  // Persist progress to Supabase every ~30s so a tab kill / refresh doesn't
-  // lose the walk. Distance + steps + duration go on walk_sessions; the
-  // points array goes on walk_routes (one row per session, upserted).
+  // Persist progress every 30s
   useEffect(() => {
     if (!session || !user) return;
     let cancelled = false;
@@ -260,43 +336,25 @@ function ActiveWalk() {
       if (cancelled || paused) return;
       const dur = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000);
       const distance = Math.round(Math.max(meters, motion.steps * stride));
-      await supabase.from("walk_sessions").update({
-        distance_meters: distance,
-        steps,
-        duration_seconds: dur,
-      }).eq("id", session.id);
+      await supabase
+        .from("walk_sessions")
+        .update({ distance_meters: distance, steps, duration_seconds: dur })
+        .eq("id", session.id);
       if (points.current.length > 1) {
-        await supabase.from("walk_routes").upsert({
-          walk_session_id: session.id,
-          user_id: user.id,
-          points: points.current,
-        }, { onConflict: "walk_session_id" });
+        await supabase.from("walk_routes").upsert(
+          { walk_session_id: session.id, user_id: user.id, points: points.current },
+          { onConflict: "walk_session_id" },
+        );
       }
     };
     const id = setInterval(tick, 30_000);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [session, user, paused, meters, motion.steps, steps]);
 
-  // Rotating "hero stat" — softly cycles through the four every 5s
-  const [statIdx, setStatIdx] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setStatIdx((i) => (i + 1) % 4), 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Calm/dim mode: after 60s without interaction, fade non-essential UI to ~35% opacity.
-  const [dim, setDim] = useState(false);
-  useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    const reset = () => { setDim(false); clearTimeout(t); t = setTimeout(() => setDim(true), 60_000); };
-    reset();
-    const evs: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
-    evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
-    return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
-  }, []);
-
-  // Ambient music: suppress when this walk owns the audio channel (Walk & Talk
-  // or guided walks). Stop on unmount so leaving the walk silences the music.
+  // Ambient music: suppress when this walk owns the audio channel
   const ambient = useAmbient();
   useEffect(() => {
     if (!session) return;
@@ -304,9 +362,19 @@ function ActiveWalk() {
     if (ownsAudio) ambient.stop(300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
-  useEffect(() => () => { ambient.stop(800); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(
+    () => () => {
+      ambient.stop(800);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
-  const endWalk = async (out: { moodAfter: string; moodAfterScore: number | null; reflection: string }) => {
+  const endWalk = async (out: {
+    moodAfter: string;
+    moodAfterScore: number | null;
+    reflection: string;
+  }) => {
     if (!user || !session) return;
     const notesBlock = notesToJournalBlock(walkNotes);
     const merged = [out.reflection?.trim(), notesBlock].filter(Boolean).join("\n\n");
@@ -316,50 +384,69 @@ function ActiveWalk() {
       try {
         const w = await getWeatherNow(last.lat, last.lng);
         if (w) weatherSnap = w as unknown as Record<string, unknown>;
-      } catch { /* best-effort */ }
+      } catch {
+        /* best-effort */
+      }
     }
-    await supabase.from("walk_sessions").update({
-      status: "completed",
-      ended_at: new Date().toISOString(),
-      duration_seconds: elapsed,
-      distance_meters: Math.round(Math.max(meters, motion.steps * stride)),
-      steps,
-      mood_after: out.moodAfter || pulseRecord.current?.mood || null,
-      mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
-      reflection_note: merged || null,
-      weather_at_end: weatherSnap as never,
-    }).eq("id", session.id);
+    await supabase
+      .from("walk_sessions")
+      .update({
+        status: "completed",
+        ended_at: new Date().toISOString(),
+        duration_seconds: elapsed,
+        distance_meters: Math.round(Math.max(meters, motion.steps * stride)),
+        steps,
+        mood_after: out.moodAfter || pulseRecord.current?.mood || null,
+        mood_after_score: out.moodAfterScore ?? pulseRecord.current?.score ?? null,
+        reflection_note: merged || null,
+        weather_at_end: weatherSnap as never,
+      })
+      .eq("id", session.id);
     let snapshotPath: string | null = null;
     if (points.current.length > 1) {
-      // Use upsert so periodic-save row from this session is updated, not duped.
       await supabase.from("walk_routes").upsert(
         { walk_session_id: session.id, user_id: user.id, points: points.current },
-        { onConflict: "walk_session_id" }
+        { onConflict: "walk_session_id" },
       );
       try {
         const blob = await renderRouteSnapshot(points.current, { width: 1080, height: 1080 });
         if (blob) {
           const path = `${user.id}/${session.id}.png`;
-          const { error } = await supabase.storage.from("walk-snapshots").upload(path, blob, { contentType: "image/png", upsert: true });
+          const { error } = await supabase.storage
+            .from("walk-snapshots")
+            .upload(path, blob, { contentType: "image/png", upsert: true });
           if (!error) snapshotPath = path;
         }
-      } catch { /* snapshot is best-effort */ }
+      } catch {
+        /* snapshot is best-effort */
+      }
     }
     if (snapshotPath) {
-      await supabase.from("walk_sessions").update({ route_snapshot_path: snapshotPath }).eq("id", session.id);
+      await supabase
+        .from("walk_sessions")
+        .update({ route_snapshot_path: snapshotPath })
+        .eq("id", session.id);
     }
     if (walkPhotos.length > 0) {
-      try { await uploadWalkPhotos({ supabase, userId: user.id, walkSessionId: session.id, photos: walkPhotos }); }
-      catch { toast.error("Some photos couldn't upload"); }
+      try {
+        await uploadWalkPhotos({
+          supabase,
+          userId: user.id,
+          walkSessionId: session.id,
+          photos: walkPhotos,
+        });
+      } catch {
+        toast.error("Some photos couldn't upload");
+      }
     }
-    // Clean up any live pings (also auto-fade by 2-min select filter)
     await supabase.from("walk_live_pings").delete().eq("walk_session_id", session.id);
     clearWalkCaptures(session.id);
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
 
-  if (!session) return <div className="py-20 text-center font-serif text-muted-foreground">a quiet moment…</div>;
+  if (!session)
+    return <div className="py-20 text-center font-serif text-muted-foreground">a quiet moment…</div>;
 
   if (ending) {
     return (
@@ -374,163 +461,130 @@ function ActiveWalk() {
     );
   }
 
-  const isAudio = session.walk_type === "audio";
-  const gpsDot = gps === "live" ? "bg-forest" : gps === "weak" ? "bg-amber-400" : gps === "denied" ? "bg-muted-foreground/40" : "bg-muted-foreground/40";
-  const gpsLabel = gps === "live" ? "GPS live" : gps === "weak" ? "GPS searching" : gps === "denied" ? "GPS off" : "GPS waking";
+  const format: WalkFormat =
+    session.walk_type === "audio"
+      ? "audio"
+      : session.guided_track_id
+        ? "guided"
+        : friendRoom
+          ? "friend"
+          : session.group_id && session.privacy === "public"
+            ? "local"
+            : "solo";
 
-  const paceStr = paceMinPerMi > 0 && paceMinPerMi < 60
-    ? `${Math.floor(paceMinPerMi)}'${String(Math.round((paceMinPerMi % 1) * 60)).padStart(2, "0")}"`
-    : "—";
-  const stats = [
-    { label: "miles", value: displayMiles.toFixed(2) },
-    { label: "steps", value: steps.toLocaleString() },
-    { label: "pace", value: paceStr },
-    { label: "cadence", value: cadence > 0 ? cadence.toString() : "—" },
-  ] as const;
-  const heroStat = stats[statIdx];
+  const formatModule =
+    format === "audio" || format === "friend" ? (
+      <WalkTalkModule
+        walkSessionId={session.id}
+        mood={session.mood_before}
+        hasMoved={hasMoved}
+        intention={session.intention}
+        savedPrompts={savedPrompts}
+        onSavePrompt={handleSavePrompt}
+        friendRoom={friendRoom}
+        currentUserId={user?.id ?? null}
+        onInvite={() => setFriendShareOpen(true)}
+      />
+    ) : format === "guided" && session.guided_track_id ? (
+      <GuidedModule
+        trackId={session.guided_track_id}
+        paused={paused}
+        intention={session.intention}
+        savedPrompts={savedPrompts}
+      />
+    ) : format === "local" ? (
+      <LocalModule intention={session.intention} savedPrompts={savedPrompts} />
+    ) : (
+      <SoloModule intention={session.intention} savedPrompts={savedPrompts} />
+    );
+
+  const setupNudges = (
+    <>
+      {showManualStart && !hasMoved && (
+        <button
+          onClick={() => {
+            setHasMoved(true);
+            setShowManualStart(false);
+            toast("On your feet — counting you in.");
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition active:scale-95"
+        >
+          <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
+        </button>
+      )}
+      {motion.permissionState === "needed" && (
+        <button
+          onClick={async () => {
+            const r = await motion.request();
+            if (r === "granted") toast("Motion sensor on — counting your steps");
+            else if (r === "denied") toast("Motion blocked — using GPS only");
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition active:scale-95"
+        >
+          <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
+        </button>
+      )}
+    </>
+  );
+
+  const hasNudges =
+    (showManualStart && !hasMoved) || motion.permissionState === "needed";
+
+  const utilityRow = (
+    <>
+      <WalkNotesPill
+        walkSessionId={session.id}
+        elapsed={elapsed}
+        notes={walkNotes}
+        photos={walkPhotos}
+        onChangeNotes={setWalkNotes}
+        onChangePhotos={setWalkPhotos}
+      />
+      {!(session.walk_type === "audio" || session.guided_track_id) && <AmbientPill />}
+    </>
+  );
+
+  const handleToggleShareMap = async () => {
+    const next = !shareMap;
+    setShareMap(next);
+    haptics.tap();
+    const { error } = await supabase
+      .from("walk_sessions")
+      .update({ share_map: next })
+      .eq("id", session.id);
+    if (error) {
+      setShareMap(!next);
+      toast.error("Couldn't update sharing");
+      return;
+    }
+    toast(next ? "Visible on group map" : "Hidden from group map");
+  };
 
   return (
-    <div className="-mx-4 md:mx-0">
-      {/* Hero — full-bleed route ribbon as backdrop */}
-      <section className="relative overflow-hidden gradient-forest px-5 pb-8 pt-7 text-primary-foreground md:rounded-3xl md:px-7 md:pt-8 md:shadow-elevated">
-        {/* Soft radial backdrop instead of a literal GPS scribble — the real
-            map below is the source of truth for the route. */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.08),_transparent_60%)]" />
-
-        <div className={`relative flex items-start justify-between gap-2 transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}>
-          <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>
-          <div className="flex items-center gap-2">
-            <WalkWeatherChip coords={walkerCoords} />
-            {friendRoom?.share_code && (
-              <button
-                onClick={() => setFriendShareOpen(true)}
-                className="flex items-center gap-1.5 rounded-full bg-cream/20 px-3 py-1.5 text-xs backdrop-blur transition active:scale-95"
-                aria-label="Share friend walk link"
-              >
-                <Share2 className="h-3.5 w-3.5" /> Invite
-              </button>
-            )}
-            <SafetyButton walkSessionId={session.id} />
-          </div>
-        </div>
-
-        <div className="relative mt-8 text-center">
-          <div aria-live="off" className={`font-serif text-7xl tabular-nums tracking-tight ${paused ? "" : "breathe"}`}>{fmt(elapsed)}</div>
-          <div className={`mt-1 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.22em] transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-80"}`}>
-            <span>{paused ? "paused" : "elapsed"}</span>
-            <span aria-hidden className="opacity-50">·</span>
-            <span className="inline-flex items-center gap-1">
-              <span className={`h-1.5 w-1.5 rounded-full ${gpsDot} ${gps === "live" ? "animate-pulse" : ""}`} />
-              {gpsLabel}
-            </span>
-          </div>
-        </div>
-
-        {showManualStart && !hasMoved && (
-          <div className="relative mt-5 flex flex-wrap justify-center gap-2">
-            <button
-              onClick={() => { setHasMoved(true); setShowManualStart(false); toast("On your feet — counting you in."); }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
-            >
-              <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
-            </button>
-          </div>
-        )}
-
-        {motion.permissionState === "needed" && (
-          <div className="relative mt-3 flex justify-center">
-            <button
-              onClick={async () => {
-                const r = await motion.request();
-                if (r === "granted") toast("Motion sensor on — counting your steps");
-                else if (r === "denied") toast("Motion blocked — using GPS only");
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs backdrop-blur transition hover:bg-primary-foreground/25"
-            >
-              <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
-            </button>
-          </div>
-        )}
-
-        {/* Hero stat dial — one big number, three quiet satellites. Tap or hover to expand all four. */}
-        <div className={`group/dial relative mt-7 transition-opacity duration-700 ${dim ? "opacity-50" : "opacity-100"}`}>
-          <button
-            type="button"
-            onClick={() => setStatIdx((i) => (i + 1) % 4)}
-            className="block w-full text-center"
-            aria-label={`${heroStat.label}: ${heroStat.value} — tap to cycle`}
-          >
-            <div key={heroStat.label} className="font-serif text-5xl tabular-nums leading-none animate-[fade-in_0.5s_ease-out]">{heroStat.value}</div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] opacity-75">{heroStat.label}</div>
-          </button>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center opacity-60 transition-opacity group-hover/dial:opacity-90">
-            {stats.filter((_, i) => i !== statIdx).map((s) => (
-              <button key={s.label} type="button" onClick={() => setStatIdx(stats.findIndex((x) => x.label === s.label))} className="rounded-xl px-1 py-1 transition hover:bg-primary-foreground/5">
-                <div className="font-serif text-base tabular-nums leading-none">{s.value}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-wider opacity-75">{s.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div className="space-y-4 px-4 pt-5 md:px-0">
-        <RainSoonBanner coords={walkerCoords} active={!paused} currentlyRaining={false} />
-        {/* Live map — collapsible, lazy. Visible to walker only; opt-in to broadcast. */}
-        <section className="rounded-2xl border border-border bg-card p-3 shadow-soft">
-          <div className="flex items-center justify-between gap-2 pb-2">
-            <button
-              type="button"
-              onClick={() => setShowMap((v) => !v)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
-              aria-expanded={showMap}
-            >
-              <MapIcon className="h-3.5 w-3.5" /> {showMap ? "Hide map" : "Show map"}
-            </button>
-            {session.privacy === "public" && session.group_id && (
-              <button
-                type="button"
-                onClick={async () => {
-                  const next = !shareMap;
-                  setShareMap(next);
-                  haptics.tap();
-                  const { error } = await supabase.from("walk_sessions").update({ share_map: next }).eq("id", session.id);
-                  if (error) { setShareMap(!next); toast.error("Couldn't update sharing"); return; }
-                  toast(next ? "Visible on group map" : "Hidden from group map");
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition ${shareMap ? "bg-forest text-primary-foreground" : "border border-border bg-background text-muted-foreground"}`}
-              >
-                {shareMap ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                {shareMap ? "On group map" : "Private"}
-              </button>
-            )}
-          </div>
-          {showMap && (
-            <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-secondary/60" />}>
-              <WalkLiveMap
-                points={points.current.slice()}
-                walkSessionId={session.id}
-                userId={user?.id ?? null}
-                groupId={session.group_id}
-                shareToGroup={shareMap}
-              />
-            </Suspense>
-          )}
-        </section>
-
-        {isAudio && (
-          <WalkTalkDock walkSessionId={session.id} mood={session.mood_before} hasMoved={hasMoved} onSavePrompt={handleSavePrompt} />
-        )}
-
-        {friendRoom && (
-          <ListenerPool roomId={friendRoom.id} isHost={friendRoom.host_user_id === user?.id} />
-        )}
-
-        {session.walk_type === "guided_solo" && session.guided_track_id && (
-          <GuidedPlayer trackId={session.guided_track_id} paused={paused} />
-        )}
-      </div>
-
+    <>
+      <ActiveWalkShell
+        format={format}
+        walkSessionId={session.id}
+        userId={user?.id ?? null}
+        groupId={session.group_id}
+        elapsed={elapsed}
+        paused={paused}
+        gps={gps}
+        miles={displayMiles}
+        steps={steps}
+        paceMinPerMi={paceMinPerMi}
+        cadence={cadence}
+        walkerCoords={walkerCoords}
+        routePoints={points.current.slice()}
+        canShareMap={session.privacy === "public" && !!session.group_id}
+        shareMap={shareMap}
+        onToggleShareMap={handleToggleShareMap}
+        onTogglePause={() => setPaused((p) => !p)}
+        onEnd={() => setEnding(true)}
+        setupNudges={hasNudges ? setupNudges : undefined}
+        formatModule={formatModule}
+        utilityRow={utilityRow}
+      />
       {friendRoom?.share_code && (
         <FriendWalkShareCard
           open={friendShareOpen}
@@ -540,133 +594,17 @@ function ActiveWalk() {
           shareCode={friendRoom.share_code}
         />
       )}
-
-      {/* In-walk utility row: private notes + ambient music pill */}
-      <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 md:px-0">
-        <WalkNotesPill walkSessionId={session.id} elapsed={elapsed} notes={walkNotes} photos={walkPhotos} onChangeNotes={setWalkNotes} onChangePhotos={setWalkPhotos} />
-        {!(session.walk_type === "audio" || session.guided_track_id) && (
-          <AmbientPill />
-        )}
-      </div>
-
-      {/* Sticky control dock */}
-      <div className="sticky bottom-0 left-0 right-0 z-20 mt-5 border-t border-border glass px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 md:static md:mt-6 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setPaused((p) => !p)} className="h-14 flex-1 rounded-2xl touch-manipulation md:h-12">
-            {paused ? <><Play className="mr-2 h-4 w-4" />Resume</> : <><Pause className="mr-2 h-4 w-4" />Pause</>}
-          </Button>
-          <LongPressEndButton onEnd={() => setEnding(true)} />
-        </div>
-        <p className="mt-1.5 text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 md:hidden">hold to end</p>
-      </div>
-    </div>
+    </>
   );
 }
 
-function SafetyButton({ walkSessionId }: { walkSessionId: string }) {
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <button className="flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-3 py-1.5 text-xs backdrop-blur"><Shield className="h-3.5 w-3.5" />Safety</button>
-      </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-3xl">
-        <SheetHeader><SheetTitle className="font-serif text-2xl">You are not alone</SheetTitle></SheetHeader>
-        <div className="space-y-4 py-4 text-sm">
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
-            <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger?</div>
-            <p className="mt-1 text-foreground">Call your local emergency services right now.</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="font-medium">Mental health crisis support (US)</div>
-            <p className="mt-1 text-muted-foreground">Call or text <a href="tel:988" className="font-medium text-forest underline">988</a> — Suicide & Crisis Lifeline.</p>
-          </div>
-          <div className="rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
-            Community guidelines: come as you are, walk at your pace, respect privacy, no advice unless asked. Walk session: {walkSessionId.slice(0,8)}.
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-/**
- * Press-and-hold (700ms) end button. The fill animates to 100% so the user
- * sees the commitment building. Tap-only triggers a soft hint instead of ending.
- */
-function LongPressEndButton({ onEnd }: { onEnd: () => void }) {
-  const [progress, setProgress] = useState(0);
-  const raf = useRef<number | null>(null);
-  const start = useRef<number>(0);
-  const fired = useRef(false);
-  const HOLD = 700;
-
-  const begin = () => {
-    fired.current = false;
-    start.current = performance.now();
-    haptics.tap();
-    const tick = () => {
-      const p = Math.min(1, (performance.now() - start.current) / HOLD);
-      setProgress(p);
-      if (p >= 1 && !fired.current) {
-        fired.current = true;
-        haptics.success();
-        onEnd();
-        return;
-      }
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  };
-  const cancel = () => {
-    if (raf.current !== null) cancelAnimationFrame(raf.current);
-    raf.current = null;
-    if (!fired.current && progress > 0 && progress < 1) {
-      // Tap with no hold — gentle nudge
-      toast("Hold to end the walk");
-    }
-    setProgress(0);
-  };
-
-  return (
-    <button
-      type="button"
-      onPointerDown={begin}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onPointerCancel={cancel}
-      className="relative h-14 flex-1 overflow-hidden rounded-2xl bg-clay text-primary-foreground touch-manipulation md:h-12"
-      aria-label="Hold to end walk"
-    >
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 bg-primary-foreground/20 transition-[width] duration-75"
-        style={{ width: `${progress * 100}%` }}
-      />
-      <span className="relative flex items-center justify-center text-sm font-medium">
-        <Square className="mr-2 h-4 w-4" />
-        {progress > 0 ? "Hold…" : "End walk"}
-      </span>
-    </button>
-  );
-}
-
-function fmt(s: number) {
-  const m = Math.floor(s / 60); const sec = s % 60;
-  return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-}
-function haversine(a: {lat:number;lng:number}, b: {lat:number;lng:number}) {
-  const R = 6371000; const toRad = (x: number) => (x * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat); const dLng = toRad(b.lng - a.lng);
-  const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371000;
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
-}
-
-function WalkWeatherChip({ coords }: { coords: { lat: number; lng: number } | null }) {
-  const { data } = useCurrentWeather(coords);
-  if (!data) return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs backdrop-blur">
-      <WeatherPill tempF={data.tempF} tone={data.tone} isDay={data.isDay} className="bg-transparent px-0 py-0" />
-    </span>
-  );
 }
