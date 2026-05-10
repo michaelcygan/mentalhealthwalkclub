@@ -25,7 +25,9 @@ const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: 
 export function MobileTabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const scrollDir = useScrollDirection();
-  const hidden = scrollDir === "down";
+  // Hide entirely while on a live walk so the Pause/End controls aren't clipped
+  const onActiveWalk = path.startsWith("/walk/active/");
+  const hidden = scrollDir === "down" || onActiveWalk;
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
   const liveCount = useLiveCount();
