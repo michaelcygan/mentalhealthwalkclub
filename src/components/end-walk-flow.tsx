@@ -86,10 +86,17 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
         <p className="font-serif italic text-muted-foreground">Still here. Still walking.</p>
         <Button
           onClick={save}
+          disabled={saving}
           style={{ touchAction: "manipulation" }}
-          className="h-14 w-full max-w-sm rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
+          className="h-14 w-full max-w-sm rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90 disabled:opacity-100"
         >
-          Save to journal
+          {saving ? (
+            <span className="inline-flex items-center gap-2">
+              <Check className="h-4 w-4" /> Saved · finishing up
+            </span>
+          ) : (
+            "Save to journal"
+          )}
         </Button>
       </div>
     );
