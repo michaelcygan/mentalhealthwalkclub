@@ -121,9 +121,9 @@ export function WeightBar({ value, onChange }: WeightProps) {
   return (
     <div>
       <div className="flex items-end justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span>heavy</span>
-        <span className="font-serif text-2xl normal-case tracking-normal text-foreground tabular-nums">{value ?? "—"}</span>
         <span>light</span>
+        <span className="font-serif text-2xl normal-case tracking-normal text-foreground tabular-nums">{value ?? "—"}</span>
+        <span>heavy</span>
       </div>
       <div
         role="slider"
