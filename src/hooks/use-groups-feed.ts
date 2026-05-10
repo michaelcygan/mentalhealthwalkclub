@@ -93,9 +93,16 @@ export function useGroupsFeed(): GroupsFeed {
       const get = (id: string) => map.get(id) ?? { ...empty };
       (rooms.data ?? []).forEach((r) => { if (!r.group_id) return; const v = get(r.group_id); v.live += 1; map.set(r.group_id, v); });
       (evts.data ?? []).forEach((e) => { if (!e.group_id) return; const v = get(e.group_id); if (!v.nextStart) v.nextStart = e.starts_at; map.set(e.group_id, v); });
-      const seen = new Map<string, Set<string>>();
-      (walks.data ?? []).forEach((w) => { if (!w.group_id) return; const s = seen.get(w.group_id) ?? new Set(); s.add(w.user_id); seen.set(w.group_id, s); });
-      seen.forEach((s, id) => { const v = get(id); v.walkersWeek = s.size; map.set(id, v); });
+      const aggRows = (pulseAgg as { data: { group_id: string; walkers_week: number }[] | null; error: unknown }).data;
+      if (aggRows && aggRows.length) {
+        aggRows.forEach((r) => { const v = get(r.group_id); v.walkersWeek = r.walkers_week; map.set(r.group_id, v); });
+      } else {
+        // Fallback: derive from a slim walks query if the RPC isn't available.
+        const walks = await supabase.from("walk_sessions").select("group_id,user_id").eq("status", "completed").gte("started_at", weekAgoIso);
+        const seen = new Map<string, Set<string>>();
+        (walks.data ?? []).forEach((w) => { if (!w.group_id) return; const s = seen.get(w.group_id) ?? new Set(); s.add(w.user_id); seen.set(w.group_id, s); });
+        seen.forEach((s, id) => { const v = get(id); v.walkersWeek = s.size; map.set(id, v); });
+      }
 
       feedCache.set(cacheKey, { ts: Date.now(), groups: nextGroups, mine: nextMine, pulse: map, myCity: nextCity, myThemes: nextThemes });
       setGroups(nextGroups);
