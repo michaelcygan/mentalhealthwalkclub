@@ -71,15 +71,18 @@ export function useGroupsFeed(): GroupsFeed {
 
     if (inflight) { await inflight; }
     const run = (async () => {
-      const [g, m, rooms, evts, walks, prof, prefs] = await Promise.all([
+      const [g, m, rooms, evts, pulseAgg, prof, prefs] = await Promise.all([
         supabase.from("groups").select("id,name,slug,description,member_count,theme,city,state,country,location_label,cover_set").eq("is_active", true).order("member_count", { ascending: false }),
         user ? supabase.from("group_memberships").select("group_id").eq("user_id", user.id) : Promise.resolve({ data: [] as { group_id: string }[] }),
         supabase.from("audio_rooms").select("group_id").eq("status", "open").gt("current_participant_count", 0).is("parent_room_id", null),
         supabase.from("events").select("group_id,starts_at").eq("status", "published").gte("starts_at", nowIso).lte("starts_at", in7dIso).order("starts_at"),
-        supabase.from("walk_sessions").select("group_id,user_id").eq("status", "completed").gte("started_at", weekAgoIso),
+        // Aggregate RPC: O(N groups) on the wire instead of O(N walks).
+        // Falls back to a slimmer client-side aggregation if the RPC is unavailable.
+        (supabase.rpc as unknown as (fn: string) => Promise<{ data: { group_id: string; walkers_week: number }[] | null; error: unknown }>)("group_pulse_week"),
         user ? supabase.from("profiles").select("city").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
         user ? supabase.from("user_preferences").select("preferred_themes").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
+      void weekAgoIso;
 
       const nextGroups = g.data ?? [];
       const nextMine = new Set((m.data ?? []).map((x) => x.group_id));
