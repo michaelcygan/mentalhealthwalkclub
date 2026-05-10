@@ -165,8 +165,10 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
       </div>
 
       <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-border bg-background/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-        <Button variant="outline" onClick={save} className="h-12 flex-1 rounded-2xl">Save now</Button>
-        <Button onClick={() => setStep(1)} className="h-12 flex-1 rounded-2xl bg-forest text-primary-foreground hover:opacity-90">Continue</Button>
+        <Button variant="outline" onClick={save} disabled={saving} className="h-12 flex-1 rounded-2xl">
+          {saving ? (<span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Saving…</span>) : "Save now"}
+        </Button>
+        <Button onClick={() => setStep(1)} disabled={saving} className="h-12 flex-1 rounded-2xl bg-forest text-primary-foreground hover:opacity-90">Continue</Button>
       </div>
     </div>
   );
