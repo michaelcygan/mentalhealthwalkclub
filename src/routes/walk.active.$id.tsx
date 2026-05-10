@@ -137,27 +137,34 @@ function ActiveWalk() {
     if (!navigator.geolocation) { setGps("denied"); return; }
     watchId.current = navigator.geolocation.watchPosition((pos) => {
       const acc = pos.coords.accuracy ?? 999;
-      // Accept fixes up to ~60m (handles GPS warm-up + phone-in-pocket noise).
-      // Anything worse is treated as "weak" but not dropped silently.
+      // Drop fixes worse than ~30m — they're the cause of squiggly lines.
+      // Anything between 30 and 60 still updates GPS state but isn't drawn.
       if (acc > 60) { setGps((g) => g === "live" ? "live" : "weak"); return; }
+      if (acc > 30) { setGps("weak"); return; }
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() };
-      // Tighter delta when fix is fuzzy, looser when sharp — kills jitter
-      // without dropping real motion in the warm-up window.
-      const minDelta = acc > 30 ? Math.max(4, acc * 0.18) : 2;
+      // Require ≥5m of movement before adding a point — kills GPS jitter
+      // entirely and produces a clean trail rather than a scribble.
+      const minDelta = 5;
       if (lastPos.current) {
         const d = haversine(lastPos.current, p);
         if (d >= minDelta && d < 200) {
+          // 3-point moving average smoother on the new point
+          const prev = points.current[points.current.length - 1];
+          const prev2 = points.current[points.current.length - 2];
+          const smoothed = prev2 && prev
+            ? { lat: (prev2.lat + prev.lat + p.lat) / 3, lng: (prev2.lng + prev.lng + p.lng) / 3, t: p.t }
+            : p;
           setMeters((m) => m + d);
-          points.current.push(p);
+          points.current.push(smoothed);
           setRouteTick((x) => x + 1);
           lastPos.current = p;
-          setWalkerCoords({ lat: p.lat, lng: p.lng });
-          setGps(acc <= 30 ? "live" : "weak");
+          setWalkerCoords({ lat: smoothed.lat, lng: smoothed.lng });
+          setGps("live");
         }
       } else {
         lastPos.current = p;
         points.current.push(p);
-        setGps(acc <= 30 ? "live" : "weak");
+        setGps("live");
         setWalkerCoords({ lat: p.lat, lng: p.lng });
       }
     }, (err) => {
@@ -386,11 +393,9 @@ function ActiveWalk() {
     <div className="-mx-4 md:mx-0">
       {/* Hero — full-bleed route ribbon as backdrop */}
       <section className="relative overflow-hidden gradient-forest px-5 pb-8 pt-7 text-primary-foreground md:rounded-3xl md:px-7 md:pt-8 md:shadow-elevated">
-        {points.current.length >= 2 && (
-          <div className="pointer-events-none absolute inset-0 opacity-25">
-            <RouteSparkline points={points.current} key={routeTick} height={260} />
-          </div>
-        )}
+        {/* Soft radial backdrop instead of a literal GPS scribble — the real
+            map below is the source of truth for the route. */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.08),_transparent_60%)]" />
 
         <div className={`relative flex items-start justify-between gap-2 transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}>
           <p className="font-serif text-sm italic opacity-90">{session.intention || (isAudio ? "On your feet." : "Walking alone still counts.")}</p>

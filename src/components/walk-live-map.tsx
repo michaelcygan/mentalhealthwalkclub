@@ -54,14 +54,14 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
         id: "route-glow",
         type: "line",
         source: "route",
-        paint: { "line-color": "#1f3a2c", "line-width": 10, "line-opacity": 0.18, "line-blur": 4 },
+        paint: { "line-color": "#1f3a2c", "line-width": 12, "line-opacity": 0.22, "line-blur": 6 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
       m.addLayer({
         id: "route-line",
         type: "line",
         source: "route",
-        paint: { "line-color": "#1f3a2c", "line-width": 4 },
+        paint: { "line-color": "#1f3a2c", "line-width": 5 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
     });
