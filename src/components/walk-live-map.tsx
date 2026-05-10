@@ -64,9 +64,25 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
         paint: { "line-color": "#1f3a2c", "line-width": 5 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
+      // Force a resize once the style is ready — fixes a blank canvas when
+      // the lazy chunk + CSS arrive after the container is laid out.
+      requestAnimationFrame(() => m.resize());
     });
     map.current = m;
-    return () => { m.remove(); map.current = null; };
+    // Belt-and-braces: a few delayed resizes catch the case where the
+    // container's height is settled by parent transitions or the lazy CSS.
+    const t1 = setTimeout(() => m.resize(), 60);
+    const t2 = setTimeout(() => m.resize(), 300);
+    const t3 = setTimeout(() => m.resize(), 900);
+    // Resize whenever the container itself changes size (expand/collapse,
+    // tab show/hide, keyboard inset, etc.).
+    const ro = new ResizeObserver(() => m.resize());
+    ro.observe(ref.current);
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      ro.disconnect();
+      m.remove(); map.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

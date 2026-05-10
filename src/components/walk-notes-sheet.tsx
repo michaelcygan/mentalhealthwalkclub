@@ -171,13 +171,13 @@ export function WalkNotesPill({ walkSessionId, elapsed, notes, photos, onChangeN
       <button
         type="button"
         onClick={() => { haptics.tap(); setOpen(true); }}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/85 px-3 py-1.5 text-xs text-foreground backdrop-blur transition active:scale-95 hover:border-forest/40"
-        aria-label="Open walk notes"
+        className="inline-flex items-center gap-2 rounded-full border border-forest/25 bg-forest/10 px-5 py-2.5 text-sm font-medium text-forest shadow-soft transition active:scale-95 hover:bg-forest/15"
+        aria-label="Capture a note or photo"
       >
-        <NotebookPen className="h-3.5 w-3.5 text-forest" />
-        <span>Capture</span>
+        <Camera className="h-4 w-4 text-forest" />
+        <span>Capture this moment</span>
         {captureCount > 0 && (
-          <span className="ml-0.5 rounded-full bg-forest/15 px-1.5 text-[10px] font-medium tabular-nums text-forest">{captureCount}</span>
+          <span className="ml-0.5 rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary-foreground">{captureCount}</span>
         )}
       </button>
 

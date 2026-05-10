@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { pickEndWalkStarters } from "@/lib/reflection-prompts";
@@ -18,6 +19,7 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
   const [moodAfter, setMoodAfter] = useState("");
   const [moodAfterScore, setMoodAfterScore] = useState<number | null>(null);
   const [showStarters, setShowStarters] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Pre-seed reflection with any prompts the user long-pressed during the walk
   const initialReflection = useMemo(
@@ -43,7 +45,15 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
   const save = () => {
     if (savedRef.current) return;
     savedRef.current = true;
-    onSave({ moodAfter, moodAfterScore, reflection });
+    setSaving(true);
+    // Optimistic confirmation so the user never feels a fearful pause.
+    toast.success("Saved to your journal", { id: "save-walk", duration: 2200 });
+    Promise.resolve(onSave({ moodAfter, moodAfterScore, reflection })).catch(() => {
+      // If save actually fails, surface it; the parent handles navigation on success.
+      savedRef.current = false;
+      setSaving(false);
+      toast.error("Couldn't save — tap again", { id: "save-walk" });
+    });
   };
 
   // Autosave on unmount only if the user actually engaged with the form
@@ -76,10 +86,17 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
         <p className="font-serif italic text-muted-foreground">Still here. Still walking.</p>
         <Button
           onClick={save}
+          disabled={saving}
           style={{ touchAction: "manipulation" }}
-          className="h-14 w-full max-w-sm rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
+          className="h-14 w-full max-w-sm rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90 disabled:opacity-100"
         >
-          Save to journal
+          {saving ? (
+            <span className="inline-flex items-center gap-2">
+              <Check className="h-4 w-4" /> Saved · finishing up
+            </span>
+          ) : (
+            "Save to journal"
+          )}
         </Button>
       </div>
     );
@@ -148,8 +165,10 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
       </div>
 
       <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-border bg-background/85 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-        <Button variant="outline" onClick={save} className="h-12 flex-1 rounded-2xl">Save now</Button>
-        <Button onClick={() => setStep(1)} className="h-12 flex-1 rounded-2xl bg-forest text-primary-foreground hover:opacity-90">Continue</Button>
+        <Button variant="outline" onClick={save} disabled={saving} className="h-12 flex-1 rounded-2xl">
+          {saving ? (<span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Saving…</span>) : "Save now"}
+        </Button>
+        <Button onClick={() => setStep(1)} disabled={saving} className="h-12 flex-1 rounded-2xl bg-forest text-primary-foreground hover:opacity-90">Continue</Button>
       </div>
     </div>
   );
