@@ -93,7 +93,7 @@ function JournalTab() {
     return () => { cancelled = true; };
   }, [walks]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Photo counts per walk — single grouped read
+  // Photo counts + first-3 signed URLs per walk — single grouped read, then batch sign
   useEffect(() => {
     if (!user || walks.length === 0) return;
     let cancelled = false;
@@ -101,14 +101,34 @@ function JournalTab() {
       const ids = walks.map((w) => w.id);
       const { data } = await supabase
         .from("walk_photos")
-        .select("walk_session_id")
-        .in("walk_session_id", ids);
+        .select("walk_session_id,storage_path,taken_at_seconds,created_at")
+        .in("walk_session_id", ids)
+        .order("taken_at_seconds", { ascending: true });
       if (cancelled || !data) return;
       const counts: Record<string, number> = {};
-      for (const row of data as { walk_session_id: string }[]) {
+      const pathsByWalk: Record<string, string[]> = {};
+      for (const row of data as { walk_session_id: string; storage_path: string }[]) {
         counts[row.walk_session_id] = (counts[row.walk_session_id] ?? 0) + 1;
+        if (!pathsByWalk[row.walk_session_id]) pathsByWalk[row.walk_session_id] = [];
+        if (pathsByWalk[row.walk_session_id].length < 3) pathsByWalk[row.walk_session_id].push(row.storage_path);
       }
       setPhotoCounts(counts);
+
+      // Sign all needed paths in parallel
+      const allPaths = Object.values(pathsByWalk).flat();
+      const signed = await Promise.all(
+        allPaths.map(async (p) => {
+          const { data: s } = await supabase.storage.from("walk-photos").createSignedUrl(p, 3600);
+          return [p, s?.signedUrl] as const;
+        }),
+      );
+      if (cancelled) return;
+      const urlByPath = new Map(signed.filter(([, u]) => !!u) as [string, string][]);
+      const urlsByWalk: Record<string, string[]> = {};
+      for (const [walkId, paths] of Object.entries(pathsByWalk)) {
+        urlsByWalk[walkId] = paths.map((p) => urlByPath.get(p)).filter((u): u is string => !!u);
+      }
+      setPhotoUrlsByWalk(urlsByWalk);
     })();
     return () => { cancelled = true; };
   }, [user, walks]);
