@@ -31,7 +31,7 @@ export function WalkingWithYou({ userId, groupId, groupName }: Props) {
       setLoading(true);
       const { data } = await supabase.rpc("get_leaderboard", {
         _period: "week",
-        _group_id: groupId,
+        _group_id: groupId ?? undefined,
       });
       if (cancelled) return;
       setRows(((data ?? []) as Row[]).map((r) => ({ ...r, total_minutes: Number(r.total_minutes) })));
