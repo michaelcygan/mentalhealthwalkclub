@@ -1780,6 +1780,13 @@ export type Database = {
           total_minutes: number
         }[]
       }
+      group_pulse_week: {
+        Args: never
+        Returns: {
+          group_id: string
+          walkers_week: number
+        }[]
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
