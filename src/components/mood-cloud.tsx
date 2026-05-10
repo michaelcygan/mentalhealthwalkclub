@@ -116,8 +116,16 @@ interface WeightProps {
   onChange: (n: number) => void;
 }
 
+/**
+ * WeightBar — visual: LIGHT on left, HEAVY on right (matches universal
+ * low→high reading direction). Storage semantics are unchanged: a higher
+ * stored value still means "lighter" (so delta math elsewhere keeps working).
+ * We invert the display: stored v=10 fills the leftmost cell (light), v=1
+ * fills the entire bar to the right edge (heaviest).
+ */
 export function WeightBar({ value, onChange }: WeightProps) {
-  const v = value ?? 0;
+  // Convert stored value (10 = lightest) to display value (10 = heaviest)
+  const displayV = value === null ? 0 : 11 - value;
   return (
     <div>
       <div className="flex items-end justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -129,25 +137,30 @@ export function WeightBar({ value, onChange }: WeightProps) {
         role="slider"
         aria-valuemin={1}
         aria-valuemax={10}
-        aria-valuenow={value ?? 0}
+        aria-valuenow={displayV}
+        aria-valuetext={value === null ? "not set" : `${displayV} of 10 toward heavy`}
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "ArrowRight") onChange(Math.min(10, (value ?? 5) + 1));
-          if (e.key === "ArrowLeft") onChange(Math.max(1, (value ?? 5) - 1));
+          // Visual right = heavier = lower stored value
+          if (e.key === "ArrowRight") onChange(Math.max(1, (value ?? 6) - 1));
+          if (e.key === "ArrowLeft") onChange(Math.min(10, (value ?? 6) + 1));
         }}
         className="mt-2 flex h-11 w-full items-stretch gap-1 rounded-2xl border border-border bg-card/60 p-1.5"
       >
         {Array.from({ length: 10 }, (_, i) => {
-          const n = i + 1;
-          const filled = n <= v;
+          // i=0 is leftmost (lightest). Filled when displayV >= (10 - i).
+          const displayN = i + 1; // 1..10 left→right
+          const filled = displayV >= displayN;
+          // Stored value when this cell is the rightmost-filled = 11 - displayN
+          const storedForThisCell = 11 - displayN;
           return (
             <button
-              key={n}
+              key={displayN}
               type="button"
-              onClick={() => { onChange(n); buzz(); }}
-              aria-label={`${n} of 10`}
+              onClick={() => { onChange(storedForThisCell); buzz(); }}
+              aria-label={`${displayN} of 10 toward heavy`}
               className={`flex-1 rounded-md transition-all duration-300 ${filled ? "bg-forest" : "bg-foreground/5 hover:bg-foreground/10"}`}
-              style={{ opacity: filled ? 0.4 + n * 0.06 : 1 }}
+              style={{ opacity: filled ? 0.4 + displayN * 0.06 : 1 }}
             />
           );
         })}
