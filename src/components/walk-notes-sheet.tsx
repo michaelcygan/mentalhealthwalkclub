@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { NotebookPen, Trash2, Lock, Camera, Image as ImageIcon, X } from "lucide-react";
+import { NotebookPen, Trash2, Lock, Camera, Image as ImageIcon, X, Pen } from "lucide-react";
 import { haptics } from "@/lib/device";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { toast } from "sonner";
@@ -166,20 +166,40 @@ export function WalkNotesPill({ walkSessionId, elapsed, notes, photos, onChangeN
 
   const captureCount = notes.length + photos.length;
 
+  // After 8s with no interaction, collapse the pill to a small dot so it
+  // doesn't pull attention away from the walk. Tap re-expands and opens.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (open || captureCount > 0) { setCollapsed(false); return; }
+    const t = setTimeout(() => setCollapsed(true), 8000);
+    return () => clearTimeout(t);
+  }, [open, captureCount]);
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => { haptics.tap(); setOpen(true); }}
-        className="inline-flex items-center gap-2 rounded-full border border-forest/25 bg-forest/10 px-5 py-2.5 text-sm font-medium text-forest shadow-soft transition active:scale-95 hover:bg-forest/15"
-        aria-label="Capture a note or photo"
-      >
-        <Camera className="h-4 w-4 text-forest" />
-        <span>Capture this moment</span>
-        {captureCount > 0 && (
-          <span className="ml-0.5 rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary-foreground">{captureCount}</span>
-        )}
-      </button>
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={() => { haptics.tap(); setCollapsed(false); setOpen(true); }}
+          className="grid h-10 w-10 place-items-center rounded-full border border-forest/25 bg-forest/10 text-forest shadow-soft transition active:scale-95 hover:bg-forest/15"
+          aria-label="Note this moment"
+        >
+          <Pen className="h-4 w-4" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { haptics.tap(); setOpen(true); }}
+          className="inline-flex items-center gap-2 rounded-full border border-forest/25 bg-forest/10 px-4 py-2 text-sm font-medium text-forest shadow-soft transition active:scale-95 hover:bg-forest/15"
+          aria-label="Note this moment"
+        >
+          <Pen className="h-4 w-4 text-forest" />
+          <span>Note this</span>
+          {captureCount > 0 && (
+            <span className="ml-0.5 rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary-foreground">{captureCount}</span>
+          )}
+        </button>
+      )}
 
       <Sheet open={open} onOpenChange={(v) => (v ? setOpen(true) : closeAndSave())}>
         <SheetContent
