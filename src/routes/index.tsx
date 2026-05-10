@@ -29,11 +29,54 @@ import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { useAmbient } from "@/lib/ambient-context";
+import { EntryFlow } from "@/components/entry-flow/entry-flow";
+import { DemoBanner } from "@/components/demo-banner";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 
 export const Route = createFileRoute("/")({
-  component: WalkTab,
+  component: HomeRoute,
   head: () => ({ meta: [{ title: "Mental Health Walk Club" }] }),
 });
+
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  const { demo } = useDemoMode();
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) { setOnboarded(null); return; }
+    supabase.from("profiles").select("onboarded_at").eq("id", user.id).maybeSingle()
+      .then(({ data }) => setOnboarded(!!data?.onboarded_at));
+  }, [user]);
+
+  // Loading auth
+  if (loading) {
+    return (
+      <div className="space-y-6" aria-busy="true">
+        <div className="h-72 w-full animate-pulse rounded-3xl bg-muted/50 md:h-96" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+        </div>
+      </div>
+    );
+  }
+
+  // Signed-out and not previewing → unified entry flow
+  if (!user && !demo) return <EntryFlow />;
+
+  // Signed-in but not onboarded → entry flow starting at slide 1
+  if (user && onboarded === false) return <EntryFlow startAtOnboarding />;
+
+  // Demo or fully onboarded → real Walk tab (with banner if demo)
+  return (
+    <>
+      {demo && <DemoBanner />}
+      <WalkTab />
+    </>
+  );
+}
 
 const MODE_PREFACE: Record<string, string> = {
   solo: "Walking alone still counts.",
