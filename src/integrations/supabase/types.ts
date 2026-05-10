@@ -1119,6 +1119,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           location_label: string | null
+          onboarded_at: string | null
           region: string | null
           state: string | null
           updated_at: string
@@ -1137,6 +1138,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           location_label?: string | null
+          onboarded_at?: string | null
           region?: string | null
           state?: string | null
           updated_at?: string
@@ -1155,6 +1157,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           location_label?: string | null
+          onboarded_at?: string | null
           region?: string | null
           state?: string | null
           updated_at?: string
