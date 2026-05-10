@@ -36,12 +36,20 @@ export function GroupsTab() {
   const dir = useScrollDirection(8);
   const collapsed = dir === "down";
 
-  // Search placeholder rotator
+  // Search placeholder rotator (paused when tab hidden — saves wakeups)
   const [phIdx, setPhIdx] = useState(0);
   useEffect(() => {
     if (q) return;
-    const id = window.setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 4000);
-    return () => window.clearInterval(id);
+    let id: number | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = window.setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 4000);
+    };
+    const stop = () => { if (id != null) { window.clearInterval(id); id = null; } };
+    const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
+    start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, [q]);
 
   const toggleChip = (c: Chip) => {
