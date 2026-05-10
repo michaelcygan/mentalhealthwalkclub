@@ -82,7 +82,7 @@ type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 function WalkTab() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { requireAuth, openWelcome } = useAuthPrompt();
+  const { requireAuth } = useAuthPrompt();
   const ambient = useAmbient();
   const beganWalkRef = useRef(false);
 
