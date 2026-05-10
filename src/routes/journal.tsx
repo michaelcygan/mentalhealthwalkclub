@@ -9,7 +9,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
 import { share, haptics } from "@/lib/device";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { bakeShareCard } from "@/lib/share-card";
 import { toast } from "sonner";
 import { TrackingStrip, type Period, type TrackingWalk } from "@/components/journal/tracking-strip";
