@@ -45,7 +45,15 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
   const save = () => {
     if (savedRef.current) return;
     savedRef.current = true;
-    onSave({ moodAfter, moodAfterScore, reflection });
+    setSaving(true);
+    // Optimistic confirmation so the user never feels a fearful pause.
+    toast.success("Saved to your journal", { id: "save-walk", duration: 2200 });
+    Promise.resolve(onSave({ moodAfter, moodAfterScore, reflection })).catch(() => {
+      // If save actually fails, surface it; the parent handles navigation on success.
+      savedRef.current = false;
+      setSaving(false);
+      toast.error("Couldn't save — tap again", { id: "save-walk" });
+    });
   };
 
   // Autosave on unmount only if the user actually engaged with the form
