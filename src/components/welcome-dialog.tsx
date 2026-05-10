@@ -72,9 +72,9 @@ export function WelcomeDialog({ open, onOpenChange, onSignUp, onSignIn }: Props)
               highlight
               tagline="30 days free. Cancel anytime."
               items={[
-                "Everything in Free",
-                "Unlimited Walk & Talks",
+                "Unlimited Walk & Talks (live audio)",
                 "RSVP to in-person Local Walks",
+                "Everything in Free",
                 "Early access to new chapters",
               ]}
               selected={plan === "plus"}

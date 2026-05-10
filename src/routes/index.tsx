@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -387,18 +387,13 @@ function PreWalkSheet({
   onSkipGuide: () => void;
 }) {
   const kbInset = useKeyboardInset();
-  const label = useMemo(() =>
-    walkType === "audio" ? "Walk & Talk"
-    : walkType === "guided_solo" ? "Guided walk"
-    : walkType === "irl_event" ? "Local walk"
-    : "Solo walk", [walkType]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[92vh]">
         <DrawerHeader className="pb-1 text-left">
-          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">{label}</div>
-          <DrawerTitle className="mt-1 font-serif text-2xl text-balance">How are you arriving?</DrawerTitle>
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">Start a walk</div>
+          <DrawerTitle className="mt-1 font-serif text-2xl text-balance">Choose how you want to walk</DrawerTitle>
           <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
         </DrawerHeader>
 
@@ -409,13 +404,33 @@ function PreWalkSheet({
         ) : (
           <>
             <div className="space-y-5 overflow-y-auto px-4 pb-3">
-              <div className="flex flex-wrap gap-1.5">
-                {(["solo","guided_solo","audio"] as WalkType[]).map((t) => (
-                  <button key={t} onClick={() => setWalkType(t)} className={`rounded-full border px-3 py-1 text-xs transition ${walkType === t ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>
-                    {t === "solo" ? "Solo" : t === "guided_solo" ? "Guided" : "Walk & Talk"}
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { t: "solo" as const, icon: Footprints, label: "Solo", body: "Just you." },
+                  { t: "audio" as const, icon: Headphones, label: "Walk & Talk", body: "Live audio." },
+                  { t: "guided_solo" as const, icon: Sparkles, label: "Guided", body: "A voice with you." },
+                ]).map(({ t, icon: Icon, label, body }) => {
+                  const active = walkType === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setWalkType(t); haptics.tap(); }}
+                      className={`flex min-h-[88px] flex-col items-start gap-1 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${active ? "border-forest bg-accent/60 ring-2 ring-forest/30 shadow-soft" : "border-border bg-card hover:border-forest/40"}`}
+                    >
+                      <Icon className={`h-4 w-4 ${active ? "text-forest" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${active ? "text-forest" : "text-foreground"}`}>{label}</span>
+                      <span className="text-[11px] leading-tight text-muted-foreground">{body}</span>
+                    </button>
+                  );
+                })}
               </div>
+              <button
+                type="button"
+                onClick={() => { onOpenChange(false); }}
+                className="-mt-1 block text-xs italic text-muted-foreground underline-offset-4 hover:text-forest hover:underline"
+              >
+                Looking for an in-person Local Walk? Browse Events →
+              </button>
 
               <MoodCloud value={feeling} onChange={setFeeling} />
 

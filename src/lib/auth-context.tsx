@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { restoreAuthFromIdb, backupAuthToIdb } from "@/lib/auth-persistence";
+import { restoreAuthFromIdb, backupAuthToIdb, setWasAuthed, restoreWasAuthedFromIdb } from "@/lib/auth-persistence";
 
 interface AuthCtx {
   user: User | null;
@@ -21,18 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setLoading(false);
-      // Mirror token to IndexedDB so iOS doesn't silently sign users out
-      // when localStorage is evicted after ~7 days of inactivity.
       void backupAuthToIdb();
+      if (s) setWasAuthed(true);
+      else if (_event === "SIGNED_OUT") setWasAuthed(false);
     });
-    // Restore from IndexedDB backup (if localStorage was cleared) before
-    // asking Supabase for the current session.
-    void restoreAuthFromIdb().finally(() => {
+    // Restore both the auth token and the "was-authed" flag from IndexedDB
+    // (in case localStorage was evicted) before asking Supabase for session.
+    void Promise.all([restoreAuthFromIdb(), restoreWasAuthedFromIdb()]).finally(() => {
       supabase.auth.getSession().then(({ data }) => {
         if (!active) return;
         setSession(data.session);
         setLoading(false);
         void backupAuthToIdb();
+        if (data.session) setWasAuthed(true);
       });
     });
     return () => {

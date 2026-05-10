@@ -64,6 +64,34 @@ function authStorageKey(): string | null {
 }
 
 const BACKUP_KEY_PREFIX = "idb:";
+const WAS_AUTHED_KEY = "wc_was_authed";
+
+/** Sticky "this device has signed in before" flag — survives auth eviction. */
+export function setWasAuthed(value: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (value) window.localStorage.setItem(WAS_AUTHED_KEY, "1");
+    else window.localStorage.removeItem(WAS_AUTHED_KEY);
+  } catch { /* ignore */ }
+  // Mirror to IndexedDB so it survives localStorage eviction.
+  void idbSet(BACKUP_KEY_PREFIX + WAS_AUTHED_KEY, value ? "1" : null);
+}
+
+export function wasAuthed(): boolean {
+  if (typeof window === "undefined") return false;
+  try { return window.localStorage.getItem(WAS_AUTHED_KEY) === "1"; }
+  catch { return false; }
+}
+
+/** Restore the wasAuthed flag from IndexedDB on launch. Best-effort. */
+export async function restoreWasAuthedFromIdb(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (wasAuthed()) return;
+  const v = await idbGet(BACKUP_KEY_PREFIX + WAS_AUTHED_KEY);
+  if (v === "1") {
+    try { window.localStorage.setItem(WAS_AUTHED_KEY, "1"); } catch { /* ignore */ }
+  }
+}
 
 /**
  * Restore the Supabase auth token from IndexedDB into localStorage if

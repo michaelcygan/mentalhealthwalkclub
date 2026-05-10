@@ -67,14 +67,20 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
 
   if (step === 1) {
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-5 py-10 text-center">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-6 px-4 py-10 text-center">
         <div className="rounded-3xl gradient-forest p-10 text-primary-foreground shadow-elevated animate-in fade-in zoom-in duration-700">
           <p className="font-serif text-xs italic opacity-80">{moodBefore ?? "started"} → {moodAfter || "okay"}</p>
           {delta !== null && <div className="mt-2 font-serif text-6xl tabular-nums">{delta > 0 ? `+${delta}` : delta}</div>}
           <p className="mt-2 text-xs uppercase tracking-widest opacity-80">{Math.round(elapsed / 60)} min · {miles.toFixed(2)} mi</p>
         </div>
         <p className="font-serif italic text-muted-foreground">Still here. Still walking.</p>
-        <Button onClick={save} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Save to journal</Button>
+        <Button
+          onClick={save}
+          style={{ touchAction: "manipulation" }}
+          className="h-14 w-full max-w-sm rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
+        >
+          Save to journal
+        </Button>
       </div>
     );
   }
