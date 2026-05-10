@@ -42,6 +42,7 @@ function JournalTab() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [primaryGroup, setPrimaryGroup] = useState<PrimaryGroup | null>(null);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
+  const [photoUrlsByWalk, setPhotoUrlsByWalk] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snapshotUrls, setSnapshotUrls] = useState<Record<string, string>>({});
