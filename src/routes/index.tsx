@@ -387,11 +387,6 @@ function PreWalkSheet({
   onSkipGuide: () => void;
 }) {
   const kbInset = useKeyboardInset();
-  const label = useMemo(() =>
-    walkType === "audio" ? "Walk & Talk"
-    : walkType === "guided_solo" ? "Guided walk"
-    : walkType === "irl_event" ? "Local walk"
-    : "Solo walk", [walkType]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
