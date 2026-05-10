@@ -46,7 +46,7 @@ export function AuthForm({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/welcome`,
+            emailRedirectTo: `${window.location.origin}/`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
@@ -60,7 +60,7 @@ export function AuthForm({
             : "Welcome. Lacing up your walking shoes…"
         );
         onSuccess?.("signup");
-        if (!suppressRedirect) navigate({ to: "/welcome" });
+        if (!suppressRedirect) navigate({ to: "/" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

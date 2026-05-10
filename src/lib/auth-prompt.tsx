@@ -22,7 +22,6 @@ const AuthPromptCtx = createContext<Ctx>({
   requireAuth: () => {},
 });
 
-const SEEN_KEY = "wc_seen_welcome";
 
 export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
