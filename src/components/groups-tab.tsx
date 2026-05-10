@@ -307,32 +307,36 @@ export function GroupsTab() {
           />
 
           {/* ─── Today (collapses Yours/For-you/Near/Trending) ─── */}
-          <TodayPanel
-            yours={yours}
-            forYou={forYou}
-            nearYou={nearYou}
-            trending={trending}
-            myCity={myCity}
-            pulse={pulse}
-            mine={mine}
-            onToggle={toggleJoin}
-            onSeeAll={(key) => {
-              const map = { yours, "for-you": forYou, near: nearYou, trending } as const;
-              const titles = { yours: "Your groups", "for-you": "Picked for you", near: `Near ${myCity ?? "you"}`, trending: "Trending this week" } as const;
-              setSheet({ title: titles[key], groups: map[key] });
-            }}
-          />
+          <div className="cv-auto">
+            <TodayPanel
+              yours={yours}
+              forYou={forYou}
+              nearYou={nearYou}
+              trending={trending}
+              myCity={myCity}
+              pulse={pulse}
+              mine={mine}
+              onToggle={toggleJoin}
+              onSeeAll={(key) => {
+                const map = { yours, "for-you": forYou, near: nearYou, trending } as const;
+                const titles = { yours: "Your groups", "for-you": "Picked for you", near: `Near ${myCity ?? "you"}`, trending: "Trending this week" } as const;
+                setSheet({ title: titles[key], groups: map[key] });
+              }}
+            />
+          </div>
 
           {/* ─── Moods (collapses 4 vibe sections) ─── */}
-          <MoodsCollection
-            groups={discover}
-            pulse={pulse}
-            mine={mine}
-            onToggle={toggleJoin}
-            onSeeAll={(_k, themes, label) => {
-              setSheet({ title: label, groups: discover.filter((g) => g.theme && themes.includes(g.theme)) });
-            }}
-          />
+          <div className="cv-auto">
+            <MoodsCollection
+              groups={discover}
+              pulse={pulse}
+              mine={mine}
+              onToggle={toggleJoin}
+              onSeeAll={(_k, themes, label) => {
+                setSheet({ title: label, groups: discover.filter((g) => g.theme && themes.includes(g.theme)) });
+              }}
+            />
+          </div>
 
           {/* ─── Niches ─── */}
           {niches.length > 0 && (
