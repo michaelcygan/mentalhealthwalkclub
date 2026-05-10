@@ -68,8 +68,10 @@ function LongPressEndButton({ onEnd }: { onEnd: () => void }) {
   const cancel = () => {
     if (raf.current !== null) cancelAnimationFrame(raf.current);
     raf.current = null;
-    if (!fired.current && progress > 0 && progress < 1) {
-      toast("Hold to end the walk");
+    // Only nudge if they held meaningfully (>25%) but let go early.
+    // Short, unique id so it never stacks or lingers and blocks the button.
+    if (!fired.current && progress > 0.25 && progress < 1) {
+      toast("Keep holding to end", { id: "hold-to-end", duration: 1400, dismissible: true });
     }
     setProgress(0);
   };
