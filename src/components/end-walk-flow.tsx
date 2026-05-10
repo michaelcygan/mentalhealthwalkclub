@@ -19,6 +19,7 @@ export function EndWalkFlow({ moodBefore, moodBeforeScore, elapsed, miles, saved
   const [moodAfter, setMoodAfter] = useState("");
   const [moodAfterScore, setMoodAfterScore] = useState<number | null>(null);
   const [showStarters, setShowStarters] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Pre-seed reflection with any prompts the user long-pressed during the walk
   const initialReflection = useMemo(
