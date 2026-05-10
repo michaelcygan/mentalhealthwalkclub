@@ -344,8 +344,17 @@ function JournalTab() {
 
       {/* Mobile detail sheet */}
       <Sheet open={!!selectedId} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
-        <SheetContent side="bottom" className="rounded-t-3xl lg:hidden">
-          <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
+        <SheetContent
+          side="bottom"
+          className="flex max-h-[90dvh] flex-col rounded-t-3xl p-0 lg:hidden"
+        >
+          {/* Drag handle */}
+          <div className="flex shrink-0 justify-center pt-2 pb-1">
+            <div className="h-1.5 w-10 rounded-full bg-border" aria-hidden />
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
+            <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
+          </div>
         </SheetContent>
       </Sheet>
     </div>
