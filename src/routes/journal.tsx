@@ -310,6 +310,7 @@ function JournalTab() {
                         walk={w}
                         snapshotUrl={snapshotUrls[w.id]}
                         photoCount={photoCounts[w.id] ?? 0}
+                        photoUrls={photoUrlsByWalk[w.id] ?? []}
                         contextLine={contextLineFor(w)}
                         active={selectedId === w.id}
                         onSelect={() => setSelectedId(selectedId === w.id ? null : w.id)}
