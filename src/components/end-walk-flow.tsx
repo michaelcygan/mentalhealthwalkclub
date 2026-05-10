@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { pickEndWalkStarters } from "@/lib/reflection-prompts";
