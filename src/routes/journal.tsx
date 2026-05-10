@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
-import { BookHeart, Award, Footprints, Share2 } from "lucide-react";
+import { BookHeart, Award, Footprints, Share2, ChevronDown } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { EmptyState } from "@/components/empty-state";
 import { Link } from "@tanstack/react-router";
@@ -12,7 +12,11 @@ import { share, haptics } from "@/lib/device";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { bakeShareCard } from "@/lib/share-card";
 import { toast } from "sonner";
-import { WeatherPill } from "@/components/weather-pill";
+import { TrackingStrip, type Period, type TrackingWalk } from "@/components/journal/tracking-strip";
+import { SignalsRow } from "@/components/journal/signals-row";
+import { WalkingWithYou } from "@/components/journal/walking-with-you";
+import { EntrySearch, type MoodFilter } from "@/components/journal/entry-search";
+import { EntryCard } from "@/components/journal/entry-card";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
@@ -25,35 +29,50 @@ interface Walk {
   mood_before_score: number | null; mood_after_score: number | null;
   reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
   privacy: string; share_map: boolean | null; intention: string | null;
+  group_id: string | null;
   weather_at_end: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
+interface PrimaryGroup { id: string; name: string }
 
 function JournalTab() {
   const { user } = useAuth();
   const { openAuth } = useAuthPrompt();
   const [walks, setWalks] = useState<Walk[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [primaryGroup, setPrimaryGroup] = useState<PrimaryGroup | null>(null);
+  const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snapshotUrls, setSnapshotUrls] = useState<Record<string, string>>({});
+  const [period, setPeriod] = useState<Period>("week");
+  const [query, setQuery] = useState("");
+  const [moodFilter, setMoodFilter] = useState<MoodFilter>("all");
+  const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     Promise.all([
-      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention,weather_at_end")
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention,group_id,weather_at_end")
         .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
-    ]).then(([w, b]) => {
-      setWalks((w.data ?? []) as unknown as Walk[]);
+      supabase.from("group_memberships")
+        .select("group_id, joined_at, groups(id,name)")
+        .eq("user_id", user.id).order("joined_at", { ascending: true }).limit(1),
+    ]).then(([w, b, g]) => {
+      const ws = (w.data ?? []) as unknown as Walk[];
+      setWalks(ws);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBadges((b.data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at })));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gRow: any = (g.data ?? [])[0];
+      if (gRow?.groups) setPrimaryGroup({ id: gRow.groups.id, name: gRow.groups.name });
       setLoading(false);
     });
   }, [user]);
 
-  // Bulk-sign snapshot URLs for the list thumbnails
+  // Bulk-sign snapshot URLs for the entry cards
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -73,33 +92,41 @@ function JournalTab() {
     return () => { cancelled = true; };
   }, [walks]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const totalMin = walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
-  const totalMiles = walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0);
+  // Photo counts per walk — single grouped read
+  useEffect(() => {
+    if (!user || walks.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const ids = walks.map((w) => w.id);
+      const { data } = await supabase
+        .from("walk_photos")
+        .select("walk_session_id")
+        .in("walk_session_id", ids);
+      if (cancelled || !data) return;
+      const counts: Record<string, number> = {};
+      for (const row of data as { walk_session_id: string }[]) {
+        counts[row.walk_session_id] = (counts[row.walk_session_id] ?? 0) + 1;
+      }
+      setPhotoCounts(counts);
+    })();
+    return () => { cancelled = true; };
+  }, [user, walks]);
 
-  // (heatmap below derives its own per-day grid)
-
-
-  // 30-day mood arc — average mood_after_score per day, smoothed sparkline
-  const moodArc = useMemo(() => {
-    const days: { score: number | null }[] = Array.from({ length: 30 }, () => ({ score: null }));
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const buckets = new Map<number, number[]>();
+  // Streak in weeks (consecutive weeks with at least one walk, ending this week)
+  const streakWeeks = useMemo(() => {
+    if (walks.length === 0) return 0;
+    const startOfWeek = new Date(); startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+    const weeksWithWalks = new Set<number>();
     walks.forEach((w) => {
-      if (w.mood_after_score == null) return;
-      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
-      if (diffDays < 0 || diffDays >= 30) return;
-      const k = 29 - diffDays;
-      const arr = buckets.get(k) ?? [];
-      arr.push(w.mood_after_score);
-      buckets.set(k, arr);
+      const days = Math.floor((startOfWeek.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      const wk = Math.floor(days / 7) + (days < 0 ? -1 : 0);
+      weeksWithWalks.add(Math.max(0, wk));
     });
-    buckets.forEach((arr, k) => { days[k] = { score: arr.reduce((s, n) => s + n, 0) / arr.length }; });
-    return days;
+    let s = 0;
+    while (weeksWithWalks.has(s)) s++;
+    return s;
   }, [walks]);
-  const moodAvg = useMemo(() => {
-    const vals = moodArc.map((d) => d.score).filter((v): v is number => v != null);
-    return vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : null;
-  }, [moodArc]);
 
   const onShareEntry = async (w: Walk) => {
     haptics.tap();
@@ -128,7 +155,7 @@ function JournalTab() {
           toast.success("Share card downloaded.");
           return;
         }
-      } catch { /* fall through to text share */ }
+      } catch { /* fall through */ }
     }
     const moodLine = w.mood_before && w.mood_after ? `${w.mood_before} → ${w.mood_after}` : (w.mood_after ?? "");
     const lines = [
@@ -140,41 +167,34 @@ function JournalTab() {
     await share({ title: "A walk worth remembering", text: lines.join("\n") });
   };
 
-  // Memory ribbon — group walks into 8 most-recent weeks for a horizontal "cards of a week" scroll
-  const ribbonWeeks = useMemo(() => {
-    const weekMap = new Map<number, Walk[]>();
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    walks.forEach((w) => {
-      const days = Math.floor((monday.getTime() - new Date(w.started_at).getTime()) / 86400_000);
-      const wk = Math.max(0, Math.floor(days / 7) + (days < 0 ? -1 : 0));
-      const list = weekMap.get(wk) ?? [];
-      list.push(w);
-      weekMap.set(wk, list);
+  // Filter + group by month
+  const filteredWalks = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return walks.filter((w) => {
+      if (q) {
+        const hay = [w.reflection_note, w.walk_type, w.mood_before, w.mood_after, w.intention].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (moodFilter !== "all") {
+        if (w.mood_before_score == null || w.mood_after_score == null) return false;
+        const delta = w.mood_after_score - w.mood_before_score;
+        if (moodFilter === "lighter" && delta <= 0) return false;
+        if (moodFilter === "heavier" && delta >= 0) return false;
+      }
+      return true;
     });
-    const weeks: { offset: number; walks: Walk[]; label: string; mins: number; reflect?: string; mood?: string | null }[] = [];
-    for (let i = 0; i < 8; i++) {
-      const ws = weekMap.get(i) ?? [];
-      const start = new Date(monday); start.setDate(monday.getDate() - i * 7);
-      const label = i === 0 ? "This week" : i === 1 ? "Last week" : start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      const mins = ws.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0);
-      const reflect = ws.find((w) => w.reflection_note)?.reflection_note ?? undefined;
-      const mood = ws.find((w) => w.mood_after)?.mood_after ?? null;
-      weeks.push({ offset: i, walks: ws, label, mins, reflect: reflect ?? undefined, mood });
-    }
-    return weeks;
-  }, [walks]);
+  }, [walks, query, moodFilter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Walk[]>();
-    walks.forEach((w) => {
+    filteredWalks.forEach((w) => {
       const d = new Date(w.started_at);
       const k = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(w);
     });
     return Array.from(map.entries());
-  }, [walks]);
+  }, [filteredWalks]);
 
   if (!user) {
     return (
@@ -191,164 +211,91 @@ function JournalTab() {
 
   if (loading) return <div className="space-y-3"><div className="h-32 animate-pulse rounded-2xl bg-secondary/60" /><div className="h-64 animate-pulse rounded-2xl bg-secondary/60" /></div>;
 
+  const trackingWalks: TrackingWalk[] = walks.map((w) => ({
+    started_at: w.started_at,
+    duration_seconds: w.duration_seconds,
+    distance_meters: w.distance_meters,
+    steps: w.steps,
+    mood_after_score: w.mood_after_score,
+  }));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header>
         <h1 className="font-serif text-3xl">Journal</h1>
-        <p className="mt-1 text-muted-foreground">Just for you. Always.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Where every walk gets to land.</p>
       </header>
 
-      {/* Hero stats card with day-of-week heatmap */}
-      <div className="rounded-3xl border border-border bg-card p-5 shadow-soft md:p-6">
-        <div className="grid gap-5 md:grid-cols-[auto,1fr] md:items-center md:gap-8">
-          <div className="grid grid-cols-3 gap-6">
-            <Stat label="walks" value={walks.length} />
-            <Stat label="minutes" value={totalMin} />
-            <Stat label="miles" value={totalMiles.toFixed(1)} />
-          </div>
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
-              <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
-            </div>
-            <Heatmap walks={walks} />
-          </div>
-        </div>
-        {moodAvg !== null && (
-          <div className="mt-5 border-t border-border pt-4">
-            <div className="flex items-baseline justify-between">
-              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">Mood arc · 30 days</div>
-              <div className="font-serif text-sm text-muted-foreground"><span className="text-foreground tabular-nums">{moodAvg.toFixed(1)}</span> avg after</div>
-            </div>
-            <MoodArc points={moodArc.map((d) => d.score)} />
-          </div>
-        )}
-      </div>
-      {walks.length > 0 && (
-        <section className="space-y-2">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Memory ribbon</div>
-          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0" style={{ scrollPaddingLeft: "1rem" }}>
-            {ribbonWeeks.map((w) => {
-              const empty = w.walks.length === 0;
-              return (
-                <article
-                  key={w.offset}
-                  className={`group relative w-[78%] shrink-0 snap-start overflow-hidden rounded-3xl border p-4 transition active:scale-[0.99] sm:w-[55%] md:w-[40%] lg:w-[32%] ${
-                    empty ? "border-dashed border-border bg-card/60" : "border-border bg-gradient-to-br from-card via-card to-accent/30 shadow-soft"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <span>{w.label}</span>
-                    <span className="tabular-nums">{w.walks.length} walk{w.walks.length === 1 ? "" : "s"}</span>
-                  </div>
-                  <div className="mt-2 flex items-baseline gap-1.5">
-                    <span className="font-serif text-3xl tabular-nums">{w.mins}</span>
-                    <span className="text-xs text-muted-foreground">min</span>
-                  </div>
-                  {/* mini bar of the 7 days */}
-                  <div className="mt-3 flex h-7 items-end gap-1">
-                    {Array.from({ length: 7 }).map((_, i) => {
-                      const dayMins = w.walks
-                        .filter((wk) => {
-                          const d = new Date(wk.started_at);
-                          const dow = (d.getDay() + 6) % 7; // Mon=0
-                          return dow === i;
-                        })
-                        .reduce((s, wk) => s + Math.round((wk.duration_seconds ?? 0) / 60), 0);
-                      const max = Math.max(1, ...w.walks.map((wk) => Math.round((wk.duration_seconds ?? 0) / 60)));
-                      return <div key={i} className="flex-1 rounded-sm bg-forest/70" style={{ height: `${Math.max(6, (dayMins / max) * 100)}%`, opacity: dayMins === 0 ? 0.18 : 0.55 + (dayMins / max) * 0.45 }} />;
-                    })}
-                  </div>
-                  {w.mood && (
-                    <div className="mt-3 inline-flex rounded-full bg-accent/60 px-2.5 py-0.5 text-[11px] capitalize">{w.mood}</div>
-                  )}
-                  {w.reflect && (
-                    <p className="mt-2 line-clamp-2 font-serif text-sm italic leading-snug text-foreground/80">"{w.reflect}"</p>
-                  )}
-                  {empty && (
-                    <p className="mt-3 font-serif text-sm italic text-muted-foreground">A quiet week. Rest counts too.</p>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {/* Layer A — tracking */}
+      <TrackingStrip period={period} onPeriodChange={setPeriod} walks={trackingWalks} />
 
+      {/* Signals row — lite social, glance only */}
+      <SignalsRow
+        latestBadgeName={badges[0]?.name}
+        rank={null /* could pull from get_my_rank later */}
+        groupName={primaryGroup?.name}
+        streakWeeks={streakWeeks}
+      />
+
+      {/* Layer E — badges (scroller) */}
       {badges.length > 0 && (
-        <section className="space-y-3">
-          <SectionHeading eyebrow="Earned" title="Badges" />
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-            {badges.map((b, i) => (
-              <div key={i} className="min-w-[180px] shrink-0 rounded-2xl border border-border bg-card p-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent"><Award className="h-4 w-4 text-forest" /></div>
-                <div className="mt-2 font-serif text-base">{b.name}</div>
-                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{b.description}</div>
+        <section className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Earned</div>
+            <Link to="/badges" className="text-xs text-muted-foreground hover:text-forest">See all</Link>
+          </div>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+            {badges.slice(0, 6).map((b, i) => (
+              <div key={i} className="min-w-[160px] shrink-0 rounded-2xl border border-border bg-card p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent"><Award className="h-3.5 w-3.5 text-forest" /></div>
+                <div className="mt-2 font-serif text-sm">{b.name}</div>
+                <div className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{b.description}</div>
               </div>
             ))}
           </div>
         </section>
       )}
 
+      {/* Walking with you — non-competitive leaderboard */}
+      {primaryGroup && (
+        <WalkingWithYou userId={user.id} groupId={primaryGroup.id} groupName={primaryGroup.name} />
+      )}
+
+      {/* Layer C — entries feed with search */}
       <section className="space-y-3">
-        <SectionHeading eyebrow="Your walks" title="History" />
+        <div className="flex items-baseline justify-between">
+          <SectionHeading eyebrow="Your walks" title="Entries" />
+          <span className="text-xs text-muted-foreground tabular-nums">{filteredWalks.length} of {walks.length}</span>
+        </div>
+
+        <EntrySearch query={query} onQueryChange={setQuery} mood={moodFilter} onMoodChange={setMoodFilter} />
+
         {walks.length === 0 ? (
           <EmptyState icon={Footprints} title="Your first walk is waiting" body="A small walk is still a walk. Step out for five minutes — your journal will fill itself." action={<Link to="/" className="rounded-full bg-forest px-4 py-2 text-sm text-primary-foreground hover:opacity-90">Take a walk</Link>} />
+        ) : filteredWalks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            No walks match that search.
+          </div>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),360px]">
             <div className="space-y-5">
               {grouped.map(([month, ws]) => (
                 <div key={month}>
                   <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/90 px-1 py-1 font-serif text-sm text-muted-foreground backdrop-blur">{month}</div>
-                  <ul className="space-y-2">
-                    {ws.map((w) => {
-                      const delta = w.mood_before_score && w.mood_after_score ? w.mood_after_score - w.mood_before_score : null;
-                      const active = selectedId === w.id;
-                      return (
-                        <li key={w.id} className="relative">
-                          <button onClick={() => setSelectedId(active ? null : w.id)} className={`flex w-full gap-3 rounded-2xl border p-3 pr-12 text-left transition hover:-translate-y-px ${active ? "border-forest bg-accent/40" : "border-border bg-card hover:border-forest/30"}`}>
-                            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-secondary/40">
-                              {snapshotUrls[w.id] ? (
-                                <img src={snapshotUrls[w.id]} alt="" loading="lazy" className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="grid h-full w-full place-items-center text-muted-foreground"><Footprints className="h-5 w-5" /></div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium">{new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{w.walk_type.replace(/_/g, " ")}</span>
-                              </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span>{Math.round((w.duration_seconds ?? 0) / 60)} min · {((w.distance_meters ?? 0) * 0.000621371).toFixed(2)} mi · {w.steps ?? 0} steps</span>
-                                {w.weather_at_end?.tempF != null && (
-                                  <WeatherPill tempF={w.weather_at_end.tempF} label={w.weather_at_end.label} tone={(w.weather_at_end.tone as never) || "cloud"} isDay={w.weather_at_end.isDay} />
-                                )}
-                              </div>
-                              {(w.mood_before || w.mood_after) && (
-                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                                  {w.mood_before && <span className="rounded-full bg-secondary px-2 py-0.5">{w.mood_before}</span>}
-                                  <span className="text-muted-foreground">→</span>
-                                  {w.mood_after ? <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">{w.mood_after}</span> : <span className="text-muted-foreground">—</span>}
-                                  {delta !== null && (
-                                    <span className={`tabular-nums ${delta > 0 ? "text-forest" : delta < 0 ? "text-clay" : "text-muted-foreground"}`}>{delta > 0 ? `+${delta}` : delta}</span>
-                                  )}
-                                </div>
-                              )}
-                              {w.reflection_note && <p className="mt-2 line-clamp-2 text-sm lg:line-clamp-1">{w.reflection_note}</p>}
-                            </div>
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onShareEntry(w); }}
-                            aria-label="Share walk"
-                            className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-accent/60 hover:text-forest"
-                          >
-                            <Share2 className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className="space-y-3">
+                    {ws.map((w) => (
+                      <EntryCard
+                        key={w.id}
+                        walk={w}
+                        snapshotUrl={snapshotUrls[w.id]}
+                        photoCount={photoCounts[w.id] ?? 0}
+                        contextLine={contextLineFor(w)}
+                        active={selectedId === w.id}
+                        onSelect={() => setSelectedId(selectedId === w.id ? null : w.id)}
+                        onShare={() => onShareEntry(w)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -362,9 +309,40 @@ function JournalTab() {
         )}
       </section>
 
+      {/* Stats — collapsed disclosure for the lifetime/heatmap view */}
+      {walks.length > 0 && (
+        <section className="rounded-3xl border border-border bg-card/60 p-4">
+          <button
+            type="button"
+            onClick={() => setStatsOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Lifetime stats</span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${statsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {statsOpen && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <Stat label="walks" value={walks.length} />
+                <Stat label="minutes" value={walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0)} />
+                <Stat label="miles" value={walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0).toFixed(1)} />
+              </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
+                  <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
+                </div>
+                <Heatmap walks={walks} />
+              </div>
+              <MoodArcSection walks={walks} />
+            </div>
+          )}
+        </section>
+      )}
+
       <p className="pt-4 text-center font-serif text-xs italic text-muted-foreground">Still here. Still walking.</p>
 
-      {/* Mobile detail sheet — desktop already shows the sidebar pane */}
+      {/* Mobile detail sheet */}
       <Sheet open={!!selectedId} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
         <SheetContent side="bottom" className="rounded-t-3xl lg:hidden">
           <WalkDetailPane walk={walks.find((w) => w.id === selectedId)} />
@@ -372,6 +350,13 @@ function JournalTab() {
       </Sheet>
     </div>
   );
+}
+
+function contextLineFor(w: Walk): string | null {
+  const type = w.walk_type.replace(/_/g, " ");
+  const parts = [type];
+  if (w.intention) parts.push(w.intention);
+  return parts.join(" · ");
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -383,14 +368,52 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function MoodArcSection({ walks }: { walks: Walk[] }) {
+  const moodArc = useMemo(() => {
+    const days: { score: number | null }[] = Array.from({ length: 30 }, () => ({ score: null }));
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const buckets = new Map<number, number[]>();
+    walks.forEach((w) => {
+      if (w.mood_after_score == null) return;
+      const diffDays = Math.floor((now.getTime() - new Date(w.started_at).getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 30) return;
+      const k = 29 - diffDays;
+      const arr = buckets.get(k) ?? [];
+      arr.push(w.mood_after_score);
+      buckets.set(k, arr);
+    });
+    buckets.forEach((arr, k) => { days[k] = { score: arr.reduce((s, n) => s + n, 0) / arr.length }; });
+    return days;
+  }, [walks]);
+  const moodAvg = useMemo(() => {
+    const vals = moodArc.map((d) => d.score).filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : null;
+  }, [moodArc]);
+  if (moodAvg === null) return null;
+  return (
+    <div className="border-t border-border pt-4">
+      <div className="flex items-baseline justify-between">
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">Mood arc · 30 days</div>
+        <div className="font-serif text-sm text-muted-foreground"><span className="text-foreground tabular-nums">{moodAvg.toFixed(1)}</span> avg after</div>
+      </div>
+      <MoodArc points={moodArc.map((d) => d.score)} />
+    </div>
+  );
+}
+
 function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
   const [photos, setPhotos] = useState<{ url: string; t: number }[]>([]);
   const [zoom, setZoom] = useState<number | null>(null);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+  const [reflectionDraft, setReflectionDraft] = useState<string>("");
+  const [editing, setEditing] = useState(false);
+  const [savingRef, setSavingRef] = useState(false);
 
   useEffect(() => {
     setPhotos([]);
     setSnapshotUrl(null);
+    setEditing(false);
+    setReflectionDraft(walk?.reflection_note ?? "");
     if (!walk) return;
     let cancelled = false;
     (async () => {
@@ -443,7 +466,24 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = file.name; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch { /* user cancel or render fail */ }
+    } catch { /* user cancel */ }
+  };
+
+  const saveReflection = async () => {
+    if (!walk) return;
+    setSavingRef(true);
+    const value = reflectionDraft.trim() || null;
+    const prev = walk.reflection_note;
+    walk.reflection_note = value; // optimistic mutation on the row
+    setEditing(false);
+    const { error } = await supabase.from("walk_sessions").update({ reflection_note: value }).eq("id", walk.id);
+    setSavingRef(false);
+    if (error) {
+      walk.reflection_note = prev;
+      toast.error("Couldn't save reflection");
+    } else {
+      toast.success("Reflection saved");
+    }
   };
 
   if (!walk) return <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Pick a walk to see its full reflection.</div>;
@@ -457,7 +497,7 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
       <h3 className="mt-1 font-serif text-2xl capitalize">{walk.walk_type.replace(/_/g, " ")} walk</h3>
       {snapshotUrl && (
         <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-secondary/40">
-          <img src={snapshotUrl} alt="Route map" className="aspect-square w-full object-cover" loading="lazy" />
+          <img src={snapshotUrl} alt="Route map" className="aspect-square w-full object-cover" loading="lazy" style={{ filter: "saturate(0.55) contrast(1.02)" }} />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/55 via-foreground/15 to-transparent p-3 text-primary-foreground">
             <div className="flex items-end justify-between gap-3">
               <div>
@@ -507,12 +547,37 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
           </div>
         </div>
       )}
-      {walk.reflection_note && (
-        <div className="mt-5">
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between">
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Reflection</div>
-          <p className="mt-1 whitespace-pre-wrap font-serif italic leading-relaxed">{walk.reflection_note}</p>
+          {!editing && (
+            <button type="button" onClick={() => setEditing(true)} className="text-[11px] text-muted-foreground hover:text-forest">
+              {walk.reflection_note ? "Edit" : "Add"}
+            </button>
+          )}
         </div>
-      )}
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={reflectionDraft}
+              onChange={(e) => setReflectionDraft(e.target.value)}
+              rows={4}
+              placeholder="Write a line you'll want to find again."
+              className="w-full resize-none rounded-2xl border border-forest/15 bg-background/80 p-3 font-serif italic leading-relaxed placeholder:text-muted-foreground/70 focus:border-forest focus:outline-none"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => { setEditing(false); setReflectionDraft(walk.reflection_note ?? ""); }} className="rounded-full px-3 py-1.5 text-xs text-muted-foreground">Cancel</button>
+              <button type="button" disabled={savingRef} onClick={saveReflection} className="rounded-full bg-forest px-4 py-1.5 text-xs text-primary-foreground disabled:opacity-60">
+                {savingRef ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : walk.reflection_note ? (
+          <p className="mt-1 whitespace-pre-wrap font-serif italic leading-relaxed">{walk.reflection_note}</p>
+        ) : (
+          <p className="mt-1 text-sm italic text-muted-foreground">No reflection yet — leave one for future-you.</p>
+        )}
+      </div>
 
       {zoom !== null && photos[zoom] && (
         <div onClick={() => setZoom(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/85 p-4 backdrop-blur" role="dialog" aria-label="Photo preview">
@@ -528,7 +593,6 @@ function MoodArc({ points }: { points: (number | null)[] }) {
   const min = 1, max = 10;
   const xs = points.map((_, i) => pad + (i * (W - pad * 2)) / (points.length - 1));
   const ys = points.map((v) => v == null ? null : H - pad - ((v - min) / (max - min)) * (H - pad * 2));
-  // Build polyline through known points only
   let d = "";
   let started = false;
   ys.forEach((y, i) => {
