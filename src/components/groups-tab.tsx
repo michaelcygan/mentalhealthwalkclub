@@ -90,18 +90,20 @@ export function GroupsTab() {
     });
   }, [groups, pulse, q, active, myCity]);
 
-  // Counts for chip badges
-  const chipCount = (id: Chip): number => {
-    return groups.reduce((n, g) => {
+  // Counts for chip badges (memoized — recomputed only when groups/pulse/myCity change)
+  const chipCounts = useMemo(() => {
+    const counts: Record<Chip, number> = { near: 0, live: 0, upcoming: 0, quiet: 0, audio: 0 };
+    for (const g of groups) {
       const p = pulse.get(g.id);
-      if (id === "live" && p?.live) return n + 1;
-      if (id === "upcoming" && p?.nextStart) return n + 1;
-      if (id === "near" && myCity && g.city === myCity) return n + 1;
-      if (id === "quiet" && (g.theme === "quiet" || g.theme === "reset")) return n + 1;
-      if (id === "audio" && (p?.live || p?.nextStart)) return n + 1;
-      return n;
-    }, 0);
-  };
+      if (p?.live) counts.live += 1;
+      if (p?.nextStart) counts.upcoming += 1;
+      if (myCity && g.city === myCity) counts.near += 1;
+      if (g.theme === "quiet" || g.theme === "reset") counts.quiet += 1;
+      if (p?.live || p?.nextStart) counts.audio += 1;
+    }
+    return counts;
+  }, [groups, pulse, myCity]);
+  const chipCount = (id: Chip): number => chipCounts[id];
 
   // ─── Module data ───
   const yours = useMemo(() => groups.filter((g) => mine.has(g.id)), [groups, mine]);
