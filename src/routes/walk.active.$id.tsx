@@ -445,12 +445,7 @@ function ActiveWalk() {
     navigate({ to: "/journal" as never });
   };
 
-  if (!session)
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <img src="/logo-stamp.png" alt="Loading" className="h-32 w-32 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none" draggable={false} />
-      </div>
-    );
+  if (!session) return <LoadingScreen variant="inline" size={32} />;
 
   if (ending) {
     return (
