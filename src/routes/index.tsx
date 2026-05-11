@@ -65,13 +65,6 @@ function HomeRoute() {
 }
 
 
-const MODE_PREFACE: Record<string, string> = {
-  solo: "Walking alone still counts.",
-  guided_solo: "A gentle voice in your ear.",
-  audio: "You'll be matched once you start moving.",
-  irl_event: "Real people, real sidewalks.",
-};
-
 type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
