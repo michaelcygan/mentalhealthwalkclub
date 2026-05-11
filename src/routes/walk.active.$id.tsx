@@ -603,6 +603,7 @@ function ActiveWalk() {
         steps={steps}
         paceMinPerMi={paceMinPerMi}
         cadence={cadence}
+        stepsHint={stepsHint}
         walkerCoords={walkerCoords}
         routePoints={points.current.slice()}
         canShareMap={session.privacy === "public" && !!session.group_id}
