@@ -75,19 +75,9 @@ const MODE_PREFACE: Record<string, string> = {
 type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { requireAuth } = useAuthPrompt();
-  const ambient = useAmbient();
-  const beganWalkRef = useRef(false);
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [pickGuide, setPickGuide] = useState(false);
-  const [walkType, setWalkType] = useState<WalkType>("solo");
-  const [feeling, setFeeling] = useState<string>("");
-  const [moodScore, setMoodScore] = useState<number | null>(null);
-  const [intention, setIntention] = useState("");
-  const [busy, setBusy] = useState(false);
+  const composer = useWalkComposer();
 
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
@@ -98,13 +88,14 @@ function WalkTab() {
 
   const stats = useProfileStats(user?.id);
 
-  // Web Share Target → ?intention=… seeds the next walk
+  // Web Share Target → ?start=1 opens the composer
   useEffect(() => {
     if (typeof window === "undefined") return;
     const u = new URL(window.location.href);
-    const seed = u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title");
-    if (seed) { setIntention(seed.slice(0, 280)); setSheetOpen(true); }
-    if (u.searchParams.get("start") === "1") setSheetOpen(true);
+    if (u.searchParams.get("start") === "1" || u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title")) {
+      composer.open({ type: "solo" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
