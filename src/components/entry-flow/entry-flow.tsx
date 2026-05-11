@@ -362,16 +362,18 @@ function SlideGroups({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: (
   // Suggested list (no search): rank by city → region/country → theme → popularity.
   useEffect(() => {
     if (search.trim()) return;
-    const queries: Promise<{ data: GroupRow[] | null }>[] = [];
+    const queries: PromiseLike<{ data: GroupRow[] | null }>[] = [];
     const city = location?.city?.trim();
     const region = location?.region?.trim();
     const country = location?.country?.trim();
+    const run = (b: { then: <T>(r: (v: { data: unknown }) => T) => PromiseLike<T> }) =>
+      Promise.resolve(b).then((r) => ({ data: (r.data ?? null) as GroupRow[] | null }));
 
-    if (city) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", city).limit(6));
-    if (region) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${region}%`).limit(6));
-    if (country) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${country}%`).limit(6));
-    if (themes.length) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).in("theme", themes).limit(6));
-    queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).order("member_count", { ascending: false }).limit(6));
+    if (city) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", city).limit(6)));
+    if (region) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${region}%`).limit(6)));
+    if (country) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${country}%`).limit(6)));
+    if (themes.length) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).in("theme", themes).limit(6)));
+    queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).order("member_count", { ascending: false }).limit(6)));
 
     Promise.all(queries).then((results) => {
       const all = new Map<string, GroupRow>();
