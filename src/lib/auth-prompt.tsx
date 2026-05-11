@@ -93,7 +93,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
         onSignIn={() => openAuth("signin")}
       />
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
-        <DialogContent className="rounded-3xl border-border bg-card p-7 sm:max-w-md">
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card p-7 sm:max-w-md">
           <AuthForm defaultMode={authMode} defaultPlan={authPlan} onSuccess={() => setAuthOpen(false)} />
         </DialogContent>
       </Dialog>
