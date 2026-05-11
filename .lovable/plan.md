@@ -1,62 +1,90 @@
-# Multi-scene ambient banner loop (chained generation)
+## Goal
 
-Stitch a 4-scene looping banner. To get genuine variety, **generate the scenes in sequence** with the video tool (one call per scene, waited on, then the next), rather than relying on the existing three clips alone. The browser still mounts only one `<video>` per banner — all dissolves are baked into a single MP4.
+Today there are two completely different "pick a walk" UIs:
 
-## Scenes to generate (4 fresh, sequential calls)
+1. **Polished composer** — the `PreWalkSheet` defined inside `src/routes/index.tsx`. Opens from the big *Start a walk* button, the *Other ways to walk* pills, the *Comeback* nudge, and the *Live now* strip. It chains through mode → mood cloud → weight → intention → guide picker, then actually creates the `walk_session` row and routes to `/walk/active/$id`.
+2. **Half-broken drawer** — the *Choose your walk* sheet in `src/components/mobile-tab-bar.tsx` triggered by the center shoes FAB. Its mode buttons are plain `<Link to="/">` tiles that just close the drawer and dump you on Home — they never start a walk. Friend Walk + Schedule + PWA install live here too.
 
-Each: 1080p, 16:9, 10s, no audio, slow ambient camera.
+We'll collapse #2 into #1 so there is exactly one composer, reachable from every entry point including the FAB.
 
-1. **`suburban-il-2.mp4`** — Slow forward POV down a tree-lined Illinois sidewalk in late afternoon. Long shadows, dappled light, empty street. Cicada-quiet.
-2. **`rural-co-2.mp4`** — Side-tracking shot of a dirt road through golden aspens, distant Colorado foothills. One small figure walking far ahead. Gentle parallax.
-3. **`nyc-2.mp4`** — Forward POV down a quiet Brooklyn brownstone block at dawn. Soft sun flare between buildings, planters, stoops. Empty sidewalk.
-4. **`coastal-pnw.mp4`** — Forward POV along a misty Pacific Northwest beach path, driftwood and ferns, soft gray light. Cooler beat to balance the warm scenes.
+## What gets built
 
-The three originals (`suburban-il.mp4`, `rural-co.mp4`, `nyc.mp4`) stay in the repo as build inputs and may be substituted in the final concat if any new generation comes back weaker.
+### 1. Promote `PreWalkSheet` to a shared component
 
-Generation order is **sequential** — wait for each video tool call to finish, eyeball it via `code--view` (first frame), then kick off the next. If a clip comes back wrong (camera too fast, weird artifacts, people facing camera), regenerate that one before moving on.
+- Move the `PreWalkSheet` JSX (currently lines 359–446 of `src/routes/index.tsx`) into a new file `src/components/walk-composer/walk-composer.tsx`.
+- Move the supporting state + `beginWalk` + `openSheet` + `handleSheetChange` + `proceed` logic out of `HomeRoute` into a `useWalkComposer()` hook in `src/components/walk-composer/use-walk-composer.tsx` so the same controller can be mounted once and triggered from anywhere.
+- Expose a tiny imperative API via a `WalkComposerProvider` mounted in `__root.tsx` (or in the authed layout, wherever auth context already sits):
+  ```ts
+  const { open } = useWalkComposer();
+  open({ type: "solo" }); // or "audio" | "guided_solo"
+  ```
+- The provider renders **one** `<WalkComposer />` instance + the existing `FriendWalkScheduleSheet` + `FriendWalkShareCard` so Friend Walk creation/scheduling state lives in one place too.
 
-## Compositing pipeline (one-shot ffmpeg, runs in sandbox)
+### 2. Add Friend Walk rows inside the composer
 
-Script `scripts/build-ambient-loop.mjs`:
+The current mode grid in PreWalkSheet only shows Solo / Walk & Talk / Guided. To preserve everything the FAB drawer offered, extend the composer's first screen with two additional rows below the mode grid:
 
-1. Re-encodes each chosen scene to **1280×720, ~1.2 Mbps H.264, no audio, 30 fps**.
-2. Concatenates the 4 scenes in a fixed order with **0.8s dissolves** between, plus a dissolve from scene 4 back into scene 1 so the loop is seamless.
-3. Outputs:
-   - `public/videos/ambient/loop.mp4` (~6 MB, ~40s)
-   - `public/videos/ambient/loop.webm` (VP9, ~4 MB)
-   - `public/videos/ambient/loop-poster.jpg` (frame 0)
-4. Idempotent — re-runs from the same source files. Not part of the build; one-time author step.
+- **Friend Walk · share a link** — same gradient clay tile, calls `createFriendWalk` then opens `FriendWalkShareCard`.
+- **Schedule a Friend Walk** — opens `FriendWalkScheduleSheet`.
+- **Add to home screen** — only when `usePwaInstall().canInstall`.
 
-## Component changes
+These already exist in `mobile-tab-bar.tsx` (lines 128–171) — we lift them as-is into the composer body so both entry points show them.
 
-`src/components/ambient-video-banner.tsx`:
-- Drop the per-surface `clip` selection and rotation logic. Every banner plays the same composited loop.
-- `<video>` gets two `<source>` children (webm first, mp4 fallback) plus `poster={loopPoster}`.
-- IntersectionObserver pause + reduced-motion poster behavior unchanged.
+### 3. Rewire the FAB
 
-`src/components/hero-gradient.tsx`, `src/components/home/hero-band.tsx`, `src/components/entry-flow/entry-flow.tsx`, `src/components/entry-flow/demo-preview.tsx`: no JSX changes. The `clip` prop becomes a no-op (kept for back-compat).
+In `src/components/mobile-tab-bar.tsx`:
 
-## Performance budget
+- Delete the local `Drawer`, `ModeButton`, `sheetOpen` state, and the friend-walk/schedule/share state (now lives in the provider).
+- The center button's `onClick` becomes `() => { haptics.tap(); composer.open(); }` — no preselected type, lands on the mode grid.
+- Keep the live-count pulse ring + badge exactly as today.
 
-- Single `<video>` per banner — same CPU as today.
-- ~6 MB transfer per first-time visit (was ~5 MB for one of today's three clips). Edge-cached after.
-- Decoded-frame memory is identical to a single clip.
-- `preload="metadata"` + IO pause keep cellular use in check.
+### 4. Rewire HomeRoute
+
+In `src/routes/index.tsx`:
+
+- Replace local `sheetOpen / walkType / feeling / moodScore / intention / pickGuide / busy` state and the `<PreWalkSheet ... />` render with `const composer = useWalkComposer();`.
+- `StartCta` → `composer.open({ type: "solo" })`.
+- Long-press on `StartCta` → `composer.open({ type: "solo", focus: "mode" })` (same as tap for now; long-press hook stays).
+- *Other ways to walk* pills → `composer.open({ type: "guided_solo" | "audio" })`.
+- `ComebackNudge` and `LiveNowStrip` → same pattern with their existing types.
+
+### 5. Visual polish on the unified composer
+
+The screenshot shows the FAB drawer's grid is more spacious (2-col, larger tiles with circle icons) than the current 3-col strip in PreWalkSheet. We adopt the better-looking 2-col layout for the mode tiles inside the composer:
+
+```text
+┌──────────────┬──────────────┐
+│ ● Solo       │ ● Walk & Talk│
+│ Just me…     │ Match a pod  │
+├──────────────┼──────────────┤
+│ ● Guided     │ ● Local Walk │
+│ A voice…     │ Sidewalks    │
+└──────────────┴──────────────┘
+[ Friend Walk · share a link  NEW ]
+[ Schedule a Friend Walk          ]
+[ Add to home screen     (if PWA) ]
+```
+
+Local Walk becomes a 4th tile that closes the composer and navigates to `/events` (today it's a small text link inside the composer plus a pill on Home — both keep working).
+
+Below the grid the existing mood-cloud → weight → intention → CTA flow stays unchanged. Header copy stays *"Start a walk / Choose how you want to walk"*.
+
+### 6. Cleanup
+
+- Delete `ModeButton` from `mobile-tab-bar.tsx`.
+- Drop the now-unused `MODE_PREFACE` map only if no longer referenced (keep if still used in header copy).
+- No DB / server-fn changes; no route changes.
 
 ## Out of scope
 
-- No admin UI to swap scenes (per your note).
-- No per-surface clip choice — one cohesive loop everywhere.
-- No audio.
+- No changes to `/walk/active/$id` or the in-walk Journal composer.
+- No changes to mood cloud, weight bar, or guide picker internals.
+- No analytics/event renaming.
 
-## Risks & fallbacks
+## Files touched
 
-- A video tool call can return an off-brief clip. Mitigation: spot-check first frame after each call and regenerate that one before concat.
-- ffmpeg encode could fail in the sandbox. Mitigation: keep the existing `AmbientVideoBanner` behavior as a fallback (already works with the single clips).
-
-## Deliverable order
-
-1. Generate scene 1 → spot-check → scene 2 → spot-check → scene 3 → spot-check → scene 4 → spot-check.
-2. Write and run `scripts/build-ambient-loop.mjs` to produce `loop.mp4`, `loop.webm`, `loop-poster.jpg`.
-3. Simplify `AmbientVideoBanner` to point at the composited loop with two `<source>` children.
-4. QA on home, active walk, profile, entry flow, and demo preview at 390px and desktop.
+- **new** `src/components/walk-composer/walk-composer.tsx`
+- **new** `src/components/walk-composer/use-walk-composer.tsx` (provider + hook)
+- **edit** `src/routes/__root.tsx` — mount `<WalkComposerProvider>` inside the auth context
+- **edit** `src/routes/index.tsx` — remove local PreWalkSheet + state, call `useWalkComposer().open(...)`
+- **edit** `src/components/mobile-tab-bar.tsx` — remove drawer + ModeButton, FAB calls `composer.open()`
