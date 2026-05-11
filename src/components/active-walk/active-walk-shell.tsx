@@ -29,6 +29,8 @@ interface Props {
   steps: number;
   paceMinPerMi: number;
   cadence: number;
+  /** Optional small hint shown under the STEPS stat (e.g. motion fallback). */
+  stepsHint?: ReactNode;
   // location
   walkerCoords: { lat: number; lng: number } | null;
   routePoints: RoutePoint[];
