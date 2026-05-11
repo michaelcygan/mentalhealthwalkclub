@@ -22,13 +22,15 @@ interface Props {
   userId: string | null;
   groupId?: string | null;
   shareToGroup?: boolean;
+  /** Initial center if there are no points yet (avoids the NYC fallback). */
+  center?: { lat: number; lng: number } | null;
   className?: string;
 }
 
 const PING_MS = 15_000;
 const PING_MIN_M = 10;
 
-export default function WalkLiveMap({ points, walkSessionId, userId, groupId, shareToGroup, className = "" }: Props) {
+export default function WalkLiveMap({ points, walkSessionId, userId, groupId, shareToGroup, center, className = "" }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLib | null>(null);
   const [follow, setFollow] = useState(true);
