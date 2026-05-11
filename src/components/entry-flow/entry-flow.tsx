@@ -222,8 +222,40 @@ function SlideLocation({ onNext, onSkip, onBack }: { onNext: () => void; onSkip:
   const { user } = useAuth();
   const [loc, setLoc] = useState<LocationValue | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+
+  const useGps = () => {
+    if (!navigator.geolocation) { toast.error("Location not available"); return; }
+    setGpsBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const r = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+          const j = await r.json();
+          const f = j?.features?.[0];
+          if (f) {
+            const p = f.properties;
+            const city = p.city || p.name || "";
+            const region = p.state || null;
+            const country = (p.countrycode || p.country || "")?.toUpperCase() || null;
+            setLoc({
+              city, region, country,
+              location_label: [city, region, country].filter(Boolean).join(", "),
+              lat, lng,
+            });
+          }
+        } finally { setGpsBusy(false); }
+      },
+      () => { setGpsBusy(false); toast.error("Couldn't get your location"); },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
+    );
+  };
 
   const save = async () => {
+    if (loc && typeof window !== "undefined") {
+      window.sessionStorage.setItem("wc_flow_location", JSON.stringify(loc));
+    }
     if (!user) return onNext();
     setBusy(true);
     try {
@@ -240,6 +272,15 @@ function SlideLocation({ onNext, onSkip, onBack }: { onNext: () => void; onSkip:
   return (
     <SlideShell title="Where are you walking from?" subtitle="We surface Local Walks and chapters near you." onPrimary={save} primaryLabel="Continue" busy={busy} onSkip={onSkip} onBack={onBack}>
       <LocationAutosuggest value={loc} onChange={setLoc} />
+      <button
+        type="button"
+        onClick={useGps}
+        disabled={gpsBusy}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-forest underline-offset-4 hover:underline disabled:opacity-60"
+      >
+        <MapPin className="h-3.5 w-3.5" />
+        {gpsBusy ? "Finding you…" : "Use my current location"}
+      </button>
     </SlideShell>
   );
 }
