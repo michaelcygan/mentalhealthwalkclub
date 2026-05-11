@@ -256,7 +256,12 @@ function AppFrame({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="font-serif text-muted-foreground">a quiet moment…</div>
+        <img
+          src="/logo-stamp.png"
+          alt="Mental Health Walk Club"
+          className="h-40 w-40 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none"
+          draggable={false}
+        />
       </div>
     );
   }
