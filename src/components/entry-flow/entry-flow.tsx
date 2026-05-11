@@ -352,37 +352,54 @@ function SlideGroups({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: (
     if (typeof window === "undefined") return [];
     try { return JSON.parse(window.sessionStorage.getItem("wc_flow_themes") || "[]"); } catch { return []; }
   }, []);
+  const location = useMemo<LocationValue | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(window.sessionStorage.getItem("wc_flow_location") || "null"); } catch { return null; }
+  }, []);
 
+  const SELECT = "id,name,slug,description,theme,city,member_count,image_url";
+
+  // Suggested list (no search): rank by city → region/country → theme → popularity.
   useEffect(() => {
-    let q = supabase.from("groups")
-      .select("id,name,slug,description,theme,city,member_count,image_url")
-      .eq("is_active", true)
-      .order("member_count", { ascending: false })
-      .limit(6);
-    if (themes.length) q = q.in("theme", themes);
-    q.then(({ data }) => {
-      const rows = (data ?? []) as GroupRow[];
-      // If we filtered by themes and got <3, top up with most popular
-      if (themes.length && rows.length < 3) {
-        supabase.from("groups").select("id,name,slug,description,theme,city,member_count,image_url")
-          .eq("is_active", true).order("member_count", { ascending: false }).limit(6)
-          .then(({ data: d2 }) => {
-            const seen = new Set(rows.map((r) => r.id));
-            const merged = [...rows, ...(d2 ?? []).filter((r) => !seen.has(r.id))].slice(0, 6) as GroupRow[];
-            setGroups(merged);
-          });
-      } else {
-        setGroups(rows);
-      }
+    if (search.trim()) return;
+    const queries: Promise<{ data: GroupRow[] | null }>[] = [];
+    const city = location?.city?.trim();
+    const region = location?.region?.trim();
+    const country = location?.country?.trim();
+
+    if (city) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", city).limit(6));
+    if (region) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${region}%`).limit(6));
+    if (country) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${country}%`).limit(6));
+    if (themes.length) queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).in("theme", themes).limit(6));
+    queries.push(supabase.from("groups").select(SELECT).eq("is_active", true).order("member_count", { ascending: false }).limit(6));
+
+    Promise.all(queries).then((results) => {
+      const all = new Map<string, GroupRow>();
+      for (const r of results) for (const row of (r.data ?? []) as GroupRow[]) all.set(row.id, row);
+      const cityLc = city?.toLowerCase();
+      const regionLc = region?.toLowerCase();
+      const countryLc = country?.toLowerCase();
+      const themeSet = new Set(themes);
+      const scored = Array.from(all.values()).map((g) => {
+        const gCity = (g.city || "").toLowerCase();
+        const cityHit = cityLc && gCity === cityLc ? 3 : 0;
+        const regionHit = !cityHit && regionLc && gCity.includes(regionLc) ? 2 : 0;
+        const countryHit = !cityHit && !regionHit && countryLc && gCity.includes(countryLc) ? 1 : 0;
+        const themeHit = g.theme && themeSet.has(g.theme) ? 2 : 0;
+        const pop = Math.log((g.member_count ?? 0) + 1) * 0.3;
+        return { g, score: cityHit + regionHit + countryHit + themeHit + pop };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      setGroups(scored.slice(0, 6).map((s) => s.g));
     });
-  }, [themes]);
+  }, [themes, location, search]);
 
   // Live search overrides suggested list when query present
   useEffect(() => {
     const term = search.trim();
     if (!term) return;
     const t = setTimeout(() => {
-      supabase.from("groups").select("id,name,slug,description,theme,city,member_count,image_url")
+      supabase.from("groups").select(SELECT)
         .eq("is_active", true).ilike("name", `%${term}%`).limit(8)
         .then(({ data }) => setGroups((data ?? []) as GroupRow[]));
     }, 250);
