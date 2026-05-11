@@ -12,7 +12,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useEntryFlow, useHasSeenWelcome, getLastAuthMethod, type EntryStep } from "@/hooks/use-entry-flow";
 import { haptics } from "@/lib/device";
 import { toast } from "sonner";
-import heroImg from "@/assets/walk-hero.jpg";
+import { AmbientVideoBanner } from "@/components/ambient-video-banner";
 import type { AuthPlan } from "@/components/auth-form";
 
 const THEMES = ["anxiety", "burnout", "grief", "loneliness", "new in town", "quiet", "sunday reset", "general wellness"];
