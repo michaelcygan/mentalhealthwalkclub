@@ -34,7 +34,7 @@ export function HeroBand({ greeting, name, microState, level, initials }: Props)
             className="group relative shrink-0 select-none"
           >
             <LevelRing pct={level.pct} initials={initials} />
-            <div className="mt-1 text-center text-[9px] font-medium uppercase tracking-[0.16em] text-foreground/70">
+            <div className="mt-1 text-center text-[9px] font-medium uppercase tracking-[0.16em] text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
               Lv {level.level}
             </div>
           </Link>
