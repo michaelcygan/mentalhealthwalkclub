@@ -205,7 +205,7 @@ function TabBar() {
           </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/60 glass px-4 py-2 md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between glass px-4 py-2 md:hidden after:pointer-events-none after:absolute after:left-0 after:right-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-background/85 after:to-transparent after:content-['']">
           <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
             <LogoStamp tone="dark" size={36} />
             <span className="font-serif text-[13px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
