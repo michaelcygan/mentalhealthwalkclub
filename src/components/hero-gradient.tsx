@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { AmbientVideoBanner, type AmbientClip } from "@/components/ambient-video-banner";
 
-/** Time-of-day ambient gradient. Re-evaluates every 15 min so it can drift across a long session. */
+/** Time-of-day ambient gradient (kept for non-video surfaces / fallback paint). */
 export function useHeroGradient() {
   const [hour, setHour] = useState<number>(() => new Date().getHours());
   useEffect(() => {
@@ -17,14 +18,15 @@ export function useHeroGradient() {
 interface Props {
   className?: string;
   children?: React.ReactNode;
+  clip?: AmbientClip;
+  scrim?: "soft" | "medium" | "strong";
 }
 
-/** Single gradient surface used by home hero, profile header, and active walk hero. */
-export function HeroGradient({ className = "", children }: Props) {
-  const grad = useHeroGradient();
+/** Hero surface — now an ambient looping video banner with built-in scrim. */
+export function HeroGradient({ className = "", children, clip, scrim }: Props) {
   return (
-    <header className={`overflow-hidden rounded-3xl bg-gradient-to-br ${grad} shadow-soft ${className}`}>
+    <AmbientVideoBanner clip={clip} scrim={scrim} className={`rounded-3xl shadow-soft ${className}`}>
       {children}
-    </header>
+    </AmbientVideoBanner>
   );
 }

@@ -3,7 +3,7 @@ import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, BookHea
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuthPrompt } from "@/lib/auth-prompt";
-import heroImg from "@/assets/walk-hero.jpg";
+import { AmbientVideoBanner } from "@/components/ambient-video-banner";
 
 /**
  * Read-only preview rendered in demo mode.
@@ -15,9 +15,7 @@ export function DemoPreview() {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-3xl shadow-elevated">
-        <img src={heroImg} alt="A quiet path" className="h-56 w-full object-cover md:h-72" />
-        <div className="absolute inset-0 bg-gradient-to-t from-forest/85 via-forest/30 to-transparent" />
+      <AmbientVideoBanner clip="suburban-il" scrim="strong" className="rounded-3xl shadow-elevated h-56 md:h-72">
         <div className="absolute inset-x-0 bottom-0 p-5 text-primary-foreground md:p-8">
           <p className="font-serif text-xs italic opacity-90">Previewing as Jordan</p>
           <h1 className="mt-1 max-w-xl font-serif text-3xl leading-tight md:text-4xl">Take the walk. Let it count.</h1>
@@ -30,7 +28,7 @@ export function DemoPreview() {
             </Button>
           </div>
         </div>
-      </div>
+      </AmbientVideoBanner>
 
       <div className="grid gap-3 md:grid-cols-3">
         <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
