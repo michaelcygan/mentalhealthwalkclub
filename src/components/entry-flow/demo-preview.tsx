@@ -3,7 +3,7 @@ import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, BookHea
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuthPrompt } from "@/lib/auth-prompt";
-import heroImg from "@/assets/walk-hero.jpg";
+import { AmbientVideoBanner } from "@/components/ambient-video-banner";
 
 /**
  * Read-only preview rendered in demo mode.
