@@ -258,23 +258,11 @@ function WalkTab() {
         )}
       </div>
 
-      <PreWalkSheet
-        open={sheetOpen}
-        onOpenChange={handleSheetChange}
-        walkType={walkType}
-        setWalkType={setWalkType}
-        feeling={feeling}
-        setFeeling={setFeeling}
-        moodScore={moodScore}
-        setMoodScore={setMoodScore}
-        intention={intention}
-        setIntention={setIntention}
-        busy={busy}
-        pickGuide={pickGuide}
-        onProceed={proceed}
-        onChooseTrack={(t) => { beginWalk(t); }}
-        onSkipGuide={() => beginWalk(null)}
-      />
+    </>
+  );
+}
+
+// (PreWalkSheet placeholder removed — see below)
     </>
   );
 }
