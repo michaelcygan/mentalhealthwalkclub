@@ -410,11 +410,13 @@ function SlideGroups({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: (
 /* ──────────────────────── Slide 5: First walk ──────────────────────── */
 
 function SlideFirstWalk({ onStart, onLater }: { onStart: () => void; onLater: () => void }) {
-  const { user } = useAuth();
-  useEffect(() => {
-    if (user) void supabase.from("profiles").update({ onboarded_at: new Date().toISOString() }).eq("id", user.id);
-    if (typeof window !== "undefined") window.sessionStorage.removeItem("wc_flow_step");
-  }, [user]);
+  const [busy, setBusy] = useState<null | "start" | "later">(null);
+  const tap = (which: "start" | "later") => {
+    if (busy) return;
+    setBusy(which);
+    haptics.tap();
+    if (which === "start") onStart(); else onLater();
+  };
 
   return (
     <div className="space-y-6 text-center">
@@ -426,12 +428,13 @@ function SlideFirstWalk({ onStart, onLater }: { onStart: () => void; onLater: ()
         <p className="mt-2 text-muted-foreground">Take your first walk?</p>
       </div>
       <div className="space-y-2">
-        <Button onClick={onStart} className="breathe h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
-          <Footprints className="mr-2 h-5 w-5" /> Start a walk
+        <Button onClick={() => tap("start")} disabled={!!busy} className="breathe h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
+          <Footprints className="mr-2 h-5 w-5" />
+          {busy === "start" ? "One moment…" : "Start a walk"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-        <button onClick={onLater} className="block w-full text-center text-sm italic text-muted-foreground hover:text-forest">
-          Maybe later — go home
+        <button onClick={() => tap("later")} disabled={!!busy} className="block w-full text-center text-sm italic text-muted-foreground hover:text-forest disabled:opacity-60">
+          {busy === "later" ? "One moment…" : "Maybe later — go home"}
         </button>
       </div>
     </div>
