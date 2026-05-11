@@ -10,11 +10,9 @@
  * Idempotent. Run with: node scripts/build-ambient-loop.mjs
  */
 import { execSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import https from "node:https";
-import http from "node:http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -23,32 +21,13 @@ const TMP = resolve(ROOT, ".tmp/ambient");
 mkdirSync(TMP, { recursive: true });
 
 const SCENE_ORDER = ["suburban-il-2", "rural-co-2", "nyc-2", "coastal-pnw"];
-const SCENE_DURATION = 10; // seconds (input clip length)
-const XFADE = 0.8; // seconds
-
-const CDN_BASE = "https://cdn.lovable.dev"; // pointer URLs are absolute paths; resolve below
-
-function download(url, dest) {
-  return new Promise((res, rej) => {
-    const lib = url.startsWith("https") ? https : http;
-    const file = (require("node:fs")).createWriteStream(dest);
-    lib.get(url, (r) => {
-      if (r.statusCode === 301 || r.statusCode === 302) {
-        download(r.headers.location, dest).then(res, rej);
-        return;
-      }
-      if (r.statusCode !== 200) { rej(new Error(`HTTP ${r.statusCode} for ${url}`)); return; }
-      r.pipe(file);
-      file.on("finish", () => file.close(res));
-    }).on("error", rej);
-  });
-}
+const SCENE_DURATION = 10;
+const XFADE = 0.8;
 
 async function fetchBuffer(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  const ab = await res.arrayBuffer();
-  return Buffer.from(ab);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 function sh(cmd) {
