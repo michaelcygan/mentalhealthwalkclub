@@ -278,11 +278,13 @@ function RootComponent() {
       <ViewModeProvider>
         <AuthPromptProvider>
           <AmbientPlayerProvider>
-            <PaymentTestModeBanner />
-            <AppFrame>
-              <Outlet />
-            </AppFrame>
-            <Toaster />
+            <WalkComposerProvider>
+              <PaymentTestModeBanner />
+              <AppFrame>
+                <Outlet />
+              </AppFrame>
+              <Toaster />
+            </WalkComposerProvider>
           </AmbientPlayerProvider>
         </AuthPromptProvider>
       </ViewModeProvider>
