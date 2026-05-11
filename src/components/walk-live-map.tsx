@@ -22,13 +22,15 @@ interface Props {
   userId: string | null;
   groupId?: string | null;
   shareToGroup?: boolean;
+  /** Initial center if there are no points yet (avoids the NYC fallback). */
+  center?: { lat: number; lng: number } | null;
   className?: string;
 }
 
 const PING_MS = 15_000;
 const PING_MIN_M = 10;
 
-export default function WalkLiveMap({ points, walkSessionId, userId, groupId, shareToGroup, className = "" }: Props) {
+export default function WalkLiveMap({ points, walkSessionId, userId, groupId, shareToGroup, center, className = "" }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLib | null>(null);
   const [follow, setFollow] = useState(true);
@@ -41,7 +43,11 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
     const m = new maplibregl.Map({
       container: ref.current,
       style: mapStyles.warm(),
-      center: points[0] ? [points[0].lng, points[0].lat] : [-74.006, 40.7128],
+      center: points[0]
+        ? [points[0].lng, points[0].lat]
+        : center
+          ? [center.lng, center.lat]
+          : [-74.006, 40.7128],
       zoom: 16,
       attributionControl: { compact: true },
       cooperativeGestures: false,
@@ -68,6 +74,8 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
       // the lazy chunk + CSS arrive after the container is laid out.
       requestAnimationFrame(() => m.resize());
     });
+    // One more resize after first idle frame — catches lazy tile reveal.
+    m.once("idle", () => m.resize());
     map.current = m;
     // Belt-and-braces: a few delayed resizes catch the case where the
     // container's height is settled by parent transitions or the lazy CSS.
@@ -99,6 +107,21 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
     };
     if (m.isStyleLoaded()) apply(); else m.once("load", apply);
   }, [points, follow]);
+
+  // If we have no route points yet but the parent gives us a center fix,
+  // ease the camera there once so the map isn't stuck on the NYC fallback.
+  const centeredOnce = useRef(false);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || centeredOnce.current) return;
+    if (points.length > 0) { centeredOnce.current = true; return; }
+    if (!center) return;
+    const apply = () => {
+      m.easeTo({ center: [center.lng, center.lat], zoom: 16, duration: 400 });
+      centeredOnce.current = true;
+    };
+    if (m.isStyleLoaded()) apply(); else m.once("load", apply);
+  }, [center, points.length]);
 
   // Current position pulse marker (always tracks the latest fix)
   useEffect(() => {

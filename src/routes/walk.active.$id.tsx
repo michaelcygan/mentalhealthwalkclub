@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Footprints, Smartphone } from "lucide-react";
+import { Footprints } from "lucide-react";
 import { toast } from "sonner";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
@@ -10,7 +10,6 @@ import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
 import {
-  WalkNotesPill,
   loadStoredNotes,
   loadStoredPhotos,
   notesToJournalBlock,
@@ -19,6 +18,7 @@ import {
   type WalkNote,
   type WalkPhoto,
 } from "@/components/walk-notes-sheet";
+import { WalkJournalComposer } from "@/components/active-walk/walk-journal-composer";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
 import { getNow as getWeatherNow } from "@/lib/weather";
 import { useStepCounter } from "@/hooks/use-step-counter";
@@ -230,6 +230,27 @@ function ActiveWalk() {
   }, []);
 
   const motion = useStepCounter(!paused);
+
+  // Motion sensor is a *fallback*: only surface a quiet hint if (a) GPS isn't
+  // working after a 30s grace, or (b) GPS is live but we've gotten no motion
+  // detected at all after 90s of walking. Once the user taps (granted or
+  // denied) we never show again this session.
+  const [motionHintShown, setMotionHintShown] = useState(false);
+  const motionDismissed = useRef(false);
+  useEffect(() => {
+    if (motion.permissionState !== "needed" || motionDismissed.current) {
+      setMotionHintShown(false);
+      return;
+    }
+    const tick = () => {
+      const gpsBad = gps === "denied" || gps === "weak";
+      const gpsLiveButNoSteps = gps === "live" && elapsed > 90 && motion.steps === 0 && meters < 30;
+      setMotionHintShown(gpsBad ? elapsed > 30 : gpsLiveButNoSteps);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [gps, elapsed, meters, motion.steps, motion.permissionState]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -512,27 +533,31 @@ function ActiveWalk() {
           <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
         </button>
       )}
-      {motion.permissionState === "needed" && (
-        <button
-          onClick={async () => {
-            const r = await motion.request();
-            if (r === "granted") toast("Motion sensor on — counting your steps");
-            else if (r === "denied") toast("Motion blocked — using GPS only");
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition active:scale-95"
-        >
-          <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
-        </button>
-      )}
     </>
   );
 
-  const hasNudges =
-    (showManualStart && !hasMoved) || motion.permissionState === "needed";
+  const hasNudges = showManualStart && !hasMoved;
+
+  const stepsHint =
+    motionHintShown && !motionDismissed.current ? (
+      <button
+        type="button"
+        onClick={async () => {
+          motionDismissed.current = true;
+          setMotionHintShown(false);
+          const r = await motion.request();
+          if (r === "granted") toast("Motion sensor on — counting your steps");
+          else if (r === "denied") toast("Motion blocked — using GPS only");
+        }}
+        className="text-[10px] italic text-muted-foreground/80 underline decoration-dotted underline-offset-2 transition hover:text-foreground"
+      >
+        also count via motion
+      </button>
+    ) : null;
 
   const utilityRow = (
     <>
-      <WalkNotesPill
+      <WalkJournalComposer
         walkSessionId={session.id}
         elapsed={elapsed}
         notes={walkNotes}
@@ -540,7 +565,11 @@ function ActiveWalk() {
         onChangeNotes={setWalkNotes}
         onChangePhotos={setWalkPhotos}
       />
-      {!(session.walk_type === "audio" || session.guided_track_id) && <AmbientPill />}
+      {!(session.walk_type === "audio" || session.guided_track_id) && (
+        <div className="flex justify-center">
+          <AmbientPill />
+        </div>
+      )}
     </>
   );
 
@@ -574,6 +603,7 @@ function ActiveWalk() {
         steps={steps}
         paceMinPerMi={paceMinPerMi}
         cadence={cadence}
+        stepsHint={stepsHint}
         walkerCoords={walkerCoords}
         routePoints={points.current.slice()}
         canShareMap={session.privacy === "public" && !!session.group_id}

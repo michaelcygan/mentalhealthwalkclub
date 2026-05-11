@@ -29,6 +29,8 @@ interface Props {
   steps: number;
   paceMinPerMi: number;
   cadence: number;
+  /** Optional small hint shown under the STEPS stat (e.g. motion fallback). */
+  stepsHint?: ReactNode;
   // location
   walkerCoords: { lat: number; lng: number } | null;
   routePoints: RoutePoint[];
@@ -59,6 +61,7 @@ export function ActiveWalkShell({
   steps,
   paceMinPerMi,
   cadence,
+  stepsHint,
   walkerCoords,
   routePoints,
   canShareMap,
@@ -96,7 +99,7 @@ export function ActiveWalkShell({
       <WalkMetaRow format={format} walkSessionId={walkSessionId} coords={walkerCoords} />
       <WalkHeroTimer elapsed={elapsed} paused={paused} gps={gps} />
       <div className={`transition-opacity duration-700 ${dim ? "opacity-50" : "opacity-100"}`}>
-        <WalkStatTrio miles={miles} steps={steps} paceMinPerMi={paceMinPerMi} cadence={cadence} />
+        <WalkStatTrio miles={miles} steps={steps} paceMinPerMi={paceMinPerMi} cadence={cadence} stepsHint={stepsHint} />
       </div>
 
       {setupNudges && (
@@ -143,14 +146,13 @@ export function ActiveWalkShell({
                 userId={userId}
                 groupId={groupId}
                 shareToGroup={shareMap}
+                center={walkerCoords}
               />
             </Suspense>
           )}
         </section>
 
-        {utilityRow && (
-          <div className="flex flex-wrap items-center justify-center gap-2">{utilityRow}</div>
-        )}
+        {utilityRow && <div className="space-y-3">{utilityRow}</div>}
       </div>
 
       <WalkActionBar paused={paused} onTogglePause={onTogglePause} onEnd={onEnd} />
