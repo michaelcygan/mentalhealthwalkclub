@@ -61,6 +61,7 @@ export function ActiveWalkShell({
   steps,
   paceMinPerMi,
   cadence,
+  stepsHint,
   walkerCoords,
   routePoints,
   canShareMap,
