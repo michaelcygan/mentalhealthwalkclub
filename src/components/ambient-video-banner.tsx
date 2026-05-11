@@ -1,42 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import suburbanIl from "../../public/videos/ambient/suburban-il.mp4.asset.json";
-import ruralCo from "../../public/videos/ambient/rural-co.mp4.asset.json";
-import nyc from "../../public/videos/ambient/nyc.mp4.asset.json";
-import posterFallback from "@/assets/walk-hero.jpg";
+import { useEffect, useRef, useState } from "react";
 
-export type AmbientClip = "suburban-il" | "rural-co" | "nyc" | "auto";
+const LOOP_MP4 = "/videos/ambient/loop.mp4";
+const LOOP_WEBM = "/videos/ambient/loop.webm";
+const LOOP_POSTER = "/videos/ambient/loop-poster.jpg";
 
-const CLIPS: Record<Exclude<AmbientClip, "auto">, { src: string; tone: "warm" | "cool" }> = {
-  "suburban-il": { src: suburbanIl.url, tone: "warm" },
-  "rural-co": { src: ruralCo.url, tone: "warm" },
-  nyc: { src: nyc.url, tone: "cool" },
-};
-
-const ORDER: Array<Exclude<AmbientClip, "auto">> = ["suburban-il", "rural-co", "nyc"];
+export type AmbientClip = "auto" | "suburban-il" | "rural-co" | "nyc" | "coastal-pnw";
 
 interface Props {
+  /** @deprecated Kept for back-compat — every banner now plays the same composited loop. */
   clip?: AmbientClip;
   className?: string;
   children?: React.ReactNode;
-  /** Bottom-weighted scrim depth; "strong" for more text. */
   scrim?: "soft" | "medium" | "strong";
 }
 
 /**
- * Looping ambient walking video with poster fallback.
+ * Looping ambient walking video (4 scenes stitched into one MP4).
  * - Reduced-motion users see the poster only.
  * - Pauses when offscreen or tab hidden.
- * - Lazy-mounts the <video> after first interaction-free idle.
+ * - Lazy-mounts the <video> after first paint so initial render stays light.
  */
-export function AmbientVideoBanner({ clip = "auto", className = "", children, scrim = "medium" }: Props) {
-  const resolved = useMemo<Exclude<AmbientClip, "auto">>(() => {
-    if (clip !== "auto") return clip;
-    // Stable per-mount rotation: pick by hour bucket so repeat visits drift.
-    const h = typeof window !== "undefined" ? new Date().getHours() : 0;
-    return ORDER[h % ORDER.length];
-  }, [clip]);
-
-  const { src } = CLIPS[resolved];
+export function AmbientVideoBanner({ className = "", children, scrim = "medium" }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -48,7 +32,6 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
     setReducedMotion(m.matches);
     const onChange = () => setReducedMotion(m.matches);
     m.addEventListener?.("change", onChange);
-    // Defer video mount to after first paint to keep TTI snappy.
     const id = window.setTimeout(() => setMountVideo(true), 120);
     return () => {
       m.removeEventListener?.("change", onChange);
@@ -56,7 +39,6 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
     };
   }, []);
 
-  // Pause when offscreen / tab hidden.
   useEffect(() => {
     const v = ref.current;
     const el = containerRef.current;
@@ -86,9 +68,8 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
 
   return (
     <div ref={containerRef} className={`relative isolate overflow-hidden ${className}`}>
-      {/* Poster: instant paint + reduced-motion fallback */}
       <img
-        src={posterFallback}
+        src={LOOP_POSTER}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full object-cover"
@@ -96,8 +77,7 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
       {!reducedMotion && mountVideo && (
         <video
           ref={ref}
-          src={src}
-          poster={posterFallback}
+          poster={LOOP_POSTER}
           autoPlay
           muted
           loop
@@ -105,10 +85,12 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
           preload="metadata"
           aria-hidden="true"
           tabIndex={-1}
-          className="absolute inset-0 h-full w-full object-cover motion-safe:opacity-100"
-        />
+          className="absolute inset-0 h-full w-full object-cover"
+        >
+          <source src={LOOP_WEBM} type="video/webm" />
+          <source src={LOOP_MP4} type="video/mp4" />
+        </video>
       )}
-      {/* Scrims for legibility */}
       <div aria-hidden className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${scrimClass}`} />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent" />
       <div className="relative h-full w-full">{children}</div>
