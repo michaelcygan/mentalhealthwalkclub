@@ -25,6 +25,8 @@ const COMFORT = [
 interface Props {
   /** When true, the user is signed-in and we skip slide 0 (welcome) */
   startAtOnboarding?: boolean;
+  /** Called when the user completes (or exits) the final slide so the host can swap to the app shell. */
+  onCompleted?: () => void;
 }
 
 /** Shared chrome: persistent Sign in + Skip onboarding controls visible on every slide. */
@@ -54,7 +56,7 @@ function FlowHeader({ step, total, onSignIn, onSkipAll, hideSignIn }: {
   );
 }
 
-export function EntryFlow({ startAtOnboarding }: Props) {
+export function EntryFlow({ startAtOnboarding, onCompleted }: Props) {
   const { user } = useAuth();
   const { openAuth, openPlusCheckout } = useAuthPrompt();
   const { enter: enterDemo } = useDemoMode();
@@ -67,10 +69,19 @@ export function EntryFlow({ startAtOnboarding }: Props) {
   }, [user, step, setStep]);
 
   const goSignIn = () => openAuth("signin");
-  const skipAll = async () => {
+  const finishOnboarding = async () => {
     if (user) {
       await supabase.from("profiles").update({ onboarded_at: new Date().toISOString() }).eq("id", user.id);
     }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("wc_flow_step");
+      window.sessionStorage.removeItem("wc_flow_themes");
+      window.sessionStorage.removeItem("wc_flow_location");
+    }
+    onCompleted?.();
+  };
+  const skipAll = async () => {
+    await finishOnboarding();
     setStep(5);
   };
 
@@ -95,7 +106,12 @@ export function EntryFlow({ startAtOnboarding }: Props) {
         {step === 2 && <SlideLocation onNext={next} onSkip={next} onBack={back} />}
         {step === 3 && <SlideThemes onNext={next} onSkip={next} onBack={back} />}
         {step === 4 && <SlideGroups onNext={next} onSkip={next} onBack={back} />}
-        {step === 5 && <SlideFirstWalk onStart={() => navigate({ to: "/" as never, search: { start: "1" } as never })} onLater={() => navigate({ to: "/" as never })} />}
+        {step === 5 && (
+          <SlideFirstWalk
+            onStart={async () => { await finishOnboarding(); navigate({ to: "/" as never, search: { start: "1" } as never }); }}
+            onLater={async () => { await finishOnboarding(); navigate({ to: "/" as never }); }}
+          />
+        )}
       </div>
 
       {/* Footer: redundant Sign in for signed-out users */}
@@ -206,8 +222,40 @@ function SlideLocation({ onNext, onSkip, onBack }: { onNext: () => void; onSkip:
   const { user } = useAuth();
   const [loc, setLoc] = useState<LocationValue | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+
+  const useGps = () => {
+    if (!navigator.geolocation) { toast.error("Location not available"); return; }
+    setGpsBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const r = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+          const j = await r.json();
+          const f = j?.features?.[0];
+          if (f) {
+            const p = f.properties;
+            const city = p.city || p.name || "";
+            const region = p.state || null;
+            const country = (p.countrycode || p.country || "")?.toUpperCase() || null;
+            setLoc({
+              city, region, country,
+              location_label: [city, region, country].filter(Boolean).join(", "),
+              lat, lng,
+            });
+          }
+        } finally { setGpsBusy(false); }
+      },
+      () => { setGpsBusy(false); toast.error("Couldn't get your location"); },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
+    );
+  };
 
   const save = async () => {
+    if (loc && typeof window !== "undefined") {
+      window.sessionStorage.setItem("wc_flow_location", JSON.stringify(loc));
+    }
     if (!user) return onNext();
     setBusy(true);
     try {
@@ -224,6 +272,15 @@ function SlideLocation({ onNext, onSkip, onBack }: { onNext: () => void; onSkip:
   return (
     <SlideShell title="Where are you walking from?" subtitle="We surface Local Walks and chapters near you." onPrimary={save} primaryLabel="Continue" busy={busy} onSkip={onSkip} onBack={onBack}>
       <LocationAutosuggest value={loc} onChange={setLoc} />
+      <button
+        type="button"
+        onClick={useGps}
+        disabled={gpsBusy}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-forest underline-offset-4 hover:underline disabled:opacity-60"
+      >
+        <MapPin className="h-3.5 w-3.5" />
+        {gpsBusy ? "Finding you…" : "Use my current location"}
+      </button>
     </SlideShell>
   );
 }
@@ -295,37 +352,56 @@ function SlideGroups({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: (
     if (typeof window === "undefined") return [];
     try { return JSON.parse(window.sessionStorage.getItem("wc_flow_themes") || "[]"); } catch { return []; }
   }, []);
+  const location = useMemo<LocationValue | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(window.sessionStorage.getItem("wc_flow_location") || "null"); } catch { return null; }
+  }, []);
 
+  const SELECT = "id,name,slug,description,theme,city,member_count,image_url";
+
+  // Suggested list (no search): rank by city → region/country → theme → popularity.
   useEffect(() => {
-    let q = supabase.from("groups")
-      .select("id,name,slug,description,theme,city,member_count,image_url")
-      .eq("is_active", true)
-      .order("member_count", { ascending: false })
-      .limit(6);
-    if (themes.length) q = q.in("theme", themes);
-    q.then(({ data }) => {
-      const rows = (data ?? []) as GroupRow[];
-      // If we filtered by themes and got <3, top up with most popular
-      if (themes.length && rows.length < 3) {
-        supabase.from("groups").select("id,name,slug,description,theme,city,member_count,image_url")
-          .eq("is_active", true).order("member_count", { ascending: false }).limit(6)
-          .then(({ data: d2 }) => {
-            const seen = new Set(rows.map((r) => r.id));
-            const merged = [...rows, ...(d2 ?? []).filter((r) => !seen.has(r.id))].slice(0, 6) as GroupRow[];
-            setGroups(merged);
-          });
-      } else {
-        setGroups(rows);
-      }
+    if (search.trim()) return;
+    const queries: PromiseLike<{ data: GroupRow[] | null }>[] = [];
+    const city = location?.city?.trim();
+    const region = location?.region?.trim();
+    const country = location?.country?.trim();
+    const run = (b: { then: <T>(r: (v: { data: unknown }) => T) => PromiseLike<T> }) =>
+      Promise.resolve(b).then((r) => ({ data: (r.data ?? null) as GroupRow[] | null }));
+
+    if (city) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", city).limit(6)));
+    if (region) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${region}%`).limit(6)));
+    if (country) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).ilike("city", `%${country}%`).limit(6)));
+    if (themes.length) queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).in("theme", themes).limit(6)));
+    queries.push(run(supabase.from("groups").select(SELECT).eq("is_active", true).order("member_count", { ascending: false }).limit(6)));
+
+    Promise.all(queries).then((results) => {
+      const all = new Map<string, GroupRow>();
+      for (const r of results) for (const row of (r.data ?? []) as GroupRow[]) all.set(row.id, row);
+      const cityLc = city?.toLowerCase();
+      const regionLc = region?.toLowerCase();
+      const countryLc = country?.toLowerCase();
+      const themeSet = new Set(themes);
+      const scored = Array.from(all.values()).map((g) => {
+        const gCity = (g.city || "").toLowerCase();
+        const cityHit = cityLc && gCity === cityLc ? 3 : 0;
+        const regionHit = !cityHit && regionLc && gCity.includes(regionLc) ? 2 : 0;
+        const countryHit = !cityHit && !regionHit && countryLc && gCity.includes(countryLc) ? 1 : 0;
+        const themeHit = g.theme && themeSet.has(g.theme) ? 2 : 0;
+        const pop = Math.log((g.member_count ?? 0) + 1) * 0.3;
+        return { g, score: cityHit + regionHit + countryHit + themeHit + pop };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      setGroups(scored.slice(0, 6).map((s) => s.g));
     });
-  }, [themes]);
+  }, [themes, location, search]);
 
   // Live search overrides suggested list when query present
   useEffect(() => {
     const term = search.trim();
     if (!term) return;
     const t = setTimeout(() => {
-      supabase.from("groups").select("id,name,slug,description,theme,city,member_count,image_url")
+      supabase.from("groups").select(SELECT)
         .eq("is_active", true).ilike("name", `%${term}%`).limit(8)
         .then(({ data }) => setGroups((data ?? []) as GroupRow[]));
     }, 250);
@@ -394,11 +470,13 @@ function SlideGroups({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: (
 /* ──────────────────────── Slide 5: First walk ──────────────────────── */
 
 function SlideFirstWalk({ onStart, onLater }: { onStart: () => void; onLater: () => void }) {
-  const { user } = useAuth();
-  useEffect(() => {
-    if (user) void supabase.from("profiles").update({ onboarded_at: new Date().toISOString() }).eq("id", user.id);
-    if (typeof window !== "undefined") window.sessionStorage.removeItem("wc_flow_step");
-  }, [user]);
+  const [busy, setBusy] = useState<null | "start" | "later">(null);
+  const tap = (which: "start" | "later") => {
+    if (busy) return;
+    setBusy(which);
+    haptics.tap();
+    if (which === "start") onStart(); else onLater();
+  };
 
   return (
     <div className="space-y-6 text-center">
@@ -410,12 +488,13 @@ function SlideFirstWalk({ onStart, onLater }: { onStart: () => void; onLater: ()
         <p className="mt-2 text-muted-foreground">Take your first walk?</p>
       </div>
       <div className="space-y-2">
-        <Button onClick={onStart} className="breathe h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
-          <Footprints className="mr-2 h-5 w-5" /> Start a walk
+        <Button onClick={() => tap("start")} disabled={!!busy} className="breathe h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
+          <Footprints className="mr-2 h-5 w-5" />
+          {busy === "start" ? "One moment…" : "Start a walk"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-        <button onClick={onLater} className="block w-full text-center text-sm italic text-muted-foreground hover:text-forest">
-          Maybe later — go home
+        <button onClick={() => tap("later")} disabled={!!busy} className="block w-full text-center text-sm italic text-muted-foreground hover:text-forest disabled:opacity-60">
+          {busy === "later" ? "One moment…" : "Maybe later — go home"}
         </button>
       </div>
     </div>
