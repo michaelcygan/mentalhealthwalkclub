@@ -262,11 +262,6 @@ function WalkTab() {
   );
 }
 
-// (PreWalkSheet placeholder removed — see below)
-    </>
-  );
-}
-
 /** Tiny weather chip embedded in the This-Week card. Tap → scroll to full module. */
 function InlineWeatherChip() {
   const { coords } = useGeolocation({ autoRequest: false, ipFallback: true });
