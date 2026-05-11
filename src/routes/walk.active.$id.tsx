@@ -446,7 +446,11 @@ function ActiveWalk() {
   };
 
   if (!session)
-    return <div className="py-20 text-center font-serif text-muted-foreground">a quiet moment…</div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <img src="/logo-stamp.png" alt="Loading" className="h-32 w-32 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none" draggable={false} />
+      </div>
+    );
 
   if (ending) {
     return (
