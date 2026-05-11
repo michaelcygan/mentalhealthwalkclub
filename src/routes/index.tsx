@@ -496,23 +496,3 @@ function StartCta({ onStart, onLongPress }: { onStart: () => void; onLongPress?:
   );
 }
 
-function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
-        <Icon className="h-5 w-5 text-forest" />
-      </div>
-      <h3 className="mt-3 font-serif text-lg">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground text-pretty">{body}</p>
-    </div>
-  );
-}
-
-function Bullet({ icon: Icon, children }: { icon: typeof Footprints; children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-forest" />
-      <span className="text-foreground/85">{children}</span>
-    </li>
-  );
-}
