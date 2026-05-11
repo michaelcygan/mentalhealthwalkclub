@@ -56,7 +56,7 @@ function FlowHeader({ step, total, onSignIn, onSkipAll, hideSignIn }: {
   );
 }
 
-export function EntryFlow({ startAtOnboarding }: Props) {
+export function EntryFlow({ startAtOnboarding, onCompleted }: Props) {
   const { user } = useAuth();
   const { openAuth, openPlusCheckout } = useAuthPrompt();
   const { enter: enterDemo } = useDemoMode();
@@ -69,10 +69,19 @@ export function EntryFlow({ startAtOnboarding }: Props) {
   }, [user, step, setStep]);
 
   const goSignIn = () => openAuth("signin");
-  const skipAll = async () => {
+  const finishOnboarding = async () => {
     if (user) {
       await supabase.from("profiles").update({ onboarded_at: new Date().toISOString() }).eq("id", user.id);
     }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("wc_flow_step");
+      window.sessionStorage.removeItem("wc_flow_themes");
+      window.sessionStorage.removeItem("wc_flow_location");
+    }
+    onCompleted?.();
+  };
+  const skipAll = async () => {
+    await finishOnboarding();
     setStep(5);
   };
 
