@@ -173,7 +173,11 @@ function FriendWalkLanding() {
     ? new Date(startMs).toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
 
-  if (loading) return <div className="py-24 text-center font-serif text-muted-foreground">a quiet moment…</div>;
+  if (loading) return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <img src="/logo-stamp.png" alt="Loading" className="h-32 w-32 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none" draggable={false} />
+    </div>
+  );
 
   const ended = room && (room.status === "closed" || room.status === "canceled");
   const wasCanceled = room?.status === "canceled";
