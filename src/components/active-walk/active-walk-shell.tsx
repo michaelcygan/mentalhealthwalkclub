@@ -146,6 +146,7 @@ export function ActiveWalkShell({
                 userId={userId}
                 groupId={groupId}
                 shareToGroup={shareMap}
+                center={walkerCoords}
               />
             </Suspense>
           )}
