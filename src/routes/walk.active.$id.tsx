@@ -28,6 +28,7 @@ import { SoloModule } from "@/components/active-walk/format-modules/solo-module"
 import { WalkTalkModule } from "@/components/active-walk/format-modules/walk-talk-module";
 import { GuidedModule } from "@/components/active-walk/format-modules/guided-module";
 import { LocalModule } from "@/components/active-walk/format-modules/local-module";
+import { LoadingScreen } from "@/components/loading-screen";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
