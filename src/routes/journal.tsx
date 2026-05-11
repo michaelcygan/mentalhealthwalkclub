@@ -278,6 +278,37 @@ function JournalTab() {
         </section>
       )}
 
+      {/* Lifetime stats — collapsed disclosure between Earned and Your Walks */}
+      {walks.length > 0 && (
+        <section className="rounded-3xl border border-border bg-card/60 p-4">
+          <button
+            type="button"
+            onClick={() => setStatsOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Lifetime stats</span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${statsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {statsOpen && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <Stat label="walks" value={walks.length} />
+                <Stat label="minutes" value={walks.reduce((s, w) => s + Math.round((w.duration_seconds ?? 0) / 60), 0)} />
+                <Stat label="miles" value={walks.reduce((s, w) => s + (w.distance_meters ?? 0) * 0.000621371, 0).toFixed(1)} />
+              </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">Last 12 weeks</div>
+                  <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
+                </div>
+                <Heatmap walks={walks} />
+              </div>
+              <MoodArcSection walks={walks} />
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Walking with you — non-competitive leaderboard */}
       {primaryGroup && (
         <WalkingWithYou userId={user.id} groupId={primaryGroup.id} groupName={primaryGroup.name} />
