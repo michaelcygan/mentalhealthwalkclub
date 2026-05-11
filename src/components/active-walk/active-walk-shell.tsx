@@ -99,7 +99,7 @@ export function ActiveWalkShell({
       <WalkMetaRow format={format} walkSessionId={walkSessionId} coords={walkerCoords} />
       <WalkHeroTimer elapsed={elapsed} paused={paused} gps={gps} />
       <div className={`transition-opacity duration-700 ${dim ? "opacity-50" : "opacity-100"}`}>
-        <WalkStatTrio miles={miles} steps={steps} paceMinPerMi={paceMinPerMi} cadence={cadence} />
+        <WalkStatTrio miles={miles} steps={steps} paceMinPerMi={paceMinPerMi} cadence={cadence} stepsHint={stepsHint} />
       </div>
 
       {setupNudges && (
