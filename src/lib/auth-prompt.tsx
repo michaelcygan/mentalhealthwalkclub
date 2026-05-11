@@ -22,10 +22,9 @@ const AuthPromptCtx = createContext<Ctx>({
   requireAuth: () => {},
 });
 
-const SEEN_KEY = "wc_seen_welcome";
 
 export function AuthPromptProvider({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
   const [authPlan, setAuthPlan] = useState<AuthPlan>("free");
@@ -33,17 +32,13 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [plan, setPlan] = useState<PlusPlan>("plus_monthly");
 
-  // Auto-open welcome modal once for first-time visitors who aren't signed in
+  // Remember auth method so the entry flow can show "Welcome back — Sign in" on return.
   useEffect(() => {
-    if (loading || user) return;
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(SEEN_KEY)) return;
-    const t = setTimeout(() => {
-      setWelcomeOpen(true);
-      window.localStorage.setItem(SEEN_KEY, "1");
-    }, 700);
-    return () => clearTimeout(t);
-  }, [loading, user]);
+    if (user && typeof window !== "undefined") {
+      window.localStorage.setItem("wc_last_auth", "email");
+    }
+  }, [user]);
+
 
   // After login/signup, if the user picked Plus, open checkout automatically.
   useEffect(() => {

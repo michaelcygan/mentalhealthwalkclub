@@ -6,8 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Footprints, Headphones, MapPin, Sparkles, HeartHandshake, Lock, Play } from "lucide-react";
-import heroImg from "@/assets/walk-hero.jpg";
+import { Footprints, Headphones, MapPin, Sparkles, Play } from "lucide-react";
 import { toast } from "sonner";
 import { LiveNowStrip } from "@/components/live-now-strip";
 import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
@@ -29,11 +28,46 @@ import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { useAmbient } from "@/lib/ambient-context";
+import { EntryFlow } from "@/components/entry-flow/entry-flow";
+import { DemoPreview } from "@/components/entry-flow/demo-preview";
+import { DemoBanner } from "@/components/demo-banner";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 
 export const Route = createFileRoute("/")({
-  component: WalkTab,
+  component: HomeRoute,
   head: () => ({ meta: [{ title: "Mental Health Walk Club" }] }),
 });
+
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  const { demo } = useDemoMode();
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) { setOnboarded(null); return; }
+    supabase.from("profiles").select("onboarded_at").eq("id", user.id).maybeSingle()
+      .then(({ data }) => setOnboarded(!!data?.onboarded_at));
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6" aria-busy="true">
+        <div className="h-72 w-full animate-pulse rounded-3xl bg-muted/50 md:h-96" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user && demo) return (<><DemoBanner /><DemoPreview /></>);
+  if (!user) return <EntryFlow />;
+  if (onboarded === false) return <EntryFlow startAtOnboarding />;
+  return <WalkTab />;
+}
+
 
 const MODE_PREFACE: Record<string, string> = {
   solo: "Walking alone still counts.",
@@ -47,7 +81,7 @@ type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 function WalkTab() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { requireAuth, openWelcome } = useAuthPrompt();
+  const { requireAuth } = useAuthPrompt();
   const ambient = useAmbient();
   const beganWalkRef = useRef(false);
 
@@ -172,77 +206,10 @@ function WalkTab() {
     else beginWalk();
   };
 
-  // While restoring session from storage, render a neutral placeholder so
-  // returning (logged-in) users don't see a flash of the marketing landing.
-  if (authLoading) {
-    return (
-      <div className="space-y-6" aria-busy="true" aria-label="Loading">
-        <div className="h-72 w-full animate-pulse rounded-3xl bg-muted/50 md:h-96" />
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
-          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
-          <div className="h-32 animate-pulse rounded-2xl bg-muted/40" />
-        </div>
-      </div>
-    );
-  }
+  // HomeRoute already handles loading + signed-out + demo branches.
+  // If we somehow reach here without a user (defensive), render nothing.
+  if (!user) return null;
 
-  // Logged-out marketing landing
-  if (!user) {
-    return (
-      <div className="space-y-8">
-        <div className="relative overflow-hidden rounded-3xl shadow-elevated">
-          <img src={heroImg} alt="A quiet forest path at golden hour" width={1536} height={1024} className="h-72 w-full object-cover md:h-96" />
-          <div className="absolute inset-0 bg-gradient-to-t from-forest/85 via-forest/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground md:p-10">
-            <p className="font-serif text-xs italic opacity-90">Come as you are. Walk at your pace.</p>
-            <h1 className="mt-2 max-w-xl font-serif text-4xl leading-tight text-balance md:text-5xl">Take the walk. Let it count.</h1>
-            <p className="mt-3 max-w-md text-sm opacity-90 text-pretty md:text-base">Peer-supported walks for the days that feel heavy. Solo, Walk &amp; Talk, or Local — never alone.</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={() => requireAuth(() => openSheet("solo"))} className="rounded-full bg-cream text-foreground hover:bg-cream/90">
-                <Footprints className="mr-2 h-4 w-4" /> Start a walk
-              </Button>
-              <Button onClick={openWelcome} variant="outline" className="rounded-full border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
-                How it works
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <ValueCard icon={Footprints} title="Walk solo" body="A small walk is still a walk. Track time, distance, and how you arrive home." />
-          <ValueCard icon={Headphones} title="Walk & Talks" body="Live, gentle Walk & Talks — only available once you're actually moving." />
-          <ValueCard icon={MapPin} title="Local Walks" body="Real people, real sidewalks. Meet your neighborhood at a Sunday Reset." />
-        </div>
-
-        <Card className="rounded-3xl border-border bg-card p-7 shadow-soft md:p-9">
-          <div className="grid gap-6 md:grid-cols-[1.2fr,1fr] md:items-center">
-            <div>
-              <h2 className="font-serif text-2xl text-balance md:text-3xl">A different kind of social app</h2>
-              <p className="mt-3 text-muted-foreground text-pretty">No feeds. No chat. No doomscroll. Groups are quiet affinity tags — Anxiety, Burnout, Sunday Reset, your city — that surface walks that fit you. The socializing happens in person, or on your feet with audio.</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Button onClick={() => requireAuth(() => openSheet("solo"))} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">
-                  Take your first walk
-                </Button>
-                <Button onClick={openWelcome} variant="ghost" className="rounded-full">Learn more</Button>
-              </div>
-            </div>
-            <ul className="space-y-3 text-sm">
-              <Bullet icon={HeartHandshake}>Peer support, not therapy.</Bullet>
-              <Bullet icon={Lock}>Walks, moods, and reflections stay private to you.</Bullet>
-              <Bullet icon={Sparkles}>Gentle badges for showing up — never streak shame.</Bullet>
-            </ul>
-          </div>
-        </Card>
-
-        <p className="pt-2 text-center font-serif text-sm italic text-muted-foreground">
-          You don't have to walk through it alone.
-        </p>
-      </div>
-    );
-  }
-
-  // ───────────────────────── Logged-in: composable module feed ─────────────────────────
   const hour = new Date().getHours();
   const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
@@ -529,23 +496,3 @@ function StartCta({ onStart, onLongPress }: { onStart: () => void; onLongPress?:
   );
 }
 
-function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
-        <Icon className="h-5 w-5 text-forest" />
-      </div>
-      <h3 className="mt-3 font-serif text-lg">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground text-pretty">{body}</p>
-    </div>
-  );
-}
-
-function Bullet({ icon: Icon, children }: { icon: typeof Footprints; children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-forest" />
-      <span className="text-foreground/85">{children}</span>
-    </li>
-  );
-}
