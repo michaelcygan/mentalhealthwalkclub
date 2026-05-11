@@ -10,7 +10,6 @@ import { wakeLock, haptics } from "@/lib/device";
 import { AmbientPill } from "@/components/ambient-pill";
 import { useAmbient } from "@/lib/ambient-context";
 import {
-  WalkNotesPill,
   loadStoredNotes,
   loadStoredPhotos,
   notesToJournalBlock,
@@ -19,6 +18,7 @@ import {
   type WalkNote,
   type WalkPhoto,
 } from "@/components/walk-notes-sheet";
+import { WalkJournalComposer } from "@/components/active-walk/walk-journal-composer";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
 import { getNow as getWeatherNow } from "@/lib/weather";
 import { useStepCounter } from "@/hooks/use-step-counter";
