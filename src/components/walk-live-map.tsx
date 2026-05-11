@@ -108,6 +108,21 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
     if (m.isStyleLoaded()) apply(); else m.once("load", apply);
   }, [points, follow]);
 
+  // If we have no route points yet but the parent gives us a center fix,
+  // ease the camera there once so the map isn't stuck on the NYC fallback.
+  const centeredOnce = useRef(false);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || centeredOnce.current) return;
+    if (points.length > 0) { centeredOnce.current = true; return; }
+    if (!center) return;
+    const apply = () => {
+      m.easeTo({ center: [center.lng, center.lat], zoom: 16, duration: 400 });
+      centeredOnce.current = true;
+    };
+    if (m.isStyleLoaded()) apply(); else m.once("load", apply);
+  }, [center, points.length]);
+
   // Current position pulse marker (always tracks the latest fix)
   useEffect(() => {
     const m = map.current;
