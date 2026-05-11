@@ -268,7 +268,7 @@ function WalkTab() {
         {/* Other ways to walk — snap-scroll chip row */}
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Other ways to walk</div>
-          <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:px-0">
+          <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ModePill icon={Sparkles} label="Guided" onClick={() => openSheet("guided_solo")} />
             <ModePill icon={Headphones} label="Walk & Talk" onClick={() => openSheet("audio")} />
             <ModePill icon={MapPin} label="Local Walks" onClick={() => navigate({ to: "/events" as never })} />
