@@ -74,6 +74,8 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
       // the lazy chunk + CSS arrive after the container is laid out.
       requestAnimationFrame(() => m.resize());
     });
+    // One more resize after first idle frame — catches lazy tile reveal.
+    m.once("idle", () => m.resize());
     map.current = m;
     // Belt-and-braces: a few delayed resizes catch the case where the
     // container's height is settled by parent transitions or the lazy CSS.
