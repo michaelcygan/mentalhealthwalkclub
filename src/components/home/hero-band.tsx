@@ -17,14 +17,14 @@ interface Props {
  */
 export function HeroBand({ greeting, name, microState, level, initials }: Props) {
   return (
-    <HeroGradient className="relative p-6 md:p-8">
+    <HeroGradient className="relative p-6 md:p-8 min-h-[180px] md:min-h-[220px]">
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="font-serif text-xs italic text-foreground/70">Come as you are. Walk at your pace.</p>
+        <div className="min-w-0 flex-1 text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
+          <p className="font-serif text-xs italic text-white/85">Come as you are. Walk at your pace.</p>
           <h1 className="mt-1 font-serif text-2xl leading-tight text-balance md:text-3xl">
             {greeting}{name ? `, ${name}` : ""}.
           </h1>
-          <p className="mt-2 max-w-md font-serif text-sm italic text-foreground/75 text-pretty">{microState}</p>
+          <p className="mt-2 max-w-md font-serif text-sm italic text-white/85 text-pretty">{microState}</p>
         </div>
         {level && level.level >= 1 && (
           <Link
