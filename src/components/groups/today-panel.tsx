@@ -81,10 +81,7 @@ export function TodayPanel({ yours, forYou, nearYou, trending, myCity, pulse, mi
       </div>
 
       <div className="relative -mx-4 px-4">
-        {active.key === "yours" && (
-          <div aria-hidden className="pointer-events-none absolute left-4 top-0 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-forest/70 via-forest/40 to-transparent" />
-        )}
-        <ul key={active.key} className={`flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1.5 niche-grid-fade ${active.key === "yours" ? "pl-2" : ""}`}>
+        <ul key={active.key} className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1.5 niche-grid-fade">
           {active.groups.slice(0, 12).map((g, i) => (
             <div
               key={g.id}
