@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { AudienceBar } from "@/components/friend-walk/audience-bar";
 import { QuickSignupSheet } from "@/components/friend-walk/quick-signup-sheet";
 import { getGuestId } from "@/lib/guest-id";
+import { LoadingScreen } from "@/components/loading-screen";
 
 export const Route = createFileRoute("/w/$code")({
   head: ({ params }) => ({
