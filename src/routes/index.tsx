@@ -66,7 +66,7 @@ function HomeRoute() {
 
   if (!user && demo) return (<><DemoBanner /><DemoPreview /></>);
   if (!user) return <EntryFlow />;
-  if (onboarded === false) return <EntryFlow startAtOnboarding />;
+  if (onboarded === false) return <EntryFlow startAtOnboarding onCompleted={markOnboarded} />;
   return <WalkTab />;
 }
 
