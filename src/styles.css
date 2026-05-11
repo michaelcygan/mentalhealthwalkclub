@@ -481,3 +481,12 @@
   .mood-fade { animation: none !important; opacity: 0 !important; }
   .list-slide-in { animation: none !important; }
 }
+
+/* Loader breathing animation for the logo splash */
+@keyframes loader-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[loader-breathe"] { animation: none !important; opacity: 0.9 !important; }
+}
