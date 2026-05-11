@@ -43,7 +43,11 @@ export default function WalkLiveMap({ points, walkSessionId, userId, groupId, sh
     const m = new maplibregl.Map({
       container: ref.current,
       style: mapStyles.warm(),
-      center: points[0] ? [points[0].lng, points[0].lat] : [-74.006, 40.7128],
+      center: points[0]
+        ? [points[0].lng, points[0].lat]
+        : center
+          ? [center.lng, center.lat]
+          : [-74.006, 40.7128],
       zoom: 16,
       attributionControl: { compact: true },
       cooperativeGestures: false,
