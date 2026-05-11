@@ -152,9 +152,7 @@ export function ActiveWalkShell({
           )}
         </section>
 
-        {utilityRow && (
-          <div className="flex flex-wrap items-center justify-center gap-2">{utilityRow}</div>
-        )}
+        {utilityRow && <div className="space-y-3">{utilityRow}</div>}
       </div>
 
       <WalkActionBar paused={paused} onTogglePause={onTogglePause} onEnd={onEnd} />
