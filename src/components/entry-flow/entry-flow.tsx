@@ -25,6 +25,8 @@ const COMFORT = [
 interface Props {
   /** When true, the user is signed-in and we skip slide 0 (welcome) */
   startAtOnboarding?: boolean;
+  /** Called when the user completes (or exits) the final slide so the host can swap to the app shell. */
+  onCompleted?: () => void;
 }
 
 /** Shared chrome: persistent Sign in + Skip onboarding controls visible on every slide. */
