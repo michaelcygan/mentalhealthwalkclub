@@ -106,7 +106,12 @@ export function EntryFlow({ startAtOnboarding, onCompleted }: Props) {
         {step === 2 && <SlideLocation onNext={next} onSkip={next} onBack={back} />}
         {step === 3 && <SlideThemes onNext={next} onSkip={next} onBack={back} />}
         {step === 4 && <SlideGroups onNext={next} onSkip={next} onBack={back} />}
-        {step === 5 && <SlideFirstWalk onStart={() => navigate({ to: "/" as never, search: { start: "1" } as never })} onLater={() => navigate({ to: "/" as never })} />}
+        {step === 5 && (
+          <SlideFirstWalk
+            onStart={async () => { await finishOnboarding(); navigate({ to: "/" as never, search: { start: "1" } as never }); }}
+            onLater={async () => { await finishOnboarding(); navigate({ to: "/" as never }); }}
+          />
+        )}
       </div>
 
       {/* Footer: redundant Sign in for signed-out users */}
