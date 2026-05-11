@@ -183,7 +183,23 @@ export function AuthForm({
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-5 space-y-4">
+      <button
+        type="button"
+        onClick={signInWithGoogle}
+        disabled={busy}
+        className="mt-5 flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-border bg-card text-sm font-medium text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
+      >
+        <GoogleMark className="h-4 w-4" />
+        Continue with Google
+      </button>
+
+      <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <form onSubmit={submit} className="space-y-4">
         {isSignup && (
           <div className="space-y-1.5">
             <Label htmlFor="name">What should we call you?</Label>
