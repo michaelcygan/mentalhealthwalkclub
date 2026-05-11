@@ -49,6 +49,8 @@ function HomeRoute() {
       .then(({ data }) => setOnboarded(!!data?.onboarded_at));
   }, [user]);
 
+  const markOnboarded = () => setOnboarded(true);
+
   if (loading) {
     return (
       <div className="space-y-6" aria-busy="true">
