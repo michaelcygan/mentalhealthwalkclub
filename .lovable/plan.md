@@ -1,90 +1,62 @@
-# Ambient video banners
+# Multi-scene ambient banner loop (chained generation)
 
-Replace the app's hero/banner surfaces that currently use a static gradient or single photo with a quiet, looping ambient walking video. Forward-motion POV / side-tracking shots, mixed environments (suburban Illinois, rural Colorado, NYC), Fincher-style observational stillness — calm, not flashy. Text and overlays are re-tuned for legibility on moving footage.
+Stitch a 4-scene looping banner. To get genuine variety, **generate the scenes in sequence** with the video tool (one call per scene, waited on, then the next), rather than relying on the existing three clips alone. The browser still mounts only one `<video>` per banner — all dissolves are baked into a single MP4.
 
-## Where this applies (audited)
+## Scenes to generate (4 fresh, sequential calls)
 
-In scope — single banner surfaces:
-1. **Home hero** (`src/components/home/hero-band.tsx` via `HeroGradient`) — "Good evening, Mike." Currently a time-of-day gradient with black serif text.
-2. **Active walk hero** (`src/components/active-walk/active-walk-shell.tsx` via `HeroGradient`) — same gradient surface around the timer.
-3. **Profile header** (`src/routes/profile.tsx` via `HeroGradient`) — same shell.
-4. **Entry-flow welcome slide** (`src/components/entry-flow/entry-flow.tsx`) — currently `walk-hero.jpg`, "Take the walk. Let it count."
-5. **Demo preview hero** (`src/components/entry-flow/demo-preview.tsx`) — same `walk-hero.jpg` banner.
+Each: 1080p, 16:9, 10s, no audio, slow ambient camera.
 
-Out of scope (intentional — would hurt perf or feel wrong):
-- City / niche / mood / group cover tiles (dozens per screen, photos are part of their identity).
-- Group detail covers, event covers, journal entry cards (per-item imagery, not a single hero).
-- Auth page small logo card, welcome dialog (modal, not a banner).
+1. **`suburban-il-2.mp4`** — Slow forward POV down a tree-lined Illinois sidewalk in late afternoon. Long shadows, dappled light, empty street. Cicada-quiet.
+2. **`rural-co-2.mp4`** — Side-tracking shot of a dirt road through golden aspens, distant Colorado foothills. One small figure walking far ahead. Gentle parallax.
+3. **`nyc-2.mp4`** — Forward POV down a quiet Brooklyn brownstone block at dawn. Soft sun flare between buildings, planters, stoops. Empty sidewalk.
+4. **`coastal-pnw.mp4`** — Forward POV along a misty Pacific Northwest beach path, driftwood and ferns, soft gray light. Cooler beat to balance the warm scenes.
 
-## Asset plan
+The three originals (`suburban-il.mp4`, `rural-co.mp4`, `nyc.mp4`) stay in the repo as build inputs and may be substituted in the final concat if any new generation comes back weaker.
 
-Generate **3 short ambient clips** (10s, 1080p, no audio) via the video tool, then compress to web-friendly MP4 + WebM:
+Generation order is **sequential** — wait for each video tool call to finish, eyeball it via `code--view` (first frame), then kick off the next. If a clip comes back wrong (camera too fast, weird artifacts, people facing camera), regenerate that one before moving on.
 
-- `suburban-il.mp4` — tree-lined sidewalk at golden hour, slow forward dolly POV, cicadas-implied stillness.
-- `rural-co.mp4` — dirt road through aspens / open foothills, slow side-track of two distant walkers.
-- `nyc.mp4` — early morning Brooklyn brownstone block, forward POV, soft sun flare.
+## Compositing pipeline (one-shot ffmpeg, runs in sandbox)
 
-Each clip:
-- 1920×1080, h.264 + vp9, ~2 Mbps, **muted, loop, playsInline, autoplay**.
-- A matching JPG poster at the same first-frame for instant paint and `prefers-reduced-motion`.
-- Total budget ~5–7 MB for all three combined after compression.
+Script `scripts/build-ambient-loop.mjs`:
 
-Stored under `public/videos/ambient/` so they can be `staticFile`-style referenced and cached by the edge.
+1. Re-encodes each chosen scene to **1280×720, ~1.2 Mbps H.264, no audio, 30 fps**.
+2. Concatenates the 4 scenes in a fixed order with **0.8s dissolves** between, plus a dissolve from scene 4 back into scene 1 so the loop is seamless.
+3. Outputs:
+   - `public/videos/ambient/loop.mp4` (~6 MB, ~40s)
+   - `public/videos/ambient/loop.webm` (VP9, ~4 MB)
+   - `public/videos/ambient/loop-poster.jpg` (frame 0)
+4. Idempotent — re-runs from the same source files. Not part of the build; one-time author step.
 
-## New component
+## Component changes
 
-`src/components/ambient-video-banner.tsx` — drop-in replacement for the gradient surface:
+`src/components/ambient-video-banner.tsx`:
+- Drop the per-surface `clip` selection and rotation logic. Every banner plays the same composited loop.
+- `<video>` gets two `<source>` children (webm first, mp4 fallback) plus `poster={loopPoster}`.
+- IntersectionObserver pause + reduced-motion poster behavior unchanged.
 
-- Picks a clip per session (stable per-mount; rotates across visits) or per surface (home = suburban, active walk = rural, entry = NYC, etc. — final mapping TBD in implementation).
-- Renders: `<video>` (object-cover, absolute inset-0) → dark-to-transparent **bottom scrim** (`from-black/60 via-black/25 to-transparent`) → top vignette (`from-black/30`) → children slot.
-- Honors `prefers-reduced-motion`: shows poster JPG only, no `<video>`.
-- Pauses via `IntersectionObserver` when offscreen and on `document.visibilitychange` to save battery.
-- Lazy-mounts `<video>` after first paint (poster shows immediately).
-- Accepts `className`, `children`, optional `clip` override, optional `tone="light" | "dark"` to flip text color.
+`src/components/hero-gradient.tsx`, `src/components/home/hero-band.tsx`, `src/components/entry-flow/entry-flow.tsx`, `src/components/entry-flow/demo-preview.tsx`: no JSX changes. The `clip` prop becomes a no-op (kept for back-compat).
 
-## Surface-by-surface changes
+## Performance budget
 
-**HeroGradient** (`src/components/hero-gradient.tsx`): refactored to compose `AmbientVideoBanner` underneath, keeping its existing API so `HeroBand`, `ActiveWalkShell`, and `ProfileHeader` get the new look for free. Time-of-day gradient becomes a fallback color/scrim.
+- Single `<video>` per banner — same CPU as today.
+- ~6 MB transfer per first-time visit (was ~5 MB for one of today's three clips). Edge-cached after.
+- Decoded-frame memory is identical to a single clip.
+- `preload="metadata"` + IO pause keep cellular use in check.
 
-**HeroBand** (`src/components/home/hero-band.tsx`):
-- Switch greeting + microcopy from black serif to **white serif** with subtle text-shadow (`drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]`).
-- Italic eyebrow line opacity bumped to `text-white/85`.
-- LevelRing: outer ring stroke becomes `white/70`, inner avatar stays forest. Ring contrast verified against all three clips.
-- Padding unchanged so layout doesn't shift.
+## Out of scope
 
-**ActiveWalkShell** hero region: same white-on-video treatment for the timer and meta row; numerals already large enough — only color tokens change.
+- No admin UI to swap scenes (per your note).
+- No per-surface clip choice — one cohesive loop everywhere.
+- No audio.
 
-**ProfileHeader**: same — name/handle to white, secondary chips get a `bg-black/25 backdrop-blur-sm` pill so they read on any clip.
+## Risks & fallbacks
 
-**Entry-flow Welcome slide**: drop `<img src={heroImg}>`, mount `AmbientVideoBanner` at `h-40 md:h-56`. Existing forest scrim is replaced with the component's built-in scrim. Headline already white — no copy changes.
-
-**DemoPreview hero**: same swap at `h-56 md:h-72`. Buttons keep current styling (cream + outline) which already works on dark scrim.
-
-## Performance & a11y
-
-- Video tags: `muted autoplay loop playsInline preload="metadata"` plus `poster={posterJpg}`.
-- `aria-hidden="true"` on the `<video>`; no captions needed (silent ambience).
-- Reduced-motion users see the poster only — no autoplay surprise.
-- Mobile data: clips are short and looped; no progressive download beyond first segment.
-- iOS Safari quirks handled (`playsInline`, muted-before-play, user-gesture not required since muted).
-
-## Out of scope / not changing
-
-- No new business logic, hooks, or routes.
-- City/niche/mood photo grids stay as-is.
-- No audio — ever — on these banners.
-- `walk-hero.jpg` stays in repo as the entry-flow poster fallback.
-
-## Risks
-
-- Autoplay blocked on some battery-saver setups → poster shows; acceptable.
-- Bandwidth on first load of unauthenticated landing → mitigated by short clip + WebM + `preload="metadata"` and the fact only one clip mounts per surface.
-- Color contrast across three different clips → built-in scrim is tuned to WCAG AA for white serif at the sizes used; verified against poster stills before shipping.
+- A video tool call can return an off-brief clip. Mitigation: spot-check first frame after each call and regenerate that one before concat.
+- ffmpeg encode could fail in the sandbox. Mitigation: keep the existing `AmbientVideoBanner` behavior as a fallback (already works with the single clips).
 
 ## Deliverable order
 
-1. Generate 3 ambient clips, compress, drop into `public/videos/ambient/` with posters.
-2. Build `AmbientVideoBanner` + reduced-motion + IO pause.
-3. Refactor `HeroGradient` to use it; flip `HeroBand` text to white-on-video.
-4. Swap entry-flow + demo-preview banners.
-5. QA on the three real surfaces at 390px and desktop.
+1. Generate scene 1 → spot-check → scene 2 → spot-check → scene 3 → spot-check → scene 4 → spot-check.
+2. Write and run `scripts/build-ambient-loop.mjs` to produce `loop.mp4`, `loop.webm`, `loop-poster.jpg`.
+3. Simplify `AmbientVideoBanner` to point at the composited loop with two `<source>` children.
+4. QA on home, active walk, profile, entry flow, and demo preview at 390px and desktop.
