@@ -1,17 +1,20 @@
 /**
- * Bakes a polished share card from a route snapshot PNG.
- * - Loads the snapshot
- * - Draws gradient overlay + brand mark + headline stats + intention/mood
- * - Returns a new PNG Blob ready for Web Share API or download
+ * Bakes a polished 1080×1920 (9:16) share card from a walk.
  *
- * Pure canvas — no map dependency, so safe to call wherever.
+ * Two automatic variants:
+ *   - photo  → walk had at least one captured photo. Photo is the canvas;
+ *              stats sit in a translucent bottom card. No writing.
+ *   - map    → no photo, but a route snapshot exists. Cream card with the
+ *              snapshot up top and a generous stat block below. No writing.
+ *
+ * We never bake reflection_note or intention text — those are private to
+ * the journal and could be sensitive when shared.
  */
 export interface ShareCardStats {
   miles: string;        // e.g. "2.31"
   minutes: number;      // total minutes
   steps?: number | null;
   date: string;         // pre-formatted "Tue, May 8"
-  intention?: string | null;
   moodBefore?: string | null;
   moodAfter?: string | null;
   walkType?: string | null;
@@ -21,6 +24,9 @@ export interface ShareCardStats {
 const FOREST = "#1f3a2c";
 const CREAM = "#f5efe4";
 const CLAY = "#c46a4a";
+
+const W = 1080;
+const H = 1920;
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -42,136 +48,270 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-export async function bakeShareCard(snapshotUrl: string, stats: ShareCardStats): Promise<Blob | null> {
-  const img = await loadImage(snapshotUrl);
-  const W = 1080, H = 1350; // 4:5 — Instagram-friendly
+function makeCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
+  return { canvas, ctx };
+}
 
-  // Background
+function toBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.92));
+}
+
+/** Draw the brand mark + URL pinned to the bottom of the canvas. */
+function drawBrandFooter(ctx: CanvasRenderingContext2D, dark: boolean) {
+  ctx.save();
+  ctx.fillStyle = dark ? "rgba(255,255,255,0.78)" : "rgba(31,58,44,0.6)";
+  ctx.font = "500 26px ui-sans-serif, system-ui, -apple-system";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("walk it through  ·  mhwalk.club", W / 2, H - 60);
+  ctx.restore();
+}
+
+/** Pill helper. Returns the rendered width so callers can lay out a row. */
+function drawPill(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  opts: { fill: string; color: string; font: string; padX?: number; height?: number },
+): number {
+  const padX = opts.padX ?? 28;
+  const h = opts.height ?? 56;
+  ctx.font = opts.font;
+  const w = ctx.measureText(text).width + padX * 2;
+  ctx.fillStyle = opts.fill;
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.fillStyle = opts.color;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(text, x + padX, y + h / 2 + 1);
+  ctx.textBaseline = "alphabetic";
+  return w;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// MAP VARIANT
+// ────────────────────────────────────────────────────────────────────
+async function bakeMapCard(snapshotUrl: string, stats: ShareCardStats): Promise<Blob | null> {
+  const made = makeCanvas();
+  if (!made) return null;
+  const { canvas, ctx } = made;
+  const img = await loadImage(snapshotUrl);
+
+  // Cream background
   ctx.fillStyle = CREAM;
   ctx.fillRect(0, 0, W, H);
 
-  // Map snapshot — square, top
-  const mapH = W; // 1080 sq map
-  ctx.drawImage(img, 0, 0, W, mapH);
+  // Map region — top 58% of the canvas (W × ~1110)
+  const mapH = Math.round(H * 0.58); // 1113
+  // Cover-fit the (square) snapshot into a wider-than-tall band
+  const scale = Math.max(W / img.width, mapH / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.drawImage(img, (W - dw) / 2, (mapH - dh) / 2, dw, dh);
 
-  // Soft fade from map into card body
-  const fade = ctx.createLinearGradient(0, mapH - 80, 0, mapH + 60);
+  // Eyebrow pill (top-left)
+  drawPill(ctx, "MENTAL HEALTH WALK CLUB", 48, 48, {
+    fill: "rgba(31,58,44,0.92)",
+    color: CREAM,
+    font: "600 24px ui-sans-serif, system-ui, -apple-system",
+    padX: 26,
+    height: 56,
+  });
+
+  // Date pill (top-right)
+  ctx.font = "500 24px ui-sans-serif, system-ui, -apple-system";
+  const dateW = ctx.measureText(stats.date).width + 52;
+  drawPill(ctx, stats.date, W - 48 - dateW, 48, {
+    fill: "rgba(255,255,255,0.95)",
+    color: FOREST,
+    font: "500 24px ui-sans-serif, system-ui, -apple-system",
+    padX: 26,
+    height: 56,
+  });
+
+  // Weather chip (bottom-left of map band, just above the fade)
+  if (stats.weather?.tempF != null) {
+    const wx = `${Math.round(stats.weather.tempF)}°${stats.weather.label ? "  ·  " + stats.weather.label : ""}`;
+    drawPill(ctx, wx, 48, mapH - 96, {
+      fill: "rgba(255,255,255,0.94)",
+      color: FOREST,
+      font: "500 26px ui-sans-serif, system-ui, -apple-system",
+      padX: 24,
+      height: 56,
+    });
+  }
+
+  // Soft fade from map → cream
+  const fade = ctx.createLinearGradient(0, mapH - 100, 0, mapH + 60);
   fade.addColorStop(0, "rgba(245,239,228,0)");
   fade.addColorStop(1, CREAM);
   ctx.fillStyle = fade;
-  ctx.fillRect(0, mapH - 80, W, 140);
+  ctx.fillRect(0, mapH - 100, W, 160);
 
-  // Eyebrow row at top of map
-  ctx.fillStyle = "rgba(31,58,44,0.9)";
-  roundRect(ctx, 40, 40, 320, 60, 30);
-  ctx.fill();
-  ctx.fillStyle = CREAM;
-  ctx.font = "600 24px ui-sans-serif, system-ui";
-  ctx.textBaseline = "middle";
-  ctx.fillText("MENTAL HEALTH WALK CLUB", 64, 70);
+  // ── Bottom region (mapH .. H) — laid out with explicit baselines ──
+  const bottomTop = mapH + 40;
+  const bottomBot = H - 60; // brand footer line
+  const bottomMid = (bottomTop + bottomBot) / 2;
 
-  // Date pill, top-right
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  const datePillW = ctx.measureText(stats.date).width + 56;
-  roundRect(ctx, W - 40 - datePillW, 40, datePillW, 60, 30);
-  ctx.fill();
+  // Big serif distance — sits a bit above the optical center
   ctx.fillStyle = FOREST;
-  ctx.font = "500 24px ui-sans-serif, system-ui";
-  ctx.fillText(stats.date, W - 40 - datePillW + 28, 70);
-
-  // Weather chip — bottom-left of the map, if available
-  if (stats.weather?.tempF != null) {
-    const wx = `${Math.round(stats.weather.tempF)}°${stats.weather.label ? "  ·  " + stats.weather.label : ""}`;
-    ctx.font = "500 26px ui-sans-serif, system-ui";
-    const ww = ctx.measureText(wx).width + 44;
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    roundRect(ctx, 40, mapH - 90, ww, 56, 28); ctx.fill();
-    ctx.fillStyle = FOREST;
-    ctx.textBaseline = "middle";
-    ctx.fillText(wx, 62, mapH - 62);
-    ctx.textBaseline = "alphabetic";
-  }
-
-  // Headline stats — big serif numbers
-  const baseY = mapH + 80;
-  ctx.fillStyle = FOREST;
+  ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.font = "500 140px ui-serif, Georgia, serif";
-  const headline = `${stats.miles} mi`;
-  const headW = ctx.measureText(headline).width;
-  ctx.fillText(headline, (W - headW) / 2, baseY + 20);
+  ctx.font = "500 200px ui-serif, Georgia, 'Times New Roman', serif";
+  ctx.fillText(`${stats.miles} mi`, W / 2, bottomMid + 20);
 
   // Sub-stats row
-  ctx.font = "500 36px ui-sans-serif, system-ui";
+  ctx.font = "500 38px ui-sans-serif, system-ui, -apple-system";
   ctx.fillStyle = "rgba(31,58,44,0.7)";
   const sub = stats.steps != null
     ? `${stats.minutes} min  ·  ${stats.steps.toLocaleString()} steps`
     : `${stats.minutes} min`;
-  const subW = ctx.measureText(sub).width;
-  ctx.fillText(sub, (W - subW) / 2, baseY + 76);
+  ctx.fillText(sub, W / 2, bottomMid + 90);
 
-  // Mood arc
-  if (stats.moodBefore || stats.moodAfter) {
-    const y = baseY + 150;
-    ctx.font = "500 30px ui-sans-serif, system-ui";
-    const mb = (stats.moodBefore ?? "—").toLowerCase();
-    const ma = (stats.moodAfter ?? "—").toLowerCase();
-    const arrow = "  →  ";
-    const full = `${mb}${arrow}${ma}`;
-    const fullW = ctx.measureText(full).width;
-    const x0 = (W - fullW) / 2;
-    // before pill
-    const mbW = ctx.measureText(mb).width + 36;
-    ctx.fillStyle = "rgba(31,58,44,0.08)";
-    roundRect(ctx, x0 - 18, y - 30, mbW, 50, 25); ctx.fill();
-    ctx.fillStyle = FOREST;
-    ctx.fillText(mb, x0, y + 5);
-    // arrow
+  // Mood arc (controlled vocab only, no free text)
+  const mb = stats.moodBefore?.toLowerCase().trim();
+  const ma = stats.moodAfter?.toLowerCase().trim();
+  if (mb || ma) {
+    const arrow = "→";
+    const before = mb ?? "—";
+    const after = ma ?? "—";
+    ctx.font = "500 30px ui-sans-serif, system-ui, -apple-system";
+    const wB = ctx.measureText(before).width + 56;
+    const wA = ctx.measureText(after).width + 56;
+    const wArrow = ctx.measureText(arrow).width + 40;
+    const total = wB + wArrow + wA;
+    const y = bottomMid + 170;
+    let x = (W - total) / 2;
+    drawPill(ctx, before, x, y, {
+      fill: "rgba(31,58,44,0.08)", color: FOREST,
+      font: "500 30px ui-sans-serif, system-ui, -apple-system",
+      padX: 28, height: 56,
+    });
+    x += wB;
     ctx.fillStyle = "rgba(31,58,44,0.45)";
-    ctx.fillText(arrow, x0 + ctx.measureText(mb).width, y + 5);
-    // after pill
-    const maX = x0 + ctx.measureText(`${mb}${arrow}`).width;
-    const maW = ctx.measureText(ma).width + 36;
-    ctx.fillStyle = CLAY + "26";
-    roundRect(ctx, maX - 18, y - 30, maW, 50, 25); ctx.fill();
-    ctx.fillStyle = CLAY;
-    ctx.fillText(ma, maX, y + 5);
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(arrow, x + wArrow / 2, y + 30);
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+    x += wArrow;
+    drawPill(ctx, after, x, y, {
+      fill: "rgba(196,106,74,0.16)", color: CLAY,
+      font: "500 30px ui-sans-serif, system-ui, -apple-system",
+      padX: 28, height: 56,
+    });
   }
 
-  // Intention quote
-  if (stats.intention) {
-    ctx.fillStyle = "rgba(31,58,44,0.78)";
-    ctx.font = "italic 500 36px ui-serif, Georgia, serif";
-    const text = `"${stats.intention}"`;
-    wrapText(ctx, text, W / 2, baseY + 230, W - 160, 46, "center");
-  }
-
-  // Footer brand
-  ctx.fillStyle = "rgba(31,58,44,0.55)";
-  ctx.font = "500 22px ui-sans-serif, system-ui";
-  ctx.textAlign = "center";
-  ctx.fillText("walk it through  ·  mhwalk.club", W / 2, H - 44);
-  ctx.textAlign = "start";
-
-  return new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), "image/png", 0.92));
+  drawBrandFooter(ctx, false);
+  return toBlob(canvas);
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, align: "left" | "center" = "left") {
-  const words = text.split(/\s+/);
-  let line = "";
-  const lines: string[] = [];
-  for (const w of words) {
-    const test = line ? `${line} ${w}` : w;
-    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
-    else line = test;
+// ────────────────────────────────────────────────────────────────────
+// PHOTO VARIANT
+// ────────────────────────────────────────────────────────────────────
+async function bakePhotoCard(photoUrl: string, stats: ShareCardStats): Promise<Blob | null> {
+  const made = makeCanvas();
+  if (!made) return null;
+  const { canvas, ctx } = made;
+  const img = await loadImage(photoUrl);
+
+  // Forest backstop in case the photo is narrower than the canvas
+  ctx.fillStyle = FOREST;
+  ctx.fillRect(0, 0, W, H);
+
+  // Cover-fit the photo into the full 1080×1920 canvas
+  const scale = Math.max(W / img.width, H / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+
+  // Top fade (so eyebrow + date are legible on busy photos)
+  const topFade = ctx.createLinearGradient(0, 0, 0, 240);
+  topFade.addColorStop(0, "rgba(0,0,0,0.45)");
+  topFade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = topFade;
+  ctx.fillRect(0, 0, W, 240);
+
+  // Bottom scrim where the stat card sits
+  const cardTop = Math.round(H * 0.62);
+  const bottomFade = ctx.createLinearGradient(0, cardTop - 140, 0, H);
+  bottomFade.addColorStop(0, "rgba(0,0,0,0)");
+  bottomFade.addColorStop(0.6, "rgba(0,0,0,0.55)");
+  bottomFade.addColorStop(1, "rgba(0,0,0,0.85)");
+  ctx.fillStyle = bottomFade;
+  ctx.fillRect(0, cardTop - 140, W, H - (cardTop - 140));
+
+  // Eyebrow + date
+  drawPill(ctx, "MENTAL HEALTH WALK CLUB", 48, 48, {
+    fill: "rgba(255,255,255,0.16)",
+    color: CREAM,
+    font: "600 24px ui-sans-serif, system-ui, -apple-system",
+    padX: 26,
+    height: 56,
+  });
+  ctx.font = "500 24px ui-sans-serif, system-ui, -apple-system";
+  const dateW = ctx.measureText(stats.date).width + 52;
+  drawPill(ctx, stats.date, W - 48 - dateW, 48, {
+    fill: "rgba(255,255,255,0.92)",
+    color: FOREST,
+    font: "500 24px ui-sans-serif, system-ui, -apple-system",
+    padX: 26,
+    height: 56,
+  });
+
+  // Weather chip — top-left under the eyebrow
+  if (stats.weather?.tempF != null) {
+    const wx = `${Math.round(stats.weather.tempF)}°${stats.weather.label ? "  ·  " + stats.weather.label : ""}`;
+    drawPill(ctx, wx, 48, 124, {
+      fill: "rgba(255,255,255,0.18)",
+      color: CREAM,
+      font: "500 26px ui-sans-serif, system-ui, -apple-system",
+      padX: 24,
+      height: 52,
+    });
   }
-  if (line) lines.push(line);
-  const prev = ctx.textAlign;
-  if (align === "center") ctx.textAlign = "center";
-  lines.slice(0, 3).forEach((ln, i) => ctx.fillText(ln, x, y + i * lineHeight));
-  ctx.textAlign = prev;
+
+  // Stat block — anchored from the bottom up so footer never collides
+  const footerY = H - 60;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  // Sub-stats row sits ~140 above footer
+  ctx.font = "500 38px ui-sans-serif, system-ui, -apple-system";
+  ctx.fillStyle = "rgba(245,239,228,0.85)";
+  const sub = stats.steps != null
+    ? `${stats.minutes} min  ·  ${stats.steps.toLocaleString()} steps`
+    : `${stats.minutes} min`;
+  ctx.fillText(sub, W / 2, footerY - 110);
+
+  // Big distance sits ~80 above sub
+  ctx.font = "500 200px ui-serif, Georgia, 'Times New Roman', serif";
+  ctx.fillStyle = CREAM;
+  ctx.fillText(`${stats.miles} mi`, W / 2, footerY - 180);
+
+  drawBrandFooter(ctx, true);
+  return toBlob(canvas);
+}
+
+// ────────────────────────────────────────────────────────────────────
+// PUBLIC ENTRY
+// ────────────────────────────────────────────────────────────────────
+export async function bakeShareCard(
+  snapshotUrl: string | null,
+  stats: ShareCardStats,
+  photoUrl?: string | null,
+): Promise<Blob | null> {
+  try {
+    if (photoUrl) return await bakePhotoCard(photoUrl, stats);
+    if (snapshotUrl) return await bakeMapCard(snapshotUrl, stats);
+  } catch {
+    // fall through
+  }
+  return null;
 }
