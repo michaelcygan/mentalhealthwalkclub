@@ -142,14 +142,12 @@ function SlideWelcome({ onCreate, onSignIn, onPreview }: {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl">
-        <img src={heroImg} alt="A quiet path" className="h-40 w-full object-cover md:h-56" />
-        <div className="absolute inset-0 bg-gradient-to-t from-forest/85 via-forest/30 to-transparent" />
+      <AmbientVideoBanner clip="nyc" scrim="strong" className="rounded-2xl h-40 md:h-56">
         <div className="absolute inset-x-0 bottom-0 p-4 text-primary-foreground md:p-5">
           <p className="font-serif text-[11px] italic opacity-90">Movement is the medicine. Company is the cure.</p>
           <h1 className="mt-1 font-serif text-2xl leading-tight md:text-3xl">Take the walk. Let it count.</h1>
         </div>
-      </div>
+      </AmbientVideoBanner>
 
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Four ways to walk</p>
