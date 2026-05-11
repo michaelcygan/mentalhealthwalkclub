@@ -254,16 +254,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
   if (path.startsWith("/auth") || path.startsWith("/welcome") || path.startsWith("/w/")) return <>{children}</>;
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <img
-          src="/logo-stamp.png"
-          alt="Mental Health Walk Club"
-          className="h-40 w-40 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none"
-          draggable={false}
-        />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
