@@ -2,20 +2,16 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Footprints, Headphones, MapPin, Sparkles, Play } from "lucide-react";
-import { toast } from "sonner";
 import { LiveNowStrip } from "@/components/live-now-strip";
 import { UpcomingFriendWalks } from "@/components/friend-walk/upcoming-friend-walks";
 import { WeeklyRing } from "@/components/weekly-ring";
 import { WeekInReview } from "@/components/week-in-review";
 import { ComebackNudge } from "@/components/comeback-nudge";
-import { MoodCloud, WeightBar } from "@/components/mood-cloud";
-import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { haptics } from "@/lib/device";
+import { useWalkComposer } from "@/components/walk-composer/use-walk-composer";
 
 import { HeroBand } from "@/components/home/hero-band";
 import { WeatherModule } from "@/components/home/weather-module";
@@ -24,10 +20,8 @@ import { TonightInYourGroups } from "@/components/home/tonight-in-your-groups";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
 import { useLiveCount } from "@/hooks/use-live-count";
-import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useProfileStats } from "@/hooks/use-profile-stats";
-import { useAmbient } from "@/lib/ambient-context";
 import { EntryFlow } from "@/components/entry-flow/entry-flow";
 import { DemoPreview } from "@/components/entry-flow/demo-preview";
 import { DemoBanner } from "@/components/demo-banner";
@@ -71,29 +65,12 @@ function HomeRoute() {
 }
 
 
-const MODE_PREFACE: Record<string, string> = {
-  solo: "Walking alone still counts.",
-  guided_solo: "A gentle voice in your ear.",
-  audio: "You'll be matched once you start moving.",
-  irl_event: "Real people, real sidewalks.",
-};
-
 type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
 function WalkTab() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { requireAuth } = useAuthPrompt();
-  const ambient = useAmbient();
-  const beganWalkRef = useRef(false);
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [pickGuide, setPickGuide] = useState(false);
-  const [walkType, setWalkType] = useState<WalkType>("solo");
-  const [feeling, setFeeling] = useState<string>("");
-  const [moodScore, setMoodScore] = useState<number | null>(null);
-  const [intention, setIntention] = useState("");
-  const [busy, setBusy] = useState(false);
+  const composer = useWalkComposer();
 
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
@@ -104,13 +81,14 @@ function WalkTab() {
 
   const stats = useProfileStats(user?.id);
 
-  // Web Share Target → ?intention=… seeds the next walk
+  // Web Share Target → ?start=1 opens the composer
   useEffect(() => {
     if (typeof window === "undefined") return;
     const u = new URL(window.location.href);
-    const seed = u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title");
-    if (seed) { setIntention(seed.slice(0, 280)); setSheetOpen(true); }
-    if (u.searchParams.get("start") === "1") setSheetOpen(true);
+    if (u.searchParams.get("start") === "1" || u.searchParams.get("intention") || u.searchParams.get("text") || u.searchParams.get("title")) {
+      composer.open({ type: "solo" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -163,50 +141,8 @@ function WalkTab() {
     },
   });
 
-  const beginWalk = async (track?: GuidedTrack | null) => {
-    if (!user) return;
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.from("walk_sessions").insert({
-        user_id: user.id,
-        walk_type: walkType,
-        status: "active",
-        mood_before: feeling || null,
-        mood_before_score: moodScore,
-        intention: intention || null,
-        guided_track_id: track?.id ?? null,
-      }).select("id").single();
-      if (error) throw error;
-      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && track?.id);
-      if (ownsAudio) ambient.stop(400);
-      beganWalkRef.current = true;
-      navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't start walk");
-    } finally { setBusy(false); }
-  };
+  const openSheet = (type: WalkType) => composer.open({ type });
 
-  const openSheet = (type: WalkType) => requireAuth(() => {
-    haptics.soft();
-    setWalkType(type);
-    setPickGuide(false);
-    beganWalkRef.current = false;
-    setSheetOpen(true);
-    if (type !== "audio") void ambient.start();
-  });
-
-  const handleSheetChange = (v: boolean) => {
-    setSheetOpen(v);
-    if (!v) {
-      setPickGuide(false);
-      if (!beganWalkRef.current) ambient.stop(600);
-    }
-  };
-
-  const proceed = () => {
-    if (walkType === "guided_solo") setPickGuide(true);
-    else beginWalk();
-  };
 
   // HomeRoute already handles loading + signed-out + demo branches.
   // If we somehow reach here without a user (defensive), render nothing.
@@ -315,23 +251,6 @@ function WalkTab() {
         )}
       </div>
 
-      <PreWalkSheet
-        open={sheetOpen}
-        onOpenChange={handleSheetChange}
-        walkType={walkType}
-        setWalkType={setWalkType}
-        feeling={feeling}
-        setFeeling={setFeeling}
-        moodScore={moodScore}
-        setMoodScore={setMoodScore}
-        intention={intention}
-        setIntention={setIntention}
-        busy={busy}
-        pickGuide={pickGuide}
-        onProceed={proceed}
-        onChooseTrack={(t) => { beginWalk(t); }}
-        onSkipGuide={() => beginWalk(null)}
-      />
     </>
   );
 }
@@ -353,95 +272,6 @@ function InlineWeatherChip() {
     >
       <WeatherPill tempF={data.tempF} label={data.label} tone={data.tone} isDay={data.isDay} />
     </button>
-  );
-}
-
-function PreWalkSheet({
-  open, onOpenChange, walkType, setWalkType, feeling, setFeeling, moodScore, setMoodScore,
-  intention, setIntention, busy, pickGuide, onProceed, onChooseTrack, onSkipGuide,
-}: {
-  open: boolean; onOpenChange: (v: boolean) => void;
-  walkType: WalkType; setWalkType: (t: WalkType) => void;
-  feeling: string; setFeeling: (v: string) => void;
-  moodScore: number | null; setMoodScore: (n: number | null) => void;
-  intention: string; setIntention: (v: string) => void;
-  busy: boolean; pickGuide: boolean;
-  onProceed: () => void;
-  onChooseTrack: (t: GuidedTrack) => void;
-  onSkipGuide: () => void;
-}) {
-  const kbInset = useKeyboardInset();
-
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[92vh]">
-        <DrawerHeader className="pb-1 text-left">
-          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">Start a walk</div>
-          <DrawerTitle className="mt-1 font-serif text-2xl text-balance">Choose how you want to walk</DrawerTitle>
-          <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
-        </DrawerHeader>
-
-        {pickGuide ? (
-          <div className="px-4 pb-6">
-            <GuidePicker mood={feeling || null} onChoose={onChooseTrack} onSkip={onSkipGuide} />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-5 overflow-y-auto px-4 pb-3">
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { t: "solo" as const, icon: Footprints, label: "Solo", body: "Just you." },
-                  { t: "audio" as const, icon: Headphones, label: "Walk & Talk", body: "Live audio." },
-                  { t: "guided_solo" as const, icon: Sparkles, label: "Guided", body: "A voice with you." },
-                ]).map(({ t, icon: Icon, label, body }) => {
-                  const active = walkType === t;
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => { setWalkType(t); haptics.tap(); }}
-                      className={`flex min-h-[88px] flex-col items-start gap-1 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${active ? "border-forest bg-accent/60 ring-2 ring-forest/30 shadow-soft" : "border-border bg-card hover:border-forest/40"}`}
-                    >
-                      <Icon className={`h-4 w-4 ${active ? "text-forest" : "text-muted-foreground"}`} />
-                      <span className={`text-sm font-medium ${active ? "text-forest" : "text-foreground"}`}>{label}</span>
-                      <span className="text-[11px] leading-tight text-muted-foreground">{body}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={() => { onOpenChange(false); }}
-                className="-mt-1 block text-xs italic text-muted-foreground underline-offset-4 hover:text-forest hover:underline"
-              >
-                Looking for an in-person Local Walk? Browse Events →
-              </button>
-
-              <MoodCloud value={feeling} onChange={setFeeling} />
-
-              <div className={`transition-all duration-500 ${feeling ? "max-h-40 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How heavy does it feel? <span className="lowercase italic tracking-normal text-muted-foreground/70">(optional)</span></p>
-                <WeightBar value={moodScore} onChange={setMoodScore} />
-              </div>
-
-              <div className={`transition-all duration-500 ${moodScore ? "max-h-60 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">An intention? <span className="lowercase italic tracking-normal text-muted-foreground/70">optional</span></p>
-                <textarea value={intention} onChange={(e) => setIntention(e.target.value)} placeholder="e.g. let my shoulders drop" rows={2} className="w-full rounded-2xl border border-border bg-card p-3 text-sm focus:border-forest focus:outline-none" />
-              </div>
-            </div>
-
-            <div
-              className="border-t border-border glass px-4 pt-3"
-              style={{ paddingBottom: `calc(max(env(safe-area-inset-bottom), 0.75rem) + ${kbInset}px)` }}
-            >
-              <Button onClick={onProceed} disabled={busy} className="h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
-                {busy ? "Starting…" : walkType === "guided_solo" ? "Choose a guide" : "Begin walking"}
-              </Button>
-              <button onClick={onProceed} className="mt-2 block w-full text-center text-xs italic text-muted-foreground hover:text-forest">skip the rest, just walk</button>
-            </div>
-          </>
-        )}
-      </DrawerContent>
-    </Drawer>
   );
 }
 
