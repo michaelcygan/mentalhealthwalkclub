@@ -86,6 +86,28 @@ export function AuthForm({
     }
   };
 
+  const signInWithGoogle = async () => {
+    setBusy(true);
+    try {
+      if (typeof window !== "undefined" && isSignup) {
+        window.localStorage.setItem(PLAN_INTENT_KEY, plan);
+        window.localStorage.setItem("wc_last_auth", "google");
+      }
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw new Error(result.error.message ?? "Google sign-in failed");
+      if (result.redirected) return; // browser is redirecting
+      // Token-flow path: session is set
+      toast.success(isSignup ? "Welcome aboard." : "Welcome back.");
+      onSuccess?.(isSignup ? "signup" : "signin");
+      if (isSignup && !suppressRedirect) navigate({ to: "/" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex gap-1 rounded-full bg-muted p-1">
