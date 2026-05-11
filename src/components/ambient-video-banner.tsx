@@ -111,7 +111,7 @@ export function AmbientVideoBanner({ clip = "auto", className = "", children, sc
       {/* Scrims for legibility */}
       <div aria-hidden className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${scrimClass}`} />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent" />
-      <div className="relative">{children}</div>
+      <div className="relative h-full w-full">{children}</div>
     </div>
   );
 }
