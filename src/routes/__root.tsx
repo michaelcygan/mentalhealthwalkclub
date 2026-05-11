@@ -15,6 +15,7 @@ import { useLiveCount } from "@/hooks/use-live-count";
 import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
+import { WalkComposerProvider } from "@/components/walk-composer/use-walk-composer";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 
 function NotFoundComponent() {
