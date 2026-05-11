@@ -118,7 +118,7 @@ async function main() {
 
   console.log("\nDone.");
   for (const f of [loopMp4, loopWebm, poster]) {
-    const sz = (require("node:fs")).statSync(f).size;
+    const sz = statSync(f).size;
     console.log(`  ${f}  →  ${(sz / 1024 / 1024).toFixed(2)} MB`);
   }
 }
