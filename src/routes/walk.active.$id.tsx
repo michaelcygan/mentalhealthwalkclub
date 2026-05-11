@@ -28,6 +28,7 @@ import { SoloModule } from "@/components/active-walk/format-modules/solo-module"
 import { WalkTalkModule } from "@/components/active-walk/format-modules/walk-talk-module";
 import { GuidedModule } from "@/components/active-walk/format-modules/guided-module";
 import { LocalModule } from "@/components/active-walk/format-modules/local-module";
+import { LoadingScreen } from "@/components/loading-screen";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -445,12 +446,7 @@ function ActiveWalk() {
     navigate({ to: "/journal" as never });
   };
 
-  if (!session)
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <img src="/logo-stamp.png" alt="Loading" className="h-32 w-32 animate-[loader-breathe_2.4s_ease-in-out_infinite] select-none" draggable={false} />
-      </div>
-    );
+  if (!session) return <LoadingScreen variant="inline" size={32} />;
 
   if (ending) {
     return (
