@@ -148,50 +148,8 @@ function WalkTab() {
     },
   });
 
-  const beginWalk = async (track?: GuidedTrack | null) => {
-    if (!user) return;
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.from("walk_sessions").insert({
-        user_id: user.id,
-        walk_type: walkType,
-        status: "active",
-        mood_before: feeling || null,
-        mood_before_score: moodScore,
-        intention: intention || null,
-        guided_track_id: track?.id ?? null,
-      }).select("id").single();
-      if (error) throw error;
-      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && track?.id);
-      if (ownsAudio) ambient.stop(400);
-      beganWalkRef.current = true;
-      navigate({ to: "/walk/active/$id" as never, params: { id: data.id } as never });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't start walk");
-    } finally { setBusy(false); }
-  };
+  const openSheet = (type: WalkType) => composer.open({ type });
 
-  const openSheet = (type: WalkType) => requireAuth(() => {
-    haptics.soft();
-    setWalkType(type);
-    setPickGuide(false);
-    beganWalkRef.current = false;
-    setSheetOpen(true);
-    if (type !== "audio") void ambient.start();
-  });
-
-  const handleSheetChange = (v: boolean) => {
-    setSheetOpen(v);
-    if (!v) {
-      setPickGuide(false);
-      if (!beganWalkRef.current) ambient.stop(600);
-    }
-  };
-
-  const proceed = () => {
-    if (walkType === "guided_solo") setPickGuide(true);
-    else beginWalk();
-  };
 
   // HomeRoute already handles loading + signed-out + demo branches.
   // If we somehow reach here without a user (defensive), render nothing.
