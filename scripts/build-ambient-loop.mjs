@@ -41,7 +41,7 @@ async function main() {
   for (const slug of SCENE_ORDER) {
     const ptrPath = resolve(AMBIENT_DIR, `${slug}.mp4.asset.json`);
     const ptr = JSON.parse(readFileSync(ptrPath, "utf8"));
-    const cdnUrl = ptr.url.startsWith("http") ? ptr.url : `https://lovable-api.com${ptr.url}`;
+    const cdnUrl = ptr.url.startsWith("http") ? ptr.url : `https://id-preview--98b64404-6fc6-4b86-809a-ea60cfd93f8d.lovable.app${ptr.url}`;
     const local = resolve(TMP, `${slug}.src.mp4`);
     if (!existsSync(local)) {
       console.log(`Downloading ${slug} from ${cdnUrl}`);
