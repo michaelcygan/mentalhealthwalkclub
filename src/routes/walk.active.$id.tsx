@@ -231,6 +231,27 @@ function ActiveWalk() {
 
   const motion = useStepCounter(!paused);
 
+  // Motion sensor is a *fallback*: only surface a quiet hint if (a) GPS isn't
+  // working after a 30s grace, or (b) GPS is live but we've gotten no motion
+  // detected at all after 90s of walking. Once the user taps (granted or
+  // denied) we never show again this session.
+  const [motionHintShown, setMotionHintShown] = useState(false);
+  const motionDismissed = useRef(false);
+  useEffect(() => {
+    if (motion.permissionState !== "needed" || motionDismissed.current) {
+      setMotionHintShown(false);
+      return;
+    }
+    const tick = () => {
+      const gpsBad = gps === "denied" || gps === "weak";
+      const gpsLiveButNoSteps = gps === "live" && elapsed > 90 && motion.steps === 0 && meters < 30;
+      setMotionHintShown(gpsBad ? elapsed > 30 : gpsLiveButNoSteps);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [gps, elapsed, meters, motion.steps, motion.permissionState]);
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (!hasMoved) setShowManualStart(true);
