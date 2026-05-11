@@ -155,15 +155,16 @@ function JournalTab() {
     const miles = ((w.distance_meters ?? 0) * 0.000621371).toFixed(2);
     const date = new Date(w.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
     const snapUrl = snapshotUrls[w.id];
+    const photoUrl = photoUrlsByWalk[w.id]?.[0] ?? null;
     const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
 
-    if (snapUrl) {
+    if (snapUrl || photoUrl) {
       try {
-        const blob = await bakeShareCard(snapUrl, {
+        const blob = await bakeShareCard(snapUrl ?? null, {
           miles, minutes: mins, steps: w.steps, date,
-          intention: w.intention, moodBefore: w.mood_before, moodAfter: w.mood_after, walkType: w.walk_type,
+          moodBefore: w.mood_before, moodAfter: w.mood_after, walkType: w.walk_type,
           weather: w.weather_at_end ? { tempF: w.weather_at_end.tempF, label: w.weather_at_end.label } : null,
-        });
+        }, photoUrl);
         if (blob) {
           const file = new File([blob], `walk-${w.id.slice(0, 8)}.png`, { type: "image/png" });
           if (nav.canShare?.({ files: [file] }) && nav.share) {
@@ -470,7 +471,8 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
   }, [walk?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onShare = async () => {
-    if (!snapshotUrl || !walk) return;
+    const photoUrl = photos[0]?.url ?? null;
+    if ((!snapshotUrl && !photoUrl) || !walk) return;
     haptics.tap();
     try {
       const date = new Date(walk.started_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -478,9 +480,9 @@ function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
       const miles = ((walk.distance_meters ?? 0) * 0.000621371).toFixed(2);
       const blob = await bakeShareCard(snapshotUrl, {
         miles, minutes: mins, steps: walk.steps, date,
-        intention: walk.intention, moodBefore: walk.mood_before, moodAfter: walk.mood_after, walkType: walk.walk_type,
+        moodBefore: walk.mood_before, moodAfter: walk.mood_after, walkType: walk.walk_type,
         weather: walk.weather_at_end ? { tempF: walk.weather_at_end.tempF, label: walk.weather_at_end.label } : null,
-      });
+      }, photoUrl);
       if (!blob) throw new Error("bake failed");
       const file = new File([blob], `walk-${walk.id.slice(0,8)}.png`, { type: "image/png" });
       const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean; share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void> };
