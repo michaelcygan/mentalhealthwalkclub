@@ -11,7 +11,7 @@ interface Props {
 export function QuickSignupSheet({ open, onOpenChange, onSuccess, reason }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl border-t-2 border-forest/20 bg-card pb-8 pt-6">
+      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-t-2 border-forest/20 bg-card pb-8 pt-6">
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-xl">Almost in</SheetTitle>
           <SheetDescription className="text-sm">
