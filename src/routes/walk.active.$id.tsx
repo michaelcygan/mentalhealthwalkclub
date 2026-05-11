@@ -533,27 +533,31 @@ function ActiveWalk() {
           <Footprints className="h-3.5 w-3.5" /> I'm walking — start the room
         </button>
       )}
-      {motion.permissionState === "needed" && (
-        <button
-          onClick={async () => {
-            const r = await motion.request();
-            if (r === "granted") toast("Motion sensor on — counting your steps");
-            else if (r === "denied") toast("Motion blocked — using GPS only");
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition active:scale-95"
-        >
-          <Smartphone className="h-3.5 w-3.5" /> Enable motion sensor for steps
-        </button>
-      )}
     </>
   );
 
-  const hasNudges =
-    (showManualStart && !hasMoved) || motion.permissionState === "needed";
+  const hasNudges = showManualStart && !hasMoved;
+
+  const stepsHint =
+    motionHintShown && !motionDismissed.current ? (
+      <button
+        type="button"
+        onClick={async () => {
+          motionDismissed.current = true;
+          setMotionHintShown(false);
+          const r = await motion.request();
+          if (r === "granted") toast("Motion sensor on — counting your steps");
+          else if (r === "denied") toast("Motion blocked — using GPS only");
+        }}
+        className="text-[10px] italic text-muted-foreground/80 underline decoration-dotted underline-offset-2 transition hover:text-foreground"
+      >
+        also count via motion
+      </button>
+    ) : null;
 
   const utilityRow = (
     <>
-      <WalkNotesPill
+      <WalkJournalComposer
         walkSessionId={session.id}
         elapsed={elapsed}
         notes={walkNotes}
@@ -561,7 +565,11 @@ function ActiveWalk() {
         onChangeNotes={setWalkNotes}
         onChangePhotos={setWalkPhotos}
       />
-      {!(session.walk_type === "audio" || session.guided_track_id) && <AmbientPill />}
+      {!(session.walk_type === "audio" || session.guided_track_id) && (
+        <div className="flex justify-center">
+          <AmbientPill />
+        </div>
+      )}
     </>
   );
 
