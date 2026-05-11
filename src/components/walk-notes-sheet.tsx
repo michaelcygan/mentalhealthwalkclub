@@ -76,7 +76,7 @@ function fmt(s: number) {
 }
 
 /** Compress a captured image to a small JPEG data URL, max 1280px on long edge. */
-async function compressImage(file: File): Promise<WalkPhoto | null> {
+export async function compressImage(file: File): Promise<WalkPhoto | null> {
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return null;
   const { width: w0, height: h0 } = bitmap;
