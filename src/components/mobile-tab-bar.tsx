@@ -42,24 +42,7 @@ export function MobileTabBar() {
 
           {/* Center FAB slot — opens the unified Walk Composer */}
           <li className="relative flex justify-center">
-            <button
-              type="button"
-              onClick={() => { haptics.tap(); composer.open(); }}
-              aria-label="New walk"
-              className="group relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated ring-4 ring-background transition active:scale-95"
-            >
-              {liveCount > 0 && (
-                <span aria-hidden className="pointer-events-none absolute inset-0 -m-0.5 rounded-full pulse-ring" />
-              )}
-              <Footprints className="h-6 w-6" strokeWidth={2.2} />
-              {liveCount > 0 && (
-                <span className="absolute -top-1 right-1.5 flex items-center gap-0.5 rounded-full bg-clay px-1.5 py-0.5 text-[9px] font-semibold leading-none text-background shadow">
-                  <span className="h-1.5 w-1.5 rounded-full bg-background/90" />
-                  {liveCount}
-                </span>
-              )}
-            </button>
-            <span className={`absolute bottom-1 text-[10px] font-medium ${walkActive ? "text-primary" : "text-muted-foreground"}`}>Walk</span>
+            <LongPressFab liveCount={liveCount} composer={composer} walkActive={walkActive} />
           </li>
 
           {/* Right two */}
