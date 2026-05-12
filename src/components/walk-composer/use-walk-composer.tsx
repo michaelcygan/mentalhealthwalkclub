@@ -12,6 +12,7 @@ import { FriendWalkScheduleSheet } from "@/components/friend-walk/schedule-sheet
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
 import { WalkComposerSheet } from "./walk-composer";
 import type { GuidedTrack } from "@/components/guide-picker";
+import { useWalkRuntime } from "@/lib/walk-runtime";
 
 export type WalkType = "solo" | "guided_solo" | "irl_event" | "audio";
 
