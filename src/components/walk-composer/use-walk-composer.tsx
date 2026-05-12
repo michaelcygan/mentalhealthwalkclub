@@ -38,6 +38,7 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
   const { requireAuth } = useAuthPrompt();
   const ambient = useAmbient();
   const navigate = useNavigate();
+  const runtime = useWalkRuntime();
   const beganWalkRef = useRef(false);
 
   // Composer state
