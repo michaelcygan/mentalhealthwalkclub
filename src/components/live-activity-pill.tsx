@@ -29,6 +29,7 @@ export function LiveActivityPill() {
     podcast,
     audioMuted,
     toggleAudioMute,
+    voice,
     endActiveWalk,
   } = useWalkRuntime();
 
