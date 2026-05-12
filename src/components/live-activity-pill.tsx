@@ -1,140 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Radio, Users, Footprints, ChevronUp, Square } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Radio, Users, Footprints, ChevronUp, Square, Play, Pause, Volume2, VolumeX, Headphones } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { haptics } from "@/lib/device";
-
-interface ActiveWalk {
-  walkId: string;
-  startedAt: number;
-  roomTitle: string | null;
-  participantCount: number | null;
-}
+import { useWalkRuntime } from "@/lib/walk-runtime";
 
 const COLLAPSE_KEY = "live-activity-pill:collapsed";
-const MAX_WALK_MS = 6 * 60 * 60 * 1000; // 6h hard ceiling
-const ENDED_EVENT = "mhwc:walk-ended";
 
 /**
  * Bottom-anchored "Dynamic Island" for the active walk. Mounted once at the
  * root. Sits above the MobileTabBar (never under it). Hidden on
- * /walk/active/* and /journal (the journal page is the post-walk destination
- * — if the user landed there the walk is done from a UX standpoint).
+ * /walk/active/* and /journal.
  *
- * Reliability: lazy realtime subscription (only after we confirm an active
- * walk exists), local 'mhwc:walk-ended' window event for instant dismissal,
- * 6h hard ceiling, refetch on focus. No polling.
+ * All state comes from `useWalkRuntime`, which is the global source of truth
+ * (see src/lib/walk-runtime.tsx). The pill renders pause/mute/end inline and
+ * those actions take effect even on routes where the active-walk page is
+ * unmounted, because the runtime owns the audio element and the paused flag.
  */
 export function LiveActivityPill() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const [active, setActive] = useState<ActiveWalk | null>(null);
+  const {
+    active,
+    paused,
+    togglePause,
+    hasInlineAudio,
+    podcast,
+    audioMuted,
+    toggleAudioMute,
+    endActiveWalk,
+  } = useWalkRuntime();
+
   const [elapsed, setElapsed] = useState("0:00");
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem(COLLAPSE_KEY) === "1";
   });
-  const dismissedIds = useRef<Set<string>>(new Set());
-  const inFlight = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!user || inFlight.current) return;
-    inFlight.current = true;
-    try {
-      const { data: w } = await supabase
-        .from("walk_sessions")
-        .select("id, started_at, status")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!w || dismissedIds.current.has(w.id)) {
-        setActive(null);
-        return;
-      }
-      const startedAt = new Date(w.started_at ?? Date.now()).getTime();
-      // 6h hard ceiling — abandon orphan walks (force-closed tab, etc.)
-      if (Date.now() - startedAt > MAX_WALK_MS) {
-        dismissedIds.current.add(w.id);
-        await supabase
-          .from("walk_sessions")
-          .update({ status: "abandoned", ended_at: new Date().toISOString() })
-          .eq("id", w.id)
-          .eq("status", "active");
-        setActive(null);
-        return;
-      }
-      const { data: p } = await supabase
-        .from("audio_room_participants")
-        .select("audio_rooms(title, current_participant_count, status)")
-        .eq("user_id", user.id)
-        .eq("walk_session_id", w.id)
-        .eq("status", "active")
-        .maybeSingle();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const room = (p as any)?.audio_rooms;
-      const inOpenRoom = room && room.status === "open";
-      setActive({
-        walkId: w.id,
-        startedAt,
-        roomTitle: inOpenRoom ? room.title ?? "Walk & Talk" : null,
-        participantCount: inOpenRoom ? room.current_participant_count ?? 1 : null,
-      });
-    } finally {
-      inFlight.current = false;
-    }
-  }, [user]);
-
-  // Initial load + focus refetch. No polling.
-  useEffect(() => {
-    if (!user) {
-      setActive(null);
-      return;
-    }
-    load();
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [user, load]);
-
-  // Lazy realtime: only subscribe once we know the user has an active walk.
-  // Cuts steady-state channel count to ~currently-walking users.
-  useEffect(() => {
-    if (!user || !active) return;
-    const ch = supabase
-      .channel(`live-walk-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "walk_sessions", filter: `user_id=eq.${user.id}` },
-        load,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "audio_room_participants", filter: `user_id=eq.${user.id}` },
-        load,
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [user, active, load]);
-
-  // Local broadcast: active walk page fires `mhwc:walk-ended` so we never wait
-  // on realtime to dismiss.
-  useEffect(() => {
-    const onEnded = (e: Event) => {
-      const id = (e as CustomEvent<{ walkId?: string }>).detail?.walkId;
-      if (id) dismissedIds.current.add(id);
-      setActive(null);
-    };
-    window.addEventListener(ENDED_EVENT, onEnded as EventListener);
-    return () => window.removeEventListener(ENDED_EVENT, onEnded as EventListener);
-  }, []);
-
-  // Tick elapsed
+  // Tick elapsed (freezes when paused, like the active-walk page)
   useEffect(() => {
     if (!active) return;
     const tick = () => {
@@ -144,11 +48,12 @@ export function LiveActivityPill() {
       setElapsed(`${m}:${sec.toString().padStart(2, "0")}`);
     };
     tick();
+    if (paused) return;
     const i = window.setInterval(tick, 1000);
     return () => clearInterval(i);
-  }, [active]);
+  }, [active, paused]);
 
-  // Swipe handling (down = collapse, up = expand)
+  // Swipe to collapse/expand
   const touchStartY = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
@@ -170,9 +75,7 @@ export function LiveActivityPill() {
   };
 
   const onActiveWalkRoute = path.startsWith("/walk/active/");
-  // After end-walk we route to /journal — never show the pill there.
   const onJournal = path.startsWith("/journal");
-
   if (!active || !user || onActiveWalkRoute || onJournal) return null;
 
   const goReturn = () => {
@@ -184,7 +87,36 @@ export function LiveActivityPill() {
     navigate({ to: "/walk/active/$id" as never, params: { id: active.walkId } as never });
   };
 
+  const handleEnd = () => {
+    haptics.tap();
+    // Navigate to active-walk so the user lands in the EndWalkFlow (with
+    // distance/steps/reflection). The runtime's endActiveWalk is reserved for
+    // hard cancellations from the pill on routes where we can't open that flow.
+    navigate({
+      to: "/walk/active/$id" as never,
+      params: { id: active.walkId } as never,
+      search: { end: 1 } as never,
+    });
+  };
+
+  const handleHardEnd = () => {
+    haptics.tap();
+    void endActiveWalk();
+  };
+
+  const handlePauseTap = () => {
+    haptics.tap();
+    togglePause();
+  };
+
+  const handleMuteTap = () => {
+    haptics.tap();
+    toggleAudioMute();
+  };
+
   const inPod = active.roomTitle !== null;
+  // Title shown on the pill: podcast > pod title > generic
+  const title = podcast?.title ?? active.roomTitle ?? "walk in progress";
 
   return (
     <div
@@ -197,7 +129,7 @@ export function LiveActivityPill() {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         className={`pointer-events-auto w-full max-w-md overflow-hidden rounded-3xl border border-forest/40 bg-forest/95 text-cream shadow-elevated backdrop-blur-md transition-all duration-300 ease-out ${
-          collapsed ? "max-h-12" : "max-h-40"
+          collapsed ? "max-h-12" : "max-h-48"
         }`}
         style={{ animation: "live-pill-in 360ms cubic-bezier(0.22, 1, 0.36, 1)" }}
       >
@@ -210,11 +142,14 @@ export function LiveActivityPill() {
           >
             <span className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
+                {!paused && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
+                )}
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-cream" />
               </span>
               <Footprints className="h-3.5 w-3.5" strokeWidth={2.2} />
               <span className="text-[12px] font-medium tabular-nums">{elapsed}</span>
+              {paused && <span className="text-[10px] uppercase tracking-wider opacity-80">paused</span>}
             </span>
             <ChevronUp className="h-4 w-4 opacity-80" />
           </button>
@@ -223,47 +158,69 @@ export function LiveActivityPill() {
             {/* Title row */}
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
+                {!paused && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cream/60" />
+                )}
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-cream" />
               </span>
-              {inPod ? (
+              {podcast ? (
+                <Headphones className="h-4 w-4 opacity-90" strokeWidth={2.2} />
+              ) : inPod ? (
                 <Radio className="h-4 w-4 opacity-90" />
               ) : (
                 <Footprints className="h-4 w-4 opacity-90" strokeWidth={2.2} />
               )}
               <span className="text-[13px] font-medium leading-none tabular-nums">{elapsed}</span>
-              {inPod && (
-                <>
-                  <span className="h-3 w-px bg-cream/30" />
-                  <span className="min-w-0 flex-1 truncate text-[12px] opacity-90">{active.roomTitle}</span>
-                  <span className="flex items-center gap-0.5 text-[11px] opacity-90">
-                    <Users className="h-3 w-3" />
-                    <span className="tabular-nums">{active.participantCount}</span>
-                  </span>
-                </>
+              <span className="h-3 w-px bg-cream/30" />
+              <span className="min-w-0 flex-1 truncate text-[12px] opacity-90">{title}</span>
+              {inPod && active.roomParticipantCount && (
+                <span className="flex items-center gap-0.5 text-[11px] opacity-90">
+                  <Users className="h-3 w-3" />
+                  <span className="tabular-nums">{active.roomParticipantCount}</span>
+                </span>
               )}
-              {!inPod && <span className="flex-1 text-[12px] opacity-80">walk in progress</span>}
             </div>
+
+            {podcast?.host && (
+              <div className="-mt-1 truncate pl-4 text-[11px] opacity-70">{podcast.host}</div>
+            )}
 
             {/* Controls row */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePauseTap}
+                aria-label={paused ? "Resume" : "Pause"}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-cream/15 transition active:scale-[0.94]"
+              >
+                {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              </button>
+
+              {hasInlineAudio && (
+                <button
+                  type="button"
+                  onClick={handleMuteTap}
+                  aria-label={audioMuted ? "Unmute audio" : "Mute audio"}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-cream/15 transition active:scale-[0.94]"
+                >
+                  {audioMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={goReturn}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-cream/15 px-3 py-2 text-[12px] font-medium transition active:scale-[0.97]"
               >
                 <Footprints className="h-3.5 w-3.5" strokeWidth={2.2} />
-                Return to walk
+                Return
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  haptics.tap();
-                  navigate({
-                    to: "/walk/active/$id" as never,
-                    params: { id: active.walkId } as never,
-                    search: { end: 1 } as never,
-                  });
+                onClick={handleEnd}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  handleHardEnd();
                 }}
                 className="flex items-center justify-center gap-1.5 rounded-full border border-cream/30 bg-transparent px-3 py-2 text-[12px] font-medium opacity-90 transition active:scale-[0.97]"
                 aria-label="End walk"

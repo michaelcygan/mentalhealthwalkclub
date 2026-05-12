@@ -16,6 +16,7 @@ import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
 import { WalkComposerProvider } from "@/components/walk-composer/use-walk-composer";
+import { WalkRuntimeProvider } from "@/lib/walk-runtime";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 
 function NotFoundComponent() {
@@ -278,13 +279,15 @@ function RootComponent() {
       <ViewModeProvider>
         <AuthPromptProvider>
           <AmbientPlayerProvider>
-            <WalkComposerProvider>
-              <PaymentTestModeBanner />
-              <AppFrame>
-                <Outlet />
-              </AppFrame>
-              <Toaster />
-            </WalkComposerProvider>
+            <WalkRuntimeProvider>
+              <WalkComposerProvider>
+                <PaymentTestModeBanner />
+                <AppFrame>
+                  <Outlet />
+                </AppFrame>
+                <Toaster />
+              </WalkComposerProvider>
+            </WalkRuntimeProvider>
           </AmbientPlayerProvider>
         </AuthPromptProvider>
       </ViewModeProvider>
