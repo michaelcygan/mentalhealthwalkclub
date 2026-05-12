@@ -97,6 +97,9 @@ interface WalkRuntimeValue {
    * navigation. Safe to call multiple times.
    */
   primePodcast: (meta: { episodeId: string; title: string; host: string | null; durationSeconds: number; audioUrl: string }) => void;
+  /** Music queue (single track or shuffled timed mix). Auto-advances; auto-stops at target duration if set. */
+  music: { label: string; current: MusicTrackRuntime | null; upNext: MusicTrackRuntime | null; targetDurationSeconds: number | null } | null;
+  primeMusicPlaylist: (input: { tracks: MusicTrackRuntime[]; targetDurationSeconds: number | null; label: string }) => void;
 }
 
 const Ctx = createContext<WalkRuntimeValue | null>(null);
