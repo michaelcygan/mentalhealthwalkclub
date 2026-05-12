@@ -1,120 +1,116 @@
+# Curated Podcasts in the Guided Walk Flow
+
+A lightweight podcast layer that slots into the **existing** guided walk flow as a new category. No new players, no new mini-bar — it reuses `GuidedPlayer`, the `live-activity-pill`, and the active-walk screen the app already has. Admin curates feeds; episodes stream from source.
+
 ## Scope
 
-Three small passes. Nothing on Home structure, Groups, or the active walk screen.
+**In:** podcast category in guide picker, episode browse + play, RSS sync (server), admin CRUD for feeds + episodes, attribution + safety disclaimer, mood-tag matching.
 
-1. Walk Composer — light UI polish + copy cuts. Walk creation only.
-2. Center FAB — long-press opens Walk & Talk.
-3. Live Activity pill — Dynamic-Island-style replacement for `NowPlayingBar`, walk-in-progress only.
+**Out:** in-app browser, ElevenLabs TTS, blog RSS, downloads/caching of audio, transcripts, comments, ratings, separate global mini-player.
 
----
+## User flow (from existing composer)
 
-## 1. Walk Composer: polish + remove non-walk rows
+1. User opens composer → picks **Guided** → existing `GuidePicker` opens.
+2. New 5th category chip alongside Ambient / Breath / Voice / Music: **Podcast**.
+3. Sub-row of podcast categories appears (Calm Down, Think Clearly, Feel Connected, Walk With Hope, Body & Brain, Relationships) — horizontally scrollable, same chip style.
+4. List of episodes renders using the **same card component** as guided tracks (cover, title, host = podcast name, duration, mood "fits" pill).
+5. Tap an episode → behaves exactly like choosing a guided track today: walk starts, navigates to active walk, episode streams in `GuidedPlayer`.
+6. During the walk, the existing `live-activity-pill` already covers minimized state. No new player surface needed.
 
-Composer is for starting a walk. Nothing else.
+The user never sees a separate "podcast tab" — it's just one more flavor of guided audio.
 
-Changes (surface only — same flow, same height, same mood/weight/intention rows):
+## Data model (new tables)
 
-- Remove the **Add to home screen** row entirely. Install lives elsewhere; not the composer's job.
-- Remove the italic preface line under the title (`MODE_PREFACE`).
-- Remove the secondary "skip the rest, just walk" link under the CTA.
-- Tighten copy on the remaining rows (see §4).
-- Bump the gap between the mode grid and the friend rows from `space-y-5` to `space-y-6` so the eye groups them apart.
-- Mode tiles, mood cloud, weight bar, intention textarea, footer CTA: unchanged.
+```text
+podcast_feeds
+  id, rss_url (unique), title, publisher, description, image_url,
+  category (calm_down|think_clearly|feel_connected|walk_with_hope|body_brain|relationships),
+  credibility (institutional|academic|public_media|science|lifestyle),
+  is_active, last_synced_at, last_sync_error, created_at, updated_at
 
-Files: `src/components/walk-composer/walk-composer.tsx` (~30 LOC removed, 0 added). Drop the `usePwaInstall` import + `pwa` block.
+podcast_episodes
+  id, feed_id (fk), guid (unique per feed), title, description,
+  audio_url, episode_url, image_url, duration_seconds,
+  published_at, mood_tags text[], walk_fit_score int (1-5),
+  is_active, is_featured, created_at, updated_at
+  index: (feed_id, published_at desc), (is_active, walk_fit_score desc)
+```
 
----
+RLS: SELECT for authenticated where `is_active=true`; admin full access via `has_role(uid, 'admin')`. Service-role bypass for sync job.
 
-## 2. Center FAB: long-press → Walk & Talk
+**Extend `walk_sessions`**: add nullable `podcast_episode_id uuid` (separate from `guided_track_id`) so badges/analytics can distinguish without overloading existing column.
 
-Add a ~480ms long-press handler to the center button in `mobile-tab-bar.tsx` using the same pattern `StartCta` uses on Home.
+## Reusing `GuidedPlayer` (the key simplification)
 
-- **Tap** → `composer.open()` (unchanged)
-- **Long-press** → `haptics.success()` + `composer.open({ type: "audio" })`
+Rather than build a podcast player, normalize an episode into the shape `GuidedPlayer` already accepts. Two options — pick one in implementation:
 
-Composer already accepts `{ type }` and pre-selects the matching tile. No new component.
+- **A (preferred, zero new player):** Treat `guided_tracks` as the play surface. The picker passes a synthesized `GuidedTrack` object (`audio_url` = enclosure, `title`, `host` = publisher, `duration_seconds`, `cover_url`) directly into the existing `onChoose(track)` callback. Persist the real `podcast_episode_id` on the walk session; `guided_track_id` stays null. `GuidedPlayer` already handles `audio_url` playback, mediaSession metadata, mute, progress.
+- B: Add a thin `<PodcastPlayer episodeId={...}/>` that wraps `<audio>` with the same UI shell — only if A leaks abstractions.
 
-Files: `src/components/mobile-tab-bar.tsx` (~15 LOC added).
+A keeps net-new player code at ~0 LOC.
 
----
+## RSS sync
 
-## 3. Live Activity pill — confirms your read
+Server route `src/routes/api/public/hooks/sync-podcast-feeds.ts` (signed, like existing hook routes):
+- For each `is_active=true` feed: fetch RSS, parse with a tiny pure-JS parser (no Node-only deps — use `fast-xml-parser`, Worker-safe), upsert episodes by `(feed_id, guid)`, update `last_synced_at`.
+- Admin "Sync now" button calls a `createServerFn` (admin-gated) that runs the same logic for one feed.
+- pg_cron schedule: every 6h (user can wire up later).
 
-Yes — exactly that. The pill is the **minimized state of the active walk**: when a walk is running and the user navigates away (Home, Journal, Groups), this pill is what lets them keep the walk visible and tap back in. It replaces the current `NowPlayingBar` (which already does this job, just less elegantly).
+CORS / streaming: enclosure URLs are streamed by the browser `<Audio>` element directly from publisher CDN. We never proxy.
 
-Behavior:
+## Admin UI
 
-- Mounted once in `__root.tsx` (replaces `<NowPlayingBar />`).
-- Reads the same data the current bar reads: active `walk_sessions` row + (if present) the user's `audio_room_participants` row for room title and live count.
-- Renders a compact pill ~8px below the status bar, centered, glass background with forest tint, springs in/out.
-- Content: live dot · timer · room title (when in a pod) · 👥 count (when in a pod).
-- **Tap → `navigate({ to: "/walk/active/$id", params: { id } })`** — back to the full walk screen.
-- Hidden on `/walk/active/*` (the on-screen dock owns it there).
-- No "friend walk soon" state. Only the active-walk minimized state.
-- Optional: swipe-up collapses to a tiny bean (icon + timer); tap re-expands. State in `sessionStorage` so it doesn't bounce back.
+New tab in `/admin` next to Music: **Podcasts**.
 
-Net: delete `now-playing-bar.tsx` (121 LOC), add `live-activity-pill.tsx` (~110 LOC).
+- `/admin/podcasts` — feed list: add feed (paste RSS URL → auto-fill title/publisher/image from first sync), category dropdown, credibility dropdown, active toggle, last synced, "Sync now", row click → episode list.
+- `/admin/podcasts/$feedId` — episodes list: title, published date, duration, active toggle, featured toggle, mood-tag multiselect, walk-fit 1–5 slider, source link.
 
-Files: new `src/components/live-activity-pill.tsx`, edit `src/routes/__root.tsx` (one import swap), delete `src/components/now-playing-bar.tsx`.
+Reuse existing admin shell (`src/routes/admin.tsx`) — just add a Link chip.
 
----
+Seed feeds (insert via migration as inactive drafts; admin activates):
+APA Speaking of Psychology, NPR Life Kit, NPR Life Kit: Health, TED Health, Hidden Brain, The Happiness Lab, 10% Happier, Huberman Lab, On Being, the goop podcast.
 
-## 4. Copy pass
+## Picker changes (`guide-picker.tsx`)
 
-User's lines locked in. Remaining sweep stays minimal.
+- Add `{ k: "podcast", label: "Podcast", icon: Podcast }` to `CATS`.
+- When `cat === "podcast"`: render podcast category sub-chips, then fetch episodes from `podcast_episodes` joined on `podcast_feeds` filtered by sub-category, sort by `walk_fit_score desc, published_at desc`, limit 30.
+- Mood "fits" pill: episode matches if `mood_tags` includes the user's `feeling`.
+- Each card shows publisher + small credibility pill (e.g. "APA · Institutional").
+- Footer disclaimer (one line, muted): *"Curated audio for reflection — not a substitute for professional care."*
 
-| Old | New |
-|---|---|
-| "Walking alone still counts." | (removed with preface) |
-| "A gentle voice in your ear." | (removed) |
-| "You'll be matched once you start moving." | (removed) |
-| "Real people, real sidewalks." | (removed) |
-| "spin up a private room — drop the link in your story" | "share a link, walk together" |
-| "pick a time later this week — share the invite now" | "pick a time, send the invite" |
-| "skip the rest, just walk" | (removed) |
-| "Show up however you can." | **"Start today."** |
-| "Eight minutes is enough — your body knows." | **"Start with 5 minutes."** |
-| "Your first walk is the hardest. Five minutes around the block counts." | **"A lap around the block counts."** |
-| "Two days in a row feels good." | "two days in a row." |
-| "Walk in progress · 12:04 on your feet…" | "walking · 12:04" |
-| "tap to return" pill | "return" |
+## Safety / attribution
 
-Rule: cut adjectives, cut hedges, cut em-dash explainers, prefer one short clause.
+- Always show publisher name on card and in player.
+- Always render `episode_url` as a small "source" link in the player overlay.
+- Never modify or rehost audio.
+- Disclaimer line in podcast picker view (above).
 
-Files touched for copy only: `src/components/walk-composer/walk-composer.tsx`, `src/routes/index.tsx` (microState strings), new `live-activity-pill.tsx`.
+## Files
 
----
-
-## Out of scope
-
-- Home, Groups, active walk screen — untouched.
-- Composer structure, rows, defaults, accordions.
-- Live Activity states beyond active walk.
-- Auth, billing, friend-walk creation, guided audio internals.
-
----
-
-## Files touched
-
-**New (1)**
-- `src/components/live-activity-pill.tsx`
+**New (4)**
+- `supabase/migrations/<ts>_podcasts.sql` — tables, RLS, seed feeds, `walk_sessions.podcast_episode_id` column.
+- `src/lib/podcasts.functions.ts` — `syncPodcastFeed`, `listPodcastEpisodes` (admin-gated for sync).
+- `src/routes/api/public/hooks/sync-podcast-feeds.ts` — signed cron endpoint.
+- `src/routes/admin.podcasts.tsx` + `src/routes/admin.podcasts.$feedId.tsx` — admin UI.
 
 **Edited (4)**
-- `src/components/walk-composer/walk-composer.tsx` — drop preface, install row, secondary link; copy cuts; spacing nudge
-- `src/components/mobile-tab-bar.tsx` — long-press → Walk & Talk
-- `src/routes/__root.tsx` — swap `NowPlayingBar` for `LiveActivityPill`
-- `src/routes/index.tsx` — microState copy only
+- `src/components/guide-picker.tsx` — add Podcast category + sub-chips + episode rendering.
+- `src/components/walk-composer/use-walk-composer.tsx` — pass `podcast_episode_id` through to `walk_sessions` insert.
+- `src/components/guided-player.tsx` — accept optional `sourceUrl` + publisher props for the source link (or branch on prop presence; ~5 LOC).
+- `src/routes/admin.tsx` — add Podcasts nav chip.
 
-**Deleted (1)**
-- `src/components/now-playing-bar.tsx`
+**Deps:** `bun add fast-xml-parser` (Worker-safe, pure JS).
 
----
+## Acceptance criteria
 
-## Order
+- Admin adds an RSS URL, clicks Sync, sees episodes populate.
+- User selects Guided → Podcast → category → episode → walk starts → audio plays via existing `GuidedPlayer`.
+- `live-activity-pill` shows the active walk minimized; tap returns to player.
+- Publisher + source link visible in player.
+- Disabling a feed in admin instantly hides its episodes from users.
+- Mood "fits" pill appears when episode tags overlap user feeling.
+- Disclaimer line visible in podcast picker.
 
-1. Composer polish + copy cuts (incl. install row removal).
-2. FAB long-press.
-3. Live Activity pill swap.
-4. Home microState copy sweep.
+## Out of scope (explicit)
 
-Each step ships independently.
+Home, Groups, friend walk, billing, ElevenLabs, blog RSS, in-app browser, episode reviews, downloads, transcripts, custom mini-player.

@@ -80,6 +80,7 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setBusy(true);
     try {
+      const isPodcast = !!track?.podcast_episode_id;
       const { data, error } = await supabase.from("walk_sessions").insert({
         user_id: user.id,
         walk_type: walkType,
@@ -87,10 +88,11 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
         mood_before: feeling || null,
         mood_before_score: moodScore,
         intention: intention || null,
-        guided_track_id: track?.id ?? null,
+        guided_track_id: isPodcast ? null : (track?.id ?? null),
+        podcast_episode_id: isPodcast ? track!.podcast_episode_id! : null,
       }).select("id").single();
       if (error) throw error;
-      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && track?.id);
+      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && (track?.id || isPodcast));
       if (ownsAudio) ambient.stop(400);
       beganWalkRef.current = true;
       setSheetOpen(false);

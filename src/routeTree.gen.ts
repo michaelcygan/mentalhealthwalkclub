@@ -23,9 +23,12 @@ import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as GroupsSlugRouteImport } from './routes/groups.$slug'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMusicRouteImport } from './routes/admin.music'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
+import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
 import { Route as ApiPublicHooksSeedWalksRouteImport } from './routes/api/public/hooks/seed-walks'
 import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
 import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
@@ -102,6 +105,11 @@ const EventsSlugRoute = EventsSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => EventsRoute,
 } as any)
+const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
+  id: '/podcasts',
+  path: '/podcasts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMusicRoute = AdminMusicRouteImport.update({
   id: '/music',
   path: '/music',
@@ -112,10 +120,21 @@ const WalkActiveIdRoute = WalkActiveIdRouteImport.update({
   path: '/walk/active/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
+  id: '/$feedId',
+  path: '/$feedId',
+  getParentRoute: () => AdminPodcastsRoute,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
     path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSyncPodcastFeedsRoute =
+  ApiPublicHooksSyncPodcastFeedsRouteImport.update({
+    id: '/api/public/hooks/sync-podcast-feeds',
+    path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksSeedWalksRoute = ApiPublicHooksSeedWalksRouteImport.update({
@@ -160,16 +179,19 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
+  '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -184,16 +206,19 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
+  '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -209,16 +234,19 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
+  '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/events/new': typeof EventsNewRoute
   '/groups/$slug': typeof GroupsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -235,16 +263,19 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/admin/music'
+    | '/admin/podcasts'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
     | '/w/$code'
+    | '/admin/podcasts/$feedId'
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -259,16 +290,19 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/admin/music'
+    | '/admin/podcasts'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
     | '/w/$code'
+    | '/admin/podcasts/$feedId'
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -283,16 +317,19 @@ export interface FileRouteTypes {
     | '/profile'
     | '/welcome'
     | '/admin/music'
+    | '/admin/podcasts'
     | '/events/$slug'
     | '/events/new'
     | '/groups/$slug'
     | '/w/$code'
+    | '/admin/podcasts/$feedId'
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -314,6 +351,7 @@ export interface RootRouteChildren {
   ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
   ApiPublicHooksSeedWalksRoute: typeof ApiPublicHooksSeedWalksRoute
+  ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -417,6 +455,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsSlugRouteImport
       parentRoute: typeof EventsRoute
     }
+    '/admin/podcasts': {
+      id: '/admin/podcasts'
+      path: '/podcasts'
+      fullPath: '/admin/podcasts'
+      preLoaderRoute: typeof AdminPodcastsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/music': {
       id: '/admin/music'
       path: '/music'
@@ -431,11 +476,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkActiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/podcasts/$feedId': {
+      id: '/admin/podcasts/$feedId'
+      path: '/$feedId'
+      fullPath: '/admin/podcasts/$feedId'
+      preLoaderRoute: typeof AdminPodcastsFeedIdRouteImport
+      parentRoute: typeof AdminPodcastsRoute
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
       fullPath: '/api/public/payments/webhook'
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sync-podcast-feeds': {
+      id: '/api/public/hooks/sync-podcast-feeds'
+      path: '/api/public/hooks/sync-podcast-feeds'
+      fullPath: '/api/public/hooks/sync-podcast-feeds'
+      preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/seed-walks': {
@@ -476,12 +535,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminPodcastsRouteChildren {
+  AdminPodcastsFeedIdRoute: typeof AdminPodcastsFeedIdRoute
+}
+
+const AdminPodcastsRouteChildren: AdminPodcastsRouteChildren = {
+  AdminPodcastsFeedIdRoute: AdminPodcastsFeedIdRoute,
+}
+
+const AdminPodcastsRouteWithChildren = AdminPodcastsRoute._addFileChildren(
+  AdminPodcastsRouteChildren,
+)
+
 interface AdminRouteChildren {
   AdminMusicRoute: typeof AdminMusicRoute
+  AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminMusicRoute: AdminMusicRoute,
+  AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -528,6 +601,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
   ApiPublicHooksSeedWalksRoute: ApiPublicHooksSeedWalksRoute,
+  ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport

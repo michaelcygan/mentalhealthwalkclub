@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientPad } from "@/lib/audio/ambient-pad";
-import { Play, Pause, Sparkles, Wind, Mic, Music } from "lucide-react";
+import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface GuidedTrack {
@@ -15,6 +15,10 @@ export interface GuidedTrack {
   mood_tags: string[];
   category: string;
   generative_key: string | null;
+  /** Set when this "track" is actually a podcast episode. */
+  podcast_episode_id?: string;
+  /** Original publisher episode page URL (for attribution). */
+  episode_url?: string | null;
 }
 
 const CATS: Array<{ k: string; label: string; icon: typeof Sparkles }> = [
@@ -22,7 +26,30 @@ const CATS: Array<{ k: string; label: string; icon: typeof Sparkles }> = [
   { k: "breath", label: "Breath", icon: Wind },
   { k: "voice", label: "Voice", icon: Mic },
   { k: "music", label: "Music", icon: Music },
+  { k: "podcast", label: "Podcast", icon: Headphones },
 ];
+
+const POD_CATS: Array<{ k: string; label: string }> = [
+  { k: "calm_down", label: "Calm Down" },
+  { k: "think_clearly", label: "Think Clearly" },
+  { k: "feel_connected", label: "Feel Connected" },
+  { k: "walk_with_hope", label: "Walk With Hope" },
+  { k: "body_brain", label: "Body & Brain" },
+  { k: "relationships", label: "Relationships" },
+];
+
+interface PodcastEpisode {
+  id: string;
+  title: string;
+  description: string | null;
+  audio_url: string;
+  episode_url: string | null;
+  image_url: string | null;
+  duration_seconds: number;
+  mood_tags: string[];
+  walk_fit_score: number;
+  feed: { title: string; publisher: string | null; credibility: string; image_url: string | null } | null;
+}
 
 interface Props {
   mood: string | null;
@@ -33,6 +60,8 @@ interface Props {
 export function GuidePicker({ mood, onChoose, onSkip }: Props) {
   const [tracks, setTracks] = useState<GuidedTrack[]>([]);
   const [cat, setCat] = useState<string>("ambient");
+  const [podCat, setPodCat] = useState<string>("calm_down");
+  const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const padRef = useRef<AmbientPad | null>(null);
   const stopRef = useRef<number | null>(null);
@@ -42,6 +71,20 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
       .then(({ data }) => setTracks((data ?? []) as GuidedTrack[]));
     return () => { padRef.current?.stop(); if (stopRef.current) clearTimeout(stopRef.current); };
   }, []);
+
+  useEffect(() => {
+    if (cat !== "podcast") return;
+    supabase
+      .from("podcast_episodes")
+      .select("id,title,description,audio_url,episode_url,image_url,duration_seconds,mood_tags,walk_fit_score,feed:podcast_feeds!inner(title,publisher,credibility,image_url,category,is_active)")
+      .eq("is_active", true)
+      .eq("feed.is_active", true)
+      .eq("feed.category", podCat)
+      .order("walk_fit_score", { ascending: false })
+      .order("published_at", { ascending: false })
+      .limit(30)
+      .then(({ data }) => setEpisodes((data ?? []) as unknown as PodcastEpisode[]));
+  }, [cat, podCat]);
 
   const filtered = tracks
     .filter((t) => t.category === cat)
@@ -71,6 +114,23 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
     }, 15000);
   };
 
+  const chooseEpisode = (e: PodcastEpisode) => {
+    onChoose({
+      id: e.id,
+      title: e.title,
+      host: e.feed?.publisher ?? e.feed?.title ?? null,
+      host_role: e.feed?.title ?? null,
+      duration_seconds: e.duration_seconds,
+      audio_url: e.audio_url,
+      cover_url: e.image_url ?? e.feed?.image_url ?? null,
+      mood_tags: e.mood_tags,
+      category: "podcast",
+      generative_key: null,
+      podcast_episode_id: e.id,
+      episode_url: e.episode_url,
+    });
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -86,7 +146,47 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {cat === "podcast" ? (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {POD_CATS.map(({ k, label }) => (
+              <button key={k} onClick={() => setPodCat(k)} className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1 text-[11px] transition ${podCat === k ? "border-forest bg-accent/60 text-forest" : "border-border bg-card text-muted-foreground hover:border-forest/40"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {episodes.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">No episodes here yet — try another category.</div>
+          ) : (
+            <div className="grid gap-3">
+              {episodes.map((e) => {
+                const matches = mood ? e.mood_tags.includes(mood) : false;
+                return (
+                  <button key={e.id} onClick={() => chooseEpisode(e)} className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left transition hover:-translate-y-px hover:border-forest/50 hover:shadow-soft">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl gradient-forest">
+                      {(e.image_url ?? e.feed?.image_url) && <img src={(e.image_url ?? e.feed?.image_url) as string} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="truncate font-serif text-base leading-tight">{e.title}</div>
+                        {matches && <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-forest">fits</span>}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {e.feed?.publisher ?? e.feed?.title ?? "Podcast"} · {Math.round(e.duration_seconds / 60) || "—"} min
+                        {e.feed?.credibility && <span className="ml-1 text-muted-foreground/70">· {e.feed.credibility.replace(/_/g, " ")}</span>}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-center text-[10px] italic text-muted-foreground">
+            Curated audio for reflection — not a substitute for professional care.
+          </p>
+        </>
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">More {cat} guides coming soon. Try ambient for now.</div>
       ) : (
         <div className="grid gap-3">

@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Music, ChevronLeft } from "lucide-react";
+import { Music, ChevronLeft, Headphones } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -29,6 +29,12 @@ function AdminLayout() {
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${path.startsWith("/admin/music") ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:bg-accent/40"}`}
         >
           <Music className="h-3.5 w-3.5" /> Music
+        </Link>
+        <Link
+          to="/admin/podcasts"
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${path.startsWith("/admin/podcasts") ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:bg-accent/40"}`}
+        >
+          <Headphones className="h-3.5 w-3.5" /> Podcasts
         </Link>
       </nav>
       <Outlet />
