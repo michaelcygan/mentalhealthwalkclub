@@ -138,6 +138,11 @@ export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = fa
       {!started && (
         <p className="mt-2 text-center text-[11px] italic text-muted-foreground">Tap to begin — your guide will fade in.</p>
       )}
+      {sourceUrl && (
+        <a href={sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">
+          <ExternalLink className="h-3 w-3" /> source
+        </a>
+      )}
     </div>
   );
 }
