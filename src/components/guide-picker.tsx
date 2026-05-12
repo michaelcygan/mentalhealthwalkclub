@@ -132,14 +132,25 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
           >
             <ChevronLeft className="h-3.5 w-3.5" /> All shows
           </button>
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary/60">
+          <div className="flex gap-3 rounded-2xl border border-border bg-gradient-to-br from-card to-secondary/30 p-3 shadow-soft">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary/60 shadow-sm ring-1 ring-border/60">
               {activeFeed.image_url && <img src={activeFeed.image_url} alt="" className="h-full w-full object-cover" />}
             </div>
-            <div className="min-w-0">
-              <div className="truncate font-serif text-base leading-tight">{activeFeed.title}</div>
-              <div className="truncate text-xs text-muted-foreground">{activeFeed.publisher ?? "Podcast"}</div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-serif text-lg leading-tight">{activeFeed.title}</div>
+              <div className="mt-0.5 truncate text-[11px] uppercase tracking-wider text-forest/80">
+                {activeFeed.publisher ?? "Podcast"}
+                {episodes && episodes.length > 0 ? ` · ${episodes.length} episode${episodes.length === 1 ? "" : "s"}` : ""}
+              </div>
+              {activeFeed.description && (
+                <p className="mt-1.5 line-clamp-2 text-[12px] leading-snug text-muted-foreground">
+                  {activeFeed.description}
+                </p>
+              )}
             </div>
+          </div>
+          <div className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Episodes
           </div>
 
           {episodes === null ? (
