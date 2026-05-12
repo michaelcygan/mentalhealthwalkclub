@@ -1,21 +1,62 @@
 /**
  * Guided walk module — wraps the guided audio player.
+ * Supports both `guided_tracks` (trackId) and `podcast_episodes` (podcastEpisodeId).
  */
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { GuidedPlayer } from "@/components/guided-player";
 import { SoloModule } from "./solo-module";
 
 interface Props {
-  trackId: string;
+  trackId: string | null;
+  podcastEpisodeId?: string | null;
   paused: boolean;
   intention: string | null;
   savedPrompts: string[];
 }
 
-export function GuidedModule({ trackId, paused, intention, savedPrompts }: Props) {
+interface EpisodeRow {
+  id: string;
+  title: string;
+  audio_url: string;
+  episode_url: string | null;
+  duration_seconds: number;
+  feed: { title: string; publisher: string | null } | null;
+}
+
+export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, savedPrompts }: Props) {
+  const [episode, setEpisode] = useState<EpisodeRow | null>(null);
+
+  useEffect(() => {
+    if (!podcastEpisodeId) return;
+    supabase
+      .from("podcast_episodes")
+      .select("id,title,audio_url,episode_url,duration_seconds,feed:podcast_feeds(title,publisher)")
+      .eq("id", podcastEpisodeId)
+      .maybeSingle()
+      .then(({ data }) => setEpisode(data as unknown as EpisodeRow | null));
+  }, [podcastEpisodeId]);
+
   return (
     <section className="space-y-3">
       <SoloModule intention={intention} savedPrompts={savedPrompts} />
-      <GuidedPlayer trackId={trackId} paused={paused} />
+      {trackId ? (
+        <GuidedPlayer trackId={trackId} paused={paused} />
+      ) : episode ? (
+        <GuidedPlayer
+          paused={paused}
+          sourceUrl={episode.episode_url}
+          track={{
+            id: episode.id,
+            title: episode.title,
+            host: episode.feed?.publisher ?? episode.feed?.title ?? null,
+            host_role: episode.feed?.title ?? null,
+            audio_url: episode.audio_url,
+            generative_key: null,
+            duration_seconds: episode.duration_seconds,
+          }}
+        />
+      ) : null}
     </section>
   );
 }

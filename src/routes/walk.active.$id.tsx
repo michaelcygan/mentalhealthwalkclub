@@ -43,6 +43,7 @@ interface Session {
   started_at: string;
   status: string;
   guided_track_id: string | null;
+  podcast_episode_id: string | null;
   audio_room_id: string | null;
   group_id: string | null;
   privacy: string;
@@ -118,7 +119,7 @@ function ActiveWalk() {
   useEffect(() => {
     supabase
       .from("walk_sessions")
-      .select("id,walk_type,mood_before,mood_before_score,intention,started_at,status,guided_track_id,audio_room_id,group_id,privacy,share_map")
+      .select("id,walk_type,mood_before,mood_before_score,intention,started_at,status,guided_track_id,podcast_episode_id,audio_room_id,group_id,privacy,share_map")
       .eq("id", id)
       .single()
       .then(async ({ data }) => {
@@ -380,7 +381,7 @@ function ActiveWalk() {
   const ambient = useAmbient();
   useEffect(() => {
     if (!session) return;
-    const ownsAudio = session.walk_type === "audio" || !!session.guided_track_id;
+    const ownsAudio = session.walk_type === "audio" || !!session.guided_track_id || !!session.podcast_episode_id;
     if (ownsAudio) ambient.stop(300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
@@ -485,7 +486,7 @@ function ActiveWalk() {
   const format: WalkFormat =
     session.walk_type === "audio"
       ? "audio"
-      : session.guided_track_id
+      : (session.guided_track_id || session.podcast_episode_id)
         ? "guided"
         : friendRoom
           ? "friend"
@@ -506,9 +507,10 @@ function ActiveWalk() {
         currentUserId={user?.id ?? null}
         onInvite={() => setFriendShareOpen(true)}
       />
-    ) : format === "guided" && session.guided_track_id ? (
+    ) : format === "guided" && (session.guided_track_id || session.podcast_episode_id) ? (
       <GuidedModule
         trackId={session.guided_track_id}
+        podcastEpisodeId={session.podcast_episode_id}
         paused={paused}
         intention={session.intention}
         savedPrompts={savedPrompts}
@@ -565,7 +567,7 @@ function ActiveWalk() {
         onChangeNotes={setWalkNotes}
         onChangePhotos={setWalkPhotos}
       />
-      {!(session.walk_type === "audio" || session.guided_track_id) && (
+      {!(session.walk_type === "audio" || session.guided_track_id || session.podcast_episode_id) && (
         <div className="flex justify-center">
           <AmbientPill />
         </div>
