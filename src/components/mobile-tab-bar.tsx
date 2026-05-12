@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Footprints, Users, Calendar, BookHeart, Home } from "lucide-react";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
