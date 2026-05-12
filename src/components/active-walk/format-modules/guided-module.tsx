@@ -13,6 +13,8 @@ interface Props {
   paused: boolean;
   intention: string | null;
   savedPrompts: string[];
+  /** When set, render a small "Change episode" link below the podcast player. */
+  onChangePodcast?: () => void;
 }
 
 interface EpisodeRow {
@@ -24,11 +26,11 @@ interface EpisodeRow {
   feed: { title: string; publisher: string | null } | null;
 }
 
-export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, savedPrompts }: Props) {
+export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, savedPrompts, onChangePodcast }: Props) {
   const [episode, setEpisode] = useState<EpisodeRow | null>(null);
 
   useEffect(() => {
-    if (!podcastEpisodeId) return;
+    if (!podcastEpisodeId) { setEpisode(null); return; }
     supabase
       .from("podcast_episodes")
       .select("id,title,audio_url,episode_url,duration_seconds,feed:podcast_feeds(title,publisher)")
@@ -43,19 +45,32 @@ export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, sav
       {trackId ? (
         <GuidedPlayer trackId={trackId} paused={paused} />
       ) : episode ? (
-        <GuidedPlayer
-          paused={paused}
-          sourceUrl={episode.episode_url}
-          track={{
-            id: episode.id,
-            title: episode.title,
-            host: episode.feed?.publisher ?? episode.feed?.title ?? null,
-            host_role: episode.feed?.title ?? null,
-            audio_url: episode.audio_url,
-            generative_key: null,
-            duration_seconds: episode.duration_seconds,
-          }}
-        />
+        <>
+          <GuidedPlayer
+            paused={paused}
+            sourceUrl={episode.episode_url}
+            track={{
+              id: episode.id,
+              title: episode.title,
+              host: episode.feed?.publisher ?? episode.feed?.title ?? null,
+              host_role: episode.feed?.title ?? null,
+              audio_url: episode.audio_url,
+              generative_key: null,
+              duration_seconds: episode.duration_seconds,
+            }}
+          />
+          {onChangePodcast && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={onChangePodcast}
+                className="text-[11px] italic text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+              >
+                Change episode
+              </button>
+            </div>
+          )}
+        </>
       ) : null}
     </section>
   );

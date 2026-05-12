@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Footprints } from "lucide-react";
+import { Footprints, Headphones } from "lucide-react";
 import { toast } from "sonner";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
@@ -29,6 +29,7 @@ import { WalkTalkModule } from "@/components/active-walk/format-modules/walk-tal
 import { GuidedModule } from "@/components/active-walk/format-modules/guided-module";
 import { LocalModule } from "@/components/active-walk/format-modules/local-module";
 import { LoadingScreen } from "@/components/loading-screen";
+import { PodcastPickerSheet } from "@/components/active-walk/podcast-picker-sheet";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
@@ -115,6 +116,7 @@ function ActiveWalk() {
   const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
   const [friendShareOpen, setFriendShareOpen] = useState(false);
   const [shareMap, setShareMap] = useState(false);
+  const [podcastSheetOpen, setPodcastSheetOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -514,6 +516,7 @@ function ActiveWalk() {
         paused={paused}
         intention={session.intention}
         savedPrompts={savedPrompts}
+        onChangePodcast={session.podcast_episode_id ? () => setPodcastSheetOpen(true) : undefined}
       />
     ) : format === "local" ? (
       <LocalModule intention={session.intention} savedPrompts={savedPrompts} />
@@ -568,7 +571,14 @@ function ActiveWalk() {
         onChangePhotos={setWalkPhotos}
       />
       {!(session.walk_type === "audio" || session.guided_track_id || session.podcast_episode_id) && (
-        <div className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPodcastSheetOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition hover:border-forest/40"
+          >
+            <Headphones className="h-3.5 w-3.5 text-forest" /> Add a podcast
+          </button>
           <AmbientPill />
         </div>
       )}
@@ -626,6 +636,15 @@ function ActiveWalk() {
           shareCode={friendRoom.share_code}
         />
       )}
+      <PodcastPickerSheet
+        open={podcastSheetOpen}
+        onOpenChange={setPodcastSheetOpen}
+        walkSessionId={session.id}
+        mood={session.mood_before}
+        onPicked={(episodeId) =>
+          setSession((s) => (s ? { ...s, podcast_episode_id: episodeId, guided_track_id: null } : s))
+        }
+      />
     </>
   );
 }

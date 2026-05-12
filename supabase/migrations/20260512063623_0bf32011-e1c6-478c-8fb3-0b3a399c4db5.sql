@@ -1,0 +1,1 @@
+DELETE FROM public.podcast_feeds WHERE last_sync_error IS NOT NULL;

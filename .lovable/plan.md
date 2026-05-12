@@ -1,116 +1,52 @@
-# Curated Podcasts in the Guided Walk Flow
+# Make podcasts a first-class part of the Guided Walk
 
-A lightweight podcast layer that slots into the **existing** guided walk flow as a new category. No new players, no new mini-bar — it reuses `GuidedPlayer`, the `live-activity-pill`, and the active-walk screen the app already has. Admin curates feeds; episodes stream from source.
+The plumbing from the previous pass is solid (tables, RSS sync, admin pages, GuidePicker integration). What's missing is **discoverability, content, and in-walk control**. This plan fixes all three with small, surgical changes — no new primitives.
 
-## Scope
+## Why the user can't find it today
+1. Podcasts are the 5th chip inside GuidePicker — only visible *after* tapping "Guided" → Proceed → scrolling a chip row. A 60-year-old will never get there.
+2. The 9 recommended feeds were never inserted, so even if found, the list is empty.
+3. The active walk page has no way to start, switch, or browse a podcast mid-walk.
 
-**In:** podcast category in guide picker, episode browse + play, RSS sync (server), admin CRUD for feeds + episodes, attribution + safety disclaimer, mood-tag matching.
+## Changes
 
-**Out:** in-app browser, ElevenLabs TTS, blog RSS, downloads/caching of audio, transcripts, comments, ratings, separate global mini-player.
+### 1. Composer: Guided opens a 2-tab picker (Voice vs Podcast)
+Drop the 5-chip row inside `GuidePicker`. Replace with **two prominent tabs at the top**: `Voice guide` and `Podcast`. Voice tab shows the existing 4 categories (ambient/breath/voice/music). Podcast tab shows the 6 mood sub-categories.
 
-## User flow (from existing composer)
+This keeps the composer as simple as before (still just 3 tiles: Solo / Walk & Talk / Guided) — but once inside Guided, podcasts have equal visual weight to the original guides instead of being a hidden 5th chip.
 
-1. User opens composer → picks **Guided** → existing `GuidePicker` opens.
-2. New 5th category chip alongside Ambient / Breath / Voice / Music: **Podcast**.
-3. Sub-row of podcast categories appears (Calm Down, Think Clearly, Feel Connected, Walk With Hope, Body & Brain, Relationships) — horizontally scrollable, same chip style.
-4. List of episodes renders using the **same card component** as guided tracks (cover, title, host = podcast name, duration, mood "fits" pill).
-5. Tap an episode → behaves exactly like choosing a guided track today: walk starts, navigates to active walk, episode streams in `GuidedPlayer`.
-6. During the walk, the existing `live-activity-pill` already covers minimized state. No new player surface needed.
+`src/components/guide-picker.tsx` — restructure: top tabs `voice | podcast`, then content. Mood-fits pill and attribution stay as today.
 
-The user never sees a separate "podcast tab" — it's just one more flavor of guided audio.
+### 2. Seed the 9 recommended feeds
+A migration inserts the curated feeds (APA Speaking of Psychology, NPR Life Kit, TED Health, Hidden Brain, The Happiness Lab, 10% Happier, Huberman Lab, On Being, the goop podcast) into `podcast_feeds` with `is_active = true` and the right category mapping. Admin can deactivate any in `/admin/podcasts` if they don't like one.
 
-## Data model (new tables)
+After insert, trigger a one-time sync so episodes populate immediately (call the existing `/api/public/hooks/sync-podcast-feeds` endpoint, or run `syncAllActiveFeeds` from the migration via a follow-up server fn the first time `/admin/podcasts` loads if any feed has `last_synced_at IS NULL`).
 
-```text
-podcast_feeds
-  id, rss_url (unique), title, publisher, description, image_url,
-  category (calm_down|think_clearly|feel_connected|walk_with_hope|body_brain|relationships),
-  credibility (institutional|academic|public_media|science|lifestyle),
-  is_active, last_synced_at, last_sync_error, created_at, updated_at
+### 3. Active walk page: podcast affordance
+On `/walk/active/$id`, when the walk has no audio attached (`!guided_track_id && !podcast_episode_id && walk_type !== 'audio'`), show a small **"+ Add a podcast"** chip in the action bar. Tapping opens a lightweight bottom sheet with the same Podcast tab UI, and on selection updates `walk_sessions.podcast_episode_id` and re-renders `GuidedModule`.
 
-podcast_episodes
-  id, feed_id (fk), guid (unique per feed), title, description,
-  audio_url, episode_url, image_url, duration_seconds,
-  published_at, mood_tags text[], walk_fit_score int (1-5),
-  is_active, is_featured, created_at, updated_at
-  index: (feed_id, published_at desc), (is_active, walk_fit_score desc)
-```
+When a podcast *is* playing, the existing `GuidedModule` already renders the player — we'll add a tiny "Change episode" link below the player title that re-opens the same sheet.
 
-RLS: SELECT for authenticated where `is_active=true`; admin full access via `has_role(uid, 'admin')`. Service-role bypass for sync job.
+`src/routes/walk.active.$id.tsx` + a new small `src/components/active-walk/podcast-picker-sheet.tsx` that wraps the podcast portion of `GuidePicker`.
 
-**Extend `walk_sessions`**: add nullable `podcast_episode_id uuid` (separate from `guided_track_id`) so badges/analytics can distinguish without overloading existing column.
+### 4. Copy + intuitive cues (small)
+- In the composer's "Guided" tile body, change `"A voice in your ear"` → `"A voice or a podcast"`.
+- In the Voice/Podcast tab header inside GuidePicker, add one line of subcopy when Podcast is selected: *"Curated for reflection while you walk."*
 
-## Reusing `GuidedPlayer` (the key simplification)
-
-Rather than build a podcast player, normalize an episode into the shape `GuidedPlayer` already accepts. Two options — pick one in implementation:
-
-- **A (preferred, zero new player):** Treat `guided_tracks` as the play surface. The picker passes a synthesized `GuidedTrack` object (`audio_url` = enclosure, `title`, `host` = publisher, `duration_seconds`, `cover_url`) directly into the existing `onChoose(track)` callback. Persist the real `podcast_episode_id` on the walk session; `guided_track_id` stays null. `GuidedPlayer` already handles `audio_url` playback, mediaSession metadata, mute, progress.
-- B: Add a thin `<PodcastPlayer episodeId={...}/>` that wraps `<audio>` with the same UI shell — only if A leaks abstractions.
-
-A keeps net-new player code at ~0 LOC.
-
-## RSS sync
-
-Server route `src/routes/api/public/hooks/sync-podcast-feeds.ts` (signed, like existing hook routes):
-- For each `is_active=true` feed: fetch RSS, parse with a tiny pure-JS parser (no Node-only deps — use `fast-xml-parser`, Worker-safe), upsert episodes by `(feed_id, guid)`, update `last_synced_at`.
-- Admin "Sync now" button calls a `createServerFn` (admin-gated) that runs the same logic for one feed.
-- pg_cron schedule: every 6h (user can wire up later).
-
-CORS / streaming: enclosure URLs are streamed by the browser `<Audio>` element directly from publisher CDN. We never proxy.
-
-## Admin UI
-
-New tab in `/admin` next to Music: **Podcasts**.
-
-- `/admin/podcasts` — feed list: add feed (paste RSS URL → auto-fill title/publisher/image from first sync), category dropdown, credibility dropdown, active toggle, last synced, "Sync now", row click → episode list.
-- `/admin/podcasts/$feedId` — episodes list: title, published date, duration, active toggle, featured toggle, mood-tag multiselect, walk-fit 1–5 slider, source link.
-
-Reuse existing admin shell (`src/routes/admin.tsx`) — just add a Link chip.
-
-Seed feeds (insert via migration as inactive drafts; admin activates):
-APA Speaking of Psychology, NPR Life Kit, NPR Life Kit: Health, TED Health, Hidden Brain, The Happiness Lab, 10% Happier, Huberman Lab, On Being, the goop podcast.
-
-## Picker changes (`guide-picker.tsx`)
-
-- Add `{ k: "podcast", label: "Podcast", icon: Podcast }` to `CATS`.
-- When `cat === "podcast"`: render podcast category sub-chips, then fetch episodes from `podcast_episodes` joined on `podcast_feeds` filtered by sub-category, sort by `walk_fit_score desc, published_at desc`, limit 30.
-- Mood "fits" pill: episode matches if `mood_tags` includes the user's `feeling`.
-- Each card shows publisher + small credibility pill (e.g. "APA · Institutional").
-- Footer disclaimer (one line, muted): *"Curated audio for reflection — not a substitute for professional care."*
-
-## Safety / attribution
-
-- Always show publisher name on card and in player.
-- Always render `episode_url` as a small "source" link in the player overlay.
-- Never modify or rehost audio.
-- Disclaimer line in podcast picker view (above).
+## Out of scope (intentionally)
+- No changes to home, journal, groups, or friend walk flows.
+- No new player — still `GuidedPlayer`.
+- No playlist/queue, no resume-across-walks, no downloads.
+- No mini-player outside the active walk page (the Live Activity pill already covers minimize-state).
 
 ## Files
+- **Edit** `src/components/guide-picker.tsx` (Voice/Podcast tabs)
+- **Edit** `src/components/walk-composer/walk-composer.tsx` (one-line copy)
+- **Edit** `src/routes/walk.active.$id.tsx` (mount podcast sheet + chip)
+- **New** `src/components/active-walk/podcast-picker-sheet.tsx`
+- **New** migration: seed 9 feeds + small server fn to update an active walk's `podcast_episode_id`
 
-**New (4)**
-- `supabase/migrations/<ts>_podcasts.sql` — tables, RLS, seed feeds, `walk_sessions.podcast_episode_id` column.
-- `src/lib/podcasts.functions.ts` — `syncPodcastFeed`, `listPodcastEpisodes` (admin-gated for sync).
-- `src/routes/api/public/hooks/sync-podcast-feeds.ts` — signed cron endpoint.
-- `src/routes/admin.podcasts.tsx` + `src/routes/admin.podcasts.$feedId.tsx` — admin UI.
-
-**Edited (4)**
-- `src/components/guide-picker.tsx` — add Podcast category + sub-chips + episode rendering.
-- `src/components/walk-composer/use-walk-composer.tsx` — pass `podcast_episode_id` through to `walk_sessions` insert.
-- `src/components/guided-player.tsx` — accept optional `sourceUrl` + publisher props for the source link (or branch on prop presence; ~5 LOC).
-- `src/routes/admin.tsx` — add Podcasts nav chip.
-
-**Deps:** `bun add fast-xml-parser` (Worker-safe, pure JS).
-
-## Acceptance criteria
-
-- Admin adds an RSS URL, clicks Sync, sees episodes populate.
-- User selects Guided → Podcast → category → episode → walk starts → audio plays via existing `GuidedPlayer`.
-- `live-activity-pill` shows the active walk minimized; tap returns to player.
-- Publisher + source link visible in player.
-- Disabling a feed in admin instantly hides its episodes from users.
-- Mood "fits" pill appears when episode tags overlap user feeling.
-- Disclaimer line visible in podcast picker.
-
-## Out of scope (explicit)
-
-Home, Groups, friend walk, billing, ElevenLabs, blog RSS, in-app browser, episode reviews, downloads, transcripts, custom mini-player.
+## Acceptance
+- Tapping Guided → instantly see Voice/Podcast as equal tabs.
+- Podcast tab is non-empty on first load (seeded + auto-synced).
+- On an active solo/guided walk with no audio, an "Add a podcast" chip is visible.
+- Tapping it picks an episode, the player appears in-walk, attribution is shown.

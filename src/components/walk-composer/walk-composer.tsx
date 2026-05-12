@@ -32,7 +32,7 @@ type Props = {
 const MODES: Array<{ t: WalkType; icon: typeof Footprints; label: string; body: string }> = [
   { t: "solo", icon: Footprints, label: "Solo", body: "Just me & the steps" },
   { t: "audio", icon: Headphones, label: "Walk & Talk", body: "Match into a live pod" },
-  { t: "guided_solo", icon: Sparkles, label: "Guided", body: "A voice in your ear" },
+  { t: "guided_solo", icon: Sparkles, label: "Guided", body: "A voice or a podcast" },
 ];
 
 export function WalkComposerSheet({
