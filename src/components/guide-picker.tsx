@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientPad } from "@/lib/audio/ambient-pad";
-import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones } from "lucide-react";
+import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface GuidedTrack {
