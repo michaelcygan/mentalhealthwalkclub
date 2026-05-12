@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientPad } from "@/lib/audio/ambient-pad";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, ExternalLink } from "lucide-react";
 
 interface Track {
   id: string; title: string; host: string | null; host_role: string | null;
   audio_url: string | null; generative_key: string | null; duration_seconds: number;
 }
 
-export function GuidedPlayer({ trackId, paused = false }: { trackId: string; paused?: boolean }) {
-  const [track, setTrack] = useState<Track | null>(null);
+interface Props {
+  trackId?: string;
+  track?: Track;
+  sourceUrl?: string | null;
+  paused?: boolean;
+}
+
+export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = false }: Props) {
+  const [track, setTrack] = useState<Track | null>(trackProp ?? null);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -19,9 +26,12 @@ export function GuidedPlayer({ trackId, paused = false }: { trackId: string; pau
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    if (trackProp) { setTrack(trackProp); return; }
+    if (!trackId) return;
     supabase.from("guided_tracks").select("id,title,host,host_role,audio_url,generative_key,duration_seconds").eq("id", trackId).maybeSingle()
       .then(({ data }) => setTrack(data as Track | null));
-  }, [trackId]);
+  }, [trackId, trackProp]);
+
 
   // tick position
   useEffect(() => {
