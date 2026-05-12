@@ -306,10 +306,23 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  // ---- Voice controller registration (Walk & Talk / friend room) ----
+  const [voice, setVoice] = useState<VoiceController | null>(null);
+  const registerVoice = useCallback((c: VoiceController | null) => {
+    setVoice(c);
+  }, []);
+
   const endActiveWalk = useCallback(async () => {
     if (!active) return;
     const id = active.walkId;
     dismissedIds.current.add(id);
+    // Best-effort leave any live voice room before ending
+    try {
+      await voice?.leaveRoom();
+    } catch {
+      /* noop */
+    }
+    setVoice(null);
     setActive(null);
     setPaused(false);
     teardownAudio();
@@ -321,7 +334,12 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(ENDED_EVENT, { detail: { walkId: id } }));
     }
-  }, [active]);
+  }, [active, voice]);
+
+  // Clear voice registration when active walk ends/changes
+  useEffect(() => {
+    if (!active) setVoice(null);
+  }, [active?.walkId]);
 
   const value = useMemo<WalkRuntimeValue>(
     () => ({
@@ -335,10 +353,12 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       toggleAudioMute,
       audioPlaying,
       audioPosition,
+      voice,
+      registerVoice,
       endActiveWalk,
       refresh: load,
     }),
-    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, endActiveWalk, load],
+    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
