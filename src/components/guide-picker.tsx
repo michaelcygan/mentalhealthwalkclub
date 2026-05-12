@@ -67,7 +67,6 @@ interface Props {
 
 /** Reusable podcast browser — used inside the composer and the in-walk sheet. */
 export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoose: (t: GuidedTrack) => void }) {
-  const [podCat, setPodCat] = useState<string>("calm_down");
   const [feeds, setFeeds] = useState<PodcastFeed[] | null>(null);
   const [activeFeed, setActiveFeed] = useState<PodcastFeed | null>(null);
   const [episodes, setEpisodes] = useState<PodcastEpisode[] | null>(null);
@@ -79,10 +78,17 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
       .from("podcast_feeds")
       .select("id,title,publisher,credibility,image_url,description")
       .eq("is_active", true)
-      .eq("category", podCat)
       .order("title")
-      .then(({ data }) => setFeeds((data ?? []) as unknown as PodcastFeed[]));
-  }, [podCat]);
+      .then(({ data }) => {
+        const rows = (data ?? []) as unknown as PodcastFeed[];
+        // Stable shuffle per mount for discoverability
+        for (let i = rows.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [rows[i], rows[j]] = [rows[j], rows[i]];
+        }
+        setFeeds(rows);
+      });
+  }, []);
 
   useEffect(() => {
     if (!activeFeed) { setEpisodes(null); return; }
