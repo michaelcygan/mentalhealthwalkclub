@@ -36,6 +36,19 @@ interface PodcastAudioMeta {
   durationSeconds: number;
 }
 
+/**
+ * Voice controller — registered by WalkTalkDock when the user is in a live
+ * audio room. Lets the global pill render mic mute / leave-room controls
+ * without having to lift the WebRTC mesh into this provider.
+ */
+export interface VoiceController {
+  micMuted: boolean;
+  toggleMic: () => void;
+  leaveRoom: () => Promise<void> | void;
+  /** Optional label shown on the pill (e.g. room title). */
+  label?: string | null;
+}
+
 interface WalkRuntimeValue {
   active: ActiveWalkSummary | null;
   /** True once we've made at least one query (prevents pill flash). */
@@ -51,6 +64,10 @@ interface WalkRuntimeValue {
   toggleAudioMute: () => void;
   audioPlaying: boolean;
   audioPosition: number;
+
+  /** Live audio room controls (null when not in a room). */
+  voice: VoiceController | null;
+  registerVoice: (c: VoiceController | null) => void;
 
   /** Mark the walk ended in the DB and clear local state. Does not navigate. */
   endActiveWalk: () => Promise<void>;
