@@ -22,10 +22,13 @@ interface Props {
 }
 
 export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, savedPrompts, onChangePodcast }: Props) {
+  const { music } = useWalkRuntime();
   return (
     <section className="space-y-3">
       <SoloModule intention={intention} savedPrompts={savedPrompts} />
-      {trackId ? (
+      {music ? (
+        <RuntimeMusicCard />
+      ) : trackId ? (
         <GuidedPlayer trackId={trackId} paused={paused} />
       ) : podcastEpisodeId ? (
         <RuntimePodcastCard onChangePodcast={onChangePodcast} />
