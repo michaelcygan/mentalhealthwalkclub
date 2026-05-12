@@ -124,6 +124,23 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
   const inFlight = useRef(false);
   const dismissedIds = useRef<Set<string>>(new Set());
 
+  // ---- Music queue state ----
+  const musicQueueRef = useRef<MusicQueueState | null>(null);
+  const [musicSnapshot, setMusicSnapshot] = useState<{
+    label: string;
+    current: MusicTrackRuntime | null;
+    upNext: MusicTrackRuntime | null;
+    targetDurationSeconds: number | null;
+  } | null>(null);
+
+  const publishMusic = useCallback(() => {
+    const q = musicQueueRef.current;
+    if (!q) { setMusicSnapshot(null); return; }
+    const current = q.tracks[q.index] ?? null;
+    const upNext = q.tracks[q.index + 1] ?? null;
+    setMusicSnapshot({ label: q.label, current, upNext, targetDurationSeconds: q.targetDurationSeconds });
+  }, []);
+
   const load = useCallback(async () => {
     if (!user || inFlight.current) return;
     inFlight.current = true;
