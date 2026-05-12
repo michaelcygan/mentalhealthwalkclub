@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Footprints } from "lucide-react";
+import { Footprints, Headphones } from "lucide-react";
 import { toast } from "sonner";
 import { EndWalkFlow } from "@/components/end-walk-flow";
 import { FriendWalkShareCard } from "@/components/friend-walk/share-card";
