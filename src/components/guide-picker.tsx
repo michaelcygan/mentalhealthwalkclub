@@ -1,8 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientPad } from "@/lib/audio/ambient-pad";
-import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones, ChevronLeft } from "lucide-react";
+import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones, ChevronLeft, Shuffle, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export interface AmbientTrackMeta {
+  id: string;
+  title: string;
+  artist: string | null;
+  genre: string | null;
+  audio_path: string;
+  cover_url: string | null;
+  duration_seconds: number;
+  mood_tags: string[];
+  is_featured: boolean;
+}
+
+export interface MusicPlaylistChoice {
+  kind: "music_playlist";
+  tracks: AmbientTrackMeta[];
+  /** Stop queue once cumulative play time crosses this; null = loop forever. */
+  targetDurationSeconds: number | null;
+  label: string;
+}
 
 export interface GuidedTrack {
   id: string;
@@ -19,6 +39,10 @@ export interface GuidedTrack {
   podcast_episode_id?: string;
   /** Original publisher episode page URL (for attribution). */
   episode_url?: string | null;
+  /** Set when this is a single ambient music track (real audio, not a pad). */
+  ambient_track?: AmbientTrackMeta;
+  /** Set when the user picked a Timed Mix or Shuffle. */
+  music_playlist?: MusicPlaylistChoice;
 }
 
 // NOTE: Re-enable this chip strip once breath / voice / music sub-categories
