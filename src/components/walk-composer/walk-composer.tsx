@@ -58,7 +58,7 @@ export function WalkComposerSheet({
         </DrawerHeader>
 
         {pickGuide ? (
-          <div className="px-4 pb-6">
+          <div className="overflow-y-auto px-4 pb-8">
             <GuidePicker mood={feeling || null} onChoose={onChooseTrack} onSkip={onSkipGuide} />
           </div>
         ) : (
