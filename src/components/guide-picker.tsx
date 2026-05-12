@@ -21,6 +21,8 @@ export interface GuidedTrack {
   episode_url?: string | null;
 }
 
+// NOTE: Re-enable this chip strip once breath / voice / music sub-categories
+// have content. For now we only have ambient music.
 const VOICE_CATS: Array<{ k: string; label: string; icon: typeof Sparkles }> = [
   { k: "ambient", label: "Ambient", icon: Sparkles },
   { k: "breath", label: "Breath", icon: Wind },
