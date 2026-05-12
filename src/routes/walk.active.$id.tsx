@@ -63,6 +63,7 @@ type GpsState = "idle" | "live" | "weak" | "denied";
 
 function ActiveWalk() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
