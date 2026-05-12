@@ -516,6 +516,7 @@ function ActiveWalk() {
         paused={paused}
         intention={session.intention}
         savedPrompts={savedPrompts}
+        onChangePodcast={session.podcast_episode_id ? () => setPodcastSheetOpen(true) : undefined}
       />
     ) : format === "local" ? (
       <LocalModule intention={session.intention} savedPrompts={savedPrompts} />
