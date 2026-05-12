@@ -123,17 +123,6 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
   return (
     <div className="space-y-4">
       <p className="text-xs italic text-muted-foreground">Curated for reflection while you walk.</p>
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {POD_CATS.map(({ k, label }) => (
-          <button
-            key={k}
-            onClick={() => { setPodCat(k); setActiveFeed(null); }}
-            className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1 text-[11px] transition ${podCat === k ? "border-forest bg-accent/60 text-forest" : "border-border bg-card text-muted-foreground hover:border-forest/40"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {activeFeed ? (
         <div className="space-y-3">
