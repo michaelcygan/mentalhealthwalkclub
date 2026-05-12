@@ -1016,6 +1016,119 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_episodes: {
+        Row: {
+          audio_url: string
+          created_at: string
+          description: string | null
+          duration_seconds: number
+          episode_url: string | null
+          feed_id: string
+          guid: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_featured: boolean
+          mood_tags: string[]
+          published_at: string | null
+          title: string
+          updated_at: string
+          walk_fit_score: number
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          episode_url?: string | null
+          feed_id: string
+          guid: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_featured?: boolean
+          mood_tags?: string[]
+          published_at?: string | null
+          title: string
+          updated_at?: string
+          walk_fit_score?: number
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          episode_url?: string | null
+          feed_id?: string
+          guid?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_featured?: boolean
+          mood_tags?: string[]
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          walk_fit_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_episodes_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_feeds: {
+        Row: {
+          category: string
+          created_at: string
+          credibility: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          last_sync_error: string | null
+          last_synced_at: string | null
+          publisher: string | null
+          rss_url: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          credibility?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          publisher?: string | null
+          rss_url: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          credibility?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          publisher?: string | null
+          rss_url?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       practice_members: {
         Row: {
           created_at: string
@@ -1613,6 +1726,7 @@ export type Database = {
           mood_after_score: number | null
           mood_before: string | null
           mood_before_score: number | null
+          podcast_episode_id: string | null
           privacy: string
           reflection_note: string | null
           route_snapshot_path: string | null
@@ -1640,6 +1754,7 @@ export type Database = {
           mood_after_score?: number | null
           mood_before?: string | null
           mood_before_score?: number | null
+          podcast_episode_id?: string | null
           privacy?: string
           reflection_note?: string | null
           route_snapshot_path?: string | null
@@ -1667,6 +1782,7 @@ export type Database = {
           mood_after_score?: number | null
           mood_before?: string | null
           mood_before_score?: number | null
+          podcast_episode_id?: string | null
           privacy?: string
           reflection_note?: string | null
           route_snapshot_path?: string | null
@@ -1706,6 +1822,13 @@ export type Database = {
             columns: ["guided_track_id"]
             isOneToOne: false
             referencedRelation: "guided_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_sessions_podcast_episode_id_fkey"
+            columns: ["podcast_episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
             referencedColumns: ["id"]
           },
           {
