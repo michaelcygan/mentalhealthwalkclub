@@ -31,7 +31,10 @@ import { LocalModule } from "@/components/active-walk/format-modules/local-modul
 import { LoadingScreen } from "@/components/loading-screen";
 import { PodcastPickerSheet } from "@/components/active-walk/podcast-picker-sheet";
 
-export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
+export const Route = createFileRoute("/walk/active/$id")({
+  component: ActiveWalk,
+  validateSearch: (s: Record<string, unknown>) => ({ end: s.end === 1 || s.end === "1" ? 1 : undefined }),
+});
 
 const PULSE_FEELINGS = ["lighter", "same", "heavier"];
 
