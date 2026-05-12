@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Radio, Users, Footprints, ChevronUp, Square, Play, Pause, Volume2, VolumeX, Headphones } from "lucide-react";
+import { Radio, Users, Footprints, ChevronUp, Square, Play, Pause, Volume2, VolumeX, Headphones, Mic, MicOff, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { haptics } from "@/lib/device";
 import { useWalkRuntime } from "@/lib/walk-runtime";
