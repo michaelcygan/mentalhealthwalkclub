@@ -21,6 +21,8 @@ export interface GuidedTrack {
   episode_url?: string | null;
 }
 
+// NOTE: Re-enable this chip strip once breath / voice / music sub-categories
+// have content. For now we only have ambient music.
 const VOICE_CATS: Array<{ k: string; label: string; icon: typeof Sparkles }> = [
   { k: "ambient", label: "Ambient", icon: Sparkles },
   { k: "breath", label: "Breath", icon: Wind },
@@ -217,9 +219,8 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
 }
 
 export function GuidePicker({ mood, onChoose, onSkip }: Props) {
-  const [tab, setTab] = useState<"voice" | "podcast">("voice");
+  const [tab, setTab] = useState<"music" | "podcast">("music");
   const [tracks, setTracks] = useState<GuidedTrack[]>([]);
-  const [cat, setCat] = useState<string>("ambient");
   const [previewing, setPreviewing] = useState<string | null>(null);
   const padRef = useRef<AmbientPad | null>(null);
   const stopRef = useRef<number | null>(null);
@@ -230,8 +231,10 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
     return () => { padRef.current?.stop(); if (stopRef.current) clearTimeout(stopRef.current); };
   }, []);
 
+  // For now: only ambient music exists. When breath/voice/etc. content lands,
+  // restore the VOICE_CATS chip strip and switch back to a `cat`-driven filter.
   const filtered = tracks
-    .filter((t) => t.category === cat)
+    .filter((t) => t.category === "ambient")
     .sort((a, b) => {
       if (!mood) return 0;
       const am = a.mood_tags.includes(mood) ? -1 : 0;
@@ -262,16 +265,20 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
     <div className="space-y-5">
       <div>
         <h2 className="font-serif text-3xl leading-tight">Choose your guide</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{mood ? <>Suited to <span className="text-foreground">{mood}</span>.</> : "A gentle voice in your ear."}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {tab === "music"
+            ? (mood ? <>Ambient music to match <span className="text-foreground">{mood}</span>.</> : "Ambient music for your walk.")
+            : (mood ? <>Suited to <span className="text-foreground">{mood}</span>.</> : "A gentle voice in your ear.")}
+        </p>
       </div>
 
-      {/* Top-level tabs: Voice vs Podcast — equal weight */}
+      {/* Top-level tabs: Music vs Podcast — equal weight */}
       <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-1">
         <button
-          onClick={() => setTab("voice")}
-          className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition ${tab === "voice" ? "bg-forest text-primary-foreground shadow-soft" : "text-muted-foreground"}`}
+          onClick={() => setTab("music")}
+          className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition ${tab === "music" ? "bg-forest text-primary-foreground shadow-soft" : "text-muted-foreground"}`}
         >
-          <Mic className="h-4 w-4" /> Voice guide
+          <Music className="h-4 w-4" /> Music
         </button>
         <button
           onClick={() => setTab("podcast")}
@@ -281,18 +288,10 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
         </button>
       </div>
 
-      {tab === "voice" ? (
+      {tab === "music" ? (
         <>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {VOICE_CATS.map(({ k, label, icon: Icon }) => (
-              <button key={k} onClick={() => setCat(k)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${cat === k ? "border-forest bg-accent/60 text-forest" : "border-border bg-card text-foreground hover:border-forest/40"}`}>
-                <Icon className="h-3.5 w-3.5" /> {label}
-              </button>
-            ))}
-          </div>
-
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">More {cat} guides coming soon. Try ambient for now.</div>
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">Ambient music is being added — check back soon.</div>
           ) : (
             <div className="grid gap-3">
               {filtered.map((t) => {
