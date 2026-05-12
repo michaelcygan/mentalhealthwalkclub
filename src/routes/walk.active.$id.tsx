@@ -29,6 +29,7 @@ import { WalkTalkModule } from "@/components/active-walk/format-modules/walk-tal
 import { GuidedModule } from "@/components/active-walk/format-modules/guided-module";
 import { LocalModule } from "@/components/active-walk/format-modules/local-module";
 import { LoadingScreen } from "@/components/loading-screen";
+import { PodcastPickerSheet } from "@/components/active-walk/podcast-picker-sheet";
 
 export const Route = createFileRoute("/walk/active/$id")({ component: ActiveWalk });
 
