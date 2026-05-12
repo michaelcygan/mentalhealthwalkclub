@@ -636,6 +636,15 @@ function ActiveWalk() {
           shareCode={friendRoom.share_code}
         />
       )}
+      <PodcastPickerSheet
+        open={podcastSheetOpen}
+        onOpenChange={setPodcastSheetOpen}
+        walkSessionId={session.id}
+        mood={session.mood_before}
+        onPicked={(episodeId) =>
+          setSession((s) => (s ? { ...s, podcast_episode_id: episodeId, guided_track_id: null } : s))
+        }
+      />
     </>
   );
 }
