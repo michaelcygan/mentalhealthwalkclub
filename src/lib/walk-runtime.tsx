@@ -258,7 +258,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setPaused(false);
   }, [active?.walkId]);
 
-  // ---- Podcast audio lifecycle ----
+  // ---- Audio lifecycle (shared between podcast + music) ----
   const teardownAudio = () => {
     const a = audioRef.current;
     if (a) {
@@ -271,32 +271,48 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setAudioPlaying(false);
     setAudioPosition(0);
     primedEpisodeIdRef.current = null;
+    musicQueueRef.current = null;
+    setMusicSnapshot(null);
   };
 
   // Track which episode is already primed/loaded to dedupe with the active-walk effect
   const primedEpisodeIdRef = useRef<string | null>(null);
 
-  const buildAudio = useCallback((meta: PodcastAudioMeta, audioUrl: string) => {
+  const onEndedRef = useRef<(() => void) | null>(null);
+
+  const buildAudio = useCallback((src: string) => {
     const prev = audioRef.current;
     if (prev) {
       prev.pause();
       prev.src = "";
     }
-    const audio = new Audio(audioUrl);
+    const audio = new Audio(src);
     audio.preload = "auto";
     audio.volume = 0.85;
+    audio.muted = audioMuted;
     audio.addEventListener("timeupdate", () => {
       setAudioPosition(Math.floor(audio.currentTime));
     });
     audio.addEventListener("play", () => setAudioPlaying(true));
     audio.addEventListener("pause", () => setAudioPlaying(false));
-    audio.addEventListener("ended", () => setAudioPlaying(false));
+    audio.addEventListener("ended", () => {
+      setAudioPlaying(false);
+      onEndedRef.current?.();
+    });
     audioRef.current = audio;
-    setPodcast(meta);
-    primedEpisodeIdRef.current = meta.episodeId;
     audio.play().catch(() => {
       /* needs user gesture; pill controls will retrigger */
     });
+    return audio;
+  }, [audioMuted]);
+
+  const buildPodcastAudio = useCallback((meta: PodcastAudioMeta, audioUrl: string) => {
+    onEndedRef.current = null;
+    musicQueueRef.current = null;
+    setMusicSnapshot(null);
+    buildAudio(audioUrl);
+    setPodcast(meta);
+    primedEpisodeIdRef.current = meta.episodeId;
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: meta.title,
@@ -304,7 +320,69 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
         album: "Walk podcast",
       });
     }
-  }, []);
+  }, [buildAudio]);
+
+  // ---- Music queue ----
+  const playCurrentMusic = useCallback(async () => {
+    const q = musicQueueRef.current;
+    if (!q) return;
+    const track = q.tracks[q.index];
+    if (!track) return;
+    const { data } = await supabase.storage.from("ambient-music").createSignedUrl(track.audio_path, 60 * 60 * 2);
+    if (!data?.signedUrl) return;
+    if (musicQueueRef.current !== q) return; // queue swapped while signing
+    buildAudio(data.signedUrl);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: track.artist ?? "Mental Health Walk Club",
+        album: q.label,
+        artwork: track.cover_url ? [{ src: track.cover_url, sizes: "512x512" }] : undefined,
+      });
+    }
+    publishMusic();
+  }, [buildAudio, publishMusic]);
+
+  const advanceMusic = useCallback(() => {
+    const q = musicQueueRef.current;
+    if (!q) return;
+    const finished = q.tracks[q.index];
+    q.playedSeconds += finished?.duration_seconds ?? 0;
+    // Stop if past target (with small overshoot tolerance)
+    if (q.targetDurationSeconds && q.playedSeconds >= q.targetDurationSeconds) {
+      musicQueueRef.current = null;
+      setMusicSnapshot(null);
+      const a = audioRef.current;
+      if (a) { a.pause(); a.src = ""; audioRef.current = null; }
+      setAudioPlaying(false);
+      setAudioPosition(0);
+      return;
+    }
+    // Loop within shuffled queue
+    q.index = (q.index + 1) % q.tracks.length;
+    void playCurrentMusic();
+  }, [playCurrentMusic]);
+
+  // Keep ended handler reference fresh
+  useEffect(() => {
+    onEndedRef.current = musicSnapshot ? advanceMusic : null;
+  }, [musicSnapshot, advanceMusic]);
+
+  const primeMusicPlaylist = useCallback<WalkRuntimeValue["primeMusicPlaylist"]>((input) => {
+    if (!input.tracks?.length) return;
+    musicQueueRef.current = {
+      label: input.label,
+      tracks: input.tracks,
+      index: 0,
+      targetDurationSeconds: input.targetDurationSeconds,
+      playedSeconds: 0,
+    };
+    setPodcast(null);
+    primedEpisodeIdRef.current = null;
+    publishMusic();
+    void playCurrentMusic();
+  }, [playCurrentMusic, publishMusic]);
+
 
   const primePodcast = useCallback<WalkRuntimeValue["primePodcast"]>((m) => {
     if (primedEpisodeIdRef.current === m.episodeId) return;
