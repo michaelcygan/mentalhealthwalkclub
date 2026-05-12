@@ -571,7 +571,14 @@ function ActiveWalk() {
         onChangePhotos={setWalkPhotos}
       />
       {!(session.walk_type === "audio" || session.guided_track_id || session.podcast_episode_id) && (
-        <div className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPodcastSheetOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition hover:border-forest/40"
+          >
+            <Headphones className="h-3.5 w-3.5 text-forest" /> Add a podcast
+          </button>
           <AmbientPill />
         </div>
       )}
