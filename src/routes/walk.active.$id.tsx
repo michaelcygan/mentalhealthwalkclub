@@ -116,6 +116,7 @@ function ActiveWalk() {
   const [friendRoom, setFriendRoom] = useState<FriendRoom | null>(null);
   const [friendShareOpen, setFriendShareOpen] = useState(false);
   const [shareMap, setShareMap] = useState(false);
+  const [podcastSheetOpen, setPodcastSheetOpen] = useState(false);
 
   useEffect(() => {
     supabase
