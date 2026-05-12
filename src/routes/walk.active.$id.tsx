@@ -30,6 +30,7 @@ import { GuidedModule } from "@/components/active-walk/format-modules/guided-mod
 import { LocalModule } from "@/components/active-walk/format-modules/local-module";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PodcastPickerSheet } from "@/components/active-walk/podcast-picker-sheet";
+import { useWalkRuntime } from "@/lib/walk-runtime";
 
 export const Route = createFileRoute("/walk/active/$id")({
   component: ActiveWalk,
@@ -94,8 +95,13 @@ function ActiveWalk() {
     };
   }, []);
 
+  const runtime = useWalkRuntime();
+  const paused = runtime.paused;
+  const setPaused = (v: boolean | ((p: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(runtime.paused) : v;
+    if (next !== runtime.paused) runtime.togglePause();
+  };
   const [elapsed, setElapsed] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [meters, setMeters] = useState(0);
   const [walkerCoords, setWalkerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [hasMoved, setHasMoved] = useState(false);
