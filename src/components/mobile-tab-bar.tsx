@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Footprints, Users, Calendar, BookHeart, Home } from "lucide-react";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
@@ -42,24 +43,7 @@ export function MobileTabBar() {
 
           {/* Center FAB slot — opens the unified Walk Composer */}
           <li className="relative flex justify-center">
-            <button
-              type="button"
-              onClick={() => { haptics.tap(); composer.open(); }}
-              aria-label="New walk"
-              className="group relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated ring-4 ring-background transition active:scale-95"
-            >
-              {liveCount > 0 && (
-                <span aria-hidden className="pointer-events-none absolute inset-0 -m-0.5 rounded-full pulse-ring" />
-              )}
-              <Footprints className="h-6 w-6" strokeWidth={2.2} />
-              {liveCount > 0 && (
-                <span className="absolute -top-1 right-1.5 flex items-center gap-0.5 rounded-full bg-clay px-1.5 py-0.5 text-[9px] font-semibold leading-none text-background shadow">
-                  <span className="h-1.5 w-1.5 rounded-full bg-background/90" />
-                  {liveCount}
-                </span>
-              )}
-            </button>
-            <span className={`absolute bottom-1 text-[10px] font-medium ${walkActive ? "text-primary" : "text-muted-foreground"}`}>Walk</span>
+            <LongPressFab liveCount={liveCount} composer={composer} walkActive={walkActive} />
           </li>
 
           {/* Right two */}
@@ -84,5 +68,54 @@ function TabItem({ to, label, Icon, active }: { to: string; label: string; Icon:
         <span className={active ? "font-medium" : ""}>{label}</span>
       </Link>
     </li>
+  );
+}
+
+function LongPressFab({ liveCount, composer, walkActive }: { liveCount: number; composer: ReturnType<typeof useWalkComposer>; walkActive: boolean }) {
+  const timerRef = useRef<number | null>(null);
+  const triggeredRef = useRef(false);
+
+  const start = () => {
+    triggeredRef.current = false;
+    timerRef.current = window.setTimeout(() => {
+      triggeredRef.current = true;
+      haptics.success();
+      composer.open({ type: "audio" });
+    }, 480);
+  };
+  const cancel = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+  const onClick = () => {
+    if (triggeredRef.current) { triggeredRef.current = false; return; }
+    haptics.tap();
+    composer.open();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onClick}
+        onPointerDown={start}
+        onPointerUp={cancel}
+        onPointerLeave={cancel}
+        onPointerCancel={cancel}
+        aria-label="New walk — long-press for Walk & Talk"
+        className="group relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated ring-4 ring-background transition active:scale-95"
+      >
+        {liveCount > 0 && (
+          <span aria-hidden className="pointer-events-none absolute inset-0 -m-0.5 rounded-full pulse-ring" />
+        )}
+        <Footprints className="h-6 w-6" strokeWidth={2.2} />
+        {liveCount > 0 && (
+          <span className="absolute -top-1 right-1.5 flex items-center gap-0.5 rounded-full bg-clay px-1.5 py-0.5 text-[9px] font-semibold leading-none text-background shadow">
+            <span className="h-1.5 w-1.5 rounded-full bg-background/90" />
+            {liveCount}
+          </span>
+        )}
+      </button>
+      <span className={`absolute bottom-1 text-[10px] font-medium ${walkActive ? "text-primary" : "text-muted-foreground"}`}>Walk</span>
+    </>
   );
 }

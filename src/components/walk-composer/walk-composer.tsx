@@ -1,21 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Footprints, Headphones, MapPin, Sparkles, Heart, CalendarClock, DownloadCloud } from "lucide-react";
+import { Footprints, Headphones, MapPin, Sparkles, Heart, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { MoodCloud, WeightBar } from "@/components/mood-cloud";
 import { GuidePicker, type GuidedTrack } from "@/components/guide-picker";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
-import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { haptics } from "@/lib/device";
-import { toast } from "sonner";
 import type { WalkType } from "./use-walk-composer";
-
-const MODE_PREFACE: Record<string, string> = {
-  solo: "Walking alone still counts.",
-  guided_solo: "A gentle voice in your ear.",
-  audio: "You'll be matched once you start moving.",
-  irl_event: "Real people, real sidewalks.",
-};
 
 type Props = {
   open: boolean;
@@ -51,7 +42,6 @@ export function WalkComposerSheet({
 }: Props) {
   const kbInset = useKeyboardInset();
   const navigate = useNavigate();
-  const pwa = usePwaInstall();
 
   const goLocal = () => {
     haptics.tap();
@@ -65,7 +55,6 @@ export function WalkComposerSheet({
         <DrawerHeader className="pb-1 text-left">
           <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-forest/80">Start a walk</div>
           <DrawerTitle className="mt-1 font-serif text-2xl text-balance">Choose how you want to walk</DrawerTitle>
-          <p className="mt-1 text-sm italic text-muted-foreground">{MODE_PREFACE[walkType]}</p>
         </DrawerHeader>
 
         {pickGuide ? (
@@ -74,7 +63,7 @@ export function WalkComposerSheet({
           </div>
         ) : (
           <>
-            <div className="space-y-5 overflow-y-auto px-4 pb-3">
+            <div className="space-y-6 overflow-y-auto px-4 pb-3">
               {/* Mode tiles — 2-col, spacious, circle icons */}
               <div className="grid grid-cols-2 gap-3">
                 {MODES.map(({ t, icon: Icon, label, body }) => {
@@ -121,7 +110,7 @@ export function WalkComposerSheet({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="font-serif text-base">Friend Walk · share a link</div>
-                  <div className="text-[11px] text-muted-foreground">spin up a private room — drop the link in your story</div>
+                  <div className="text-[11px] text-muted-foreground">share a link, walk together</div>
                 </div>
                 <span className="rounded-full bg-clay/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-clay">new</span>
               </button>
@@ -137,30 +126,9 @@ export function WalkComposerSheet({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="font-serif text-base">Schedule a Friend Walk</div>
-                  <div className="text-[11px] text-muted-foreground">pick a time later this week — share the invite now</div>
+                  <div className="text-[11px] text-muted-foreground">pick a time, send the invite</div>
                 </div>
               </button>
-
-              {pwa.canInstall && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    haptics.tap();
-                    const ok = await pwa.install();
-                    if (ok) { onOpenChange(false); toast("Added to your home screen"); }
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-forest/30 bg-accent/20 p-3 text-left transition active:scale-[0.98] hover:border-forest/50"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-forest/15">
-                    <DownloadCloud className="h-4 w-4 text-forest" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-serif text-sm">Add to home screen</div>
-                    <div className="text-[11px] text-muted-foreground">one-tap launch, no app store</div>
-                  </div>
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-forest">Install</span>
-                </button>
-              )}
 
               <MoodCloud value={feeling} onChange={setFeeling} />
 
@@ -192,9 +160,6 @@ export function WalkComposerSheet({
               <Button onClick={onProceed} disabled={busy} className="h-14 w-full rounded-2xl bg-forest text-base text-primary-foreground hover:opacity-90">
                 {busy ? "Starting…" : walkType === "guided_solo" ? "Choose a guide" : "Begin walking"}
               </Button>
-              <button onClick={onProceed} className="mt-2 block w-full text-center text-xs italic text-muted-foreground hover:text-forest">
-                skip the rest, just walk
-              </button>
             </div>
           </>
         )}
