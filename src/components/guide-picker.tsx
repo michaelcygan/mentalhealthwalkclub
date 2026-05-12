@@ -37,6 +37,15 @@ const POD_CATS: Array<{ k: string; label: string }> = [
   { k: "relationships", label: "Relationships" },
 ];
 
+interface PodcastFeed {
+  id: string;
+  title: string;
+  publisher: string | null;
+  credibility: string;
+  image_url: string | null;
+  description: string | null;
+}
+
 interface PodcastEpisode {
   id: string;
   title: string;
