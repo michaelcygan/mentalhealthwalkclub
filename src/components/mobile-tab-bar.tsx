@@ -1,10 +1,13 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Footprints, Users, Calendar, BookHeart, Home } from "lucide-react";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { haptics } from "@/lib/device";
 import { useWalkComposer } from "@/components/walk-composer/use-walk-composer";
+
+/** CSS var name written so the LiveActivityPill can stack above the bar. */
+const TABBAR_VAR = "--tabbar-h";
 
 const SIDE_TABS: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
   { to: "/", label: "Home", icon: Home, exact: true },
