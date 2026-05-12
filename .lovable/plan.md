@@ -1,90 +1,120 @@
-## Goal
+## Scope
 
-Today there are two completely different "pick a walk" UIs:
+Three small passes. Nothing on Home structure, Groups, or the active walk screen.
 
-1. **Polished composer** — the `PreWalkSheet` defined inside `src/routes/index.tsx`. Opens from the big *Start a walk* button, the *Other ways to walk* pills, the *Comeback* nudge, and the *Live now* strip. It chains through mode → mood cloud → weight → intention → guide picker, then actually creates the `walk_session` row and routes to `/walk/active/$id`.
-2. **Half-broken drawer** — the *Choose your walk* sheet in `src/components/mobile-tab-bar.tsx` triggered by the center shoes FAB. Its mode buttons are plain `<Link to="/">` tiles that just close the drawer and dump you on Home — they never start a walk. Friend Walk + Schedule + PWA install live here too.
+1. Walk Composer — light UI polish + copy cuts. Walk creation only.
+2. Center FAB — long-press opens Walk & Talk.
+3. Live Activity pill — Dynamic-Island-style replacement for `NowPlayingBar`, walk-in-progress only.
 
-We'll collapse #2 into #1 so there is exactly one composer, reachable from every entry point including the FAB.
+---
 
-## What gets built
+## 1. Walk Composer: polish + remove non-walk rows
 
-### 1. Promote `PreWalkSheet` to a shared component
+Composer is for starting a walk. Nothing else.
 
-- Move the `PreWalkSheet` JSX (currently lines 359–446 of `src/routes/index.tsx`) into a new file `src/components/walk-composer/walk-composer.tsx`.
-- Move the supporting state + `beginWalk` + `openSheet` + `handleSheetChange` + `proceed` logic out of `HomeRoute` into a `useWalkComposer()` hook in `src/components/walk-composer/use-walk-composer.tsx` so the same controller can be mounted once and triggered from anywhere.
-- Expose a tiny imperative API via a `WalkComposerProvider` mounted in `__root.tsx` (or in the authed layout, wherever auth context already sits):
-  ```ts
-  const { open } = useWalkComposer();
-  open({ type: "solo" }); // or "audio" | "guided_solo"
-  ```
-- The provider renders **one** `<WalkComposer />` instance + the existing `FriendWalkScheduleSheet` + `FriendWalkShareCard` so Friend Walk creation/scheduling state lives in one place too.
+Changes (surface only — same flow, same height, same mood/weight/intention rows):
 
-### 2. Add Friend Walk rows inside the composer
+- Remove the **Add to home screen** row entirely. Install lives elsewhere; not the composer's job.
+- Remove the italic preface line under the title (`MODE_PREFACE`).
+- Remove the secondary "skip the rest, just walk" link under the CTA.
+- Tighten copy on the remaining rows (see §4).
+- Bump the gap between the mode grid and the friend rows from `space-y-5` to `space-y-6` so the eye groups them apart.
+- Mode tiles, mood cloud, weight bar, intention textarea, footer CTA: unchanged.
 
-The current mode grid in PreWalkSheet only shows Solo / Walk & Talk / Guided. To preserve everything the FAB drawer offered, extend the composer's first screen with two additional rows below the mode grid:
+Files: `src/components/walk-composer/walk-composer.tsx` (~30 LOC removed, 0 added). Drop the `usePwaInstall` import + `pwa` block.
 
-- **Friend Walk · share a link** — same gradient clay tile, calls `createFriendWalk` then opens `FriendWalkShareCard`.
-- **Schedule a Friend Walk** — opens `FriendWalkScheduleSheet`.
-- **Add to home screen** — only when `usePwaInstall().canInstall`.
+---
 
-These already exist in `mobile-tab-bar.tsx` (lines 128–171) — we lift them as-is into the composer body so both entry points show them.
+## 2. Center FAB: long-press → Walk & Talk
 
-### 3. Rewire the FAB
+Add a ~480ms long-press handler to the center button in `mobile-tab-bar.tsx` using the same pattern `StartCta` uses on Home.
 
-In `src/components/mobile-tab-bar.tsx`:
+- **Tap** → `composer.open()` (unchanged)
+- **Long-press** → `haptics.success()` + `composer.open({ type: "audio" })`
 
-- Delete the local `Drawer`, `ModeButton`, `sheetOpen` state, and the friend-walk/schedule/share state (now lives in the provider).
-- The center button's `onClick` becomes `() => { haptics.tap(); composer.open(); }` — no preselected type, lands on the mode grid.
-- Keep the live-count pulse ring + badge exactly as today.
+Composer already accepts `{ type }` and pre-selects the matching tile. No new component.
 
-### 4. Rewire HomeRoute
+Files: `src/components/mobile-tab-bar.tsx` (~15 LOC added).
 
-In `src/routes/index.tsx`:
+---
 
-- Replace local `sheetOpen / walkType / feeling / moodScore / intention / pickGuide / busy` state and the `<PreWalkSheet ... />` render with `const composer = useWalkComposer();`.
-- `StartCta` → `composer.open({ type: "solo" })`.
-- Long-press on `StartCta` → `composer.open({ type: "solo", focus: "mode" })` (same as tap for now; long-press hook stays).
-- *Other ways to walk* pills → `composer.open({ type: "guided_solo" | "audio" })`.
-- `ComebackNudge` and `LiveNowStrip` → same pattern with their existing types.
+## 3. Live Activity pill — confirms your read
 
-### 5. Visual polish on the unified composer
+Yes — exactly that. The pill is the **minimized state of the active walk**: when a walk is running and the user navigates away (Home, Journal, Groups), this pill is what lets them keep the walk visible and tap back in. It replaces the current `NowPlayingBar` (which already does this job, just less elegantly).
 
-The screenshot shows the FAB drawer's grid is more spacious (2-col, larger tiles with circle icons) than the current 3-col strip in PreWalkSheet. We adopt the better-looking 2-col layout for the mode tiles inside the composer:
+Behavior:
 
-```text
-┌──────────────┬──────────────┐
-│ ● Solo       │ ● Walk & Talk│
-│ Just me…     │ Match a pod  │
-├──────────────┼──────────────┤
-│ ● Guided     │ ● Local Walk │
-│ A voice…     │ Sidewalks    │
-└──────────────┴──────────────┘
-[ Friend Walk · share a link  NEW ]
-[ Schedule a Friend Walk          ]
-[ Add to home screen     (if PWA) ]
-```
+- Mounted once in `__root.tsx` (replaces `<NowPlayingBar />`).
+- Reads the same data the current bar reads: active `walk_sessions` row + (if present) the user's `audio_room_participants` row for room title and live count.
+- Renders a compact pill ~8px below the status bar, centered, glass background with forest tint, springs in/out.
+- Content: live dot · timer · room title (when in a pod) · 👥 count (when in a pod).
+- **Tap → `navigate({ to: "/walk/active/$id", params: { id } })`** — back to the full walk screen.
+- Hidden on `/walk/active/*` (the on-screen dock owns it there).
+- No "friend walk soon" state. Only the active-walk minimized state.
+- Optional: swipe-up collapses to a tiny bean (icon + timer); tap re-expands. State in `sessionStorage` so it doesn't bounce back.
 
-Local Walk becomes a 4th tile that closes the composer and navigates to `/events` (today it's a small text link inside the composer plus a pill on Home — both keep working).
+Net: delete `now-playing-bar.tsx` (121 LOC), add `live-activity-pill.tsx` (~110 LOC).
 
-Below the grid the existing mood-cloud → weight → intention → CTA flow stays unchanged. Header copy stays *"Start a walk / Choose how you want to walk"*.
+Files: new `src/components/live-activity-pill.tsx`, edit `src/routes/__root.tsx` (one import swap), delete `src/components/now-playing-bar.tsx`.
 
-### 6. Cleanup
+---
 
-- Delete `ModeButton` from `mobile-tab-bar.tsx`.
-- Drop the now-unused `MODE_PREFACE` map only if no longer referenced (keep if still used in header copy).
-- No DB / server-fn changes; no route changes.
+## 4. Copy pass
+
+User's lines locked in. Remaining sweep stays minimal.
+
+| Old | New |
+|---|---|
+| "Walking alone still counts." | (removed with preface) |
+| "A gentle voice in your ear." | (removed) |
+| "You'll be matched once you start moving." | (removed) |
+| "Real people, real sidewalks." | (removed) |
+| "spin up a private room — drop the link in your story" | "share a link, walk together" |
+| "pick a time later this week — share the invite now" | "pick a time, send the invite" |
+| "skip the rest, just walk" | (removed) |
+| "Show up however you can." | **"Start today."** |
+| "Eight minutes is enough — your body knows." | **"Start with 5 minutes."** |
+| "Your first walk is the hardest. Five minutes around the block counts." | **"A lap around the block counts."** |
+| "Two days in a row feels good." | "two days in a row." |
+| "Walk in progress · 12:04 on your feet…" | "walking · 12:04" |
+| "tap to return" pill | "return" |
+
+Rule: cut adjectives, cut hedges, cut em-dash explainers, prefer one short clause.
+
+Files touched for copy only: `src/components/walk-composer/walk-composer.tsx`, `src/routes/index.tsx` (microState strings), new `live-activity-pill.tsx`.
+
+---
 
 ## Out of scope
 
-- No changes to `/walk/active/$id` or the in-walk Journal composer.
-- No changes to mood cloud, weight bar, or guide picker internals.
-- No analytics/event renaming.
+- Home, Groups, active walk screen — untouched.
+- Composer structure, rows, defaults, accordions.
+- Live Activity states beyond active walk.
+- Auth, billing, friend-walk creation, guided audio internals.
+
+---
 
 ## Files touched
 
-- **new** `src/components/walk-composer/walk-composer.tsx`
-- **new** `src/components/walk-composer/use-walk-composer.tsx` (provider + hook)
-- **edit** `src/routes/__root.tsx` — mount `<WalkComposerProvider>` inside the auth context
-- **edit** `src/routes/index.tsx` — remove local PreWalkSheet + state, call `useWalkComposer().open(...)`
-- **edit** `src/components/mobile-tab-bar.tsx` — remove drawer + ModeButton, FAB calls `composer.open()`
+**New (1)**
+- `src/components/live-activity-pill.tsx`
+
+**Edited (4)**
+- `src/components/walk-composer/walk-composer.tsx` — drop preface, install row, secondary link; copy cuts; spacing nudge
+- `src/components/mobile-tab-bar.tsx` — long-press → Walk & Talk
+- `src/routes/__root.tsx` — swap `NowPlayingBar` for `LiveActivityPill`
+- `src/routes/index.tsx` — microState copy only
+
+**Deleted (1)**
+- `src/components/now-playing-bar.tsx`
+
+---
+
+## Order
+
+1. Composer polish + copy cuts (incl. install row removal).
+2. FAB long-press.
+3. Live Activity pill swap.
+4. Home microState copy sweep.
+
+Each step ships independently.
