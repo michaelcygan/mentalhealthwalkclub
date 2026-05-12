@@ -67,7 +67,6 @@ interface Props {
 
 /** Reusable podcast browser — used inside the composer and the in-walk sheet. */
 export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoose: (t: GuidedTrack) => void }) {
-  const [podCat, setPodCat] = useState<string>("calm_down");
   const [feeds, setFeeds] = useState<PodcastFeed[] | null>(null);
   const [activeFeed, setActiveFeed] = useState<PodcastFeed | null>(null);
   const [episodes, setEpisodes] = useState<PodcastEpisode[] | null>(null);
@@ -79,10 +78,17 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
       .from("podcast_feeds")
       .select("id,title,publisher,credibility,image_url,description")
       .eq("is_active", true)
-      .eq("category", podCat)
       .order("title")
-      .then(({ data }) => setFeeds((data ?? []) as unknown as PodcastFeed[]));
-  }, [podCat]);
+      .then(({ data }) => {
+        const rows = (data ?? []) as unknown as PodcastFeed[];
+        // Stable shuffle per mount for discoverability
+        for (let i = rows.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [rows[i], rows[j]] = [rows[j], rows[i]];
+        }
+        setFeeds(rows);
+      });
+  }, []);
 
   useEffect(() => {
     if (!activeFeed) { setEpisodes(null); return; }
@@ -117,17 +123,6 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
   return (
     <div className="space-y-4">
       <p className="text-xs italic text-muted-foreground">Curated for reflection while you walk.</p>
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {POD_CATS.map(({ k, label }) => (
-          <button
-            key={k}
-            onClick={() => { setPodCat(k); setActiveFeed(null); }}
-            className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1 text-[11px] transition ${podCat === k ? "border-forest bg-accent/60 text-forest" : "border-border bg-card text-muted-foreground hover:border-forest/40"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {activeFeed ? (
         <div className="space-y-3">
