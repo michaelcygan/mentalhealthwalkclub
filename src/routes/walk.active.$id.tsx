@@ -506,10 +506,11 @@ function ActiveWalk() {
     );
   }
 
+  const hasMusic = !!runtime.music;
   const format: WalkFormat =
     session.walk_type === "audio"
       ? "audio"
-      : (session.guided_track_id || session.podcast_episode_id)
+      : (session.guided_track_id || session.podcast_episode_id || hasMusic)
         ? "guided"
         : friendRoom
           ? "friend"
@@ -530,7 +531,7 @@ function ActiveWalk() {
         currentUserId={user?.id ?? null}
         onInvite={() => setFriendShareOpen(true)}
       />
-    ) : format === "guided" && (session.guided_track_id || session.podcast_episode_id) ? (
+    ) : format === "guided" ? (
       <GuidedModule
         trackId={session.guided_track_id}
         podcastEpisodeId={session.podcast_episode_id}
