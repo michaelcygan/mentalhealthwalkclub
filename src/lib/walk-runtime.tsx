@@ -36,6 +36,23 @@ interface PodcastAudioMeta {
   durationSeconds: number;
 }
 
+export interface MusicTrackRuntime {
+  id: string;
+  title: string;
+  artist: string | null;
+  audio_path: string;
+  cover_url: string | null;
+  duration_seconds: number;
+}
+
+interface MusicQueueState {
+  label: string;
+  tracks: MusicTrackRuntime[];
+  index: number;
+  targetDurationSeconds: number | null;
+  playedSeconds: number; // cumulative completed-track seconds
+}
+
 /**
  * Voice controller — registered by WalkTalkDock when the user is in a live
  * audio room. Lets the global pill render mic mute / leave-room controls
