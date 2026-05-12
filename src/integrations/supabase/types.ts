@@ -18,10 +18,16 @@ export type Database = {
         Row: {
           artist: string | null
           audio_path: string
+          bpm: number | null
+          cover_path: string | null
           created_at: string
           duration_seconds: number
+          genre: string | null
           id: string
           is_active: boolean
+          is_featured: boolean
+          mood_tags: string[]
+          sort_order: number
           title: string
           updated_at: string
           uploaded_by: string | null
@@ -29,10 +35,16 @@ export type Database = {
         Insert: {
           artist?: string | null
           audio_path: string
+          bpm?: number | null
+          cover_path?: string | null
           created_at?: string
           duration_seconds?: number
+          genre?: string | null
           id?: string
           is_active?: boolean
+          is_featured?: boolean
+          mood_tags?: string[]
+          sort_order?: number
           title: string
           updated_at?: string
           uploaded_by?: string | null
@@ -40,10 +52,16 @@ export type Database = {
         Update: {
           artist?: string | null
           audio_path?: string
+          bpm?: number | null
+          cover_path?: string | null
           created_at?: string
           duration_seconds?: number
+          genre?: string | null
           id?: string
           is_active?: boolean
+          is_featured?: boolean
+          mood_tags?: string[]
+          sort_order?: number
           title?: string
           updated_at?: string
           uploaded_by?: string | null

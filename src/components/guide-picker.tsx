@@ -1,8 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientPad } from "@/lib/audio/ambient-pad";
-import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones, ChevronLeft } from "lucide-react";
+import { Play, Pause, Sparkles, Wind, Mic, Music, Headphones, ChevronLeft, Shuffle, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export interface AmbientTrackMeta {
+  id: string;
+  title: string;
+  artist: string | null;
+  genre: string | null;
+  audio_path: string;
+  cover_url: string | null;
+  duration_seconds: number;
+  mood_tags: string[];
+  is_featured: boolean;
+}
+
+export interface MusicPlaylistChoice {
+  kind: "music_playlist";
+  tracks: AmbientTrackMeta[];
+  /** Stop queue once cumulative play time crosses this; null = loop forever. */
+  targetDurationSeconds: number | null;
+  label: string;
+}
 
 export interface GuidedTrack {
   id: string;
@@ -19,6 +39,10 @@ export interface GuidedTrack {
   podcast_episode_id?: string;
   /** Original publisher episode page URL (for attribution). */
   episode_url?: string | null;
+  /** Set when this is a single ambient music track (real audio, not a pad). */
+  ambient_track?: AmbientTrackMeta;
+  /** Set when the user picked a Timed Mix or Shuffle. */
+  music_playlist?: MusicPlaylistChoice;
 }
 
 // NOTE: Re-enable this chip strip once breath / voice / music sub-categories
@@ -218,47 +242,144 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
   );
 }
 
+interface AmbientRow {
+  id: string;
+  title: string;
+  artist: string | null;
+  genre: string | null;
+  audio_path: string;
+  cover_path: string | null;
+  duration_seconds: number;
+  mood_tags: string[];
+  is_featured: boolean;
+  sort_order: number;
+}
+
+function rowToMeta(r: AmbientRow): AmbientTrackMeta {
+  const cover_url = r.cover_path
+    ? supabase.storage.from("ambient-covers").getPublicUrl(r.cover_path).data.publicUrl
+    : null;
+  return {
+    id: r.id,
+    title: r.title,
+    artist: r.artist,
+    genre: r.genre,
+    audio_path: r.audio_path,
+    cover_url,
+    duration_seconds: r.duration_seconds,
+    mood_tags: r.mood_tags ?? [],
+    is_featured: r.is_featured,
+  };
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Build a shuffled queue that fills target seconds (allow last track to slightly overshoot). */
+function buildTimedQueue(tracks: AmbientTrackMeta[], targetSec: number): AmbientTrackMeta[] {
+  const pool = shuffle(tracks);
+  if (pool.length === 0) return [];
+  const queue: AmbientTrackMeta[] = [];
+  let total = 0;
+  let i = 0;
+  while (total < targetSec) {
+    const t = pool[i % pool.length];
+    queue.push(t);
+    total += t.duration_seconds || 0;
+    i++;
+    if (i > pool.length * 6) break; // safety
+  }
+  return queue;
+}
+
+const MIX_OPTIONS = [
+  { label: "15 min", seconds: 15 * 60 },
+  { label: "30 min", seconds: 30 * 60 },
+  { label: "60 min", seconds: 60 * 60 },
+];
+
 export function GuidePicker({ mood, onChoose, onSkip }: Props) {
   const [tab, setTab] = useState<"music" | "podcast">("music");
-  const [tracks, setTracks] = useState<GuidedTrack[]>([]);
-  const [previewing, setPreviewing] = useState<string | null>(null);
-  const padRef = useRef<AmbientPad | null>(null);
-  const stopRef = useRef<number | null>(null);
+  const [music, setMusic] = useState<AmbientTrackMeta[] | null>(null);
 
   useEffect(() => {
-    supabase.from("guided_tracks").select("*").eq("is_active", true).order("sort_order")
-      .then(({ data }) => setTracks((data ?? []) as GuidedTrack[]));
-    return () => { padRef.current?.stop(); if (stopRef.current) clearTimeout(stopRef.current); };
+    supabase.from("ambient_tracks")
+      .select("id,title,artist,genre,audio_path,cover_path,duration_seconds,mood_tags,is_featured,sort_order")
+      .eq("is_active", true)
+      .order("is_featured", { ascending: false })
+      .order("sort_order")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setMusic(((data ?? []) as AmbientRow[]).map(rowToMeta)));
   }, []);
 
-  // For now: only ambient music exists. When breath/voice/etc. content lands,
-  // restore the VOICE_CATS chip strip and switch back to a `cat`-driven filter.
-  const filtered = tracks
-    .filter((t) => t.category === "ambient")
-    .sort((a, b) => {
-      if (!mood) return 0;
+  const sortedMusic = useMemo(() => {
+    if (!music) return null;
+    if (!mood) return music;
+    return music.slice().sort((a, b) => {
       const am = a.mood_tags.includes(mood) ? -1 : 0;
       const bm = b.mood_tags.includes(mood) ? -1 : 0;
       return am - bm;
     });
+  }, [music, mood]);
 
-  const togglePreview = async (t: GuidedTrack) => {
-    if (previewing === t.id) {
-      await padRef.current?.stop(); padRef.current = null;
-      if (stopRef.current) { clearTimeout(stopRef.current); stopRef.current = null; }
-      setPreviewing(null); return;
-    }
-    await padRef.current?.stop();
-    if (t.generative_key) {
-      padRef.current = new AmbientPad();
-      await padRef.current.start(0.14, t.generative_key);
-    }
-    setPreviewing(t.id);
-    if (stopRef.current) clearTimeout(stopRef.current);
-    stopRef.current = window.setTimeout(async () => {
-      await padRef.current?.stop(); padRef.current = null;
-      setPreviewing(null);
-    }, 15000);
+  const pickSingle = (t: AmbientTrackMeta) => {
+    onChoose({
+      id: t.id,
+      title: t.title,
+      host: t.artist,
+      host_role: t.genre,
+      duration_seconds: t.duration_seconds,
+      audio_url: null,
+      cover_url: t.cover_url,
+      mood_tags: t.mood_tags,
+      category: "music",
+      generative_key: null,
+      ambient_track: t,
+    });
+  };
+
+  const pickMix = (seconds: number, label: string) => {
+    if (!sortedMusic || sortedMusic.length === 0) return;
+    const queue = buildTimedQueue(sortedMusic, seconds);
+    const first = queue[0];
+    onChoose({
+      id: `mix-${seconds}`,
+      title: `${label} mix`,
+      host: "Shuffled music",
+      host_role: null,
+      duration_seconds: seconds,
+      audio_url: null,
+      cover_url: first?.cover_url ?? null,
+      mood_tags: [],
+      category: "music",
+      generative_key: null,
+      music_playlist: { kind: "music_playlist", tracks: queue, targetDurationSeconds: seconds, label: `${label} mix` },
+    });
+  };
+
+  const pickShuffleAll = () => {
+    if (!sortedMusic || sortedMusic.length === 0) return;
+    const queue = shuffle(sortedMusic);
+    const first = queue[0];
+    onChoose({
+      id: "shuffle-all",
+      title: "Shuffle all",
+      host: "Music library",
+      host_role: null,
+      duration_seconds: 0,
+      audio_url: null,
+      cover_url: first?.cover_url ?? null,
+      mood_tags: [],
+      category: "music",
+      generative_key: null,
+      music_playlist: { kind: "music_playlist", tracks: queue, targetDurationSeconds: null, label: "Shuffle" },
+    });
   };
 
   return (
@@ -267,12 +388,11 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
         <h2 className="font-serif text-3xl leading-tight">Choose your guide</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {tab === "music"
-            ? (mood ? <>Ambient music to match <span className="text-foreground">{mood}</span>.</> : "Ambient music for your walk.")
+            ? (mood ? <>Music to match <span className="text-foreground">{mood}</span>.</> : "Music for your walk.")
             : (mood ? <>Suited to <span className="text-foreground">{mood}</span>.</> : "A gentle voice in your ear.")}
         </p>
       </div>
 
-      {/* Top-level tabs: Music vs Podcast — equal weight */}
       <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-1">
         <button
           onClick={() => setTab("music")}
@@ -289,40 +409,13 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
       </div>
 
       {tab === "music" ? (
-        <>
-          {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">Ambient music is being added — check back soon.</div>
-          ) : (
-            <div className="grid gap-3">
-              {filtered.map((t) => {
-                const matches = mood ? t.mood_tags.includes(mood) : false;
-                return (
-                  <button key={t.id} onClick={() => onChoose(t)} className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-3 text-left transition hover:-translate-y-px hover:border-forest/50 hover:shadow-soft">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl gradient-forest">
-                      {t.cover_url && <img src={t.cover_url} alt="" className="h-full w-full object-cover" />}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); togglePreview(t); }}
-                        className="absolute inset-0 flex items-center justify-center bg-black/25 text-primary-foreground opacity-0 transition group-hover:opacity-100 data-[on=true]:opacity-100"
-                        data-on={previewing === t.id}
-                        aria-label="Preview"
-                      >
-                        {previewing === t.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="truncate font-serif text-lg leading-tight">{t.title}</div>
-                        {matches && <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-forest">fits</span>}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground">{t.host}{t.host_role ? ` · ${t.host_role}` : ""} · {Math.round(t.duration_seconds / 60)} min</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </>
+        <MusicTab
+          tracks={sortedMusic}
+          mood={mood}
+          onPickTrack={pickSingle}
+          onPickMix={pickMix}
+          onShuffleAll={pickShuffleAll}
+        />
       ) : (
         <PodcastBrowser mood={mood} onChoose={onChoose} />
       )}
@@ -331,3 +424,100 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
     </div>
   );
 }
+
+function MusicTab({ tracks, mood, onPickTrack, onPickMix, onShuffleAll }: {
+  tracks: AmbientTrackMeta[] | null;
+  mood: string | null;
+  onPickTrack: (t: AmbientTrackMeta) => void;
+  onPickMix: (sec: number, label: string) => void;
+  onShuffleAll: () => void;
+}) {
+  if (tracks === null) {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          {[0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-secondary/60" />)}
+        </div>
+        {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-secondary/60" />)}
+      </div>
+    );
+  }
+  if (tracks.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm italic text-muted-foreground">
+        Music is being added — check back soon.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Timed mixes */}
+      <div>
+        <div className="mb-2 px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Timed mix · auto-stops when your time's up
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {MIX_OPTIONS.map(({ label, seconds }) => (
+            <button
+              key={seconds}
+              onClick={() => onPickMix(seconds, label)}
+              className="group relative flex flex-col items-start gap-1 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-secondary/40 p-3 text-left shadow-soft transition hover:-translate-y-px hover:border-forest/50"
+            >
+              <Clock className="h-4 w-4 text-forest" />
+              <div className="font-serif text-lg leading-none">{label}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">walk</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Shuffle pill */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onShuffleAll}
+          className="inline-flex items-center gap-1.5 rounded-full border border-forest/40 bg-accent/40 px-3 py-1.5 text-xs font-medium text-forest transition hover:bg-accent/70"
+        >
+          <Shuffle className="h-3.5 w-3.5" /> Shuffle all
+        </button>
+        <span className="text-[10px] text-muted-foreground">{tracks.length} track{tracks.length === 1 ? "" : "s"}</span>
+      </div>
+
+      {/* Track list */}
+      <div className="grid gap-2">
+        {tracks.map((t) => {
+          const matches = mood ? t.mood_tags.includes(mood) : false;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onPickTrack(t)}
+              className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-2.5 text-left transition hover:-translate-y-px hover:border-forest/50 hover:shadow-soft"
+            >
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl gradient-forest">
+                {t.cover_url && <img src={t.cover_url} alt="" className="h-full w-full object-cover" />}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-primary-foreground opacity-0 transition group-hover:opacity-100">
+                  <Play className="h-5 w-5" />
+                </div>
+                {t.is_featured && (
+                  <div className="absolute right-0 top-0 rounded-bl-md bg-amber-500/90 p-0.5 text-white">
+                    <Star className="h-2.5 w-2.5 fill-current" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="truncate font-serif text-base leading-tight">{t.title}</div>
+                  {matches && <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-forest">fits</span>}
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {[t.artist, t.genre].filter(Boolean).join(" · ") || "Ambient"} · {Math.round((t.duration_seconds || 0) / 60) || "—"} min
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
