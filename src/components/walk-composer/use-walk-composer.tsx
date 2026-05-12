@@ -83,6 +83,17 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     try {
       const isPodcast = !!track?.podcast_episode_id;
+      // Kick off audio buffering BEFORE the insert round-trip so playback
+      // is ready by the time we navigate into the active walk.
+      if (isPodcast && track?.audio_url) {
+        runtime.primePodcast({
+          episodeId: track.podcast_episode_id!,
+          title: track.title,
+          host: track.host,
+          durationSeconds: track.duration_seconds,
+          audioUrl: track.audio_url,
+        });
+      }
       const { data, error } = await supabase.from("walk_sessions").insert({
         user_id: user.id,
         walk_type: walkType,
@@ -104,7 +115,7 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
     } finally {
       setBusy(false);
     }
-  }, [ambient, feeling, intention, moodScore, navigate, user, walkType]);
+  }, [ambient, feeling, intention, moodScore, navigate, runtime, user, walkType]);
 
   const proceed = useCallback(() => {
     if (walkType === "guided_solo") setPickGuide(true);
