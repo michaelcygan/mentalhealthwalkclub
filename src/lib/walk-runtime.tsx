@@ -233,6 +233,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setAudioMuted(false);
     setAudioPlaying(false);
     setAudioPosition(0);
+    primedEpisodeIdRef.current = null;
   };
 
   // Track which episode is already primed/loaded to dedupe with the active-walk effect
