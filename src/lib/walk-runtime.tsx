@@ -418,7 +418,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
         host: feed?.publisher ?? feed?.title ?? null,
         durationSeconds: data.duration_seconds ?? 0,
       };
-      buildAudio(meta, data.audio_url);
+      buildPodcastAudio(meta, data.audio_url);
     })();
     return () => {
       cancelled = true;
