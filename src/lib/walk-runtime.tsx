@@ -486,7 +486,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       paused,
       togglePause,
       podcast,
-      hasInlineAudio: !!podcast,
+      hasInlineAudio: !!podcast || !!musicSnapshot,
       audioMuted,
       toggleAudioMute,
       audioPlaying,
@@ -496,8 +496,10 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       endActiveWalk,
       refresh: load,
       primePodcast,
+      music: musicSnapshot,
+      primeMusicPlaylist,
     }),
-    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load, primePodcast],
+    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load, primePodcast, musicSnapshot, primeMusicPlaylist],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
