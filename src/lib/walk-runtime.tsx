@@ -379,8 +379,9 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       registerVoice,
       endActiveWalk,
       refresh: load,
+      primePodcast,
     }),
-    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load],
+    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load, primePodcast],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
