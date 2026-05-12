@@ -83,8 +83,11 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     try {
       const isPodcast = !!track?.podcast_episode_id;
-      // Kick off audio buffering BEFORE the insert round-trip so playback
-      // is ready by the time we navigate into the active walk.
+      const isMusicSingle = !!track?.ambient_track;
+      const isMusicPlaylist = !!track?.music_playlist;
+      const isMusic = isMusicSingle || isMusicPlaylist;
+
+      // Prime audio in parallel with the insert so playback is ready by nav
       if (isPodcast && track?.audio_url) {
         runtime.primePodcast({
           episodeId: track.podcast_episode_id!,
@@ -93,7 +96,20 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
           durationSeconds: track.duration_seconds,
           audioUrl: track.audio_url,
         });
+      } else if (isMusicPlaylist && track?.music_playlist) {
+        runtime.primeMusicPlaylist({
+          tracks: track.music_playlist.tracks,
+          targetDurationSeconds: track.music_playlist.targetDurationSeconds,
+          label: track.music_playlist.label,
+        });
+      } else if (isMusicSingle && track?.ambient_track) {
+        runtime.primeMusicPlaylist({
+          tracks: [track.ambient_track],
+          targetDurationSeconds: null,
+          label: track.title,
+        });
       }
+
       const { data, error } = await supabase.from("walk_sessions").insert({
         user_id: user.id,
         walk_type: walkType,
@@ -101,11 +117,13 @@ export function WalkComposerProvider({ children }: { children: ReactNode }) {
         mood_before: feeling || null,
         mood_before_score: moodScore,
         intention: intention || null,
-        guided_track_id: isPodcast ? null : (track?.id ?? null),
+        // Only store FK to guided_tracks for actual generative pads (legacy);
+        // ambient music + podcasts are not in guided_tracks.
+        guided_track_id: isPodcast || isMusic ? null : (track?.id ?? null),
         podcast_episode_id: isPodcast ? track!.podcast_episode_id! : null,
       }).select("id").single();
       if (error) throw error;
-      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && (track?.id || isPodcast));
+      const ownsAudio = walkType === "audio" || (walkType === "guided_solo" && (track?.id || isPodcast || isMusic));
       if (ownsAudio) ambient.stop(400);
       beganWalkRef.current = true;
       setSheetOpen(false);
