@@ -386,11 +386,11 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
 
   const primePodcast = useCallback<WalkRuntimeValue["primePodcast"]>((m) => {
     if (primedEpisodeIdRef.current === m.episodeId) return;
-    buildAudio(
+    buildPodcastAudio(
       { episodeId: m.episodeId, title: m.title, host: m.host, durationSeconds: m.durationSeconds },
       m.audioUrl,
     );
-  }, [buildAudio]);
+  }, [buildPodcastAudio]);
 
   // Load podcast when active walk has one (and tear down when it doesn't)
   useEffect(() => {
