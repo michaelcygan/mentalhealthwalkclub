@@ -470,9 +470,20 @@ function ActiveWalk() {
     }
     await supabase.from("walk_live_pings").delete().eq("walk_session_id", session.id);
     clearWalkCaptures(session.id);
+    // Local broadcast — instantly dismisses the LiveActivityPill no matter
+    // what realtime does.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("mhwc:walk-ended", { detail: { walkId: session.id } }));
+    }
     toast.success("You gave yourself movement and air.");
     navigate({ to: "/journal" as never });
   };
+
+  // Pill "End" deep-link — open end-walk flow on mount when ?end=1 is set.
+  useEffect(() => {
+    if (search.end === 1 && session && !ending) setEnding(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.end, session]);
 
   if (!session) return <LoadingScreen variant="inline" size={32} />;
 
