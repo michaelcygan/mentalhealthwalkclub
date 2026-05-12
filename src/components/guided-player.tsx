@@ -84,6 +84,13 @@ export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = fa
     audioRef.current?.pause(); audioRef.current = null;
   }, []);
 
+  // Auto-start playback when the walk begins (podcast flow).
+  useEffect(() => {
+    if (!autoStart || !track || started || paused) return;
+    begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, track, paused]);
+
   const toggle = () => {
     if (!started) { begin(); return; }
     setPlaying((p) => {
