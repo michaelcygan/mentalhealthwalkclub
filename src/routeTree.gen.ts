@@ -26,6 +26,7 @@ import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminMusicRouteImport } from './routes/admin.music'
 import { Route as WalkActiveIdRouteImport } from './routes/walk.active.$id'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
 import { Route as ApiPublicHooksSeedWalksRouteImport } from './routes/api/public/hooks/seed-walks'
 import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
 import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
@@ -118,6 +119,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncPodcastFeedsRoute =
+  ApiPublicHooksSyncPodcastFeedsRouteImport.update({
+    id: '/api/public/hooks/sync-podcast-feeds',
+    path: '/api/public/hooks/sync-podcast-feeds',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSeedWalksRoute = ApiPublicHooksSeedWalksRouteImport.update({
   id: '/api/public/hooks/seed-walks',
   path: '/api/public/hooks/seed-walks',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -194,6 +202,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -219,6 +228,7 @@ export interface FileRoutesById {
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
+  '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -293,6 +305,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
+    | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -314,6 +327,7 @@ export interface RootRouteChildren {
   ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
   ApiPublicHooksSeedWalksRoute: typeof ApiPublicHooksSeedWalksRoute
+  ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -438,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-podcast-feeds': {
+      id: '/api/public/hooks/sync-podcast-feeds'
+      path: '/api/public/hooks/sync-podcast-feeds'
+      fullPath: '/api/public/hooks/sync-podcast-feeds'
+      preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/seed-walks': {
       id: '/api/public/hooks/seed-walks'
       path: '/api/public/hooks/seed-walks'
@@ -528,6 +549,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
   ApiPublicHooksSeedWalksRoute: ApiPublicHooksSeedWalksRoute,
+  ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
