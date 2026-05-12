@@ -73,6 +73,13 @@ interface WalkRuntimeValue {
   endActiveWalk: () => Promise<void>;
   /** Force-refresh the active-walk lookup. */
   refresh: () => void;
+  /**
+   * Eagerly seed podcast audio before the walk row even exists in `active`.
+   * Called by the composer the moment a user picks an episode, so audio
+   * starts buffering in parallel with the walk_sessions insert and route
+   * navigation. Safe to call multiple times.
+   */
+  primePodcast: (meta: { episodeId: string; title: string; host: string | null; durationSeconds: number; audioUrl: string }) => void;
 }
 
 const Ctx = createContext<WalkRuntimeValue | null>(null);
@@ -226,16 +233,59 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setAudioMuted(false);
     setAudioPlaying(false);
     setAudioPosition(0);
+    primedEpisodeIdRef.current = null;
   };
+
+  // Track which episode is already primed/loaded to dedupe with the active-walk effect
+  const primedEpisodeIdRef = useRef<string | null>(null);
+
+  const buildAudio = useCallback((meta: PodcastAudioMeta, audioUrl: string) => {
+    const prev = audioRef.current;
+    if (prev) {
+      prev.pause();
+      prev.src = "";
+    }
+    const audio = new Audio(audioUrl);
+    audio.preload = "auto";
+    audio.volume = 0.85;
+    audio.addEventListener("timeupdate", () => {
+      setAudioPosition(Math.floor(audio.currentTime));
+    });
+    audio.addEventListener("play", () => setAudioPlaying(true));
+    audio.addEventListener("pause", () => setAudioPlaying(false));
+    audio.addEventListener("ended", () => setAudioPlaying(false));
+    audioRef.current = audio;
+    setPodcast(meta);
+    primedEpisodeIdRef.current = meta.episodeId;
+    audio.play().catch(() => {
+      /* needs user gesture; pill controls will retrigger */
+    });
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: meta.title,
+        artist: meta.host ?? "Mental Health Walk Club",
+        album: "Walk podcast",
+      });
+    }
+  }, []);
+
+  const primePodcast = useCallback<WalkRuntimeValue["primePodcast"]>((m) => {
+    if (primedEpisodeIdRef.current === m.episodeId) return;
+    buildAudio(
+      { episodeId: m.episodeId, title: m.title, host: m.host, durationSeconds: m.durationSeconds },
+      m.audioUrl,
+    );
+  }, [buildAudio]);
 
   // Load podcast when active walk has one (and tear down when it doesn't)
   useEffect(() => {
     const epId = active?.podcastEpisodeId ?? null;
     if (!epId) {
+      primedEpisodeIdRef.current = null;
       teardownAudio();
       return;
     }
-    if (podcast?.episodeId === epId) return; // already loaded
+    if (primedEpisodeIdRef.current === epId) return; // already primed/loaded
 
     let cancelled = false;
     (async () => {
@@ -253,34 +303,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
         host: feed?.publisher ?? feed?.title ?? null,
         durationSeconds: data.duration_seconds ?? 0,
       };
-      // Tear down any previous element
-      const prev = audioRef.current;
-      if (prev) {
-        prev.pause();
-        prev.src = "";
-      }
-      const audio = new Audio(data.audio_url);
-      audio.preload = "auto";
-      audio.volume = 0.85;
-      audio.addEventListener("timeupdate", () => {
-        setAudioPosition(Math.floor(audio.currentTime));
-      });
-      audio.addEventListener("play", () => setAudioPlaying(true));
-      audio.addEventListener("pause", () => setAudioPlaying(false));
-      audio.addEventListener("ended", () => setAudioPlaying(false));
-      audioRef.current = audio;
-      setPodcast(meta);
-      // Try to start (will fail without user gesture; pill controls re-trigger).
-      audio.play().catch(() => {
-        /* will require a tap */
-      });
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: meta.title,
-          artist: meta.host ?? "Mental Health Walk Club",
-          album: "Walk podcast",
-        });
-      }
+      buildAudio(meta, data.audio_url);
     })();
     return () => {
       cancelled = true;
@@ -357,8 +380,9 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       registerVoice,
       endActiveWalk,
       refresh: load,
+      primePodcast,
     }),
-    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load],
+    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load, primePodcast],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
