@@ -73,6 +73,13 @@ interface WalkRuntimeValue {
   endActiveWalk: () => Promise<void>;
   /** Force-refresh the active-walk lookup. */
   refresh: () => void;
+  /**
+   * Eagerly seed podcast audio before the walk row even exists in `active`.
+   * Called by the composer the moment a user picks an episode, so audio
+   * starts buffering in parallel with the walk_sessions insert and route
+   * navigation. Safe to call multiple times.
+   */
+  primePodcast: (meta: { episodeId: string; title: string; host: string | null; durationSeconds: number; audioUrl: string }) => void;
 }
 
 const Ctx = createContext<WalkRuntimeValue | null>(null);
