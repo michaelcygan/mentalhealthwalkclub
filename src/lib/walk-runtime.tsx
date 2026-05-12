@@ -36,6 +36,19 @@ interface PodcastAudioMeta {
   durationSeconds: number;
 }
 
+/**
+ * Voice controller — registered by WalkTalkDock when the user is in a live
+ * audio room. Lets the global pill render mic mute / leave-room controls
+ * without having to lift the WebRTC mesh into this provider.
+ */
+export interface VoiceController {
+  micMuted: boolean;
+  toggleMic: () => void;
+  leaveRoom: () => Promise<void> | void;
+  /** Optional label shown on the pill (e.g. room title). */
+  label?: string | null;
+}
+
 interface WalkRuntimeValue {
   active: ActiveWalkSummary | null;
   /** True once we've made at least one query (prevents pill flash). */
@@ -51,6 +64,10 @@ interface WalkRuntimeValue {
   toggleAudioMute: () => void;
   audioPlaying: boolean;
   audioPosition: number;
+
+  /** Live audio room controls (null when not in a room). */
+  voice: VoiceController | null;
+  registerVoice: (c: VoiceController | null) => void;
 
   /** Mark the walk ended in the DB and clear local state. Does not navigate. */
   endActiveWalk: () => Promise<void>;
@@ -289,10 +306,23 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  // ---- Voice controller registration (Walk & Talk / friend room) ----
+  const [voice, setVoice] = useState<VoiceController | null>(null);
+  const registerVoice = useCallback((c: VoiceController | null) => {
+    setVoice(c);
+  }, []);
+
   const endActiveWalk = useCallback(async () => {
     if (!active) return;
     const id = active.walkId;
     dismissedIds.current.add(id);
+    // Best-effort leave any live voice room before ending
+    try {
+      await voice?.leaveRoom();
+    } catch {
+      /* noop */
+    }
+    setVoice(null);
     setActive(null);
     setPaused(false);
     teardownAudio();
@@ -304,7 +334,12 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(ENDED_EVENT, { detail: { walkId: id } }));
     }
-  }, [active]);
+  }, [active, voice]);
+
+  // Clear voice registration when active walk ends/changes
+  useEffect(() => {
+    if (!active) setVoice(null);
+  }, [active?.walkId]);
 
   const value = useMemo<WalkRuntimeValue>(
     () => ({
@@ -318,10 +353,12 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
       toggleAudioMute,
       audioPlaying,
       audioPosition,
+      voice,
+      registerVoice,
       endActiveWalk,
       refresh: load,
     }),
-    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, endActiveWalk, load],
+    [active, ready, paused, togglePause, podcast, audioMuted, toggleAudioMute, audioPlaying, audioPosition, voice, registerVoice, endActiveWalk, load],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

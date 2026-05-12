@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Radio, Users, Footprints, ChevronUp, Square, Play, Pause, Volume2, VolumeX, Headphones } from "lucide-react";
+import { Radio, Users, Footprints, ChevronUp, Square, Play, Pause, Volume2, VolumeX, Headphones, Mic, MicOff, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { haptics } from "@/lib/device";
 import { useWalkRuntime } from "@/lib/walk-runtime";
@@ -29,6 +29,7 @@ export function LiveActivityPill() {
     podcast,
     audioMuted,
     toggleAudioMute,
+    voice,
     endActiveWalk,
   } = useWalkRuntime();
 
@@ -204,6 +205,34 @@ export function LiveActivityPill() {
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-cream/15 transition active:scale-[0.94]"
                 >
                   {audioMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </button>
+              )}
+
+              {voice && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.tap();
+                    voice.toggleMic();
+                  }}
+                  aria-label={voice.micMuted ? "Unmute mic" : "Mute mic"}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-cream/15 transition active:scale-[0.94]"
+                >
+                  {voice.micMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
+
+              {voice && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.tap();
+                    void voice.leaveRoom();
+                  }}
+                  aria-label="Leave room"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-cream/15 transition active:scale-[0.94]"
+                >
+                  <LogOut className="h-4 w-4" />
                 </button>
               )}
 
