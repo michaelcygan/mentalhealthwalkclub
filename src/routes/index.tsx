@@ -155,11 +155,11 @@ function WalkTab() {
     || user.email?.charAt(0).toUpperCase() || "?";
   const streak = (() => { let s = 0; for (let i = weeklyDots.length - 1; i >= 0; i--) { if (weeklyDots[i]) s++; else break; } return s; })();
   const microState = (() => {
-    if (totalWalks === 0) return "Your first walk is the hardest. Five minutes around the block counts.";
-    if (streak >= 4) return "Eight minutes is enough — your body knows.";
-    if (weeklyDots[weeklyDots.length - 2]) return "Two days in a row feels good.";
+    if (totalWalks === 0) return "A lap around the block counts.";
+    if (streak >= 4) return "Start with 5 minutes.";
+    if (weeklyDots[weeklyDots.length - 2]) return "Two days in a row.";
     if (weeklyMinutes === 0) return "A small one tonight?";
-    return "Show up however you can.";
+    return "Start today.";
   })();
 
   return (
