@@ -48,6 +48,7 @@ export function GuidedModule({ trackId, podcastEpisodeId, paused, intention, sav
         <>
           <GuidedPlayer
             paused={paused}
+            autoStart
             sourceUrl={episode.episode_url}
             track={{
               id: episode.id,

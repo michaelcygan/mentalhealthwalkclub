@@ -13,9 +13,10 @@ interface Props {
   track?: Track;
   sourceUrl?: string | null;
   paused?: boolean;
+  autoStart?: boolean;
 }
 
-export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = false }: Props) {
+export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = false, autoStart = false }: Props) {
   const [track, setTrack] = useState<Track | null>(trackProp ?? null);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -82,6 +83,13 @@ export function GuidedPlayer({ trackId, track: trackProp, sourceUrl, paused = fa
     padRef.current?.stop(); padRef.current = null;
     audioRef.current?.pause(); audioRef.current = null;
   }, []);
+
+  // Auto-start playback when the walk begins (podcast flow).
+  useEffect(() => {
+    if (!autoStart || !track || started || paused) return;
+    begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, track, paused]);
 
   const toggle = () => {
     if (!started) { begin(); return; }
