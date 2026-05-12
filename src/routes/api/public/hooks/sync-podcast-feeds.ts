@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-podcast-feeds")({
       POST: async () => {
         try {
           const result = await syncAllActiveFeeds();
-          return Response.json({ ok: true, ...result });
+          return Response.json({ ...result, ok: true });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           return Response.json({ ok: false, error: msg }, { status: 500 });
