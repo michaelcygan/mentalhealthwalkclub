@@ -219,9 +219,8 @@ export function PodcastBrowser({ mood, onChoose }: { mood: string | null; onChoo
 }
 
 export function GuidePicker({ mood, onChoose, onSkip }: Props) {
-  const [tab, setTab] = useState<"voice" | "podcast">("voice");
+  const [tab, setTab] = useState<"music" | "podcast">("music");
   const [tracks, setTracks] = useState<GuidedTrack[]>([]);
-  const [cat, setCat] = useState<string>("ambient");
   const [previewing, setPreviewing] = useState<string | null>(null);
   const padRef = useRef<AmbientPad | null>(null);
   const stopRef = useRef<number | null>(null);
@@ -232,8 +231,10 @@ export function GuidePicker({ mood, onChoose, onSkip }: Props) {
     return () => { padRef.current?.stop(); if (stopRef.current) clearTimeout(stopRef.current); };
   }, []);
 
+  // For now: only ambient music exists. When breath/voice/etc. content lands,
+  // restore the VOICE_CATS chip strip and switch back to a `cat`-driven filter.
   const filtered = tracks
-    .filter((t) => t.category === cat)
+    .filter((t) => t.category === "ambient")
     .sort((a, b) => {
       if (!mood) return 0;
       const am = a.mood_tags.includes(mood) ? -1 : 0;
