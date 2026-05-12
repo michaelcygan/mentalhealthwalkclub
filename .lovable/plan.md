@@ -1,52 +1,48 @@
-# Make podcasts a first-class part of the Guided Walk
+## Podcast UX pass
 
-The plumbing from the previous pass is solid (tables, RSS sync, admin pages, GuidePicker integration). What's missing is **discoverability, content, and in-walk control**. This plan fixes all three with small, surgical changes — no new primitives.
+Four scoped fixes based on the screenshots.
 
-## Why the user can't find it today
-1. Podcasts are the 5th chip inside GuidePicker — only visible *after* tapping "Guided" → Proceed → scrolling a chip row. A 60-year-old will never get there.
-2. The 9 recommended feeds were never inserted, so even if found, the list is empty.
-3. The active walk page has no way to start, switch, or browse a podcast mid-walk.
+### 1. Make the podcast picker scrollable
 
-## Changes
+In `src/components/walk-composer/walk-composer.tsx`, the `pickGuide` branch wraps `<GuidePicker>` in a non-scrolling `<div className="px-4 pb-6">`. The outer `DrawerContent` is capped at `max-h-[92vh]`, so once the list exceeds the drawer height it gets clipped (no scroll, no bottom CTA reachable).
 
-### 1. Composer: Guided opens a 2-tab picker (Voice vs Podcast)
-Drop the 5-chip row inside `GuidePicker`. Replace with **two prominent tabs at the top**: `Voice guide` and `Podcast`. Voice tab shows the existing 4 categories (ambient/breath/voice/music). Podcast tab shows the 6 mood sub-categories.
+Fix: give that branch the same scroll affordance the main composer uses — `className="overflow-y-auto px-4 pb-8"` plus a flex column on `DrawerContent` so the header stays pinned and the body scrolls. Also make sure `PodcastBrowser`'s sticky-ish category chip row still works inside the scroll container.
 
-This keeps the composer as simple as before (still just 3 tiles: Solo / Walk & Talk / Guided) — but once inside Guided, podcasts have equal visual weight to the original guides instead of being a hidden 5th chip.
+### 2. Feed-first browsing (fix "all of one podcast")
 
-`src/components/guide-picker.tsx` — restructure: top tabs `voice | podcast`, then content. Mood-fits pill and attribution stay as today.
+Today `PodcastBrowser` queries the 30 highest `walk_fit_score` episodes in a category, which collapses into one show (e.g. all 10% Happier). Restructure into two levels:
 
-### 2. Seed the 9 recommended feeds
-A migration inserts the curated feeds (APA Speaking of Psychology, NPR Life Kit, TED Health, Hidden Brain, The Happiness Lab, 10% Happier, Huberman Lab, On Being, the goop podcast) into `podcast_feeds` with `is_active = true` and the right category mapping. Admin can deactivate any in `/admin/podcasts` if they don't like one.
+- **Level 1 — Shows grid.** Within the selected category, render the distinct active feeds as square cover tiles (2-col grid on mobile), showing feed image + title + publisher. Source: `podcast_feeds` filtered by `category` and `is_active`.
+- **Level 2 — Episodes for chosen show.** Tapping a show tile drills into a list of that feed's most recent ~20 episodes (current row layout, but constrained to one feed). A small back chevron returns to the shows grid. Selecting an episode behaves exactly like today (calls `onChoose` → composer/sheet handles persistence).
+- Optional small "Recent across shows" row above the grid (one latest episode per feed, max 6) for quick discovery — keep it lightweight and only if it doesn't push the grid below the fold.
 
-After insert, trigger a one-time sync so episodes populate immediately (call the existing `/api/public/hooks/sync-podcast-feeds` endpoint, or run `syncAllActiveFeeds` from the migration via a follow-up server fn the first time `/admin/podcasts` loads if any feed has `last_synced_at IS NULL`).
+This makes discovery feel like a podcast app instead of a single-show feed, and naturally diversifies what users see.
 
-### 3. Active walk page: podcast affordance
-On `/walk/active/$id`, when the walk has no audio attached (`!guided_track_id && !podcast_episode_id && walk_type !== 'audio'`), show a small **"+ Add a podcast"** chip in the action bar. Tapping opens a lightweight bottom sheet with the same Podcast tab UI, and on selection updates `walk_sessions.podcast_episode_id` and re-renders `GuidedModule`.
+### 3. Fix clipped thumbnails
 
-When a podcast *is* playing, the existing `GuidedModule` already renders the player — we'll add a tiny "Change episode" link below the player title that re-opens the same sheet.
+In the episode row inside `PodcastBrowser`, the cover wrapper is `h-16 w-16 rounded-xl gradient-forest` with the `<img>` using `object-cover`. The 10% Happier square gets cropped because the cover already has its own padding/text baked in. Switch the image to `object-contain` on a neutral (or feed-tinted) background, and add `aspect-square` to the new shows grid tiles so feed art is shown intact. Apply the same to the in-walk player's mini cover if it shares the same pattern.
 
-`src/routes/walk.active.$id.tsx` + a new small `src/components/active-walk/podcast-picker-sheet.tsx` that wraps the podcast portion of `GuidePicker`.
+### 4. Auto-play podcast when the walk starts
 
-### 4. Copy + intuitive cues (small)
-- In the composer's "Guided" tile body, change `"A voice in your ear"` → `"A voice or a podcast"`.
-- In the Voice/Podcast tab header inside GuidePicker, add one line of subcopy when Podcast is selected: *"Curated for reflection while you walk."*
+In `src/components/guided-player.tsx`, playback only begins on tap (`begin()`). For podcast walks we want it to start with the walk and remain pausable from the existing walk Pause button.
 
-## Out of scope (intentionally)
-- No changes to home, journal, groups, or friend walk flows.
-- No new player — still `GuidedPlayer`.
-- No playlist/queue, no resume-across-walks, no downloads.
-- No mini-player outside the active walk page (the Live Activity pill already covers minimize-state).
+- Add an `autoStart?: boolean` prop. When true and `track` is loaded and `paused` is false, call `begin()` once on mount inside a `useEffect` (guarded by `started`).
+- Wire it up: in `GuidedModule` pass `autoStart` only on the podcast branch (the voice-guide branch keeps the explicit "tap to begin" since some are generative ambient pads users may want to defer).
+- The existing `paused` effect already syncs the audio element with the walk-level Pause button, so the global Pause will keep working unchanged.
+- Browser autoplay note: the walk start click on the composer's "Begin walking" CTA is the same user gesture chain, so `audio.play()` should be permitted. If a browser still blocks it, surface a one-tap "Tap to start audio" affordance inside the player (already effectively the current Play button) — no extra UI needed.
 
-## Files
-- **Edit** `src/components/guide-picker.tsx` (Voice/Podcast tabs)
-- **Edit** `src/components/walk-composer/walk-composer.tsx` (one-line copy)
-- **Edit** `src/routes/walk.active.$id.tsx` (mount podcast sheet + chip)
-- **New** `src/components/active-walk/podcast-picker-sheet.tsx`
-- **New** migration: seed 9 feeds + small server fn to update an active walk's `podcast_episode_id`
+### Out of scope
 
-## Acceptance
-- Tapping Guided → instantly see Voice/Podcast as equal tabs.
-- Podcast tab is non-empty on first load (seeded + auto-synced).
-- On an active solo/guided walk with no audio, an "Add a podcast" chip is visible.
-- Tapping it picks an episode, the player appears in-walk, attribution is shown.
+- Voice-guide content (user is adding ambient music separately).
+- Mini-player / cross-page persistence.
+- Search, queue, downloads, resume across walks.
+
+### Files touched
+
+- `src/components/walk-composer/walk-composer.tsx` — scroll wrapper for pickGuide branch.
+- `src/components/guide-picker.tsx` — restructure `PodcastBrowser` into shows grid + episode drill-down; image fit fixes.
+- `src/components/active-walk/podcast-picker-sheet.tsx` — inherits the new browser; verify scroll inside drawer.
+- `src/components/active-walk/format-modules/guided-module.tsx` — pass `autoStart` for podcast playback.
+- `src/components/guided-player.tsx` — add `autoStart` prop + effect; thumbnail fit if relevant.
+
+No DB or server changes.
