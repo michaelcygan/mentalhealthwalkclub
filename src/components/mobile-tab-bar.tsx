@@ -30,8 +30,28 @@ export function MobileTabBar() {
 
   const walkActive = false;
 
+  // Publish the current bar height (incl. safe area) as a CSS var so other
+  // fixed UI (LiveActivityPill) can stack above it without overlap, even
+  // when the bar auto-hides on scroll-down.
+  const barRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const update = () => {
+      const visible = !hidden && !onActiveWalk && window.matchMedia("(max-width: 767px)").matches;
+      const h = visible && barRef.current ? barRef.current.getBoundingClientRect().height : 0;
+      root.style.setProperty(TABBAR_VAR, `${Math.round(h)}px`);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+    };
+  }, [hidden, onActiveWalk]);
+
   return (
     <nav
+      ref={barRef as React.RefObject<HTMLElement>}
       className={`fixed inset-x-0 bottom-0 z-40 md:hidden transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Primary"
