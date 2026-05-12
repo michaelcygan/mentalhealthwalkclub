@@ -253,6 +253,20 @@ export function WalkTalkDock({ walkSessionId, mood, hasMoved, onSavePrompt }: Pr
     toast.success("Left the walk. Your steps continue.");
   };
 
+  // Expose mic/leave to the global Live pill while in-room
+  const { registerVoice } = useWalkRuntime();
+  useEffect(() => {
+    if (phase !== "in-room" || !room) return;
+    registerVoice({
+      micMuted: muted,
+      toggleMic: toggleMute,
+      leaveRoom: handleLeave,
+      label: room.title,
+    });
+    return () => registerVoice(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, room?.id, muted]);
+
   const handleSkip = async () => {
     if (!room) return;
     await padRef.current?.stop();
