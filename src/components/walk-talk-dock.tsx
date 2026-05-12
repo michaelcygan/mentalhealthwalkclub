@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AmbientPad, playJoinChime, timeOfDayKey } from "@/lib/audio/ambient-pad";
 import { toast } from "sonner";
 import { ReflectionDrift } from "@/components/reflection-drift";
+import { useWalkRuntime } from "@/lib/walk-runtime";
 
 interface Props {
   walkSessionId: string;
