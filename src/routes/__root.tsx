@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Footprints, Users, Calendar, BookHeart, User as UserIcon, Radio, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxBell } from "@/components/inbox-bell";
-import { NowPlayingBar } from "@/components/now-playing-bar";
+import { LiveActivityPill } from "@/components/live-activity-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { useLiveCount } from "@/hooks/use-live-count";
 import { LogoStamp } from "@/components/logo-stamp";
@@ -264,7 +264,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
       <TabBar />
       <main className="md:pl-60">
         <div className="mx-auto max-w-5xl px-4 pt-5 md:px-8 md:pt-10 md:pb-12 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-12">
-          <NowPlayingBar />
+          <LiveActivityPill />
           {children}
         </div>
       </main>
