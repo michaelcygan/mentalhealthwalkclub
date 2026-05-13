@@ -272,6 +272,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setAudioPosition(0);
     primedEpisodeIdRef.current = null;
     musicQueueRef.current = null;
+    musicPendingStartRef.current = false;
     setMusicSnapshot(null);
   };
 
