@@ -272,6 +272,7 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     setAudioPosition(0);
     primedEpisodeIdRef.current = null;
     musicQueueRef.current = null;
+    musicPendingStartRef.current = false;
     setMusicSnapshot(null);
   };
 
@@ -368,6 +369,11 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     onEndedRef.current = musicSnapshot ? advanceMusic : null;
   }, [musicSnapshot, advanceMusic]);
 
+  // True once the queue has been primed but playback hasn't started yet —
+  // we wait for the active walk row to load before kicking off audio so the
+  // music doesn't begin while the composer/transition is still on screen.
+  const musicPendingStartRef = useRef(false);
+
   const primeMusicPlaylist = useCallback<WalkRuntimeValue["primeMusicPlaylist"]>((input) => {
     if (!input.tracks?.length) return;
     musicQueueRef.current = {
@@ -379,9 +385,18 @@ export function WalkRuntimeProvider({ children }: { children: React.ReactNode })
     };
     setPodcast(null);
     primedEpisodeIdRef.current = null;
+    musicPendingStartRef.current = true;
     publishMusic();
+  }, [publishMusic]);
+
+  // Start playback only once the walk_session has been created and loaded.
+  useEffect(() => {
+    if (!active?.walkId) return;
+    if (!musicQueueRef.current) return;
+    if (!musicPendingStartRef.current) return;
+    musicPendingStartRef.current = false;
     void playCurrentMusic();
-  }, [playCurrentMusic, publishMusic]);
+  }, [active?.walkId, playCurrentMusic]);
 
 
   const primePodcast = useCallback<WalkRuntimeValue["primePodcast"]>((m) => {
