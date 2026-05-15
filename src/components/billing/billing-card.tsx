@@ -25,6 +25,7 @@ export function BillingCard() {
   const { loading, isPlus, isTrialing, cancelAtPeriodEnd, currentPeriodEnd, raw, refresh } = useSubscription();
   const { openPlusCheckout } = useAuthPrompt();
   const { user } = useAuth();
+  const { isNative, platform } = useIsNative();
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<BillingNotice | null>(null);
 
