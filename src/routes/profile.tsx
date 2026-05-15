@@ -234,6 +234,35 @@ function ProfileTab() {
             <Button variant="outline" onClick={signOut} className="w-full rounded-full">
               <LogOut className="mr-2 h-4 w-4" />Sign out
             </Button>
+
+            <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+              <h2 className="flex items-center gap-2 font-serif text-lg text-destructive"><Trash2 className="h-4 w-4" />Delete account</h2>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Permanently removes your profile, walks, journals, friend walks, RSVPs, and group memberships. This cannot be undone.
+              </p>
+              <Button
+                variant="destructive"
+                disabled={deleting}
+                onClick={async () => {
+                  if (!confirm("Permanently delete your account and all your data? This cannot be undone.")) return;
+                  if (!confirm("Last chance — really delete everything?")) return;
+                  setDeleting(true);
+                  try {
+                    await deleteMyAccount();
+                    await signOut();
+                    toast.success("Account deleted.");
+                    navigate({ to: "/" });
+                  } catch (e) {
+                    setDeleting(false);
+                    toast.error(e instanceof Error ? e.message : "Could not delete account.");
+                  }
+                }}
+                className="mt-3 w-full rounded-full"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Deleting…" : "Delete my account"}
+              </Button>
+            </section>
+
             {since && <p className="text-center text-[11px] text-muted-foreground">Walker since {since}</p>}
           </div>
         </SheetContent>
