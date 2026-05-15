@@ -223,6 +223,16 @@ export function AuthForm({
         Continue with Google
       </button>
 
+      <button
+        type="button"
+        onClick={signInWithApple}
+        disabled={busy}
+        className="mt-2 flex h-11 w-full items-center justify-center gap-2.5 rounded-full bg-foreground text-sm font-medium text-background shadow-soft transition hover:opacity-90 disabled:opacity-60"
+      >
+        <AppleMark className="h-4 w-4" />
+        Continue with Apple
+      </button>
+
       <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
         or
