@@ -7,6 +7,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { useAuth } from "@/lib/auth-context";
 import type { PlusPlan } from "@/lib/billing.functions";
 import { trackBillingEvent } from "@/lib/billing-analytics";
+import { isNativeApp, openRevenueCatPaywall } from "@/lib/despia";
 
 interface Ctx {
   openAuth: (mode?: "signin" | "signup", plan?: AuthPlan) => void;
