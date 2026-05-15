@@ -21,7 +21,9 @@ import {
 import { WalkJournalComposer } from "@/components/active-walk/walk-journal-composer";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
 import { getNow as getWeatherNow } from "@/lib/weather";
-import { useStepCounter } from "@/hooks/use-step-counter";
+import { useWalkSteps } from "@/hooks/use-walk-steps";
+import { useNativeBackgroundGps, type NativeGpsPoint } from "@/hooks/use-native-background-gps";
+import { isNativeApp } from "@/lib/despia";
 import { ActiveWalkShell } from "@/components/active-walk/active-walk-shell";
 import type { WalkFormat } from "@/components/active-walk/walk-meta-row";
 import { SoloModule } from "@/components/active-walk/format-modules/solo-module";
@@ -188,6 +190,10 @@ function ActiveWalk() {
   }, [session]);
 
   useEffect(() => {
+    // On the Despia native shell we use HealthKit + native background GPS
+    // instead of the web Geolocation API, so it keeps tracking with the
+    // screen off. Skip the web watcher to avoid double-counting distance.
+    if (isNativeApp()) return;
     if (!navigator.geolocation) {
       setGps("denied");
       return;
@@ -242,7 +248,37 @@ function ActiveWalk() {
     };
   }, []);
 
-  const motion = useStepCounter(!paused);
+  const motion = useWalkSteps(!paused);
+
+  // Native background GPS (Despia/iOS). On web this is a no-op and the
+  // existing `watchPosition` effect handles foreground location. On native,
+  // points keep streaming with the screen off / app backgrounded.
+  useNativeBackgroundGps({
+    enabled: !paused && !!session,
+    intervalSeconds: 30,
+    movementCm: 500, // 5m
+    onPoint: (data: NativeGpsPoint) => {
+      if (!data.active) return;
+      if (data.horizontalAccuracy > 30) return;
+      const p = { lat: data.latitude, lng: data.longitude, t: Date.now() };
+      if (lastPos.current) {
+        const d = haversine(lastPos.current, p);
+        if (d >= 5 && d < 200) {
+          setMeters((m) => m + d);
+          points.current.push(p);
+          setRouteTick((x) => x + 1);
+          lastPos.current = p;
+          setWalkerCoords({ lat: p.lat, lng: p.lng });
+          setGps("live");
+        }
+      } else {
+        lastPos.current = p;
+        points.current.push(p);
+        setWalkerCoords({ lat: p.lat, lng: p.lng });
+        setGps("live");
+      }
+    },
+  });
 
   // Motion sensor is a *fallback*: only surface a quiet hint if (a) GPS isn't
   // working after a 30s grace, or (b) GPS is live but we've gotten no motion
