@@ -21,7 +21,9 @@ import {
 import { WalkJournalComposer } from "@/components/active-walk/walk-journal-composer";
 import { renderRouteSnapshot } from "@/lib/route-snapshot";
 import { getNow as getWeatherNow } from "@/lib/weather";
-import { useStepCounter } from "@/hooks/use-step-counter";
+import { useWalkSteps } from "@/hooks/use-walk-steps";
+import { useNativeBackgroundGps, type NativeGpsPoint } from "@/hooks/use-native-background-gps";
+import { isNativeApp } from "@/lib/despia";
 import { ActiveWalkShell } from "@/components/active-walk/active-walk-shell";
 import type { WalkFormat } from "@/components/active-walk/walk-meta-row";
 import { SoloModule } from "@/components/active-walk/format-modules/solo-module";
