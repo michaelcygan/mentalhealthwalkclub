@@ -40,6 +40,8 @@ interface Group { id: string; name: string; }
 function ProfileTab() {
   const { user, signOut } = useAuth();
   const { openAuth } = useAuthPrompt();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);
