@@ -207,63 +207,77 @@ export function BillingCard() {
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
 
           <div className="mt-4 grid gap-2">
-            {status === "past_due" && (
+            {isNative ? (
               <Button
-                disabled={busy === "card"}
-                onClick={() => openPortal("payment_method_update", "card")}
-                className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90"
+                variant="outline"
+                onClick={openNativeSubscriptionSettings}
+                className="justify-start rounded-full"
               >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {busy === "card" ? "Opening…" : "Update payment method"}
-                <ExternalLink className="ml-auto h-3.5 w-3.5" />
-              </Button>
-            )}
-
-            {endingSoon ? (
-              <Button
-                disabled={busy === "resume"}
-                onClick={resume}
-                className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {busy === "resume" ? "Resuming…" : "Resume my plan"}
+                <Apple className="mr-2 h-4 w-4" />
+                {platform === "android" ? "Manage in Google Play" : "Manage in App Store"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                disabled={busy === "cancel"}
-                onClick={() => openPortal("subscription_cancel", "cancel")}
-                className="justify-start rounded-full"
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                {busy === "cancel" ? "Opening…" : "Cancel plan"}
-                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            )}
+              <>
+                {status === "past_due" && (
+                  <Button
+                    disabled={busy === "card"}
+                    onClick={() => openPortal("payment_method_update", "card")}
+                    className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90"
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {busy === "card" ? "Opening…" : "Update payment method"}
+                    <ExternalLink className="ml-auto h-3.5 w-3.5" />
+                  </Button>
+                )}
 
-            {status !== "past_due" && (
-              <Button
-                variant="outline"
-                disabled={busy === "card"}
-                onClick={() => openPortal("payment_method_update", "card")}
-                className="justify-start rounded-full"
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {busy === "card" ? "Opening…" : "Update payment method"}
-                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            )}
+                {endingSoon ? (
+                  <Button
+                    disabled={busy === "resume"}
+                    onClick={resume}
+                    className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {busy === "resume" ? "Resuming…" : "Resume my plan"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    disabled={busy === "cancel"}
+                    onClick={() => openPortal("subscription_cancel", "cancel")}
+                    className="justify-start rounded-full"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    {busy === "cancel" ? "Opening…" : "Cancel plan"}
+                    <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                )}
 
-            <Button
-              variant="ghost"
-              disabled={busy === "portal"}
-              onClick={() => openPortal(undefined, "portal")}
-              className="justify-start rounded-full text-muted-foreground hover:text-foreground"
-            >
-              <Settings2 className="mr-2 h-4 w-4" />
-              {busy === "portal" ? "Opening…" : "Invoices & full billing settings"}
-              <ExternalLink className="ml-auto h-3.5 w-3.5" />
-            </Button>
+                {status !== "past_due" && (
+                  <Button
+                    variant="outline"
+                    disabled={busy === "card"}
+                    onClick={() => openPortal("payment_method_update", "card")}
+                    className="justify-start rounded-full"
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {busy === "card" ? "Opening…" : "Update payment method"}
+                    <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  disabled={busy === "portal"}
+                  onClick={() => openPortal(undefined, "portal")}
+                  className="justify-start rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  {busy === "portal" ? "Opening…" : "Invoices & full billing settings"}
+                  <ExternalLink className="ml-auto h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
