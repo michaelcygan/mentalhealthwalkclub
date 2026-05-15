@@ -118,7 +118,17 @@ export function BillingCard() {
             <p className="mt-1 text-[11px] text-muted-foreground">
               30 days free, then $4.99/mo or $49.99/yr. Cancel anytime.
             </p>
-            <Button onClick={openPlusCheckout} className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90">
+            <Button
+              onClick={() => {
+                if (isNative && user) {
+                  void trackBillingEvent("plus_intent_selected", { source: "native" });
+                  openRevenueCatPaywall({ appUserId: user.id });
+                } else {
+                  openPlusCheckout();
+                }
+              }}
+              className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90"
+            >
               Start free trial
             </Button>
           </div>
