@@ -68,6 +68,36 @@ export type Database = {
         }
         Relationships: []
       }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          sent_at: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sent_at?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sent_at?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       audio_room_participants: {
         Row: {
           audio_room_id: string
@@ -1432,13 +1462,14 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           environment: string
+          gateway: string
           id: string
           last_event_at: string | null
           price_id: string
           product_id: string
           status: string
           stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_subscription_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -1448,13 +1479,14 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           environment?: string
+          gateway?: string
           id?: string
           last_event_at?: string | null
           price_id: string
           product_id: string
           status?: string
           stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -1464,13 +1496,14 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           environment?: string
+          gateway?: string
           id?: string
           last_event_at?: string | null
           price_id?: string
           product_id?: string
           status?: string
           stripe_customer_id?: string
-          stripe_subscription_id?: string
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
