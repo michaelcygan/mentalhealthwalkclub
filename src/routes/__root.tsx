@@ -191,6 +191,10 @@ function TabBar() {
           <p className="font-serif text-xs italic leading-relaxed text-muted-foreground">
             You don't have to walk through it alone.
           </p>
+          <div className="flex gap-3 text-[10px] text-muted-foreground/70">
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          </div>
         </div>
       </aside>
 

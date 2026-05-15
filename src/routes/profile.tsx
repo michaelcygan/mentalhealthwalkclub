@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -6,8 +6,9 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Trophy, Flame } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Trophy, Flame, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { deleteMyAccount } from "@/lib/account.functions";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
 import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
@@ -39,6 +40,8 @@ interface Group { id: string; name: string; }
 function ProfileTab() {
   const { user, signOut } = useAuth();
   const { openAuth } = useAuthPrompt();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);

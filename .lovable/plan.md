@@ -1,123 +1,156 @@
-# Music library: long uploads, rich metadata, timed mixes
+# Walk Club → App Store launch via Despia (final plan)
 
-## Overview
-
-Turn the existing admin music page into a real library, then surface that library on the **Music** tab of the Start-a-Walk flow with:
-- Three "Timed Mix" cards (15 / 30 / 60 min — auto-shuffled to fill duration)
-- A "Shuffle all" pill
-- The full track list below
-
-Plus: grant `greenhousecrtv@gmail.com` admin so you can use `/admin/music`.
-
-## Decisions captured
-
-- **Format:** MP3 / M4A only (you'll convert masters beforehand). No raw .wav, no transcode pipeline. 1.5h MP3 @ 192 kbps ≈ 130 MB; we'll set the cap at **250 MB** to be safe.
-- **Music tab UX:** Timed mixes on top + Shuffle pill + track list.
-- **Per-track metadata:** Title, Artist, Genre/Mood tags, Cover image, Sort order, Featured flag.
+Decisions captured:
+- **Bundle ID:** `com.despia.mentalhealthwalkclub` (from your Despia dashboard screenshot — that's it, locked).
+- **App Start URL:** `https://www.mentalhealthwalkclub.com` (already configured).
+- **Plus pricing:** $4.99/mo + $39.99/yr (saves ~33%, yearly is the "generous" tier).
+- **Privacy/Terms:** I draft generic-but-honest copy with strong "platform assumes no liability" language. Not legal advice — fine to swap later.
+- **Notifications (v1):** walk reminders (opt-in), Walk & Talk start pings, RSVP confirmations, **announcements** (admin-broadcast).
+- **Android steps:** ship with copy "Background step tracking is coming soon to Android" — no Despia mention.
+- **Despia handles store submission** — no Apple Developer / Play Console accounts needed from you. That removes Phases C–E from my earlier plan.
 
 ---
 
-## 1. Grant admin
+## What Despia gives us (confirmed from their docs)
 
-After this plan is approved, I'll insert one row into `user_roles` (role=`admin`) for the user matching `greenhousecrtv@gmail.com`. Then sign out / sign back in to refresh the session, and `/admin` becomes accessible.
+| Capability | Despia bridge | Used for |
+|---|---|---|
+| Real pedometer (background, screen-off) | **Apple HealthKit** read | Solves your #1 ask on iOS |
+| Background GPS w/ interval + distance | `gps-location` | Distance tracking with screen locked |
+| Background audio + lock-screen controls | `audio-player` | Music/podcast keeps playing when phone is locked |
+| In-app purchases (App Store + Play) | **RevenueCat** bridge | Apple-compliant Plus subscriptions |
+| Push notifications | **OneSignal** bridge | The 4 notification types above |
+| Sign in with Apple (required by Apple if Google is offered) | `oauth/apple` | Native Face ID sign-in |
+| Native Google sign-in (works in webview) | `oauth/google` | Replaces fragile webview OAuth |
+| Universal/app links | `deeplinking` | `mentalhealthwalkclub.com/w/CODE` opens the app |
+| Native runtime detection | `despia.uuid`, UA flag | Branch UI (RevenueCat vs Stripe, etc.) |
+| OTA updates | Built-in | UI/logic ships instantly via web — no re-submission |
 
-## 2. Storage + schema (one migration)
-
-**Bucket changes**
-- `ambient-music`: raise `file_size_limit` to `262144000` (250 MB). Restrict `allowed_mime_types` to `['audio/mpeg','audio/mp4','audio/m4a','audio/x-m4a']`. Stays private; signed URLs.
-- New bucket `ambient-covers` (public, 5 MB cap, image/* mime). Public so covers load without round-trips.
-- Storage RLS: admin-only insert/update/delete on both buckets; `ambient-covers` public select.
-
-**Table changes — `ambient_tracks`**
-Add columns:
-- `genre text` — single value (e.g. "Lo-fi", "Forest")
-- `mood_tags text[] not null default '{}'` — chips, used for matching `mood`
-- `cover_path text` — path inside `ambient-covers`
-- `sort_order int not null default 0`
-- `is_featured bool not null default false`
-- `bpm int` (nullable) — optional, for smarter shuffles later (no UI yet)
-
-No drops. Existing rows unaffected.
-
-## 3. Admin Music page (`src/routes/admin.music.tsx`)
-
-- Raise client `file.size` cap to **250 MB**; reject `.wav` upfront with a friendly toast pointing to MP3/M4A.
-- Resumable uploads: switch from `.upload(path, file)` to `.uploadToSignedUrl` / `upsert` flow with `@supabase/storage-js` resumable (TUS) for files > 6 MB so 130 MB MP3s don't time out behind a single POST. Show per-file progress (% bar) instead of a count.
-- Track row gains:
-  - **Cover thumbnail** with click-to-upload (square, optional)
-  - **Genre** input
-  - **Mood tags** — chip input (comma-separated, normalized lower-snake)
-  - **Sort order** number input + ★ Featured toggle
-- Inline-edit on blur, same pattern as title/artist.
-
-## 4. Music tab on Start-a-Walk
-
-Today the picker reads from `guided_tracks`. We'll switch the **Music** tab only to read from `ambient_tracks`:
-
-```
-[ Voice/Music | Podcast ]
-———————————————————————
-Timed Mix
-┌──────────┐ ┌──────────┐ ┌──────────┐
-│  15 min  │ │  30 min  │ │  60 min  │   <- shuffled to fill duration
-└──────────┘ └──────────┘ └──────────┘
-
-[🔀 Shuffle all] [★ Featured]            <- pill row
-
-Tracks
-─ cover · Title · Genre · 12:34
-─ cover · Title · Genre · 8:21
-...
-```
-
-- Featured tracks pin to top of the list, then sort by `sort_order`, then by `created_at desc`.
-- Mood-fit chip ("fits") still appears when `mood_tags.includes(currentMood)`.
-- Selecting a single track → existing "play one" flow.
-- Selecting a Timed Mix or Shuffle → new playlist flow (next section).
-
-Picker passes back a richer `GuidedTrack` shape so the runtime knows whether it received one track or a queue + target duration.
-
-## 5. Playlist runtime (timed walks with music)
-
-`src/lib/walk-runtime.tsx` gets a small playlist API:
-
-- New `primeMusicPlaylist({ tracks: AmbientTrack[], targetDurationSeconds | null, shuffle: boolean })` — analogous to existing `primePodcast`.
-- Internally: shuffle queue (Fisher-Yates), fetch signed URL for current + prefetch next.
-- On `audio.ended`: advance to next track. If `targetDurationSeconds` is set, stop the queue when the cumulative played time ≥ target (don't cut the current track mid-way unless it overshoots by >25 %; otherwise let it finish).
-- Same Pause / Mute controls as podcast mode — reuse `RuntimePodcastCard` pattern; refactor to a shared `RuntimeAudioCard` showing current track title + "Up next: …" line.
-- For Shuffle (no duration), queue runs indefinitely; loops back when exhausted.
-
-`use-walk-composer.tsx` chooses which `prime…` to call based on the picker payload.
-
-## 6. Why this is a selling point (framing)
-
-- "**Walk for 15, 30, or 60 minutes** — we'll shuffle the right amount of music and stop when your time's up." That's a complete, opinionated product moment vs. generic podcast apps.
-- Featured + Genre tags let you curate moods (e.g. "Forest", "Subway", "Late night") that walkers can use to set intention.
-- Auto-stop at duration encourages users to actually *finish* a walk — different from infinite background music.
+> Android Health Connect bridge is "coming soon" per Despia; that's why Android v1 ships with the disclaimer.
 
 ---
 
-## Out of scope (call out for later)
+## What I'll build (in order)
 
-- WAV → MP3 server-side transcode (not doing now per your choice)
-- Per-track waveform previews
-- BPM-matched shuffles (column added but unused yet)
-- User-built playlists / favorites
+### Phase A — Compliance pages + safety net
+1. **`/privacy` route** — generic-but-honest copy covering: what we collect (account, walks, location during walks, health/steps, audio for Walk & Talk, push tokens), how it's used, third parties (auth, payments, push), user rights (export, delete), kids policy, contact email. Includes "**Mental Health Walk Club is not a medical service. The platform assumes no liability for any decisions, injuries, or outcomes related to use of the app, including walks, audio rooms, or community interactions.**"
+2. **`/terms` route** — eligibility, account rules, acceptable use (no harassment, no harmful content in Walk & Talk), subscription terms (auto-renew, cancel anytime, refunds via store), termination, **disclaimer of warranties + limitation of liability** (broad), governing law placeholder.
+3. Footer links to both from `__root.tsx` and a "Legal" section in `/profile`.
+4. **"Delete my account"** button in `/profile` → server fn that revokes auth user via `supabaseAdmin.auth.admin.deleteUser` and lets RLS cascades clean owned rows. Two-step confirm dialog.
+5. **Sign in with Apple** added to `/auth`. Web first using Supabase OAuth, then Despia bridge for native (same `signInWithIdToken` flow as Google).
 
-## Files touched
+### Phase B — Despia SDK wrapper + native branches
+1. `bun add despia-native`.
+2. `src/lib/despia.ts` — typed wrapper: `isNative()`, `getStoreLocation()`, `requestPushPermission()`, `getStepsSince(date)`, `startBackgroundGps(opts)`, `playNativeAudio(url, meta)`, `openRevenueCatPaywall()`, `openAppleAuth()`, `openGoogleAuth()`. Each is a thin call to the Despia scheme (`healthkit://`, `gps://`, etc.) with web no-op fallbacks.
+3. `useIsNative()` hook so components can branch.
 
-- **migration** — bucket config, `ambient-covers` bucket + policies, columns on `ambient_tracks`
-- **insert** — admin role for greenhousecrtv@gmail.com (separate, after migration)
-- `src/routes/admin.music.tsx` — resumable uploads, cover/genre/mood/sort/featured editors, 250 MB cap
-- `src/components/guide-picker.tsx` — Music tab now reads `ambient_tracks` and renders Timed Mix cards + Shuffle + list
-- `src/components/walk-composer/use-walk-composer.tsx` — branch on payload type → call `primeMusicPlaylist` vs single-track
-- `src/lib/walk-runtime.tsx` — `primeMusicPlaylist`, queue + auto-advance + duration cutoff
-- `src/components/active-walk/format-modules/guided-module.tsx` — extract `RuntimeAudioCard` shared by podcast + playlist; show "Up next"
-- `src/integrations/supabase/types.ts` regenerates automatically after migration
+### Phase C — Steps, GPS, audio (the user-visible wins)
+1. **`src/hooks/use-step-counter.ts`** — when `isNative()` and iOS, query HealthKit for steps since walk start (poll every 30s + once on walk end). Else keep `devicemotion`. On Android-native, show "Steps tracked while walk is open. Background tracking coming soon."
+2. **Background GPS during active walks** — start in `walk-runtime.tsx` walk-start, stop on end. Server endpoint `/api/public/walk-position` writes to existing `walk_positions` (or new minimal table if absent — I'll check).
+3. **Native audio player** — in `walk-runtime.tsx`, when `isNative()`, route podcast + music playback through Despia's `audio-player` scheme with `{ title, artist, artworkUrl }` metadata for lock-screen controls. Web/desktop keeps the existing `<audio>` element. Pause/skip controls call the bridge.
 
-## Technical notes
+### Phase D — Plus on mobile via RevenueCat (Apple-compliant)
+1. Set up RevenueCat project, mirror two products:
+   - `walk_club_plus_monthly` — $4.99/mo, 30-day trial
+   - `walk_club_plus_yearly` — $39.99/yr, 30-day trial
+   - Single entitlement `plus`.
+2. **Mobile branch in `BillingCard` + `PlusCheckout`**: when `isNative()`, render a native paywall via `revenuecat://paywall` instead of Stripe Checkout. Hide "Update payment method" / "Open billing portal" — those happen in iOS Settings; show "Manage in App Store" deep link instead.
+3. **Webhook**: `/api/public/hooks/revenuecat` verifies RC's auth header, upserts entitlement into the same `subscriptions` table Stripe writes to (new `gateway: 'revenuecat' | 'stripe'` column), so `has_active_subscription` RPC keeps working unchanged.
+4. Map `app_user_id` = Supabase `auth.uid()` so subscription follows the account.
+5. Keep Stripe path live for web/desktop users.
 
-- Resumable upload uses `supabase.storage.from(...).upload(path, file, { upsert: false, duplex: 'half' })` with a `chunkSize` of ~6 MB. If the storage-js version doesn't expose resumable yet, fall back to a single POST since 250 MB is within the worker-bypass storage upload limit (uploads go directly to storage.supabase.co, not through the SSR Worker).
-- Storage RLS for `ambient-covers`: `bucket_id = 'ambient-covers' AND has_role(auth.uid(), 'admin')` for write; `bucket_id = 'ambient-covers'` for read.
-- Mood tag normalization: `tag.trim().toLowerCase().replace(/\s+/g,'_')` before insert; render as Title Case in chips.
-- Auto-stop logic example: `while (sumPlayed + nextDuration <= target * 1.25) advance()`.
+### Phase E — Notifications via OneSignal
+1. OneSignal project + iOS/Android push certs (Despia handles cert upload).
+2. Init OneSignal on app open (native only); call `setExternalUserId(user.id)` on sign-in, clear on sign-out.
+3. **Triggers** (server-side, via OneSignal REST):
+   - **Walk reminder** — opt-in daily reminder at user-chosen time. Add `notif_walk_reminder_at` to `profiles`; existing cron job sends.
+   - **Walk & Talk start ping** — when a room user RSVP'd to opens, send 5-min-before push.
+   - **RSVP confirmation** — immediate push when user RSVPs to a Local walk.
+   - **Announcement** — admin-only screen at `/admin/announcements` to broadcast a title+body+optional URL to all (or filtered) users. New `announcements` table for history.
+
+### Phase F — Native auth + deep links
+1. Mobile branch in `/auth`: use Despia OAuth bridges for Google + Apple, exchange returned ID token with `supabase.auth.signInWithIdToken({ provider, token })`.
+2. Universal/app links for `/w/$code`, `/events/$slug`, `/groups/$slug` — register domains in Despia editor.
+
+### Phase G — Despia editor checklist (you click these)
+```text
+[ ] Bundle ID: com.despia.mentalhealthwalkclub  ✓ already set
+[ ] App Start URL: https://www.mentalhealthwalkclub.com  ✓ already set
+[ ] Toggle bridges: HealthKit, Background Location, Audio Player,
+    RevenueCat, OneSignal, OAuth (Apple+Google), Push, Deeplinking
+[ ] Privacy strings (1 sentence each):
+    - Location: "Used to track your walk distance and route."
+    - Health:   "Used to count your steps during walks."
+    - Mic:      "Used for Walk & Talk live audio rooms."
+    - Notifs:   "Walk reminders, RSVP confirmations, and announcements."
+[ ] External-link allowlist: accounts.google.com, appleid.apple.com,
+    *.supabase.co, api.revenuecat.com, onesignal.com
+[ ] Upload 1024×1024 icon (I'll generate from the brand mark)
+[ ] Submit via Despia → they handle App Store + Play submission
+```
+
+### Phase H — Post-launch
+- Most fixes ship via OTA (web deploy → app picks up next open).
+- Monitor: RevenueCat dashboard (subs), OneSignal (delivery rate), Supabase logs (errors).
+- v1.1 candidates: Android Health Connect (when Despia ships it), home widgets, Siri shortcuts, Apple Watch.
+
+---
+
+## Files I'll create / change
+
+**New**
+- `src/routes/privacy.tsx`, `src/routes/terms.tsx`
+- `src/routes/admin.announcements.tsx`
+- `src/lib/despia.ts`, `src/hooks/use-is-native.ts`
+- `src/lib/account.functions.ts` (delete account)
+- `src/lib/revenuecat.functions.ts`
+- `src/routes/api/public/hooks/revenuecat.ts`
+- `src/lib/notifications.functions.ts` (OneSignal send helpers)
+
+**Edited**
+- `src/routes/__root.tsx` — footer legal links
+- `src/routes/auth.tsx` — Apple Sign In + native OAuth branch
+- `src/routes/profile.tsx` — Delete account, Manage in App Store on iOS, reminder time picker
+- `src/components/billing/billing-card.tsx`, `plus-checkout.tsx` — native paywall branch + yearly option
+- `src/hooks/use-step-counter.ts` — HealthKit branch
+- `src/lib/walk-runtime.tsx` — background GPS + native audio routing
+- `src/lib/auth-context.tsx` — set OneSignal external user id on sign-in
+
+**Database (migration)**
+- `subscriptions.gateway text default 'stripe'`
+- `subscriptions` already keyed by user — add unique on `(user_id, gateway)` if needed
+- `profiles.notif_walk_reminder_at time`, `profiles.notif_push_token text`
+- `announcements (id, title, body, url, sent_at, created_by)` + admin-only RLS
+
+**Secrets to add later** (I'll prompt at the right phase):
+- `REVENUECAT_API_KEY` (server)
+- `REVENUECAT_WEBHOOK_AUTH` (shared secret in webhook header)
+- `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_KEY`
+- `VITE_REVENUECAT_PUBLIC_KEY`, `VITE_ONESIGNAL_APP_ID` (client)
+
+---
+
+## Privacy/Terms scope (so you know what you're approving)
+
+Plain-English first-person draft, ~1200 words each, headings, no legalese, but with strong liability language. Examples I'll include verbatim:
+
+> **Not medical advice.** Mental Health Walk Club is a wellness and community app. It is not a substitute for professional medical, psychological, or psychiatric care. Nothing in the app — including content from facilitators, other walkers, podcasts, or audio rooms — constitutes medical advice. If you are in crisis, contact emergency services or a crisis line.
+
+> **Assumption of risk.** Walking, meeting other users in person, and participating in live audio rooms carry inherent risks. You participate at your own risk. The platform, its operators, and contributors assume no liability for any injury, loss, harm, or damage — physical, emotional, financial, or otherwise — arising from your use of the app or interactions with other users.
+
+> **Limitation of liability.** To the maximum extent permitted by law, the platform's total liability to you for any claim is limited to the amount you paid us in the prior twelve months, or $50, whichever is greater.
+
+You'll see them as draft routes — easy to edit before launch.
+
+---
+
+## Out of scope for v1 (call out for later)
+- Apple Watch companion, home widgets, Siri shortcuts
+- Android Health Connect (waiting on Despia)
+- Apple Sign-In on web (mobile only first; web stays Google + email)
+- Promotional offers / family sharing in App Store
+
+---
+
+## Open questions before I start
+None — I have what I need. Approve and I'll execute Phases A → G in order, pausing only when secrets are needed.
