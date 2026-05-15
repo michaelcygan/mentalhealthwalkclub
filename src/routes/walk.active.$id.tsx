@@ -244,7 +244,37 @@ function ActiveWalk() {
     };
   }, []);
 
-  const motion = useStepCounter(!paused);
+  const motion = useWalkSteps(!paused);
+
+  // Native background GPS (Despia/iOS). On web this is a no-op and the
+  // existing `watchPosition` effect handles foreground location. On native,
+  // points keep streaming with the screen off / app backgrounded.
+  useNativeBackgroundGps({
+    enabled: !paused && !!session,
+    intervalSeconds: 30,
+    movementCm: 500, // 5m
+    onPoint: (data: NativeGpsPoint) => {
+      if (!data.active) return;
+      if (data.horizontalAccuracy > 30) return;
+      const p = { lat: data.latitude, lng: data.longitude, t: Date.now() };
+      if (lastPos.current) {
+        const d = haversine(lastPos.current, p);
+        if (d >= 5 && d < 200) {
+          setMeters((m) => m + d);
+          points.current.push(p);
+          setRouteTick((x) => x + 1);
+          lastPos.current = p;
+          setWalkerCoords({ lat: p.lat, lng: p.lng });
+          setGps("live");
+        }
+      } else {
+        lastPos.current = p;
+        points.current.push(p);
+        setWalkerCoords({ lat: p.lat, lng: p.lng });
+        setGps("live");
+      }
+    },
+  });
 
   // Motion sensor is a *fallback*: only surface a quiet hint if (a) GPS isn't
   // working after a 30s grace, or (b) GPS is live but we've gotten no motion
