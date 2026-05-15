@@ -74,6 +74,13 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
       openAuth("signup", "plus");
       return;
     }
+    // On native, route through the App Store / Play Store via RevenueCat
+    // — Stripe Checkout is not permitted by Apple's IAP rules.
+    if (isNativeApp()) {
+      void trackBillingEvent("checkout_opened", { plan: "plus_monthly", source: "native" });
+      openRevenueCatPaywall({ appUserId: user.id });
+      return;
+    }
     setPlan("plus_monthly");
     setCheckoutOpen(true);
     void trackBillingEvent("checkout_opened", { plan: "plus_monthly" });
