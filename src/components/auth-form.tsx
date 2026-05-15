@@ -19,6 +19,15 @@ function GoogleMark({ className }: { className?: string }) {
   );
 }
 
+function AppleMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.365 1.43c0 1.14-.42 2.23-1.18 3.04-.78.83-2.05 1.47-3.07 1.39-.13-1.1.4-2.24 1.13-2.99.83-.86 2.22-1.5 3.12-1.44zm3.46 16.27c-.59 1.34-.87 1.94-1.62 3.13-1.05 1.66-2.53 3.73-4.36 3.74-1.63.02-2.05-1.06-4.27-1.05-2.22.01-2.68 1.07-4.31 1.06-1.83-.01-3.23-1.88-4.28-3.54C-1.4 16.86-1.7 11.4.65 8.55c1.6-1.95 4.13-3.09 6.5-3.09 2.42 0 3.94 1.32 5.94 1.32 1.94 0 3.13-1.32 5.93-1.32 2.12 0 4.37 1.16 5.97 3.16-5.25 2.88-4.4 10.39 1.83 12.08z" />
+    </svg>
+  );
+}
+
+
 export type AuthPlan = "free" | "plus";
 export const PLAN_INTENT_KEY = "wc_plan_intent";
 
