@@ -190,6 +190,10 @@ function ActiveWalk() {
   }, [session]);
 
   useEffect(() => {
+    // On the Despia native shell we use HealthKit + native background GPS
+    // instead of the web Geolocation API, so it keeps tracking with the
+    // screen off. Skip the web watcher to avoid double-counting distance.
+    if (isNativeApp()) return;
     if (!navigator.geolocation) {
       setGps("denied");
       return;
