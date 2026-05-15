@@ -38,8 +38,8 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
 
     for (const t of tables) {
       try {
-        // user-keyed columns vary; try the common ones
-        await supabaseAdmin.from(t).delete().eq("user_id", userId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabaseAdmin.from(t as never) as any).delete().eq("user_id", userId);
       } catch {
         /* ignore */
       }

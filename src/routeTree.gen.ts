@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as GroupsRouteImport } from './routes/groups'
@@ -40,9 +42,19 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -176,7 +188,9 @@ export interface FileRoutesByFullPath {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -203,7 +217,9 @@ export interface FileRoutesByTo {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -231,7 +247,9 @@ export interface FileRoutesById {
   '/groups': typeof GroupsRouteWithChildren
   '/journal': typeof JournalRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/admin/music': typeof AdminMusicRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -260,7 +278,9 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/leaderboard'
+    | '/privacy'
     | '/profile'
+    | '/terms'
     | '/welcome'
     | '/admin/music'
     | '/admin/podcasts'
@@ -287,7 +307,9 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/leaderboard'
+    | '/privacy'
     | '/profile'
+    | '/terms'
     | '/welcome'
     | '/admin/music'
     | '/admin/podcasts'
@@ -314,7 +336,9 @@ export interface FileRouteTypes {
     | '/groups'
     | '/journal'
     | '/leaderboard'
+    | '/privacy'
     | '/profile'
+    | '/terms'
     | '/welcome'
     | '/admin/music'
     | '/admin/podcasts'
@@ -342,7 +366,9 @@ export interface RootRouteChildren {
   GroupsRoute: typeof GroupsRouteWithChildren
   JournalRoute: typeof JournalRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
+  TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
   WalkActiveIdRoute: typeof WalkActiveIdRoute
@@ -364,11 +390,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -592,7 +632,9 @@ const rootRouteChildren: RootRouteChildren = {
   GroupsRoute: GroupsRouteWithChildren,
   JournalRoute: JournalRoute,
   LeaderboardRoute: LeaderboardRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,
   WalkActiveIdRoute: WalkActiveIdRoute,
