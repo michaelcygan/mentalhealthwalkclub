@@ -7,6 +7,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { useAuth } from "@/lib/auth-context";
 import type { PlusPlan } from "@/lib/billing.functions";
 import { trackBillingEvent } from "@/lib/billing-analytics";
+import { isNativeApp, openRevenueCatPaywall } from "@/lib/despia";
 
 interface Ctx {
   openAuth: (mode?: "signin" | "signup", plan?: AuthPlan) => void;
@@ -71,6 +72,13 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem(PLAN_INTENT_KEY, "plus");
       }
       openAuth("signup", "plus");
+      return;
+    }
+    // On native, route through the App Store / Play Store via RevenueCat
+    // — Stripe Checkout is not permitted by Apple's IAP rules.
+    if (isNativeApp()) {
+      void trackBillingEvent("checkout_opened", { plan: "plus_monthly", source: "native" });
+      openRevenueCatPaywall({ appUserId: user.id });
       return;
     }
     setPlan("plus_monthly");

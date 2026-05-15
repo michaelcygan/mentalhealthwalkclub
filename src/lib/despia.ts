@@ -83,3 +83,35 @@ export function despiaCall(command: string): any {
     return null;
   }
 }
+
+/**
+ * Open the native RevenueCat paywall on iOS/Android. The Despia shell
+ * presents the StoreKit/Play Billing sheet and routes the purchase result
+ * back to RevenueCat, which in turn fires our `/api/public/hooks/revenuecat`
+ * webhook to update the `subscriptions` table.
+ *
+ * `appUserId` MUST be the Supabase auth uid so the subscription follows
+ * the account across devices.
+ *
+ * No-op on web — caller should fall back to Stripe Checkout there.
+ */
+export function openRevenueCatPaywall(opts: {
+  appUserId: string;
+  offering?: string; // RC offering id, e.g. "default"
+}): void {
+  if (!isNativeApp()) return;
+  const params = new URLSearchParams({ app_user_id: opts.appUserId });
+  if (opts.offering) params.set("offering", opts.offering);
+  despiaCall(`revenuecat://paywall?${params.toString()}`);
+}
+
+/** Open the native App Store / Play Store subscription management screen. */
+export function openNativeSubscriptionSettings(): void {
+  if (!isNativeApp()) return;
+  const platform = getNativePlatform();
+  if (platform === "ios") {
+    despiaCall("openexternal://https://apps.apple.com/account/subscriptions");
+  } else if (platform === "android") {
+    despiaCall("openexternal://https://play.google.com/store/account/subscriptions");
+  }
+}

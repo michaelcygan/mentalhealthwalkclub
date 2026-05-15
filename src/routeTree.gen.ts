@@ -34,6 +34,7 @@ import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api
 import { Route as ApiPublicHooksSeedWalksRouteImport } from './routes/api/public/hooks/seed-walks'
 import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
 import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
+import { Route as ApiPublicHooksRevenuecatRouteImport } from './routes/api/public/hooks/revenuecat'
 import { Route as ApiPublicHooksOpenDueRoomsRouteImport } from './routes/api/public/hooks/open-due-rooms'
 import { Route as ApiPublicHooksCancelEmptyWalksRouteImport } from './routes/api/public/hooks/cancel-empty-walks'
 
@@ -166,6 +167,12 @@ const ApiPublicHooksRotateCommonsRoute =
     path: '/api/public/hooks/rotate-commons',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRevenuecatRoute =
+  ApiPublicHooksRevenuecatRouteImport.update({
+    id: '/api/public/hooks/revenuecat',
+    path: '/api/public/hooks/revenuecat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksOpenDueRoomsRoute =
   ApiPublicHooksOpenDueRoomsRouteImport.update({
     id: '/api/public/hooks/open-due-rooms',
@@ -202,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/revenuecat': typeof ApiPublicHooksRevenuecatRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
@@ -231,6 +239,7 @@ export interface FileRoutesByTo {
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/revenuecat': typeof ApiPublicHooksRevenuecatRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
@@ -261,6 +270,7 @@ export interface FileRoutesById {
   '/walk/active/$id': typeof WalkActiveIdRoute
   '/api/public/hooks/cancel-empty-walks': typeof ApiPublicHooksCancelEmptyWalksRoute
   '/api/public/hooks/open-due-rooms': typeof ApiPublicHooksOpenDueRoomsRoute
+  '/api/public/hooks/revenuecat': typeof ApiPublicHooksRevenuecatRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/seed-walks': typeof ApiPublicHooksSeedWalksRoute
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/revenuecat'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/revenuecat'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
@@ -350,6 +362,7 @@ export interface FileRouteTypes {
     | '/walk/active/$id'
     | '/api/public/hooks/cancel-empty-walks'
     | '/api/public/hooks/open-due-rooms'
+    | '/api/public/hooks/revenuecat'
     | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/seed-walks'
@@ -374,6 +387,7 @@ export interface RootRouteChildren {
   WalkActiveIdRoute: typeof WalkActiveIdRoute
   ApiPublicHooksCancelEmptyWalksRoute: typeof ApiPublicHooksCancelEmptyWalksRoute
   ApiPublicHooksOpenDueRoomsRoute: typeof ApiPublicHooksOpenDueRoomsRoute
+  ApiPublicHooksRevenuecatRoute: typeof ApiPublicHooksRevenuecatRoute
   ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
   ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
   ApiPublicHooksSeedWalksRoute: typeof ApiPublicHooksSeedWalksRoute
@@ -558,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRotateCommonsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/revenuecat': {
+      id: '/api/public/hooks/revenuecat'
+      path: '/api/public/hooks/revenuecat'
+      fullPath: '/api/public/hooks/revenuecat'
+      preLoaderRoute: typeof ApiPublicHooksRevenuecatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/open-due-rooms': {
       id: '/api/public/hooks/open-due-rooms'
       path: '/api/public/hooks/open-due-rooms'
@@ -640,6 +661,7 @@ const rootRouteChildren: RootRouteChildren = {
   WalkActiveIdRoute: WalkActiveIdRoute,
   ApiPublicHooksCancelEmptyWalksRoute: ApiPublicHooksCancelEmptyWalksRoute,
   ApiPublicHooksOpenDueRoomsRoute: ApiPublicHooksOpenDueRoomsRoute,
+  ApiPublicHooksRevenuecatRoute: ApiPublicHooksRevenuecatRoute,
   ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
   ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
   ApiPublicHooksSeedWalksRoute: ApiPublicHooksSeedWalksRoute,
