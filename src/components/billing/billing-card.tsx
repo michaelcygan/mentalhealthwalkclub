@@ -9,7 +9,7 @@ import { trackBillingEvent } from "@/lib/billing-analytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useIsNative } from "@/hooks/use-is-native";
-import { openNativeSubscriptionSettings, openRevenueCatCustomerCenter } from "@/lib/despia";
+import { openNativeSubscriptionSettings, openRevenueCatCustomerCenter, openRevenueCatPaywall } from "@/lib/despia";
 import { toast } from "sonner";
 
 type Flow = "payment_method_update" | "subscription_cancel" | "subscription_update" | undefined;
