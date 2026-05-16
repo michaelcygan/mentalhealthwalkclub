@@ -40,6 +40,7 @@ function mapStatus(eventType: string): string {
     case "RENEWAL":
     case "PRODUCT_CHANGE":
     case "UNCANCELLATION":
+    case "NON_RENEWING_PURCHASE": // lifetime tier
       return "active";
     case "TRIAL_STARTED":
       return "trialing";
