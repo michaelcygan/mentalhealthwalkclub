@@ -208,15 +208,27 @@ export function BillingCard() {
 
           <div className="mt-4 grid gap-2">
             {isNative ? (
-              <Button
-                variant="outline"
-                onClick={openNativeSubscriptionSettings}
-                className="justify-start rounded-full"
-              >
-                <Apple className="mr-2 h-4 w-4" />
-                {platform === "android" ? "Manage in Google Play" : "Manage in App Store"}
-                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
+              <>
+                {user && (
+                  <Button
+                    variant="outline"
+                    onClick={() => openRevenueCatCustomerCenter(user.id)}
+                    className="justify-start rounded-full"
+                  >
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Manage subscription
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={openNativeSubscriptionSettings}
+                  className="justify-start rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <Apple className="mr-2 h-4 w-4" />
+                  {platform === "android" ? "Open Google Play subscriptions" : "Open App Store subscriptions"}
+                  <ExternalLink className="ml-auto h-3.5 w-3.5" />
+                </Button>
+              </>
             ) : (
               <>
                 {status === "past_due" && (
