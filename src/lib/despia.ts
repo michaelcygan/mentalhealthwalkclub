@@ -85,24 +85,53 @@ export function despiaCall(command: string): any {
 }
 
 /**
+ * RevenueCat public SDK key. This is the *public* iOS/Android key (safe to
+ * ship in the client, like Stripe's publishable key). It tells the Despia
+ * native shell which RevenueCat project to talk to. The actual purchase
+ * flow runs inside Despia's RevenueCat bridge — we never call StoreKit or
+ * RC's Swift/Kotlin SDKs ourselves.
+ *
+ * Override in production by setting `VITE_REVENUECAT_PUBLIC_KEY`.
+ */
+const REVENUECAT_PUBLIC_KEY =
+  (import.meta.env.VITE_REVENUECAT_PUBLIC_KEY as string | undefined) ??
+  "test_kZVeaAioOAOtoMjDGTkyBoGLvdo";
+
+/**
  * Open the native RevenueCat paywall on iOS/Android. The Despia shell
  * presents the StoreKit/Play Billing sheet and routes the purchase result
- * back to RevenueCat, which in turn fires our `/api/public/hooks/revenuecat`
+ * back to RevenueCat, which fires our `/api/public/hooks/revenuecat`
  * webhook to update the `subscriptions` table.
  *
  * `appUserId` MUST be the Supabase auth uid so the subscription follows
- * the account across devices.
+ * the account across devices. Defaults to the `default` offering, which
+ * should contain `monthly`, `yearly`, and `lifetime` products tied to
+ * the `plus` entitlement.
  *
  * No-op on web — caller should fall back to Stripe Checkout there.
  */
 export function openRevenueCatPaywall(opts: {
   appUserId: string;
-  offering?: string; // RC offering id, e.g. "default"
+  offering?: string;
 }): void {
   if (!isNativeApp()) return;
-  const params = new URLSearchParams({ app_user_id: opts.appUserId });
-  if (opts.offering) params.set("offering", opts.offering);
+  const params = new URLSearchParams({
+    api_key: REVENUECAT_PUBLIC_KEY,
+    app_user_id: opts.appUserId,
+    offering: opts.offering ?? "default",
+    entitlement: "plus",
+  });
   despiaCall(`revenuecat://paywall?${params.toString()}`);
+}
+
+/** Open RevenueCat's native Customer Center (manage / cancel / restore). */
+export function openRevenueCatCustomerCenter(appUserId: string): void {
+  if (!isNativeApp()) return;
+  const params = new URLSearchParams({
+    api_key: REVENUECAT_PUBLIC_KEY,
+    app_user_id: appUserId,
+  });
+  despiaCall(`revenuecat://customercenter?${params.toString()}`);
 }
 
 /** Open the native App Store / Play Store subscription management screen. */
