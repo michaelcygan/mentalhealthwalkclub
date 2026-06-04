@@ -52,6 +52,7 @@ function ProfileTab() {
   const [hostPlaces, setHostPlaces] = useState<Array<{ key: string; label: string | null; neighborhood: string | null; group_count: number; next_summary: string | null }>>([]);
   const [savedTrails, setSavedTrails] = useState<Array<{ id: string; name: string | null; kind: string | null }>>([]);
   const stats = useProfileStats(user?.id);
+  const { isPlus } = useSubscription();
 
   useEffect(() => {
     if (!user) return;
