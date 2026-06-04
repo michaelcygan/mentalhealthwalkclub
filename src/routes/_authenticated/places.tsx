@@ -53,7 +53,10 @@ function PlacesPage() {
         <Link to="/discover" className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3 w-3" /> Discover
         </Link>
-        <h1 className="font-serif text-2xl text-foreground">Places</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="font-serif text-2xl text-foreground">Places</h1>
+          <span className="font-hand text-xl text-rose-dust">a soft map of nearby corners</span>
+        </div>
         <p className="text-xs text-muted-foreground">Parks and corners where standing walks happen.</p>
       </header>
 
