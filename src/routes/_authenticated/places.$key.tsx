@@ -23,11 +23,19 @@ function PlaceDetail() {
   const navigate = useNavigate();
   const [state, setState] = useState<State>(null);
   const [loading, setLoading] = useState(true);
+  const [nearbyTrails, setNearbyTrails] = useState<Array<{ id: string; name: string | null; kind: string | null; miles: number }>>([]);
 
   useEffect(() => {
     setLoading(true);
     getPlace({ data: { key } })
-      .then((r) => setState(r))
+      .then((r) => {
+        setState(r);
+        if (r.place.lat && r.place.lng) {
+          trailsNearPoint({ data: { lat: r.place.lat, lng: r.place.lng, radius_miles: 1, limit: 6 } })
+            .then((tr) => setNearbyTrails(tr.trails as Array<{ id: string; name: string | null; kind: string | null; miles: number }>))
+            .catch(() => {});
+        }
+      })
       .catch((e) => toast.error(e instanceof Error ? e.message : "Could not load."))
       .finally(() => setLoading(false));
   }, [key]);
