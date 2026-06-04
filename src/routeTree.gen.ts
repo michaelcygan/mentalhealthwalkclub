@@ -22,8 +22,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
+import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
+import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
 
@@ -91,6 +93,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   path: '/podcasts',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
   id: '/circles',
   path: '/circles',
@@ -100,6 +107,11 @@ const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
   path: '/$feedId',
   getParentRoute: () => AdminPodcastsRoute,
+} as any)
+const AuthenticatedGroupsSlugRoute = AuthenticatedGroupsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => AuthenticatedGroupsRoute,
 } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
@@ -125,9 +137,11 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -143,9 +157,11 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -163,9 +179,11 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
+  '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
+  '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -183,9 +201,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/circles'
+    | '/groups'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
+    | '/groups/$slug'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -201,9 +221,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/circles'
+    | '/groups'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
+    | '/groups/$slug'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -220,9 +242,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/_authenticated/circles'
+    | '/_authenticated/groups'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
+    | '/_authenticated/groups/$slug'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -337,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_authenticated/groups': {
+      id: '/_authenticated/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/circles': {
       id: '/_authenticated/circles'
       path: '/circles'
@@ -350,6 +381,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/podcasts/$feedId'
       preLoaderRoute: typeof AdminPodcastsFeedIdRouteImport
       parentRoute: typeof AdminPodcastsRoute
+    }
+    '/_authenticated/groups/$slug': {
+      id: '/_authenticated/groups/$slug'
+      path: '/$slug'
+      fullPath: '/groups/$slug'
+      preLoaderRoute: typeof AuthenticatedGroupsSlugRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
     }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
@@ -368,12 +406,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedGroupsRouteChildren {
+  AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
+}
+
+const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
+  AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
+}
+
+const AuthenticatedGroupsRouteWithChildren =
+  AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
+  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
+  AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -430,3 +481,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
