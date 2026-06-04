@@ -18,8 +18,8 @@ const walkQueryOptions = (code: string) =>
   });
 
 export const Route = createFileRoute("/w/$code")({
-  loader: async ({ params, context }) => {
-    const data = await context.queryClient.ensureQueryData(walkQueryOptions(params.code));
+  loader: async ({ params }) => {
+    const data = await getWalkByCode({ data: { code: params.code } });
     if (!data.event) throw notFound();
     return null;
   },
