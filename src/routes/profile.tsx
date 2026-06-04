@@ -118,8 +118,19 @@ function ProfileTab() {
       <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <div className="flex items-center gap-4">
           <span className="grid h-14 w-14 place-items-center rounded-full bg-accent font-serif text-xl text-forest">{initials}</span>
-          <div>
-            <h1 className="font-serif text-2xl">{p.display_name || "Walker"}</h1>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif text-2xl truncate">{p.display_name || "Walker"}</h1>
+              {isPlus && (
+                <Link
+                  to="/impact"
+                  className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-700 hover:bg-rose-200"
+                  title="50% of your Plus goes to mental health nonprofits"
+                >
+                  <Heart className="h-3 w-3" /> Supporter
+                </Link>
+              )}
+            </div>
             {(p.location_label || p.city) && (
               <p className="text-sm text-muted-foreground">{p.location_label || p.city}</p>
             )}
