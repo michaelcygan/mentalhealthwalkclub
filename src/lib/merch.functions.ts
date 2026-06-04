@@ -1,11 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   type StripeEnv,
   createStripeClient,
-  getStripeErrorMessage,
 } from "@/lib/stripe.server";
+
+function getStripeErrorMessage(e: unknown): string {
+  if (e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string") {
+    return (e as { message: string }).message;
+  }
+  return "Stripe request failed";
+}
 
 const SLUG_RE = /^[a-z0-9-]{2,60}$/;
 
