@@ -6,7 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones, Heart } from "lucide-react";
 import { listHostPlaces } from "@/lib/places.functions";
 import { listMySavedTrails } from "@/lib/trails.functions";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { BadgeWall } from "@/components/badge-wall";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { BillingCard } from "@/components/billing/billing-card";
+import { useSubscription } from "@/hooks/use-subscription";
 
 export const Route = createFileRoute("/profile")({
   component: ProfileTab,
