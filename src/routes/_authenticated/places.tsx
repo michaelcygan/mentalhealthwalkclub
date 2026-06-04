@@ -50,8 +50,8 @@ function PlacesPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
       <header className="mb-5">
-        <Link to="/profile" className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3 w-3" /> Profile
+        <Link to="/discover" className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> Discover
         </Link>
         <h1 className="font-serif text-2xl text-foreground">Places</h1>
         <p className="text-xs text-muted-foreground">Parks and corners where standing walks happen.</p>
