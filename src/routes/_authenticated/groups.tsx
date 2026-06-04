@@ -45,9 +45,9 @@ function GroupsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"mine" | "discover">("discover");
   const [mine, setMine] = useState<{ owned: Group[]; member: Group[] }>({ owned: [], member: [] });
-  const [pub, setPub] = useState<Public[]>([]);
+  const [pubLocal, setPubLocal] = useState<Public[]>([]);
+  const [pubGlobal, setPubGlobal] = useState<Public[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scope, setScope] = useState<"local" | "global">("local");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [creating, setCreating] = useState(false);
   const [ageBand, setAgeBand] = useState<string | null>(null);
