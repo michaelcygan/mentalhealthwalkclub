@@ -921,6 +921,71 @@ export type Database = {
         }
         Relationships: []
       }
+      playlist_items: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          playlist_id: string
+          position: number
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          playlist_id: string
+          position?: number
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          playlist_id?: string
+          position?: number
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          created_at: string
+          id: string
+          is_public: boolean
+          mood: string | null
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          mood?: string | null
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          mood?: string | null
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       podcast_episodes: {
         Row: {
           audio_url: string
