@@ -131,6 +131,7 @@ function ProfileTab() {
                 </Link>
               )}
             </div>
+            <div className="font-hand text-lg text-clay">hello again</div>
             {(p.location_label || p.city) && (
               <p className="text-sm text-muted-foreground">{p.location_label || p.city}</p>
             )}
