@@ -69,11 +69,24 @@ const CreateCircleInput = z.object({
   color: z.string().max(20).optional().nullable(),
 });
 
+const FREE_CIRCLES_CAP = 3;
+
 export const createCircle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => CreateCircleInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { count: ownedCount } = await supabase
+      .from("circles")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", userId);
+    if ((ownedCount ?? 0) >= FREE_CIRCLES_CAP) {
+      const { isPlus } = await import("@/lib/plus-guard.server");
+      const plus = await isPlus(supabase, userId as string);
+      if (!plus) {
+        throw new Error(`Free plan caps Circles at ${FREE_CIRCLES_CAP}. Upgrade to Plus for unlimited.`);
+      }
+    }
     const baseSlug = slugify(data.name);
     let slug = baseSlug;
     for (let i = 1; i < 50; i++) {
