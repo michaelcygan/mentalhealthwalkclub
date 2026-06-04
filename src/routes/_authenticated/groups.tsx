@@ -159,36 +159,25 @@ function GroupsPage() {
       </div>
 
       {tab === "discover" && (
-        <>
-          <div className="mb-3 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{coords ? `Within 25mi · ${scope}` : `Showing ${scope} public groups`}</span>
-            <button onClick={() => setScope((s) => (s === "local" ? "global" : "local"))} className="text-forest underline">
-              {scope === "local" ? "Show global" : "Show local"}
-            </button>
-          </div>
-          {loading ? <Skeleton /> : pub.length === 0 ? (
-            <Empty title="No groups yet" body="Be the first to start one near you." />
-          ) : (
-            <ul className="space-y-3">
-              {pub.map((g) => (
-                <li key={g.id} className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-                  <div className="flex items-start justify-between gap-3">
-                    <Link to="/groups/$slug" params={{ slug: g.slug }} className="min-w-0 flex-1">
-                      <h3 className="truncate font-serif text-lg">{g.name}</h3>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description || "No description yet."}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        {g.neighborhood && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{g.neighborhood}</span>}
-                        {g.miles != null && <span>· {g.miles.toFixed(1)} mi</span>}
-                        {g.scope === "global" && <span className="inline-flex items-center gap-1"><Globe className="h-3 w-3" /> global</span>}
-                      </div>
-                    </Link>
-                    <Button onClick={() => onJoin(g)} variant="outline" className="rounded-full text-xs">Join</Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <div className="space-y-6">
+          <Rail
+            title={coords ? "Near you" : "Public groups"}
+            subtitle={coords ? "Within 25 miles" : "Turn on location to see what's near you"}
+            groups={pubLocal}
+            loading={loading}
+            empty="No groups near you yet. Start one?"
+            onJoin={onJoin}
+          />
+          <Rail
+            title="Global identity groups"
+            subtitle="Postpartum walkers, sober strolls, grief & movement…"
+            groups={pubGlobal}
+            loading={loading}
+            empty="No global groups yet."
+            onJoin={onJoin}
+            showGlobeBadge
+          />
+        </div>
       )}
 
       {tab === "mine" && (
