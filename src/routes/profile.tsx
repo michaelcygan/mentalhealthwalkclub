@@ -47,6 +47,7 @@ function ProfileTab() {
   const [editingGoal, setEditingGoal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hostPlaces, setHostPlaces] = useState<Array<{ key: string; label: string | null; neighborhood: string | null; group_count: number; next_summary: string | null }>>([]);
   const stats = useProfileStats(user?.id);
 
   useEffect(() => {
@@ -57,6 +58,9 @@ function ProfileTab() {
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
     supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
       .then(({ data }) => setIsAdmin(!!data));
+    listHostPlaces({ data: { user_id: user.id } })
+      .then((r) => setHostPlaces(r.places.map(p => ({ key: p.key, label: p.label, neighborhood: p.neighborhood, group_count: p.group_count, next_summary: p.next_summary }))))
+      .catch(() => {});
   }, [user]);
 
   const savePatch = async (patch: Partial<Profile>) => {
