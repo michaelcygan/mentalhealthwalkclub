@@ -28,27 +28,22 @@ export function useProfileStats(userId: string | null | undefined): ProfileStats
     if (!userId) { setS({ ...empty, loading: false }); return; }
     let cancel = false;
 
-    Promise.all([
-      supabase.from("walk_sessions")
-        .select("started_at,duration_seconds,distance_meters,group_id,weather_at_end")
-        .eq("user_id", userId).eq("status", "completed").limit(1000),
-      supabase.from("group_memberships")
-        .select("group_id", { count: "exact", head: true }).eq("user_id", userId),
-    ]).then(([w, g]) => {
+    supabase.from("walk_sessions")
+      .select("started_at,duration_seconds,distance_meters,weather_at_end")
+      .eq("user_id", userId).eq("status", "completed").limit(1000)
+      .then((w) => {
       if (cancel) return;
       const rows = (w.data ?? []) as Array<{
         started_at: string; duration_seconds: number | null; distance_meters: number | null;
-        group_id: string | null; weather_at_end: { code?: number } | null;
+        weather_at_end: { code?: number } | null;
       }>;
       const totalMinutes = Math.round(rows.reduce((a, r) => a + (r.duration_seconds ?? 0), 0) / 60);
       const totalMiles = rows.reduce((a, r) => a + (r.distance_meters ?? 0), 0) / 1609.34;
       const rainyWalks = rows.filter(r => r.weather_at_end?.code != null && RAIN_CODES.has(r.weather_at_end.code)).length;
 
-      // Week streak: count back consecutive ISO weeks with ≥1 walk
       const weeksWithWalks = new Set<string>();
       for (const r of rows) {
         const d = new Date(r.started_at);
-        // ISO week key: year + week number
         const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
         const day = t.getUTCDay() || 7;
         t.setUTCDate(t.getUTCDate() + 4 - day);
@@ -72,7 +67,7 @@ export function useProfileStats(userId: string | null | undefined): ProfileStats
         totalWalks: rows.length,
         totalMinutes,
         totalMiles,
-        groupCount: g.count ?? 0,
+        groupCount: 0,
         rainyWalks,
         weekStreak,
         level: walkerLevel(totalMinutes),

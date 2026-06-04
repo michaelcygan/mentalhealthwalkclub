@@ -98,185 +98,6 @@ export type Database = {
         }
         Relationships: []
       }
-      audio_room_participants: {
-        Row: {
-          audio_room_id: string
-          id: string
-          is_muted: boolean
-          joined_at: string
-          left_at: string | null
-          participant_role: string
-          role: string
-          status: string
-          user_id: string
-          walk_session_id: string
-        }
-        Insert: {
-          audio_room_id: string
-          id?: string
-          is_muted?: boolean
-          joined_at?: string
-          left_at?: string | null
-          participant_role?: string
-          role?: string
-          status?: string
-          user_id: string
-          walk_session_id: string
-        }
-        Update: {
-          audio_room_id?: string
-          id?: string
-          is_muted?: boolean
-          joined_at?: string
-          left_at?: string | null
-          participant_role?: string
-          role?: string
-          status?: string
-          user_id?: string
-          walk_session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audio_room_participants_audio_room_id_fkey"
-            columns: ["audio_room_id"]
-            isOneToOne: false
-            referencedRelation: "audio_rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audio_room_participants_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audio_room_participants_walk_session_id_fkey"
-            columns: ["walk_session_id"]
-            isOneToOne: false
-            referencedRelation: "walk_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      audio_rooms: {
-        Row: {
-          allow_guest_listeners: boolean
-          audience_count: number
-          audience_mode: string
-          created_at: string
-          current_participant_count: number
-          ends_at: string | null
-          event_id: string | null
-          external_room_name: string | null
-          external_room_url: string | null
-          facilitator_seat_reserved: boolean
-          facilitator_user_id: string | null
-          group_id: string | null
-          host_user_id: string | null
-          id: string
-          is_locked: boolean
-          lobby_capacity: number
-          max_participants: number
-          parent_room_id: string | null
-          pod_index: number | null
-          reactions_enabled: boolean
-          requires_active_walk: boolean
-          room_type: string
-          scheduled_event_id: string | null
-          share_code: string | null
-          starts_at: string | null
-          status: string
-          theme: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          allow_guest_listeners?: boolean
-          audience_count?: number
-          audience_mode?: string
-          created_at?: string
-          current_participant_count?: number
-          ends_at?: string | null
-          event_id?: string | null
-          external_room_name?: string | null
-          external_room_url?: string | null
-          facilitator_seat_reserved?: boolean
-          facilitator_user_id?: string | null
-          group_id?: string | null
-          host_user_id?: string | null
-          id?: string
-          is_locked?: boolean
-          lobby_capacity?: number
-          max_participants?: number
-          parent_room_id?: string | null
-          pod_index?: number | null
-          reactions_enabled?: boolean
-          requires_active_walk?: boolean
-          room_type?: string
-          scheduled_event_id?: string | null
-          share_code?: string | null
-          starts_at?: string | null
-          status?: string
-          theme?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          allow_guest_listeners?: boolean
-          audience_count?: number
-          audience_mode?: string
-          created_at?: string
-          current_participant_count?: number
-          ends_at?: string | null
-          event_id?: string | null
-          external_room_name?: string | null
-          external_room_url?: string | null
-          facilitator_seat_reserved?: boolean
-          facilitator_user_id?: string | null
-          group_id?: string | null
-          host_user_id?: string | null
-          id?: string
-          is_locked?: boolean
-          lobby_capacity?: number
-          max_participants?: number
-          parent_room_id?: string | null
-          pod_index?: number | null
-          reactions_enabled?: boolean
-          requires_active_walk?: boolean
-          room_type?: string
-          scheduled_event_id?: string | null
-          share_code?: string | null
-          starts_at?: string | null
-          status?: string
-          theme?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audio_rooms_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audio_rooms_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audio_rooms_host_user_id_fkey"
-            columns: ["host_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       badge_definitions: {
         Row: {
           category: string | null
@@ -559,196 +380,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "events_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "events_host_user_id_fkey"
             columns: ["host_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "events_practice_id_fkey"
-            columns: ["practice_id"]
-            isOneToOne: false
-            referencedRelation: "practices"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      facilitator_profiles: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          bio: string | null
-          created_at: string
-          credentials: string | null
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bio?: string | null
-          created_at?: string
-          credentials?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bio?: string | null
-          created_at?: string
-          credentials?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      facilitator_sessions: {
-        Row: {
-          created_at: string
-          current_audio_room_id: string | null
-          ended_at: string | null
-          facilitator_user_id: string
-          id: string
-          pods_visited: number
-          started_at: string
-          status: string
-          total_seconds: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          current_audio_room_id?: string | null
-          ended_at?: string | null
-          facilitator_user_id: string
-          id?: string
-          pods_visited?: number
-          started_at?: string
-          status?: string
-          total_seconds?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          current_audio_room_id?: string | null
-          ended_at?: string | null
-          facilitator_user_id?: string
-          id?: string
-          pods_visited?: number
-          started_at?: string
-          status?: string
-          total_seconds?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      facilitator_visits: {
-        Row: {
-          audio_room_id: string
-          created_at: string
-          facilitator_session_id: string
-          facilitator_user_id: string
-          id: string
-          joined_at: string
-          left_at: string | null
-          notes: string | null
-          outcome: string | null
-          planned_duration_seconds: number
-        }
-        Insert: {
-          audio_room_id: string
-          created_at?: string
-          facilitator_session_id: string
-          facilitator_user_id: string
-          id?: string
-          joined_at?: string
-          left_at?: string | null
-          notes?: string | null
-          outcome?: string | null
-          planned_duration_seconds?: number
-        }
-        Update: {
-          audio_room_id?: string
-          created_at?: string
-          facilitator_session_id?: string
-          facilitator_user_id?: string
-          id?: string
-          joined_at?: string
-          left_at?: string | null
-          notes?: string | null
-          outcome?: string | null
-          planned_duration_seconds?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "facilitator_visits_facilitator_session_id_fkey"
-            columns: ["facilitator_session_id"]
-            isOneToOne: false
-            referencedRelation: "facilitator_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ghost_host_assignments: {
-        Row: {
-          created_at: string
-          group_id: string
-          host_user_id: string
-          id: string
-          weight: number
-        }
-        Insert: {
-          created_at?: string
-          group_id: string
-          host_user_id: string
-          id?: string
-          weight?: number
-        }
-        Update: {
-          created_at?: string
-          group_id?: string
-          host_user_id?: string
-          id?: string
-          weight?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ghost_host_assignments_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ghost_walk_config: {
-        Row: {
-          key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: []
       }
       goals: {
         Row: {
@@ -787,180 +425,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      group_memberships: {
-        Row: {
-          group_id: string
-          id: string
-          joined_at: string
-          role: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          group_id: string
-          id?: string
-          joined_at?: string
-          role?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          group_id?: string
-          id?: string
-          joined_at?: string
-          role?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "group_memberships_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "group_memberships_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      group_signals: {
-        Row: {
-          badge_id: string | null
-          created_at: string
-          created_day: string | null
-          group_id: string
-          id: string
-          kind: string
-          read_at: string | null
-          recipient_user_id: string
-          sender_user_id: string
-        }
-        Insert: {
-          badge_id?: string | null
-          created_at?: string
-          created_day?: string | null
-          group_id: string
-          id?: string
-          kind: string
-          read_at?: string | null
-          recipient_user_id: string
-          sender_user_id: string
-        }
-        Update: {
-          badge_id?: string | null
-          created_at?: string
-          created_day?: string | null
-          group_id?: string
-          id?: string
-          kind?: string
-          read_at?: string | null
-          recipient_user_id?: string
-          sender_user_id?: string
-        }
-        Relationships: []
-      }
-      groups: {
-        Row: {
-          auto_join: boolean
-          city: string | null
-          country: string | null
-          cover_credit: string | null
-          cover_set: string | null
-          created_at: string
-          description: string | null
-          ghost_cadence_override: number | null
-          group_type: string | null
-          id: string
-          image_url: string | null
-          is_active: boolean
-          lat: number | null
-          lng: number | null
-          location_label: string | null
-          member_count: number
-          name: string
-          owner_user_id: string | null
-          practice_id: string | null
-          region: string | null
-          slug: string
-          state: string | null
-          theme: string | null
-          updated_at: string
-        }
-        Insert: {
-          auto_join?: boolean
-          city?: string | null
-          country?: string | null
-          cover_credit?: string | null
-          cover_set?: string | null
-          created_at?: string
-          description?: string | null
-          ghost_cadence_override?: number | null
-          group_type?: string | null
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          lat?: number | null
-          lng?: number | null
-          location_label?: string | null
-          member_count?: number
-          name: string
-          owner_user_id?: string | null
-          practice_id?: string | null
-          region?: string | null
-          slug: string
-          state?: string | null
-          theme?: string | null
-          updated_at?: string
-        }
-        Update: {
-          auto_join?: boolean
-          city?: string | null
-          country?: string | null
-          cover_credit?: string | null
-          cover_set?: string | null
-          created_at?: string
-          description?: string | null
-          ghost_cadence_override?: number | null
-          group_type?: string | null
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          lat?: number | null
-          lng?: number | null
-          location_label?: string | null
-          member_count?: number
-          name?: string
-          owner_user_id?: string | null
-          practice_id?: string | null
-          region?: string | null
-          slug?: string
-          state?: string | null
-          theme?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "groups_owner_user_id_fkey"
-            columns: ["owner_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "groups_practice_fk"
-            columns: ["practice_id"]
-            isOneToOne: false
-            referencedRelation: "practices"
             referencedColumns: ["id"]
           },
         ]
@@ -1177,95 +641,6 @@ export type Database = {
         }
         Relationships: []
       }
-      practice_members: {
-        Row: {
-          created_at: string
-          id: string
-          practice_id: string
-          role: string | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          practice_id: string
-          role?: string | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          practice_id?: string
-          role?: string | null
-          status?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "practice_members_practice_id_fkey"
-            columns: ["practice_id"]
-            isOneToOne: false
-            referencedRelation: "practices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "practice_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      practices: {
-        Row: {
-          city: string | null
-          created_at: string
-          id: string
-          name: string
-          owner_user_id: string | null
-          state: string | null
-          subscription_status: string
-          updated_at: string
-          visibility: string
-          website: string | null
-        }
-        Insert: {
-          city?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          owner_user_id?: string | null
-          state?: string | null
-          subscription_status?: string
-          updated_at?: string
-          visibility?: string
-          website?: string | null
-        }
-        Update: {
-          city?: string | null
-          created_at?: string
-          id?: string
-          name?: string
-          owner_user_id?: string | null
-          state?: string | null
-          subscription_status?: string
-          updated_at?: string
-          visibility?: string
-          website?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "practices_owner_user_id_fkey"
-            columns: ["owner_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1326,57 +701,6 @@ export type Database = {
         }
         Relationships: []
       }
-      room_audience_presence: {
-        Row: {
-          audio_room_id: string
-          guest_id: string | null
-          id: string
-          last_seen_at: string
-          user_id: string | null
-        }
-        Insert: {
-          audio_room_id: string
-          guest_id?: string | null
-          id?: string
-          last_seen_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          audio_room_id?: string
-          guest_id?: string | null
-          id?: string
-          last_seen_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      room_reactions: {
-        Row: {
-          audio_room_id: string
-          created_at: string
-          guest_id: string | null
-          id: string
-          kind: string
-          user_id: string | null
-        }
-        Insert: {
-          audio_room_id: string
-          created_at?: string
-          guest_id?: string | null
-          id?: string
-          kind: string
-          user_id?: string | null
-        }
-        Update: {
-          audio_room_id?: string
-          created_at?: string
-          guest_id?: string | null
-          id?: string
-          kind?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       safety_reports: {
         Row: {
           audio_room_id: string | null
@@ -1418,13 +742,6 @@ export type Database = {
           walk_session_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "safety_reports_audio_room_id_fkey"
-            columns: ["audio_room_id"]
-            isOneToOne: false
-            referencedRelation: "audio_rooms"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "safety_reports_event_id_fkey"
             columns: ["event_id"]
@@ -1647,39 +964,6 @@ export type Database = {
           },
         ]
       }
-      walk_live_pings: {
-        Row: {
-          group_id: string | null
-          heading: number | null
-          id: string
-          lat: number
-          lng: number
-          pinged_at: string
-          user_id: string
-          walk_session_id: string
-        }
-        Insert: {
-          group_id?: string | null
-          heading?: number | null
-          id?: string
-          lat: number
-          lng: number
-          pinged_at?: string
-          user_id: string
-          walk_session_id: string
-        }
-        Update: {
-          group_id?: string | null
-          heading?: number | null
-          id?: string
-          lat?: number
-          lng?: number
-          pinged_at?: string
-          user_id?: string
-          walk_session_id?: string
-        }
-        Relationships: []
-      }
       walk_photos: {
         Row: {
           bytes: number | null
@@ -1719,57 +1003,13 @@ export type Database = {
         }
         Relationships: []
       }
-      walk_routes: {
-        Row: {
-          created_at: string
-          id: string
-          points: Json
-          updated_at: string
-          user_id: string
-          walk_session_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          points?: Json
-          updated_at?: string
-          user_id: string
-          walk_session_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          points?: Json
-          updated_at?: string
-          user_id?: string
-          walk_session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "walk_routes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "walk_routes_walk_session_id_fkey"
-            columns: ["walk_session_id"]
-            isOneToOne: true
-            referencedRelation: "walk_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       walk_sessions: {
         Row: {
-          audio_room_id: string | null
           created_at: string
           distance_meters: number | null
           duration_seconds: number | null
           ended_at: string | null
           event_id: string | null
-          group_id: string | null
           guided_track_id: string | null
           id: string
           intention: string | null
@@ -1791,13 +1031,11 @@ export type Database = {
           weather_at_end: Json | null
         }
         Insert: {
-          audio_room_id?: string | null
           created_at?: string
           distance_meters?: number | null
           duration_seconds?: number | null
           ended_at?: string | null
           event_id?: string | null
-          group_id?: string | null
           guided_track_id?: string | null
           id?: string
           intention?: string | null
@@ -1819,13 +1057,11 @@ export type Database = {
           weather_at_end?: Json | null
         }
         Update: {
-          audio_room_id?: string | null
           created_at?: string
           distance_meters?: number | null
           duration_seconds?: number | null
           ended_at?: string | null
           event_id?: string | null
-          group_id?: string | null
           guided_track_id?: string | null
           id?: string
           intention?: string | null
@@ -1848,24 +1084,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "walk_sessions_audio_room_id_fkey"
-            columns: ["audio_room_id"]
-            isOneToOne: false
-            referencedRelation: "audio_rooms"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "walk_sessions_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "walk_sessions_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
           {
@@ -1891,42 +1113,6 @@ export type Database = {
           },
         ]
       }
-      walk_templates: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          length_minutes: number
-          theme: string
-          title_pattern: string
-          vibe: string | null
-          weight: number
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          length_minutes?: number
-          theme: string
-          title_pattern: string
-          vibe?: string | null
-          weight?: number
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          length_minutes?: number
-          theme?: string
-          title_pattern?: string
-          vibe?: string | null
-          weight?: number
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1935,34 +1121,6 @@ export type Database = {
       evaluate_badges: {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
-      }
-      get_leaderboard: {
-        Args: { _group_id?: string; _period?: string }
-        Returns: {
-          avatar_url: string
-          badge_count: number
-          city: string
-          display_name: string
-          rank: number
-          total_minutes: number
-          total_walks: number
-          user_id: string
-        }[]
-      }
-      get_my_rank: {
-        Args: { _group_id?: string; _period?: string }
-        Returns: {
-          next_rank_minutes: number
-          rank: number
-          total_minutes: number
-        }[]
-      }
-      group_pulse_week: {
-        Args: never
-        Returns: {
-          group_id: string
-          walkers_week: number
-        }[]
       }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }

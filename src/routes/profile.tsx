@@ -31,7 +31,7 @@ interface Profile {
   bio: string | null;
   is_private: boolean;
 }
-interface Group { id: string; name: string; }
+
 
 function ProfileTab() {
   const { user, signOut } = useAuth();
@@ -39,7 +39,7 @@ function ProfileTab() {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [, setGroups] = useState<Array<{id:string; name:string}>>([]);
   const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
@@ -51,9 +51,7 @@ function ProfileTab() {
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
-    supabase.from("group_memberships").select("groups(id,name)").eq("user_id", user.id)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
+    setGroups([]);
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
     supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
@@ -149,16 +147,6 @@ function ProfileTab() {
 
       <BillingCard />
 
-      <section className="rounded-3xl border border-border bg-card p-5">
-        <SectionHeading eyebrow="Affinities" title="Your groups" />
-        {groups.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">You haven't joined any groups yet.</p>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {groups.map((g) => <span key={g.id} className="rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground">{g.name}</span>)}
-          </div>
-        )}
-      </section>
 
       <button
         onClick={() => setSettingsOpen(true)}

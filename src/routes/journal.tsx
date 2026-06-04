@@ -29,7 +29,7 @@ interface Walk {
   mood_before_score: number | null; mood_after_score: number | null;
   reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
   privacy: string; share_map: boolean | null; intention: string | null;
-  group_id: string | null;
+  group_id?: string | null;
   weather_at_end: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
@@ -54,21 +54,16 @@ function JournalTab() {
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     Promise.all([
-      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention,group_id,weather_at_end")
+      supabase.from("walk_sessions").select("id,started_at,duration_seconds,distance_meters,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,route_snapshot_path,privacy,share_map,intention,weather_at_end")
         .eq("user_id", user.id).eq("status", "completed").order("started_at", { ascending: false }).limit(100),
       supabase.from("user_badges").select("earned_at, badge_definitions(name,description)")
         .eq("user_id", user.id).order("earned_at", { ascending: false }),
-      supabase.from("group_memberships")
-        .select("group_id, joined_at, groups(id,name)")
-        .eq("user_id", user.id).order("joined_at", { ascending: true }).limit(1),
-    ]).then(([w, b, g]) => {
+    ]).then(([w, b]) => {
       const ws = (w.data ?? []) as unknown as Walk[];
       setWalks(ws);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBadges((b.data ?? []).map((r: any) => ({ name: r.badge_definitions?.name, description: r.badge_definitions?.description, earned_at: r.earned_at })));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const gRow: any = (g.data ?? [])[0];
-      if (gRow?.groups) setPrimaryGroup({ id: gRow.groups.id, name: gRow.groups.name });
+      setPrimaryGroup(null);
       setLoading(false);
     });
   }, [user]);
