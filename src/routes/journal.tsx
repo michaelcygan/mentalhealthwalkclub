@@ -297,7 +297,9 @@ function JournalTab() {
                   <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
                 </div>
                 <Heatmap walks={walks} />
+                <HeatmapCaption walks={walks} />
               </div>
+              <YearHeatmapSection walks={walks} />
               <MoodArcSection walks={walks} />
             </div>
           )}
