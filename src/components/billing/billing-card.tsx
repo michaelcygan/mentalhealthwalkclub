@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock, Apple } from "lucide-react";
+import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -8,8 +8,6 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { trackBillingEvent } from "@/lib/billing-analytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { useIsNative } from "@/hooks/use-is-native";
-import { openNativeSubscriptionSettings, openRevenueCatCustomerCenter, openRevenueCatPaywall } from "@/lib/despia";
 import { toast } from "sonner";
 
 type Flow = "payment_method_update" | "subscription_cancel" | "subscription_update" | undefined;
@@ -25,11 +23,9 @@ export function BillingCard() {
   const { loading, isPlus, isTrialing, cancelAtPeriodEnd, currentPeriodEnd, raw, refresh } = useSubscription();
   const { openPlusCheckout } = useAuthPrompt();
   const { user } = useAuth();
-  const { isNative, platform } = useIsNative();
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<BillingNotice | null>(null);
 
-  // Surface most recent unacknowledged payment_failed / trial_will_end event
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -46,9 +42,7 @@ export function BillingCard() {
         .maybeSingle();
       if (active) setNotice((data as unknown as BillingNotice) ?? null);
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [user, raw?.status]);
 
   if (loading) return null;
@@ -67,11 +61,9 @@ export function BillingCard() {
     setBusy(key);
     try {
       void trackBillingEvent(
-        flow === "subscription_cancel"
-          ? "subscription_cancel_clicked"
-          : flow === "payment_method_update"
-            ? "payment_method_update_clicked"
-            : "billing_portal_opened",
+        flow === "subscription_cancel" ? "subscription_cancel_clicked"
+          : flow === "payment_method_update" ? "payment_method_update_clicked"
+          : "billing_portal_opened",
         { flow: flow ?? null },
       );
       const url = await createBillingPortalSession({
@@ -113,23 +105,14 @@ export function BillingCard() {
           <div className="flex-1">
             <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Unlimited Walk &amp; Talks, RSVP to in-person Local Walks, early access to new chapters.
+              Unlimited circles, custom walk pages, and Plus playlists. 50% of every dollar funds our nonprofit partner.
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              30 days free, then $4.99/mo or $49.99/yr. Cancel anytime.
-            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">$1.99/month. Cancel anytime.</p>
             <Button
-              onClick={() => {
-                if (isNative && user) {
-                  void trackBillingEvent("plus_intent_selected", { source: "native" });
-                  openRevenueCatPaywall({ appUserId: user.id });
-                } else {
-                  openPlusCheckout();
-                }
-              }}
+              onClick={openPlusCheckout}
               className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90"
             >
-              Start free trial
+              Become a supporter
             </Button>
           </div>
         </div>
@@ -140,37 +123,21 @@ export function BillingCard() {
   const periodEndStr = currentPeriodEnd
     ? currentPeriodEnd.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : null;
-
   const status = raw?.status;
   const endingSoon = status === "canceled" || cancelAtPeriodEnd;
 
   let statusLine: string;
-  if (endingSoon) {
-    statusLine = `Plus ends ${periodEndStr ?? "soon"}`;
-  } else if (isTrialing) {
-    statusLine = periodEndStr ? `Free trial — first charge ${periodEndStr}` : "Free trial";
-  } else if (status === "past_due") {
-    statusLine = "Payment failed — update your card";
-  } else {
-    statusLine = periodEndStr ? `Renews ${periodEndStr}` : "Active";
-  }
+  if (endingSoon) statusLine = `Plus ends ${periodEndStr ?? "soon"}`;
+  else if (isTrialing) statusLine = periodEndStr ? `Free trial — first charge ${periodEndStr}` : "Free trial";
+  else if (status === "past_due") statusLine = "Payment failed — update your card";
+  else statusLine = periodEndStr ? `Renews ${periodEndStr}` : "Active";
 
   return (
     <section className="rounded-3xl border border-forest/40 bg-card p-5 shadow-soft">
       {notice && (
-        <div
-          className={`mb-4 flex items-start gap-3 rounded-2xl border p-3 ${
-            notice.event_type === "payment_failed"
-              ? "border-clay/50 bg-clay/10 text-foreground"
-              : "border-forest/40 bg-accent/40 text-foreground"
-          }`}
-        >
+        <div className={`mb-4 flex items-start gap-3 rounded-2xl border p-3 ${notice.event_type === "payment_failed" ? "border-clay/50 bg-clay/10" : "border-forest/40 bg-accent/40"}`}>
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-card">
-            {notice.event_type === "payment_failed" ? (
-              <AlertTriangle className="h-4 w-4 text-clay" />
-            ) : (
-              <Clock className="h-4 w-4 text-forest" />
-            )}
+            {notice.event_type === "payment_failed" ? <AlertTriangle className="h-4 w-4 text-clay" /> : <Clock className="h-4 w-4 text-forest" />}
           </span>
           <div className="flex-1 text-sm">
             {notice.event_type === "payment_failed" ? (
@@ -181,20 +148,11 @@ export function BillingCard() {
             ) : (
               <>
                 <div className="font-medium">Your free trial ends soon.</div>
-                <p className="text-muted-foreground">
-                  First charge on {periodEndStr ?? "your renewal date"}. Cancel anytime before then.
-                </p>
+                <p className="text-muted-foreground">First charge on {periodEndStr ?? "your renewal date"}.</p>
               </>
             )}
           </div>
-          <button
-            type="button"
-            onClick={dismissNotice}
-            className="text-xs text-muted-foreground hover:text-foreground"
-            aria-label="Dismiss"
-          >
-            Dismiss
-          </button>
+          <button type="button" onClick={dismissNotice} className="text-xs text-muted-foreground hover:text-foreground" aria-label="Dismiss">Dismiss</button>
         </div>
       )}
 
@@ -205,91 +163,38 @@ export function BillingCard() {
         <div className="flex-1">
           <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
-
           <div className="mt-4 grid gap-2">
-            {isNative ? (
-              <>
-                {user && (
-                  <Button
-                    variant="outline"
-                    onClick={() => openRevenueCatCustomerCenter(user.id)}
-                    className="justify-start rounded-full"
-                  >
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    Manage subscription
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={openNativeSubscriptionSettings}
-                  className="justify-start rounded-full text-muted-foreground hover:text-foreground"
-                >
-                  <Apple className="mr-2 h-4 w-4" />
-                  {platform === "android" ? "Open Google Play subscriptions" : "Open App Store subscriptions"}
-                  <ExternalLink className="ml-auto h-3.5 w-3.5" />
-                </Button>
-              </>
-            ) : (
-              <>
-                {status === "past_due" && (
-                  <Button
-                    disabled={busy === "card"}
-                    onClick={() => openPortal("payment_method_update", "card")}
-                    className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {busy === "card" ? "Opening…" : "Update payment method"}
-                    <ExternalLink className="ml-auto h-3.5 w-3.5" />
-                  </Button>
-                )}
-
-                {endingSoon ? (
-                  <Button
-                    disabled={busy === "resume"}
-                    onClick={resume}
-                    className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    {busy === "resume" ? "Resuming…" : "Resume my plan"}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    disabled={busy === "cancel"}
-                    onClick={() => openPortal("subscription_cancel", "cancel")}
-                    className="justify-start rounded-full"
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    {busy === "cancel" ? "Opening…" : "Cancel plan"}
-                    <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                )}
-
-                {status !== "past_due" && (
-                  <Button
-                    variant="outline"
-                    disabled={busy === "card"}
-                    onClick={() => openPortal("payment_method_update", "card")}
-                    className="justify-start rounded-full"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {busy === "card" ? "Opening…" : "Update payment method"}
-                    <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                )}
-
-                <Button
-                  variant="ghost"
-                  disabled={busy === "portal"}
-                  onClick={() => openPortal(undefined, "portal")}
-                  className="justify-start rounded-full text-muted-foreground hover:text-foreground"
-                >
-                  <Settings2 className="mr-2 h-4 w-4" />
-                  {busy === "portal" ? "Opening…" : "Invoices & full billing settings"}
-                  <ExternalLink className="ml-auto h-3.5 w-3.5" />
-                </Button>
-              </>
+            {status === "past_due" && (
+              <Button disabled={busy === "card"} onClick={() => openPortal("payment_method_update", "card")} className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90">
+                <CreditCard className="mr-2 h-4 w-4" />
+                {busy === "card" ? "Opening…" : "Update payment method"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5" />
+              </Button>
             )}
+            {endingSoon ? (
+              <Button disabled={busy === "resume"} onClick={resume} className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {busy === "resume" ? "Resuming…" : "Resume my plan"}
+              </Button>
+            ) : (
+              <Button variant="outline" disabled={busy === "cancel"} onClick={() => openPortal("subscription_cancel", "cancel")} className="justify-start rounded-full">
+                <XCircle className="mr-2 h-4 w-4" />
+                {busy === "cancel" ? "Opening…" : "Cancel plan"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+            {status !== "past_due" && (
+              <Button variant="outline" disabled={busy === "card"} onClick={() => openPortal("payment_method_update", "card")} className="justify-start rounded-full">
+                <CreditCard className="mr-2 h-4 w-4" />
+                {busy === "card" ? "Opening…" : "Update payment method"}
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+            <Button variant="ghost" disabled={busy === "portal"} onClick={() => openPortal(undefined, "portal")} className="justify-start rounded-full text-muted-foreground hover:text-foreground">
+              <Settings2 className="mr-2 h-4 w-4" />
+              {busy === "portal" ? "Opening…" : "Invoices & full billing settings"}
+              <ExternalLink className="ml-auto h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       </div>
