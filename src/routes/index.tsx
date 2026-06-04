@@ -119,12 +119,21 @@ function WalkTab() {
         <InlineWeatherChip />
       </div>
 
-      <Button
-        onClick={() => navigate({ to: "/events" as never })}
-        className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
-      >
-        <CalendarPlus className="mr-2 h-5 w-5" /> Post a walk
-      </Button>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button
+          onClick={() => navigate({ to: "/walk" })}
+          className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
+        >
+          <Footprints className="mr-2 h-5 w-5" /> Walk solo
+        </Button>
+        <Button
+          onClick={() => navigate({ to: "/events" as never })}
+          variant="outline"
+          className="h-16 w-full rounded-2xl border-border text-base font-medium shadow-soft transition active:scale-[0.98]"
+        >
+          <CalendarPlus className="mr-2 h-5 w-5" /> Post a walk
+        </Button>
+      </div>
 
       <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
         <div className="flex items-baseline justify-between">
