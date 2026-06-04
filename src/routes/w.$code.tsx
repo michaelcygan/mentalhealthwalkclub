@@ -8,6 +8,7 @@ import WalkWeather from "@/components/walk-page/walk-weather";
 import { toast } from "sonner";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
+const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
 
 export const Route = createFileRoute("/w/$code")({
   loader: async ({ params }) => {
@@ -115,6 +116,10 @@ function WalkPage() {
           <p className="mt-1 text-foreground/85">{event.accessibility_notes}</p>
         </section>
       ) : null}
+
+      <Suspense fallback={null}>
+        <MemoryStrip eventId={event.id} />
+      </Suspense>
 
       <JoinClub />
     </main>
