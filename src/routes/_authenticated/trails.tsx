@@ -276,10 +276,10 @@ function SortableRow({ id, trail, onRemove }: { id: string; trail: Trail; onRemo
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="min-w-0 flex-1">
+      <Link to="/trails/$id" params={{ id: trail.id }} className="min-w-0 flex-1 -m-1 rounded-2xl p-1 hover:bg-accent/20">
         <p className="truncate font-serif text-sm">{trail.name ?? "Unnamed"}</p>
         <p className="text-[11px] text-muted-foreground">{trail.kind ?? "trail"}</p>
-      </div>
+      </Link>
       <button
         type="button"
         onClick={onRemove}
