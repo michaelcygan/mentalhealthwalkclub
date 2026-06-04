@@ -4,6 +4,7 @@ import { ArrowRight, CalendarDays, Globe, MapPin, Users, Footprints, TreePine } 
 import { discoverNearbyWalks } from "@/lib/discover.functions";
 import { discoverPublicGroups } from "@/lib/groups.functions";
 import { discoverPlaces } from "@/lib/places.functions";
+import { discoverTrails } from "@/lib/trails.functions";
 
 export const Route = createFileRoute("/_authenticated/discover")({
   component: DiscoverPage,
@@ -45,6 +46,13 @@ type PlaceRow = {
   miles: number | null;
 };
 
+type TrailRow = {
+  id: string;
+  name: string | null;
+  kind: string | null;
+  miles?: number;
+};
+
 function DiscoverPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoState, setGeoState] = useState<"asking" | "ok" | "denied">("asking");
@@ -52,6 +60,7 @@ function DiscoverPage() {
   const [localGroups, setLocalGroups] = useState<GroupRow[]>([]);
   const [globalGroups, setGlobalGroups] = useState<GroupRow[]>([]);
   const [places, setPlaces] = useState<PlaceRow[]>([]);
+  const [trails, setTrails] = useState<TrailRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,6 +93,14 @@ function DiscoverPage() {
       setGlobalGroups(gg.groups.slice(0, 3));
       setPlaces(pl.places.slice(0, 4));
       setLoading(false);
+      if (coords) {
+        try {
+          const t = await discoverTrails({ data: { lat: coords.lat, lng: coords.lng, limit: 4 } });
+          setTrails(t.trails as TrailRow[]);
+        } catch {
+          setTrails([]);
+        }
+      }
     })();
   }, [coords, geoState]);
 
@@ -192,17 +209,27 @@ function DiscoverPage() {
           )}
         />
 
-        <section className="rounded-3xl border border-dashed border-border bg-card/60 p-5">
-          <div className="flex items-start gap-3">
-            <TreePine className="mt-0.5 h-5 w-5 text-forest" />
-            <div className="min-w-0">
-              <h3 className="font-serif text-base">Trails near you</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Parks and footpaths from OpenStreetMap, coming in the next pass.
-              </p>
-            </div>
-          </div>
-        </section>
+        <Rail
+          icon={<TreePine className="h-4 w-4" />}
+          title="Trails near you"
+          subtitle="Parks and footpaths from OpenStreetMap"
+          seeAllTo="/trails"
+          loading={loading}
+          empty={coords ? "No trails found nearby yet." : "Turn on location to see trails."}
+          items={trails}
+          render={(t) => (
+            <Link
+              to="/trails"
+              className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+            >
+              <h3 className="truncate font-serif text-base">{t.name ?? "Unnamed"}</h3>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{t.kind ?? "trail"}</span>
+                {t.miles != null && <span>· {t.miles.toFixed(1)} mi</span>}
+              </div>
+            </Link>
+          )}
+        />
       </div>
     </div>
   );
