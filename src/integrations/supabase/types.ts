@@ -677,6 +677,98 @@ export type Database = {
           },
         ]
       }
+      group_memberships: {
+        Row: {
+          group_id: string
+          joined_at: string
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          age_band_min: string
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          neighborhood: string | null
+          owner_id: string
+          radius_miles: number | null
+          scope: string
+          slug: string
+          status: string
+          trust_locked_until: string | null
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          age_band_min?: string
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          neighborhood?: string | null
+          owner_id: string
+          radius_miles?: number | null
+          scope?: string
+          slug: string
+          status?: string
+          trust_locked_until?: string | null
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          age_band_min?: string
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          neighborhood?: string | null
+          owner_id?: string
+          radius_miles?: number | null
+          scope?: string
+          slug?: string
+          status?: string
+          trust_locked_until?: string | null
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       guided_tracks: {
         Row: {
           audio_url: string | null
@@ -891,6 +983,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age_band: string | null
           avatar_url: string | null
           bio: string | null
           city: string | null
@@ -910,6 +1003,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          age_band?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
@@ -929,6 +1023,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          age_band?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
@@ -1129,6 +1224,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_dob: {
+        Row: {
+          created_at: string
+          dob: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dob: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dob?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_preferences: {
         Row: {
@@ -1366,6 +1482,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      age_band_for: { Args: { _dob: string }; Returns: string }
+      age_band_meets: {
+        Args: { _min_band: string; _user_band: string }
+        Returns: boolean
+      }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       evaluate_badges: {
         Args: { _user_id: string; _walk_session_id: string }
@@ -1382,6 +1503,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      host_trust_ok: { Args: { _user: string }; Returns: boolean }
       is_circle_member: {
         Args: { _circle: string; _user: string }
         Returns: boolean
@@ -1394,6 +1516,15 @@ export type Database = {
         Args: { _event: string; _user: string }
         Returns: boolean
       }
+      is_group_member: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
+      is_group_owner: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
+      set_my_dob: { Args: { _dob: string }; Returns: string }
       user_in_event_allowlist: {
         Args: { _event: string; _user: string }
         Returns: boolean
