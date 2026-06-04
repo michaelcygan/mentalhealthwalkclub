@@ -31,9 +31,6 @@ interface Profile {
   bio: string | null;
   is_private: boolean;
 }
-interface ProfileLocal { display_name?: string; city?: string | null; region?: string | null; country?: string | null; location_label?: string | null; lat?: number | null; lng?: number | null; bio?: string | null; is_private?: boolean | null }
-
-  // placeholder line replaced below
 
 
 function ProfileTab() {
