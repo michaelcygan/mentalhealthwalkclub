@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
+const AudiencePicker = lazy(() => import("@/components/walk-page/audience-picker"));
 
 export const Route = createFileRoute("/w/$code")({
   loader: async ({ params }) => {
@@ -85,6 +86,8 @@ function WalkPage() {
       ) : null}
 
       <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} />
+
+      <HostOnlyAudience eventId={event.id} hostId={event.host_user_id} />
 
       {hasMap ? (
         <section className="mt-6 space-y-3">
@@ -237,6 +240,16 @@ function JoinClub() {
         Sign up — it's free
       </button>
     </section>
+  );
+}
+
+function HostOnlyAudience({ eventId, hostId }: { eventId: string; hostId: string | null }) {
+  const { user } = useAuth();
+  if (!user || !hostId || user.id !== hostId) return null;
+  return (
+    <Suspense fallback={null}>
+      <AudiencePicker eventId={eventId} />
+    </Suspense>
   );
 }
 

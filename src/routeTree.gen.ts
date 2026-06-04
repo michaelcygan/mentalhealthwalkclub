@@ -17,10 +17,12 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
+import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
@@ -65,6 +67,10 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -84,6 +90,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   id: '/podcasts',
   path: '/podcasts',
   getParentRoute: () => AdminRoute,
+} as any)
+const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
+  id: '/circles',
+  path: '/circles',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
@@ -113,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -130,6 +142,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -140,6 +153,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
@@ -148,6 +162,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -167,6 +182,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -184,6 +200,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -193,6 +210,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/admin'
     | '/auth'
     | '/events'
@@ -201,6 +219,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/_authenticated/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -211,6 +230,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
@@ -282,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -310,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_authenticated/circles': {
+      id: '/_authenticated/circles'
+      path: '/circles'
+      fullPath: '/circles'
+      preLoaderRoute: typeof AuthenticatedCirclesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/admin/podcasts/$feedId': {
       id: '/admin/podcasts/$feedId'
       path: '/$feedId'
@@ -333,6 +367,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AdminPodcastsRouteChildren {
   AdminPodcastsFeedIdRoute: typeof AdminPodcastsFeedIdRoute
@@ -369,6 +414,7 @@ const EventsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
