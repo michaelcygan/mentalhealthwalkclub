@@ -45,9 +45,9 @@ function GroupsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"mine" | "discover">("discover");
   const [mine, setMine] = useState<{ owned: Group[]; member: Group[] }>({ owned: [], member: [] });
-  const [pub, setPub] = useState<Public[]>([]);
+  const [pubLocal, setPubLocal] = useState<Public[]>([]);
+  const [pubGlobal, setPubGlobal] = useState<Public[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scope, setScope] = useState<"local" | "global">("local");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [creating, setCreating] = useState(false);
   const [ageBand, setAgeBand] = useState<string | null>(null);
@@ -80,15 +80,17 @@ function GroupsPage() {
   useEffect(() => {
     setLoading(true);
     (async () => {
-      const [m, p] = await Promise.all([
+      const [m, pl, pg] = await Promise.all([
         listMyGroups(),
-        discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope } }),
+        discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
+        discoverPublicGroups({ data: { lat: null, lng: null, scope: "global" } }),
       ]);
       setMine(m);
-      setPub(p.groups);
+      setPubLocal(pl.groups);
+      setPubGlobal(pg.groups);
       setLoading(false);
     })();
-  }, [coords, scope]);
+  }, [coords]);
 
   const submit = async () => {
     if (busy) return;
@@ -157,36 +159,25 @@ function GroupsPage() {
       </div>
 
       {tab === "discover" && (
-        <>
-          <div className="mb-3 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{coords ? `Within 25mi · ${scope}` : `Showing ${scope} public groups`}</span>
-            <button onClick={() => setScope((s) => (s === "local" ? "global" : "local"))} className="text-forest underline">
-              {scope === "local" ? "Show global" : "Show local"}
-            </button>
-          </div>
-          {loading ? <Skeleton /> : pub.length === 0 ? (
-            <Empty title="No groups yet" body="Be the first to start one near you." />
-          ) : (
-            <ul className="space-y-3">
-              {pub.map((g) => (
-                <li key={g.id} className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-                  <div className="flex items-start justify-between gap-3">
-                    <Link to="/groups/$slug" params={{ slug: g.slug }} className="min-w-0 flex-1">
-                      <h3 className="truncate font-serif text-lg">{g.name}</h3>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description || "No description yet."}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        {g.neighborhood && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{g.neighborhood}</span>}
-                        {g.miles != null && <span>· {g.miles.toFixed(1)} mi</span>}
-                        {g.scope === "global" && <span className="inline-flex items-center gap-1"><Globe className="h-3 w-3" /> global</span>}
-                      </div>
-                    </Link>
-                    <Button onClick={() => onJoin(g)} variant="outline" className="rounded-full text-xs">Join</Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <div className="space-y-6">
+          <Rail
+            title={coords ? "Near you" : "Public groups"}
+            subtitle={coords ? "Within 25 miles" : "Turn on location to see what's near you"}
+            groups={pubLocal}
+            loading={loading}
+            empty="No groups near you yet. Start one?"
+            onJoin={onJoin}
+          />
+          <Rail
+            title="Global identity groups"
+            subtitle="Postpartum walkers, sober strolls, grief & movement…"
+            groups={pubGlobal}
+            loading={loading}
+            empty="No global groups yet."
+            onJoin={onJoin}
+            showGlobeBadge
+          />
+        </div>
       )}
 
       {tab === "mine" && (
@@ -297,6 +288,66 @@ function Empty({ title, body }: { title: string; body: string }) {
 
 function Skeleton() {
   return <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-card" />)}</div>;
+}
+
+function Rail({
+  title,
+  subtitle,
+  groups,
+  loading,
+  empty,
+  onJoin,
+  showGlobeBadge,
+}: {
+  title: string;
+  subtitle: string;
+  groups: Public[];
+  loading: boolean;
+  empty: string;
+  onJoin: (g: Public) => void;
+  showGlobeBadge?: boolean;
+}) {
+  return (
+    <section>
+      <header className="mb-2">
+        <h2 className="font-serif text-base">{title}</h2>
+        <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+      </header>
+      {loading ? (
+        <Skeleton />
+      ) : groups.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">{empty}</div>
+      ) : (
+        <ul className="space-y-3">
+          {groups.map((g) => (
+            <li key={g.id} className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+              <div className="flex items-start justify-between gap-3">
+                <Link to="/groups/$slug" params={{ slug: g.slug }} className="min-w-0 flex-1">
+                  <h3 className="truncate font-serif text-lg">{g.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description || "No description yet."}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    {g.neighborhood && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {g.neighborhood}
+                      </span>
+                    )}
+                    {g.miles != null && <span>· {g.miles.toFixed(1)} mi</span>}
+                    {showGlobeBadge && (
+                      <span className="inline-flex items-center gap-1">
+                        <Globe className="h-3 w-3" /> global
+                      </span>
+                    )}
+                  </div>
+                </Link>
+                <Button onClick={() => onJoin(g)} variant="outline" className="rounded-full text-xs">Join</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 function DobPrompt({ onSaved }: { onSaved: (band: string) => void }) {
