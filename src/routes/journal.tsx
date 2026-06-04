@@ -29,7 +29,7 @@ interface Walk {
   mood_before_score: number | null; mood_after_score: number | null;
   reflection_note: string | null; walk_type: string; route_snapshot_path: string | null;
   privacy: string; share_map: boolean | null; intention: string | null;
-  group_id: string | null;
+  group_id?: string | null;
   weather_at_end: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
 }
 interface Badge { name: string; description: string | null; earned_at: string; }
