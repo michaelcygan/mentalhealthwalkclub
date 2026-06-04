@@ -24,6 +24,7 @@ import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
+import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
@@ -108,6 +109,11 @@ const AuthenticatedPlacesRoute = AuthenticatedPlacesRouteImport.update({
   path: '/places',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedListenRoute = AuthenticatedListenRouteImport.update({
+  id: '/listen',
+  path: '/listen',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/listen': typeof AuthenticatedListenRoute
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/listen': typeof AuthenticatedListenRoute
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/_authenticated/listen': typeof AuthenticatedListenRoute
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/circles'
     | '/discover'
     | '/groups'
+    | '/listen'
     | '/places'
     | '/trails'
     | '/admin/podcasts'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/circles'
     | '/discover'
     | '/groups'
+    | '/listen'
     | '/places'
     | '/trails'
     | '/admin/podcasts'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_authenticated/circles'
     | '/_authenticated/discover'
     | '/_authenticated/groups'
+    | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
     | '/admin/podcasts'
@@ -435,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlacesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/listen': {
+      id: '/_authenticated/listen'
+      path: '/listen'
+      fullPath: '/listen'
+      preLoaderRoute: typeof AuthenticatedListenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/groups': {
       id: '/_authenticated/groups'
       path: '/groups'
@@ -538,6 +557,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
+  AuthenticatedListenRoute: typeof AuthenticatedListenRoute
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
 }
@@ -546,6 +566,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
+  AuthenticatedListenRoute: AuthenticatedListenRoute,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
 }
