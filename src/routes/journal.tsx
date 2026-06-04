@@ -297,7 +297,9 @@ function JournalTab() {
                   <div className="text-[10px] tabular-nums text-muted-foreground">M T W T F S S</div>
                 </div>
                 <Heatmap walks={walks} />
+                <HeatmapCaption walks={walks} />
               </div>
+              <YearHeatmapSection walks={walks} />
               <MoodArcSection walks={walks} />
             </div>
           )}
@@ -415,6 +417,117 @@ function MoodArcSection({ walks }: { walks: Walk[] }) {
         <div className="font-serif text-sm text-muted-foreground"><span className="text-foreground tabular-nums">{moodAvg.toFixed(1)}</span> avg after</div>
       </div>
       <MoodArc points={moodArc.map((d) => d.score)} />
+      <p className="mt-2 font-serif text-sm italic text-muted-foreground">{moodCaption(moodArc.map((d) => d.score), moodAvg)}</p>
+    </div>
+  );
+}
+
+function moodCaption(points: (number | null)[], avg: number): string {
+  const vals = points.filter((v): v is number => v != null);
+  if (vals.length < 2) return "One reading so far — keep checking in.";
+  const first = vals.slice(0, Math.ceil(vals.length / 2));
+  const last = vals.slice(Math.floor(vals.length / 2));
+  const firstAvg = first.reduce((s, n) => s + n, 0) / first.length;
+  const lastAvg = last.reduce((s, n) => s + n, 0) / last.length;
+  const delta = lastAvg - firstAvg;
+  if (delta > 0.4) return `Mood is trending up — about ${delta.toFixed(1)} points since the start of the month.`;
+  if (delta < -0.4) return `A heavier stretch — mood is down ${Math.abs(delta).toFixed(1)} points. Be gentle.`;
+  if (avg >= 7) return "Mostly bright. Walks seem to be holding you steady.";
+  if (avg >= 5) return "Steady middle ground — small lifts after most walks.";
+  return "A tender month. Even small loops are doing work.";
+}
+
+function HeatmapCaption({ walks }: { walks: Walk[] }) {
+  const stats = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = new Set<string>();
+    let totalMins = 0;
+    walks.forEach((w) => {
+      const d = new Date(w.started_at); d.setHours(0, 0, 0, 0);
+      const diff = Math.floor((today.getTime() - d.getTime()) / 86400_000);
+      if (diff < 0 || diff >= 12 * 7) return;
+      days.add(d.toDateString());
+      totalMins += Math.round((w.duration_seconds ?? 0) / 60);
+    });
+    return { activeDays: days.size, totalMins };
+  }, [walks]);
+  if (stats.activeDays === 0) return (
+    <p className="mt-2 font-serif text-sm italic text-muted-foreground">A blank field — the next square is up to you.</p>
+  );
+  return (
+    <p className="mt-2 font-serif text-sm italic text-muted-foreground">
+      {stats.activeDays} day{stats.activeDays === 1 ? "" : "s"} of walking in the last twelve weeks · {stats.totalMins} minutes total.
+    </p>
+  );
+}
+
+function YearHeatmapSection({ walks }: { walks: Walk[] }) {
+  const { grid, total, activeDays } = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const cells: { mins: number; date: Date }[][] = Array.from({ length: 7 }, () =>
+      Array.from({ length: 52 }, () => ({ mins: 0, date: new Date() })),
+    );
+    for (let col = 0; col < 52; col++) {
+      const weekStart = new Date(monday); weekStart.setDate(monday.getDate() - (51 - col) * 7);
+      for (let row = 0; row < 7; row++) {
+        const d = new Date(weekStart); d.setDate(weekStart.getDate() + row);
+        cells[row][col] = { mins: 0, date: d };
+      }
+    }
+    let total = 0;
+    const days = new Set<string>();
+    walks.forEach((w) => {
+      const d = new Date(w.started_at); d.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400_000);
+      if (diffDays < 0 || diffDays >= 52 * 7) return;
+      const dow = (d.getDay() + 6) % 7;
+      const todayDow = (today.getDay() + 6) % 7;
+      const weekIdxFromToday = Math.floor((diffDays + todayDow - dow) / 7);
+      const col = 51 - weekIdxFromToday;
+      if (col < 0 || col > 51) return;
+      const mins = Math.round((w.duration_seconds ?? 0) / 60);
+      cells[dow][col].mins += mins;
+      total += mins;
+      days.add(d.toDateString());
+    });
+    return { grid: cells, total, activeDays: days.size };
+  }, [walks]);
+  const max = Math.max(1, ...grid.flat().map((c) => c.mins));
+  const todayStr = new Date().toDateString();
+  return (
+    <div className="border-t border-border pt-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-forest/80">A year of walks</div>
+        <div className="font-serif text-sm text-muted-foreground tabular-nums">{Math.round(total / 60)}<span className="text-xs"> hrs</span></div>
+      </div>
+      <div className="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-[2px]" role="img" aria-label="Walks heatmap, last 52 weeks">
+        {Array.from({ length: 52 }).map((_, col) => (
+          <div key={col} className="grid grid-rows-7 gap-[2px]">
+            {grid.map((row, r) => {
+              const c = row[col];
+              const intensity = c.mins / max;
+              const isToday = c.date.toDateString() === todayStr;
+              const bg = c.mins === 0
+                ? "color-mix(in oklab, var(--forest) 7%, transparent)"
+                : `color-mix(in oklab, var(--forest) ${Math.round(20 + intensity * 75)}%, transparent)`;
+              return (
+                <div
+                  key={r}
+                  title={`${c.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${c.mins} min`}
+                  className={`aspect-square rounded-[2px] ${isToday ? "ring-1 ring-forest" : ""}`}
+                  style={{ background: bg }}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 font-serif text-sm italic text-muted-foreground">
+        {activeDays === 0
+          ? "A whole year of empty squares is also a story — the next one starts today."
+          : `${activeDays} walking day${activeDays === 1 ? "" : "s"} across the year — that's roughly ${Math.round(total / 60)} hours of moving on purpose.`}
+      </p>
     </div>
   );
 }

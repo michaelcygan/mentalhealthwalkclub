@@ -15,6 +15,7 @@ import { LocationAutosuggest, type LocationValue } from "@/components/location-a
 import { SectionHeading } from "@/components/section-heading";
 import { BadgeWall } from "@/components/badge-wall";
 import { useProfileStats } from "@/hooks/use-profile-stats";
+import { WeeklySparkline } from "@/components/charts/weekly-sparkline";
 import { BillingCard } from "@/components/billing/billing-card";
 import { useSubscription } from "@/hooks/use-subscription";
 
@@ -150,6 +151,8 @@ function ProfileTab() {
           <span className="font-serif italic">{stats.weekStreak} week{stats.weekStreak === 1 ? "" : "s"} in a row · rest counts too</span>
         </div>
       )}
+
+      {stats.totalWalks > 0 && <WeeklySparkline userId={user.id} />}
 
       <BadgeWall userId={user.id} />
 
