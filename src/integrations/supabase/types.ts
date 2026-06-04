@@ -709,6 +709,59 @@ export type Database = {
           },
         ]
       }
+      group_standing_walks: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          duration_minutes: number
+          group_id: string
+          id: string
+          meetup_label: string | null
+          meetup_lat: number | null
+          meetup_lng: number | null
+          start_local_time: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week: number
+          duration_minutes?: number
+          group_id: string
+          id?: string
+          meetup_label?: string | null
+          meetup_lat?: number | null
+          meetup_lng?: number | null
+          start_local_time: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          duration_minutes?: number
+          group_id?: string
+          id?: string
+          meetup_label?: string | null
+          meetup_lat?: number | null
+          meetup_lng?: number | null
+          start_local_time?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_standing_walks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           age_band_min: string
