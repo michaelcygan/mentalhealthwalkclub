@@ -117,7 +117,7 @@ export const discoverTrails = createServerFn({ method: "POST" })
           })
           .filter(Boolean) as Array<Record<string, unknown>>;
         if (rows.length > 0) {
-          await supabase.from("trails").upsert(rows, { onConflict: "source,osm_id" });
+          await supabase.from("trails").upsert(rows as never, { onConflict: "source,osm_id" });
         }
       }
       await supabase
