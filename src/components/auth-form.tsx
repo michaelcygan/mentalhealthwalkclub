@@ -207,7 +207,7 @@ export function AuthForm({
               <Sparkles className="h-3.5 w-3.5 text-forest" /> Plus
             </span>
             <span className="text-[11px] leading-tight text-muted-foreground">
-              Free 30 days · then $4.99/mo · Unlimited Walk &amp; Talks + Local RSVPs
+              Free 30 days · then $1.99/mo · Unlimited Circles, trails, groups · 50% to nonprofits
             </span>
           </button>
         </div>
