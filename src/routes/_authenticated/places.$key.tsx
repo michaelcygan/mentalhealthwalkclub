@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Users, CalendarDays } from "lucide-react";
+import { ArrowLeft, MapPin, Users, CalendarDays, TreePine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPlace } from "@/lib/places.functions";
+import { trailsNearPoint } from "@/lib/trails.functions";
 
 export const Route = createFileRoute("/_authenticated/places/$key")({
   component: PlaceDetail,
