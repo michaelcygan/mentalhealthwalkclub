@@ -1,6 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { getWalkByCode } from "@/lib/walk-page.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -10,18 +9,11 @@ import { toast } from "sonner";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 
-const walkQueryOptions = (code: string) =>
-  queryOptions({
-    queryKey: ["walk-by-code", code],
-    queryFn: () => getWalkByCode({ data: { code } }),
-    staleTime: 60_000,
-  });
-
 export const Route = createFileRoute("/w/$code")({
   loader: async ({ params }) => {
     const data = await getWalkByCode({ data: { code: params.code } });
     if (!data.event) throw notFound();
-    return null;
+    return data;
   },
   head: ({ params }) => ({
     meta: [
@@ -60,9 +52,12 @@ type RsvpStatus = "going" | "interested" | "cant_go";
 
 function WalkPage() {
   const { code } = Route.useParams();
-  const { data } = useSuspenseQuery(walkQueryOptions(code));
-  const event = data.event!;
-  const host = data.host;
+  const { event, host } = Route.useLoaderData();
+  if (!event) return null;
+
+  const lat = event.lat != null ? Number(event.lat) : null;
+  const lng = event.lng != null ? Number(event.lng) : null;
+  const hasMap = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-24 pt-6">
@@ -90,15 +85,10 @@ function WalkPage() {
 
       <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} />
 
-      {typeof event.lat === "number" && typeof event.lng === "number" ? (
+      {hasMap ? (
         <section className="mt-6 space-y-3">
           <Suspense fallback={<div className="h-72 w-full animate-pulse rounded-3xl bg-muted" />}>
-            <WalkMap
-              lat={Number(event.lat)}
-              lng={Number(event.lng)}
-              title={event.title}
-              venue={event.venue_name}
-            />
+            <WalkMap lat={lat!} lng={lng!} title={event.title} venue={event.venue_name} />
           </Suspense>
           {event.meeting_point ? (
             <p className="text-xs text-muted-foreground">
@@ -112,10 +102,10 @@ function WalkPage() {
         </section>
       )}
 
-      {typeof event.lat === "number" && typeof event.lng === "number" ? (
+      {hasMap ? (
         <section className="mt-6 space-y-2">
           <SectionLabel>Forecast around walk time</SectionLabel>
-          <WalkWeather lat={Number(event.lat)} lng={Number(event.lng)} centerIso={event.starts_at} />
+          <WalkWeather lat={lat!} lng={lng!} centerIso={event.starts_at} />
         </section>
       ) : null}
 
@@ -153,75 +143,55 @@ function Cover({ event }: { event: { image_url: string | null; city: string | nu
   );
 }
 
-function RsvpRow({ eventId, attendeeCount, code }: { eventId: string; attendeeCount: number; code: string }) {
+function RsvpRow({ eventId, attendeeCount }: { eventId: string; attendeeCount: number; code: string }) {
   const { user } = useAuth();
   const { requireAuth } = useAuthPrompt();
-  const qc = useQueryClient();
-  const [optimisticCount, setOptimisticCount] = useState(attendeeCount);
+  const [my, setMy] = useState<RsvpStatus | null>(null);
+  const [count, setCount] = useState(attendeeCount);
+  const [busy, setBusy] = useState(false);
 
-  const myRsvpQuery = useQuery({
-    queryKey: ["walk-rsvp", eventId, user?.id ?? "anon"],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data } = await supabase
-        .from("event_rsvps")
-        .select("status")
-        .eq("event_id", eventId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return (data?.status ?? null) as RsvpStatus | null;
-    },
-    enabled: !!user,
-    staleTime: 30_000,
+  useEffect(() => {
+    if (!user) { setMy(null); return; }
+    let cancel = false;
+    supabase.from("event_rsvps").select("status").eq("event_id", eventId).eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { if (!cancel) setMy((data?.status as RsvpStatus | undefined) ?? null); });
+    return () => { cancel = true; };
+  }, [eventId, user]);
+
+  const set = (next: RsvpStatus) => requireAuth(async () => {
+    if (!user || busy) return;
+    setBusy(true);
+    const prev = my;
+    setMy(next);
+    if (prev !== "going" && next === "going") setCount((n) => n + 1);
+    if (prev === "going" && next !== "going") setCount((n) => Math.max(0, n - 1));
+    const { error } = await supabase
+      .from("event_rsvps")
+      .upsert({ event_id: eventId, user_id: user.id, status: next }, { onConflict: "event_id,user_id" });
+    setBusy(false);
+    if (error) {
+      setMy(prev);
+      setCount(attendeeCount);
+      toast.error(error.message);
+      return;
+    }
+    toast.success(
+      next === "going" ? "You're in. See you out there." :
+      next === "interested" ? "Saved as interested." :
+      "Marked can't go."
+    );
   });
-
-  const setRsvp = useMutation({
-    mutationFn: async (next: RsvpStatus) => {
-      if (!user) throw new Error("Not signed in");
-      const prev = myRsvpQuery.data ?? null;
-      const { error } = await supabase
-        .from("event_rsvps")
-        .upsert(
-          { event_id: eventId, user_id: user.id, status: next },
-          { onConflict: "event_id,user_id" }
-        );
-      if (error) throw error;
-      // Optimistic attendee count: going +1, leaving going -1
-      if (prev !== "going" && next === "going") setOptimisticCount((n) => n + 1);
-      if (prev === "going" && next !== "going") setOptimisticCount((n) => Math.max(0, n - 1));
-      return next;
-    },
-    onSuccess: (next) => {
-      qc.setQueryData(["walk-rsvp", eventId, user?.id], next);
-      qc.invalidateQueries({ queryKey: ["walk-by-code", code] });
-      toast.success(
-        next === "going" ? "You're in. See you out there." :
-        next === "interested" ? "Saved as interested." :
-        "Marked can't go."
-      );
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const my = myRsvpQuery.data ?? null;
-  const click = (next: RsvpStatus) => requireAuth(() => setRsvp.mutate(next));
 
   return (
     <section className="mt-6 rounded-3xl border border-border bg-card p-4 shadow-soft">
-      <div className="flex items-center justify-between">
-        <div>
-          <SectionLabel>RSVP</SectionLabel>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {optimisticCount === 0 ? "Be the first to say you're in." :
-             optimisticCount === 1 ? "1 walker is going." :
-             `${optimisticCount} walkers are going.`}
-          </p>
-        </div>
-      </div>
+      <SectionLabel>RSVP</SectionLabel>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {count === 0 ? "Be the first to say you're in." : count === 1 ? "1 walker is going." : `${count} walkers are going.`}
+      </p>
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <RsvpBtn label="I'm in" active={my === "going"} disabled={setRsvp.isPending} onClick={() => click("going")} variant="primary" />
-        <RsvpBtn label="Interested" active={my === "interested"} disabled={setRsvp.isPending} onClick={() => click("interested")} />
-        <RsvpBtn label="Can't go" active={my === "cant_go"} disabled={setRsvp.isPending} onClick={() => click("cant_go")} />
+        <RsvpBtn label="I'm in" active={my === "going"} disabled={busy} onClick={() => set("going")} variant="primary" />
+        <RsvpBtn label="Interested" active={my === "interested"} disabled={busy} onClick={() => set("interested")} />
+        <RsvpBtn label="Can't go" active={my === "cant_go"} disabled={busy} onClick={() => set("cant_go")} />
       </div>
     </section>
   );
@@ -234,7 +204,7 @@ function RsvpBtn({ label, active, disabled, onClick, variant }: {
   if (variant === "primary") {
     return (
       <button onClick={onClick} disabled={disabled}
-        className={`${base} ${active ? "bg-forest text-primary-foreground" : "bg-forest/90 text-primary-foreground hover:bg-forest"}`}>
+        className={`${base} ${active ? "bg-forest text-primary-foreground ring-2 ring-forest/40" : "bg-forest text-primary-foreground hover:opacity-90"}`}>
         {active ? "✓ " : ""}{label}
       </button>
     );
