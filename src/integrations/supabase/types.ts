@@ -1222,6 +1222,75 @@ export type Database = {
         }
         Relationships: []
       }
+      trail_search_log: {
+        Row: {
+          cell_key: string
+          last_synced_at: string
+        }
+        Insert: {
+          cell_key: string
+          last_synced_at?: string
+        }
+        Update: {
+          cell_key?: string
+          last_synced_at?: string
+        }
+        Relationships: []
+      }
+      trails: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          kind: string | null
+          last_synced_at: string
+          lat: number
+          length_m: number | null
+          lng: number
+          name: string | null
+          osm_id: string | null
+          region: string | null
+          source: string
+          tags: Json
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          kind?: string | null
+          last_synced_at?: string
+          lat: number
+          length_m?: number | null
+          lng: number
+          name?: string | null
+          osm_id?: string | null
+          region?: string | null
+          source?: string
+          tags?: Json
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          kind?: string | null
+          last_synced_at?: string
+          lat?: number
+          length_m?: number | null
+          lng?: number
+          name?: string | null
+          osm_id?: string | null
+          region?: string | null
+          source?: string
+          tags?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
@@ -1377,6 +1446,41 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_saved_trails: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          position: number
+          trail_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          position?: number
+          trail_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          position?: number
+          trail_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_saved_trails_trail_id_fkey"
+            columns: ["trail_id"]
+            isOneToOne: false
+            referencedRelation: "trails"
             referencedColumns: ["id"]
           },
         ]

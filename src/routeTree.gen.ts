@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
+import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
@@ -96,6 +97,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   path: '/podcasts',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthenticatedTrailsRoute = AuthenticatedTrailsRouteImport.update({
+  id: '/trails',
+  path: '/trails',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlacesRoute = AuthenticatedPlacesRouteImport.update({
   id: '/places',
   path: '/places',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
+  '/trails': typeof AuthenticatedTrailsRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
+  '/trails': typeof AuthenticatedTrailsRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
+  '/_authenticated/trails': typeof AuthenticatedTrailsRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/discover'
     | '/groups'
     | '/places'
+    | '/trails'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/discover'
     | '/groups'
     | '/places'
+    | '/trails'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_authenticated/discover'
     | '/_authenticated/groups'
     | '/_authenticated/places'
+    | '/_authenticated/trails'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -397,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_authenticated/trails': {
+      id: '/_authenticated/trails'
+      path: '/trails'
+      fullPath: '/trails'
+      preLoaderRoute: typeof AuthenticatedTrailsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/places': {
       id: '/_authenticated/places'
       path: '/places'
@@ -490,6 +509,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
+  AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -497,6 +517,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
+  AuthenticatedTrailsRoute: AuthenticatedTrailsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
