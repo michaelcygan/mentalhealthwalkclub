@@ -185,7 +185,11 @@ export const saveTrail = createServerFn({ method: "POST" })
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
     if ((count ?? 0) >= FREE_SAVED_TRAILS_CAP) {
-      throw new Error(`Free plan caps saved trails at ${FREE_SAVED_TRAILS_CAP}. Upgrade for unlimited.`);
+      const { isPlus } = await import("@/lib/plus-guard.server");
+      const plus = await isPlus(supabase, userId as string);
+      if (!plus) {
+        throw new Error(`Free plan caps saved trails at ${FREE_SAVED_TRAILS_CAP}. Upgrade to Plus for unlimited.`);
+      }
     }
     const { error } = await supabase.from("user_saved_trails").insert({
       user_id: userId,
