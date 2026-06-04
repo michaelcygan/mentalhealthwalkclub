@@ -6,7 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones, Heart } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones, Heart, ShoppingBag } from "lucide-react";
 import { listHostPlaces } from "@/lib/places.functions";
 import { listMySavedTrails } from "@/lib/trails.functions";
 import { toast } from "sonner";
@@ -196,6 +196,14 @@ function ProfileTab() {
       >
         <span className="flex items-center gap-2 font-medium"><Users className="h-4 w-4 text-forest" /> Circles & friends</span>
         <span className="text-xs text-muted-foreground">Manage ›</span>
+      </Link>
+
+      <Link
+        to="/shop"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><ShoppingBag className="h-4 w-4 text-forest" /> Shop</span>
+        <span className="text-xs text-muted-foreground">Merch — half funds nonprofits ›</span>
       </Link>
 
       {hostPlaces.length > 0 && (
