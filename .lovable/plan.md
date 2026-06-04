@@ -1,156 +1,163 @@
-# Walk Club → App Store launch via Despia (final plan)
+# Pivot Plan — Mental Health Walk Club v2 (revised v5)
 
-Decisions captured:
-- **Bundle ID:** `com.despia.mentalhealthwalkclub` (from your Despia dashboard screenshot — that's it, locked).
-- **App Start URL:** `https://www.mentalhealthwalkclub.com` (already configured).
-- **Plus pricing:** $4.99/mo + $39.99/yr (saves ~33%, yearly is the "generous" tier).
-- **Privacy/Terms:** I draft generic-but-honest copy with strong "platform assumes no liability" language. Not legal advice — fine to swap later.
-- **Notifications (v1):** walk reminders (opt-in), Walk & Talk start pings, RSVP confirmations, **announcements** (admin-broadcast).
-- **Android steps:** ship with copy "Background step tracking is coming soon to Android" — no Despia mention.
-- **Despia handles store submission** — no Apple Developer / Play Console accounts needed from you. That removes Phases C–E from my earlier plan.
+One viral loop, two surfaces for it:
+1. **Personal**: post a walk → share a Partiful-style page → friends RSVP.
+2. **Communal**: join a public **Group** with a standing walk → meet regulars near you.
+
+Lo-fi, ambient, web-only, Stripe-only.
 
 ---
 
-## What Despia gives us (confirmed from their docs)
+## Phase 1 — The Big Cut
 
-| Capability | Despia bridge | Used for |
-|---|---|---|
-| Real pedometer (background, screen-off) | **Apple HealthKit** read | Solves your #1 ask on iOS |
-| Background GPS w/ interval + distance | `gps-location` | Distance tracking with screen locked |
-| Background audio + lock-screen controls | `audio-player` | Music/podcast keeps playing when phone is locked |
-| In-app purchases (App Store + Play) | **RevenueCat** bridge | Apple-compliant Plus subscriptions |
-| Push notifications | **OneSignal** bridge | The 4 notification types above |
-| Sign in with Apple (required by Apple if Google is offered) | `oauth/apple` | Native Face ID sign-in |
-| Native Google sign-in (works in webview) | `oauth/google` | Replaces fragile webview OAuth |
-| Universal/app links | `deeplinking` | `mentalhealthwalkclub.com/w/CODE` opens the app |
-| Native runtime detection | `despia.uuid`, UA flag | Branch UI (RevenueCat vs Stripe, etc.) |
-| OTA updates | Built-in | UI/logic ships instantly via web — no re-submission |
-
-> Android Health Connect bridge is "coming soon" per Despia; that's why Android v1 ships with the disclaimer.
+Same as v4. Remove native shell, audio rooms, live walks, GPS tracking, facilitator, leaderboard, practices, route mosaics, etc. Keep `friend_walks`, `event_rsvps`, `/w/$code`, share-card, `profiles`, `user_roles`, `badges`, `walker_level`, `walk_sessions`, `walk_photos`, `walk-snapshots`, podcasts, ambient music, weather, journal, accelerometer step counter, guest-id.
 
 ---
 
-## What I'll build (in order)
+## Phase 2 — The Walk Page (place-aware, gently social)
 
-### Phase A — Compliance pages + safety net
-1. **`/privacy` route** — generic-but-honest copy covering: what we collect (account, walks, location during walks, health/steps, audio for Walk & Talk, push tokens), how it's used, third parties (auth, payments, push), user rights (export, delete), kids policy, contact email. Includes "**Mental Health Walk Club is not a medical service. The platform assumes no liability for any decisions, injuries, or outcomes related to use of the app, including walks, audio rooms, or community interactions.**"
-2. **`/terms` route** — eligibility, account rules, acceptable use (no harassment, no harmful content in Walk & Talk), subscription terms (auto-renew, cancel anytime, refunds via store), termination, **disclaimer of warranties + limitation of liability** (broad), governing law placeholder.
-3. Footer links to both from `__root.tsx` and a "Legal" section in `/profile`.
-4. **"Delete my account"** button in `/profile` → server fn that revokes auth user via `supabaseAdmin.auth.admin.deleteUser` and lets RLS cascades clean owned rows. Two-step confirm dialog.
-5. **Sign in with Apple** added to `/auth`. Web first using Supabase OAuth, then Despia bridge for native (same `signInWithIdToken` flow as Google).
+Leaflet + CARTO Voyager (no key), single hand-drawn pin. Cover photo from Wikimedia Commons by lat/lng, fallback gradient. Hourly weather strip with reschedule auto-suggest. Trail/park badge when near a saved trail. RSVP (going/maybe/can't) + avatar stack. Lightweight comments + emoji reactions. Going-RSVP mini chat via Supabase Realtime (48h purge). "Join the Club" CTA for logged-out viewers.
 
-### Phase B — Despia SDK wrapper + native branches
-1. `bun add despia-native`.
-2. `src/lib/despia.ts` — typed wrapper: `isNative()`, `getStoreLocation()`, `requestPushPermission()`, `getStepsSince(date)`, `startBackgroundGps(opts)`, `playNativeAudio(url, meta)`, `openRevenueCatPaywall()`, `openAppleAuth()`, `openGoogleAuth()`. Each is a thin call to the Despia scheme (`healthkit://`, `gps://`, etc.) with web no-op fallbacks.
-3. `useIsNative()` hook so components can branch.
+**Photos — present but quiet** (v4 framing kept):
+- Soft camera FAB on the active-walk screen, no pulsing.
+- Collapsible **Memory strip** on the walk page once 1+ photo exists; lightbox on tap; never dominates.
+- **Attendees-only by default**; per-walk toggle to "Public on this walk page". Never on a global feed.
+- No likes/counts publicly (uploader sees their own count). No face tagging. EXIF stripped server-side.
+- One gentle 24h post-walk prompt to attendees who didn't upload, dismissible, never repeats.
+- One-tap "Save this walk's memories" → zipped folder + one-page memento PDF (sentence summary, weather, who came).
+- Optional soften-after-90-days per walk.
 
-### Phase C — Steps, GPS, audio (the user-visible wins)
-1. **`src/hooks/use-step-counter.ts`** — when `isNative()` and iOS, query HealthKit for steps since walk start (poll every 30s + once on walk end). Else keep `devicemotion`. On Android-native, show "Steps tracked while walk is open. Background tracking coming soon."
-2. **Background GPS during active walks** — start in `walk-runtime.tsx` walk-start, stop on end. Server endpoint `/api/public/walk-position` writes to existing `walk_positions` (or new minimal table if absent — I'll check).
-3. **Native audio player** — in `walk-runtime.tsx`, when `isNative()`, route podcast + music playback through Despia's `audio-player` scheme with `{ title, artist, artworkUrl }` metadata for lock-screen controls. Web/desktop keeps the existing `<audio>` element. Pause/skip controls call the bridge.
+`friend_walks` gains: `meetup_lat`, `meetup_lng`, `meetup_label`, `cover_image_url`, `audience_mode`, `trail_id?`, `group_id?`, `photos_visibility`, `memory_softens_at?`. New tables: `walk_messages`, `walk_comments`, `walk_reactions`. `walk_photos` gains `attendee_only`.
 
-### Phase D — Plus on mobile via RevenueCat (Apple-compliant)
-1. Set up RevenueCat project, mirror two products:
-   - `walk_club_plus_monthly` — $4.99/mo, 30-day trial
-   - `walk_club_plus_yearly` — $39.99/yr, 30-day trial
-   - Single entitlement `plus`.
-2. **Mobile branch in `BillingCard` + `PlusCheckout`**: when `isNative()`, render a native paywall via `revenuecat://paywall` instead of Stripe Checkout. Hide "Update payment method" / "Open billing portal" — those happen in iOS Settings; show "Manage in App Store" deep link instead.
-3. **Webhook**: `/api/public/hooks/revenuecat` verifies RC's auth header, upserts entitlement into the same `subscriptions` table Stripe writes to (new `gateway: 'revenuecat' | 'stripe'` column), so `has_active_subscription` RPC keeps working unchanged.
-4. Map `app_user_id` = Supabase `auth.uid()` so subscription follows the account.
-5. Keep Stripe path live for web/desktop users.
+---
 
-### Phase E — Notifications via OneSignal
-1. OneSignal project + iOS/Android push certs (Despia handles cert upload).
-2. Init OneSignal on app open (native only); call `setExternalUserId(user.id)` on sign-in, clear on sign-out.
-3. **Triggers** (server-side, via OneSignal REST):
-   - **Walk reminder** — opt-in daily reminder at user-chosen time. Add `notif_walk_reminder_at` to `profiles`; existing cron job sends.
-   - **Walk & Talk start ping** — when a room user RSVP'd to opens, send 5-min-before push.
-   - **RSVP confirmation** — immediate push when user RSVPs to a Local walk.
-   - **Announcement** — admin-only screen at `/admin/announcements` to broadcast a title+body+optional URL to all (or filtered) users. New `announcements` table for history.
+## Phase 3 — Circles + Audience Controls
 
-### Phase F — Native auth + deep links
-1. Mobile branch in `/auth`: use Despia OAuth bridges for Google + Apple, exchange returned ID token with `supabase.auth.signInWithIdToken({ provider, token })`.
-2. Universal/app links for `/w/$code`, `/events/$slug`, `/groups/$slug` — register domains in Despia editor.
+`circles` (owned, named, private) + `circle_members` + `friendships` (mutual). `walk_audience` modes: `public` / `friends` / `circles_allowlist` / `friends_except_blocklist` / `group` (new). RLS-only filtering; hidden walks 404 for excluded users.
 
-### Phase G — Despia editor checklist (you click these)
+---
+
+## Phase 4 — Groups (back, but rebuilt for discovery + safety)
+
+Brought back as the **communal** half of the viral loop. Two flavors share one table:
+
+- **Private group**: friend-of-friend feel, invite-only. (Effectively a Circle with a standing walk attached — but lives in `groups` so the surface is consistent.)
+- **Public group**: discoverable. Default surface is **local-only within a radius**; opt-in **global** for identity/topic groups ("Postpartum Walkers," "Sober Sunset Strolls," "Grief & Movement").
+
+### Standing walks
+
+Every group can attach a recurring meetup pattern (e.g. *Sundays 9am, Prospect Park West Entrance*). Server materializes the next 4 occurrences as `friend_walks` rows scoped to the group, so each one gets a real walk page, RSVPs, weather, photos, mini chat — same primitive as personal walks. Cancel-one and skip-week supported.
+
+### Discovery & locality
+
+- `/discover` shows public groups within ~25mi by default; toggle for **global** identity groups.
+- Group cards show: name, one-line description, member count (rounded: 12, 40+, 120+), next walk time, neighborhood-level location (3-decimal geohash until the user joins), and a small photo from Wikimedia Commons of the meetup area.
+- Logged-out viewers always see a "Join the Club" landing instead of the live feed.
+
+### Safety + anti-spam (real, not theatre)
+
+- **Hard 18+ floor** via DOB attestation at signup; only the age-band enum is queryable.
+- **Group age policy** (host-set): `18+` (default), `21+`, `25+`, `40+`. RSVP/join gated by band; non-matching users see "this group is for ages 25+."
+- **Host trust score** before "create public group" unlocks: requires verified email + at least 3 completed walks + 14 days since signup + no active safety reports. Until then, hosts can create **private** groups freely.
+- **Public group review**: first public group from a new host enters a 24h soft-review queue (auto-approved if no admin flag); shown to user as "your group goes live within a day."
+- **Rate limits**: 1 public group per user per 7 days for the first 30 days; 3/week after. Standing walks per group capped at 2/week to prevent flooding.
+- **Profile-side display rules**: a user's hosted public groups appear on their profile only after the group has 3+ unique RSVPs from accounts >7 days old (kills empty/spam-shell groups).
+- **Block + report** flow: blocking a host hides their groups from `/discover`, walk pages, and search. Reports route to existing `safety_reports`; 2 upheld reports auto-quarantine the group pending review.
+- **No DMs in v1.** All conversation lives on a walk page (mini chat) or the group wall — public, accountable surfaces only. Cuts the most common harassment vector before it starts.
+- **Location precision**: public group cards show neighborhood/geohash-3 until you RSVP "going"; only then do you see the exact meetup pin. Personal/private groups same rule.
+- **Quiet abuse signal**: group is auto-hidden from discovery (not deleted) if it has 0 going-RSVPs across 3 consecutive standing walks AND <2 active members — silently kills bot-spawned groups without punishing legit slow starts.
+
+### Places card (your idea, expanded)
+
+Standing-walk meetup locations populate a **Places** card on the host's public profile *and* feed `/places`. So when a great organizer runs a standing Saturday walk at Inwood Hill Park, that park earns a tile with their group attached. Becomes a soft directory of meetup spots → drives both group discovery and trail/park exploration.
+
+- Place tile shows: photo (Wikimedia Commons), neighborhood, 1-line OSM tag summary, "X groups meet here," "next walk here: Sat 9am."
+- Tapping a Place shows the trail/park detail page + the groups meeting there + a "Start a walk here" CTA.
+
+### Data shape
+
+`groups (id, owner_id, name, slug, description, visibility, scope, age_band_min, radius_miles?, lat?, lng?, neighborhood, cover_image_url, status, trust_locked_until?, created_at)`
+`group_memberships (group_id, user_id, role, status, joined_at)`
+`group_standing_walks (id, group_id, day_of_week, start_local_time, timezone, meetup_lat, meetup_lng, meetup_label, trail_id?, active, created_at)`
+
+`friend_walks.group_id` ties materialized instances back. RLS: members see all group walks; non-members see only `public` group walks within the discovery radius and respect age-band.
+
+### Why this is safe-to-ship
+
+The risk of public groups isn't the concept — it's frictionless creation, unmoderated DMs, exact-location leakage, and minor access. Each of those gets a concrete brake above. Net effect: discovery comes back, the viral loop gets a second engine, and the abuse surface stays narrower than what Meetup or Facebook Groups ship today.
+
+---
+
+## Phase 5 — Discovery feed + Parks & Trails
+
+`/discover` becomes the unified surface:
+- **Tonight near you**: public walks + group walks ≤25mi
+- **Groups for you**: nearby public groups + opt-in global identity groups
+- **Places**: parks/trails + meetup spots (from Phase 4 Places card)
+
+Trails seeded from OSM Overpass (free, no key), `user_saved_trails` with drag-to-reorder, trail detail page with "Start a walk here" CTA.
+
+---
+
+## Phase 6 — Media (kept + leaned into)
+
+Podcasts end-to-end. New `playlists`/`playlist_items` for curated ambient mixes around moods. `/listen` tab with three rails. Solo-walk pre-screen picks silence/ambient/podcast/playlist.
+
+---
+
+## Phase 7 — Solo Walks, Simplified
+
+Drop map/distance/pace. Keep timer, ambient/podcast/playlist player, weather, mood, journal, accelerometer, soft camera FAB, post-walk reflection.
+
+---
+
+## Phase 8 — Merch v1
+
+`merch_products` + admin UI at `/admin/merch` + Stripe + `merch_orders`. 2-3 SKUs to start, nonprofit collabs later.
+
+---
+
+## Phase 9 — Plus at $1.99/mo
+
+**Free**: unlimited walks, RSVPs, comments, Memories, solo walks, basic playlists, podcasts, up to 3 Circles, up to 20 friends, 5 saved trails, **join up to 5 public groups**, **host up to 2 private groups**, journal 5 entries/mo.
+
+**Plus** ($1.99/mo):
+1. Unlimited Circles + audience precision (allow/block per walk).
+2. Custom walk pages (palette + cover + hand-drawn pin style).
+3. Unlimited journal entries with prompts library.
+4. Plus playlists + guest-curated mixes.
+5. Unlimited saved trails + private trail notes.
+6. **Host unlimited groups (public + private)** + group cover customization + standing-walk recurrence beyond weekly (biweekly, monthly, seasonal).
+7. Seasonal challenges + exclusive badges.
+8. **Supporter badge** — **50% of every Plus dollar visibly funds the partner nonprofit** (shown on billing + `/impact`).
+
+Reprice existing `plus_monthly` to $1.99. Gates via `has_active_subscription` + `usePlus()` + server-side `requirePlus`. Monthly server fn sums net Plus revenue, writes 50% to `impact_donations`.
+
+---
+
+## Phase 10 — Design
+
+Serif headlines + handwritten accents. Film-grain/paper textures. **Charts retained** where they help self-tracking — profile sparkline, journal mood line, yearly heatmap, Plus seasonal progress ring — each paired with a plain-language sentence. No charts on the walk page. Drop decorative stat tiles. Slower transitions (300→500ms). Add dusty-rose accent + deeper moss for Places/trails surfaces.
+
+---
+
+## Build order
+
 ```text
-[ ] Bundle ID: com.despia.mentalhealthwalkclub  ✓ already set
-[ ] App Start URL: https://www.mentalhealthwalkclub.com  ✓ already set
-[ ] Toggle bridges: HealthKit, Background Location, Audio Player,
-    RevenueCat, OneSignal, OAuth (Apple+Google), Push, Deeplinking
-[ ] Privacy strings (1 sentence each):
-    - Location: "Used to track your walk distance and route."
-    - Health:   "Used to count your steps during walks."
-    - Mic:      "Used for Walk & Talk live audio rooms."
-    - Notifs:   "Walk reminders, RSVP confirmations, and announcements."
-[ ] External-link allowlist: accounts.google.com, appleid.apple.com,
-    *.supabase.co, api.revenuecat.com, onesignal.com
-[ ] Upload 1024×1024 icon (I'll generate from the brand mark)
-[ ] Submit via Despia → they handle App Store + Play submission
+1. The Big Cut
+2. Circles + audience
+3. Walk page v2
+4. Groups + standing walks + Places card
+5. Discovery + trails
+6. Solo walks slim
+7. Media + playlists
+8. Plus retune + 50% impact
+9. Merch
+10. Design polish (continuous)
 ```
 
-### Phase H — Post-launch
-- Most fixes ship via OTA (web deploy → app picks up next open).
-- Monitor: RevenueCat dashboard (subs), OneSignal (delivery rate), Supabase logs (errors).
-- v1.1 candidates: Android Health Connect (when Despia ships it), home widgets, Siri shortcuts, Apple Watch.
-
 ---
 
-## Files I'll create / change
+## Tech notes
 
-**New**
-- `src/routes/privacy.tsx`, `src/routes/terms.tsx`
-- `src/routes/admin.announcements.tsx`
-- `src/lib/despia.ts`, `src/hooks/use-is-native.ts`
-- `src/lib/account.functions.ts` (delete account)
-- `src/lib/revenuecat.functions.ts`
-- `src/routes/api/public/hooks/revenuecat.ts`
-- `src/lib/notifications.functions.ts` (OneSignal send helpers)
-
-**Edited**
-- `src/routes/__root.tsx` — footer legal links
-- `src/routes/auth.tsx` — Apple Sign In + native OAuth branch
-- `src/routes/profile.tsx` — Delete account, Manage in App Store on iOS, reminder time picker
-- `src/components/billing/billing-card.tsx`, `plus-checkout.tsx` — native paywall branch + yearly option
-- `src/hooks/use-step-counter.ts` — HealthKit branch
-- `src/lib/walk-runtime.tsx` — background GPS + native audio routing
-- `src/lib/auth-context.tsx` — set OneSignal external user id on sign-in
-
-**Database (migration)**
-- `subscriptions.gateway text default 'stripe'`
-- `subscriptions` already keyed by user — add unique on `(user_id, gateway)` if needed
-- `profiles.notif_walk_reminder_at time`, `profiles.notif_push_token text`
-- `announcements (id, title, body, url, sent_at, created_by)` + admin-only RLS
-
-**Secrets to add later** (I'll prompt at the right phase):
-- `REVENUECAT_API_KEY` (server)
-- `REVENUECAT_WEBHOOK_AUTH` (shared secret in webhook header)
-- `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_KEY`
-- `VITE_REVENUECAT_PUBLIC_KEY`, `VITE_ONESIGNAL_APP_ID` (client)
-
----
-
-## Privacy/Terms scope (so you know what you're approving)
-
-Plain-English first-person draft, ~1200 words each, headings, no legalese, but with strong liability language. Examples I'll include verbatim:
-
-> **Not medical advice.** Mental Health Walk Club is a wellness and community app. It is not a substitute for professional medical, psychological, or psychiatric care. Nothing in the app — including content from facilitators, other walkers, podcasts, or audio rooms — constitutes medical advice. If you are in crisis, contact emergency services or a crisis line.
-
-> **Assumption of risk.** Walking, meeting other users in person, and participating in live audio rooms carry inherent risks. You participate at your own risk. The platform, its operators, and contributors assume no liability for any injury, loss, harm, or damage — physical, emotional, financial, or otherwise — arising from your use of the app or interactions with other users.
-
-> **Limitation of liability.** To the maximum extent permitted by law, the platform's total liability to you for any claim is limited to the amount you paid us in the prior twelve months, or $50, whichever is greater.
-
-You'll see them as draft routes — easy to edit before launch.
-
----
-
-## Out of scope for v1 (call out for later)
-- Apple Watch companion, home widgets, Siri shortcuts
-- Android Health Connect (waiting on Despia)
-- Apple Sign-In on web (mobile only first; web stays Google + email)
-- Promotional offers / family sharing in App Store
-
----
-
-## Open questions before I start
-None — I have what I need. Approve and I'll execute Phases A → G in order, pausing only when secrets are needed.
+Keyless APIs only: Wikimedia Commons, Open-Meteo, OSM Overpass, CARTO basemap. All new tables get RLS + GRANT. Audience filtering enforced in RLS, not UI. Standing walks materialized by a nightly server fn (next 4 occurrences per group) with idempotent inserts on `(group_id, occurs_at)`. Trust score computed in a security-definer fn. Memento PDF via `@react-pdf/renderer` (Worker-safe). Public route loaders use public server fns with `supabaseAdmin` scoped by share code/slug.
