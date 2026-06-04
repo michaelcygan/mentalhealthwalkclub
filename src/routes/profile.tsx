@@ -63,6 +63,13 @@ function ProfileTab() {
     listHostPlaces({ data: { user_id: user.id } })
       .then((r) => setHostPlaces(r.places.map(p => ({ key: p.key, label: p.label, neighborhood: p.neighborhood, group_count: p.group_count, next_summary: p.next_summary }))))
       .catch(() => {});
+    listMySavedTrails()
+      .then((r) => setSavedTrails(
+        (r.saved as Array<{ trail: { id: string; name: string | null; kind: string | null } | null }>)
+          .map((s) => s.trail)
+          .filter((t): t is { id: string; name: string | null; kind: string | null } => !!t)
+      ))
+      .catch(() => {});
   }, [user]);
 
   const savePatch = async (patch: Partial<Profile>) => {
