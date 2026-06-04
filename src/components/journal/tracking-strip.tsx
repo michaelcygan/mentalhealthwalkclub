@@ -1,6 +1,22 @@
 import { useMemo } from "react";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
-import { WeeklyRing } from "@/components/weekly-ring";
+
+function WeeklyRing({ minutes, dots }: { minutes: number; dots: boolean[] }) {
+  return (
+    <div className="flex items-baseline justify-between">
+      <div>
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">This week</div>
+        <div className="mt-1 font-serif text-2xl tabular-nums">{minutes} <span className="text-base text-muted-foreground">min</span></div>
+      </div>
+      <div className="flex gap-1.5">
+        {dots.map((on, i) => (
+          <span key={i} className={`h-6 w-2 rounded-full ${on ? "bg-forest" : "bg-muted"}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 export type Period = "week" | "month" | "all";
 
