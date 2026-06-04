@@ -149,16 +149,6 @@ function ProfileTab() {
 
       <BillingCard />
 
-      <section className="rounded-3xl border border-border bg-card p-5">
-        <SectionHeading eyebrow="Affinities" title="Your groups" />
-        {groups.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">You haven't joined any groups yet.</p>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {groups.map((g) => <span key={g.id} className="rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground">{g.name}</span>)}
-          </div>
-        )}
-      </section>
 
       <button
         onClick={() => setSettingsOpen(true)}
