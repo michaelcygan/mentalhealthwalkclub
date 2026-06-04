@@ -51,9 +51,7 @@ function ProfileTab() {
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
-    supabase.from("group_memberships").select("groups(id,name)").eq("user_id", user.id)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }) => setGroups((data ?? []).map((r: any) => r.groups).filter(Boolean)));
+    setGroups([]);
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
     supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
