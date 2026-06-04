@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
+import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
@@ -85,6 +86,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   path: '/podcasts',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
+  id: '/_authenticated/circles',
+  path: '/circles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
   path: '/$feedId',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/terms'
     | '/welcome'
+    | '/_authenticated/circles'
     | '/admin/podcasts'
     | '/events/$slug'
     | '/w/$code'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
+  AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   WCodeRoute: typeof WCodeRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_authenticated/circles': {
+      id: '/_authenticated/circles'
+      path: '/circles'
+      fullPath: '/circles'
+      preLoaderRoute: typeof AuthenticatedCirclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/podcasts/$feedId': {
       id: '/admin/podcasts/$feedId'
       path: '/$feedId'
@@ -377,6 +397,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
+  AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
   WCodeRoute: WCodeRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
@@ -384,3 +405,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
