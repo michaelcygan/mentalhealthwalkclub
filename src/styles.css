@@ -7,6 +7,7 @@
 @theme inline {
   --font-serif: "Fraunces", "Source Serif Pro", Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat", "Bradley Hand", cursive;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -42,6 +43,9 @@
   --color-stone-warm: var(--stone-warm);
   --color-cream: var(--cream);
   --color-forest: var(--forest);
+  --color-moss-deep: var(--moss-deep);
+  --color-rose-dust: var(--rose-dust);
+  --color-rose-dust-foreground: var(--rose-dust-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -70,9 +74,12 @@
   --sage: oklch(0.86 0.04 145);                /* soft sage */
   --sage-foreground: oklch(0.28 0.04 150);
   --forest: oklch(0.36 0.05 155);              /* forest green */
+  --moss-deep: oklch(0.30 0.06 152);           /* Phase 10 — deeper moss for Places/Trails */
   --clay: oklch(0.65 0.11 45);                 /* muted clay */
   --clay-foreground: oklch(0.99 0.005 80);
   --stone-warm: oklch(0.72 0.02 80);
+  --rose-dust: oklch(0.78 0.06 22);            /* Phase 10 — dusty rose accent */
+  --rose-dust-foreground: oklch(0.30 0.05 22);
 
   --background: oklch(0.972 0.018 85);
   --foreground: oklch(0.22 0.02 60);
@@ -123,7 +130,10 @@
   --sage: oklch(0.32 0.04 150);
   --sage-foreground: oklch(0.92 0.02 90);
   --forest: oklch(0.55 0.08 155);
+  --moss-deep: oklch(0.45 0.07 152);
   --clay: oklch(0.65 0.11 45);
+  --rose-dust: oklch(0.58 0.07 22);
+  --rose-dust-foreground: oklch(0.95 0.02 22);
 
   --background: oklch(0.16 0.015 80);
   --foreground: oklch(0.94 0.015 85);
@@ -167,6 +177,15 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: contain;
   }
+  body {
+    background-image:
+      radial-gradient(circle at 22% 18%, oklch(0.78 0.06 22 / 0.045) 0, transparent 50%),
+      radial-gradient(circle at 80% 70%, oklch(0.55 0.06 150 / 0.035) 0, transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.32  0 0 0 0 0.28  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: auto, auto, 220px 220px;
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-attachment: fixed, fixed, fixed;
+  }
   h1, h2, h3, .font-serif {
     font-family: var(--font-serif);
     letter-spacing: -0.01em;
@@ -177,16 +196,39 @@
   .bg-cream { background-color: var(--cream); }
   .bg-sage { background-color: var(--sage); }
   .bg-forest { background-color: var(--forest); }
+  .bg-moss-deep { background-color: var(--moss-deep); }
   .bg-clay { background-color: var(--clay); }
+  .bg-rose-dust { background-color: var(--rose-dust); }
   .text-forest { color: var(--forest); }
+  .text-moss-deep { color: var(--moss-deep); }
   .text-clay { color: var(--clay); }
   .text-sage { color: var(--sage); }
+  .text-rose-dust { color: var(--rose-dust-foreground); }
   .text-stone-warm { color: var(--stone-warm); }
+  .border-rose-dust { border-color: var(--rose-dust); }
+  .border-moss-deep { border-color: var(--moss-deep); }
+  /* Phase 10 — handwritten accent for warm notes */
+  .font-hand { font-family: var(--font-hand); letter-spacing: 0; line-height: 1.1; }
+  .accent-hand { font-family: var(--font-hand); color: var(--clay); font-weight: 500; }
+  /* Phase 10 — paper grain (subtle SVG noise + warm radial tint) */
+  .paper-grain {
+    background-image:
+      radial-gradient(circle at 22% 18%, oklch(0.78 0.06 22 / 0.05) 0, transparent 50%),
+      radial-gradient(circle at 80% 70%, oklch(0.55 0.06 150 / 0.04) 0, transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.32  0 0 0 0 0.28  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: auto, auto, 220px 220px;
+    background-repeat: no-repeat, no-repeat, repeat;
+  }
+  /* Phase 10 — calmer 500ms transition envelope */
+  .calm-transition { transition-property: transform, opacity, background-color, border-color, color, box-shadow; transition-duration: 500ms; transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
   .gradient-warm {
     background: linear-gradient(160deg, oklch(0.972 0.018 85) 0%, oklch(0.93 0.025 95) 60%, oklch(0.86 0.04 145) 100%);
   }
   .gradient-forest {
     background: linear-gradient(160deg, oklch(0.42 0.06 155) 0%, oklch(0.30 0.04 150) 100%);
+  }
+  .gradient-rose-moss {
+    background: linear-gradient(160deg, oklch(0.78 0.06 22 / 0.18) 0%, oklch(0.30 0.06 152 / 0.10) 100%);
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }

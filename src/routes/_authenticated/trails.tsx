@@ -132,10 +132,13 @@ function TrailsPage() {
         <ArrowLeft className="h-3 w-3" /> Back to Discover
       </Link>
       <header className="mb-6">
-        <h1 className="flex items-center gap-2 font-serif text-3xl">
-          <TreePine className="h-6 w-6 text-forest" />
-          Trails
-        </h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="flex items-center gap-2 font-serif text-3xl">
+            <TreePine className="h-6 w-6 text-moss-deep" />
+            Trails
+          </h1>
+          <span className="font-hand text-xl text-rose-dust">find your green corner</span>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Parks and footpaths from OpenStreetMap. Save your favorites and reorder.
         </p>
