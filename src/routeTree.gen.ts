@@ -24,6 +24,7 @@ import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
+import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
@@ -105,6 +106,11 @@ const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
   path: '/groups',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
   id: '/circles',
   path: '/circles',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
+  '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
+  '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
+  '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/circles'
+    | '/discover'
     | '/groups'
     | '/places'
     | '/admin/podcasts'
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/circles'
+    | '/discover'
     | '/groups'
     | '/places'
     | '/admin/podcasts'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/welcome'
     | '/_authenticated/circles'
+    | '/_authenticated/discover'
     | '/_authenticated/groups'
     | '/_authenticated/places'
     | '/admin/podcasts'
@@ -399,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/discover': {
+      id: '/_authenticated/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/circles': {
       id: '/_authenticated/circles'
       path: '/circles'
@@ -468,12 +487,14 @@ const AuthenticatedPlacesRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
+  AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
+  AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
 }
