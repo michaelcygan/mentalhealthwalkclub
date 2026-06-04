@@ -209,6 +209,155 @@ export type Database = {
           },
         ]
       }
+      circle_members: {
+        Row: {
+          circle_id: string
+          id: string
+          joined_at: string
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          circle_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          circle_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_members_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circles: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circles_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_blocklist: {
+        Row: {
+          created_at: string
+          event_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_blocklist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_blocklist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_circle_allowlist: {
+        Row: {
+          circle_id: string
+          created_at: string
+          event_id: string
+        }
+        Insert: {
+          circle_id: string
+          created_at?: string
+          event_id: string
+        }
+        Update: {
+          circle_id?: string
+          created_at?: string
+          event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_circle_allowlist_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_circle_allowlist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_photos: {
         Row: {
           bytes: number | null
@@ -300,6 +449,7 @@ export type Database = {
           accessibility_notes: string | null
           address: string | null
           attendee_count: number
+          audience_mode: string
           audio_room_id: string | null
           breakout_rotate_minutes: number | null
           breakout_size: number
@@ -342,6 +492,7 @@ export type Database = {
           accessibility_notes?: string | null
           address?: string | null
           attendee_count?: number
+          audience_mode?: string
           audio_room_id?: string | null
           breakout_rotate_minutes?: number | null
           breakout_size?: number
@@ -384,6 +535,7 @@ export type Database = {
           accessibility_notes?: string | null
           address?: string | null
           attendee_count?: number
+          audience_mode?: string
           audio_room_id?: string | null
           breakout_rotate_minutes?: number | null
           breakout_size?: number
@@ -426,6 +578,58 @@ export type Database = {
           {
             foreignKeyName: "events_host_user_id_fkey"
             columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          created_at: string
+          id: string
+          requested_by: string
+          status: string
+          updated_at: string
+          user_high: string
+          user_low: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_by: string
+          status?: string
+          updated_at?: string
+          user_high: string
+          user_low: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
+          user_high?: string
+          user_low?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_user_high_fkey"
+            columns: ["user_high"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_user_low_fkey"
+            columns: ["user_low"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1162,6 +1366,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       evaluate_badges: {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
@@ -1175,6 +1380,26 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_circle_member: {
+        Args: { _circle: string; _user: string }
+        Returns: boolean
+      }
+      is_circle_owner: {
+        Args: { _circle: string; _user: string }
+        Returns: boolean
+      }
+      is_event_host: {
+        Args: { _event: string; _user: string }
+        Returns: boolean
+      }
+      user_in_event_allowlist: {
+        Args: { _event: string; _user: string }
+        Returns: boolean
+      }
+      user_in_event_blocklist: {
+        Args: { _event: string; _user: string }
         Returns: boolean
       }
     }
