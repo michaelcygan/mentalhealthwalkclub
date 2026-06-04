@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as JournalRouteImport } from './routes/journal'
@@ -21,8 +22,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
+import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
+import { Route as AdminMerchRouteImport } from './routes/admin.merch'
 import { Route as AuthenticatedWalkRouteImport } from './routes/_authenticated/walk'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
@@ -46,6 +49,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -97,6 +105,11 @@ const WCodeRoute = WCodeRouteImport.update({
   path: '/w/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShopReturnRoute = ShopReturnRouteImport.update({
+  id: '/return',
+  path: '/return',
+  getParentRoute: () => ShopRoute,
+} as any)
 const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -105,6 +118,11 @@ const EventsSlugRoute = EventsSlugRouteImport.update({
 const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   id: '/podcasts',
   path: '/podcasts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMerchRoute = AdminMerchRouteImport.update({
+  id: '/merch',
+  path: '/merch',
   getParentRoute: () => AdminRoute,
 } as any)
 const AuthenticatedWalkRoute = AuthenticatedWalkRouteImport.update({
@@ -189,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
@@ -198,8 +217,10 @@ export interface FileRoutesByFullPath {
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/walk': typeof AuthenticatedWalkRoute
+  '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
+  '/shop/return': typeof ShopReturnRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
@@ -218,6 +239,7 @@ export interface FileRoutesByTo {
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
@@ -227,8 +249,10 @@ export interface FileRoutesByTo {
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/walk': typeof AuthenticatedWalkRoute
+  '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
+  '/shop/return': typeof ShopReturnRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
@@ -249,6 +273,7 @@ export interface FileRoutesById {
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
@@ -258,8 +283,10 @@ export interface FileRoutesById {
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/_authenticated/walk': typeof AuthenticatedWalkRoute
+  '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
+  '/shop/return': typeof ShopReturnRoute
   '/w/$code': typeof WCodeRoute
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
@@ -280,6 +307,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/privacy'
     | '/profile'
+    | '/shop'
     | '/terms'
     | '/welcome'
     | '/circles'
@@ -289,8 +317,10 @@ export interface FileRouteTypes {
     | '/places'
     | '/trails'
     | '/walk'
+    | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
+    | '/shop/return'
     | '/w/$code'
     | '/groups/$slug'
     | '/listen/$id'
@@ -309,6 +339,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/privacy'
     | '/profile'
+    | '/shop'
     | '/terms'
     | '/welcome'
     | '/circles'
@@ -318,8 +349,10 @@ export interface FileRouteTypes {
     | '/places'
     | '/trails'
     | '/walk'
+    | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
+    | '/shop/return'
     | '/w/$code'
     | '/groups/$slug'
     | '/listen/$id'
@@ -339,6 +372,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/privacy'
     | '/profile'
+    | '/shop'
     | '/terms'
     | '/welcome'
     | '/_authenticated/circles'
@@ -348,8 +382,10 @@ export interface FileRouteTypes {
     | '/_authenticated/places'
     | '/_authenticated/trails'
     | '/_authenticated/walk'
+    | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
+    | '/shop/return'
     | '/w/$code'
     | '/_authenticated/groups/$slug'
     | '/_authenticated/listen/$id'
@@ -370,6 +406,7 @@ export interface RootRouteChildren {
   JournalRoute: typeof JournalRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
+  ShopRoute: typeof ShopRouteWithChildren
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
@@ -391,6 +428,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -463,6 +507,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shop/return': {
+      id: '/shop/return'
+      path: '/return'
+      fullPath: '/shop/return'
+      preLoaderRoute: typeof ShopReturnRouteImport
+      parentRoute: typeof ShopRoute
+    }
     '/events/$slug': {
       id: '/events/$slug'
       path: '/$slug'
@@ -475,6 +526,13 @@ declare module '@tanstack/react-router' {
       path: '/podcasts'
       fullPath: '/admin/podcasts'
       preLoaderRoute: typeof AdminPodcastsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/merch': {
+      id: '/admin/merch'
+      path: '/merch'
+      fullPath: '/admin/merch'
+      preLoaderRoute: typeof AdminMerchRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_authenticated/walk': {
@@ -658,10 +716,12 @@ const AdminPodcastsRouteWithChildren = AdminPodcastsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminMerchRoute: typeof AdminMerchRoute
   AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminMerchRoute: AdminMerchRoute,
   AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
 }
 
@@ -678,6 +738,16 @@ const EventsRouteChildren: EventsRouteChildren = {
 const EventsRouteWithChildren =
   EventsRoute._addFileChildren(EventsRouteChildren)
 
+interface ShopRouteChildren {
+  ShopReturnRoute: typeof ShopReturnRoute
+}
+
+const ShopRouteChildren: ShopRouteChildren = {
+  ShopReturnRoute: ShopReturnRoute,
+}
+
+const ShopRouteWithChildren = ShopRoute._addFileChildren(ShopRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -688,6 +758,7 @@ const rootRouteChildren: RootRouteChildren = {
   JournalRoute: JournalRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  ShopRoute: ShopRouteWithChildren,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,
