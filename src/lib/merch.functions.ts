@@ -45,7 +45,7 @@ export const getMerchProduct = createServerFn({ method: "GET" })
   });
 
 async function requireAdmin(
-  supabase: { rpc: (n: string, a: Record<string, unknown>) => Promise<{ data: unknown }> },
+  supabase: SupabaseClient,
   userId: string,
 ) {
   const { data } = await supabase.rpc("has_role", {
