@@ -4,6 +4,22 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FREE_SAVED_TRAILS_CAP = 5;
 
+async function fetchWikimediaThumb(name: string, lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsradius=2000&ggscoord=${lat}|${lng}&ggslimit=10&ggsnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=800`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ thumburl?: string }> }> } };
+    const pages = Object.values(json.query?.pages ?? {});
+    if (pages.length === 0) return null;
+    const nameLower = name.toLowerCase();
+    const match = pages.find((p) => p.title?.toLowerCase().includes(nameLower)) ?? pages[0];
+    return match?.imageinfo?.[0]?.thumburl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
   const toRad = (n: number) => (n * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -209,4 +225,60 @@ export const reorderSavedTrails = createServerFn({ method: "POST" })
         .eq("trail_id", data.ids[i]);
     }
     return { ok: true };
+  });
+
+export const getTrail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: trail, error } = await supabase
+      .from("trails")
+      .select("id,name,kind,lat,lng,tags,length_m,source,osm_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!trail) throw new Error("Trail not found.");
+
+    const { data: savedRow } = await supabase
+      .from("user_saved_trails")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("trail_id", trail.id)
+      .maybeSingle();
+
+    const cover_image_url = await fetchWikimediaThumb(trail.name ?? "", trail.lat, trail.lng);
+
+    return { trail, saved: !!savedRow, cover_image_url };
+  });
+
+export const trailsNearPoint = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radius_miles: z.number().min(0.1).max(10).default(1),
+        limit: z.number().int().min(1).max(20).default(6),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const dLat = data.radius_miles / 69;
+    const dLng = data.radius_miles / 55;
+    const { data: rows } = await context.supabase
+      .from("trails")
+      .select("id,name,kind,lat,lng,tags")
+      .gte("lat", data.lat - dLat)
+      .lte("lat", data.lat + dLat)
+      .gte("lng", data.lng - dLng)
+      .lte("lng", data.lng + dLng)
+      .limit(60);
+    const withMiles = (rows ?? [])
+      .map((r) => ({ ...r, miles: milesBetween(data.lat, data.lng, r.lat, r.lng) }))
+      .filter((r) => r.miles <= data.radius_miles)
+      .sort((a, b) => a.miles - b.miles)
+      .slice(0, data.limit);
+    return { trails: withMiles };
   });

@@ -28,6 +28,7 @@ import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
+import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -127,6 +128,11 @@ const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   path: '/$feedId',
   getParentRoute: () => AdminPodcastsRoute,
 } as any)
+const AuthenticatedTrailsIdRoute = AuthenticatedTrailsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedTrailsRoute,
+} as any)
 const AuthenticatedPlacesKeyRoute = AuthenticatedPlacesKeyRouteImport.update({
   id: '/$key',
   path: '/$key',
@@ -164,12 +170,13 @@ export interface FileRoutesByFullPath {
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
-  '/trails': typeof AuthenticatedTrailsRoute
+  '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -188,12 +195,13 @@ export interface FileRoutesByTo {
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
-  '/trails': typeof AuthenticatedTrailsRoute
+  '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -214,12 +222,13 @@ export interface FileRoutesById {
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
-  '/_authenticated/trails': typeof AuthenticatedTrailsRoute
+  '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/groups/$slug'
     | '/places/$key'
+    | '/trails/$id'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/groups/$slug'
     | '/places/$key'
+    | '/trails/$id'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -295,6 +306,7 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/_authenticated/groups/$slug'
     | '/_authenticated/places/$key'
+    | '/_authenticated/trails/$id'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -451,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsFeedIdRouteImport
       parentRoute: typeof AdminPodcastsRoute
     }
+    '/_authenticated/trails/$id': {
+      id: '/_authenticated/trails/$id'
+      path: '/$id'
+      fullPath: '/trails/$id'
+      preLoaderRoute: typeof AuthenticatedTrailsIdRouteImport
+      parentRoute: typeof AuthenticatedTrailsRoute
+    }
     '/_authenticated/places/$key': {
       id: '/_authenticated/places/$key'
       path: '/$key'
@@ -504,12 +523,23 @@ const AuthenticatedPlacesRouteChildren: AuthenticatedPlacesRouteChildren = {
 const AuthenticatedPlacesRouteWithChildren =
   AuthenticatedPlacesRoute._addFileChildren(AuthenticatedPlacesRouteChildren)
 
+interface AuthenticatedTrailsRouteChildren {
+  AuthenticatedTrailsIdRoute: typeof AuthenticatedTrailsIdRoute
+}
+
+const AuthenticatedTrailsRouteChildren: AuthenticatedTrailsRouteChildren = {
+  AuthenticatedTrailsIdRoute: AuthenticatedTrailsIdRoute,
+}
+
+const AuthenticatedTrailsRouteWithChildren =
+  AuthenticatedTrailsRoute._addFileChildren(AuthenticatedTrailsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
-  AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRoute
+  AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -517,7 +547,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
-  AuthenticatedTrailsRoute: AuthenticatedTrailsRoute,
+  AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

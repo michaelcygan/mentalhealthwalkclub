@@ -6,8 +6,9 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine } from "lucide-react";
 import { listHostPlaces } from "@/lib/places.functions";
+import { listMySavedTrails } from "@/lib/trails.functions";
 import { toast } from "sonner";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
@@ -48,6 +49,7 @@ function ProfileTab() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hostPlaces, setHostPlaces] = useState<Array<{ key: string; label: string | null; neighborhood: string | null; group_count: number; next_summary: string | null }>>([]);
+  const [savedTrails, setSavedTrails] = useState<Array<{ id: string; name: string | null; kind: string | null }>>([]);
   const stats = useProfileStats(user?.id);
 
   useEffect(() => {
@@ -60,6 +62,13 @@ function ProfileTab() {
       .then(({ data }) => setIsAdmin(!!data));
     listHostPlaces({ data: { user_id: user.id } })
       .then((r) => setHostPlaces(r.places.map(p => ({ key: p.key, label: p.label, neighborhood: p.neighborhood, group_count: p.group_count, next_summary: p.next_summary }))))
+      .catch(() => {});
+    listMySavedTrails()
+      .then((r) => setSavedTrails(
+        (r.saved as Array<{ trail: { id: string; name: string | null; kind: string | null } | null }>)
+          .map((s) => s.trail)
+          .filter((t): t is { id: string; name: string | null; kind: string | null } => !!t)
+      ))
       .catch(() => {});
   }, [user]);
 
@@ -196,6 +205,30 @@ function ProfileTab() {
                       </div>
                     </div>
                   </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {savedTrails.length > 0 && (
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Your trails</h2>
+            <Link to="/trails" className="text-[11px] text-forest underline">all</Link>
+          </div>
+          <ul className="space-y-2">
+            {savedTrails.slice(0, 4).map((t) => (
+              <li key={t.id}>
+                <Link
+                  to="/trails/$id"
+                  params={{ id: t.id }}
+                  className="flex items-center gap-2 rounded-2xl border border-border bg-background p-3 text-sm transition hover:bg-accent/30"
+                >
+                  <TreePine className="h-4 w-4 shrink-0 text-forest" />
+                  <span className="min-w-0 flex-1 truncate">{t.name ?? "Unnamed"}</span>
+                  <span className="text-[11px] text-muted-foreground">{t.kind ?? "trail"}</span>
                 </Link>
               </li>
             ))}

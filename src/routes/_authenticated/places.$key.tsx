@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Users, CalendarDays } from "lucide-react";
+import { ArrowLeft, MapPin, Users, CalendarDays, TreePine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPlace } from "@/lib/places.functions";
+import { trailsNearPoint } from "@/lib/trails.functions";
 
 export const Route = createFileRoute("/_authenticated/places/$key")({
   component: PlaceDetail,
@@ -22,11 +23,19 @@ function PlaceDetail() {
   const navigate = useNavigate();
   const [state, setState] = useState<State>(null);
   const [loading, setLoading] = useState(true);
+  const [nearbyTrails, setNearbyTrails] = useState<Array<{ id: string; name: string | null; kind: string | null; miles: number }>>([]);
 
   useEffect(() => {
     setLoading(true);
     getPlace({ data: { key } })
-      .then((r) => setState(r))
+      .then((r) => {
+        setState(r);
+        if (r.place.lat && r.place.lng) {
+          trailsNearPoint({ data: { lat: r.place.lat, lng: r.place.lng, radius_miles: 1, limit: 6 } })
+            .then((tr) => setNearbyTrails(tr.trails as Array<{ id: string; name: string | null; kind: string | null; miles: number }>))
+            .catch(() => {});
+        }
+      })
       .catch((e) => toast.error(e instanceof Error ? e.message : "Could not load."))
       .finally(() => setLoading(false));
   }, [key]);
@@ -121,6 +130,27 @@ function PlaceDetail() {
                       })}
                     </span>
                   </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {nearbyTrails.length > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Trails near this place</h2>
+          <ul className="space-y-2">
+            {nearbyTrails.map((t) => (
+              <li key={t.id}>
+                <Link
+                  to="/trails/$id"
+                  params={{ id: t.id }}
+                  className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3 text-sm shadow-soft transition hover:bg-accent/30"
+                >
+                  <TreePine className="h-4 w-4 shrink-0 text-forest" />
+                  <span className="min-w-0 flex-1 truncate">{t.name ?? "Unnamed"}</span>
+                  <span className="text-[11px] text-muted-foreground">{t.miles.toFixed(1)} mi</span>
                 </Link>
               </li>
             ))}

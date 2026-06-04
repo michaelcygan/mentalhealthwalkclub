@@ -225,7 +225,11 @@ function TrailCard({
 }) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-3xl border border-border bg-card p-4 shadow-soft">
-      <div className="min-w-0 flex-1">
+      <Link
+        to="/trails/$id"
+        params={{ id: trail.id }}
+        className="min-w-0 flex-1 -m-1 rounded-2xl p-1 hover:bg-accent/20"
+      >
         <h3 className="truncate font-serif text-base">{trail.name ?? "Unnamed"}</h3>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{trail.kind ?? "trail"}</span>
@@ -237,7 +241,7 @@ function TrailCard({
           )}
           {trail.tags?.surface && <span>· {trail.tags.surface}</span>}
         </div>
-      </div>
+      </Link>
       <button
         type="button"
         onClick={saved ? onUnsave : onSave}
@@ -272,10 +276,10 @@ function SortableRow({ id, trail, onRemove }: { id: string; trail: Trail; onRemo
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="min-w-0 flex-1">
+      <Link to="/trails/$id" params={{ id: trail.id }} className="min-w-0 flex-1 -m-1 rounded-2xl p-1 hover:bg-accent/20">
         <p className="truncate font-serif text-sm">{trail.name ?? "Unnamed"}</p>
         <p className="text-[11px] text-muted-foreground">{trail.kind ?? "trail"}</p>
-      </div>
+      </Link>
       <button
         type="button"
         onClick={onRemove}
