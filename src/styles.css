@@ -43,6 +43,9 @@
   --color-stone-warm: var(--stone-warm);
   --color-cream: var(--cream);
   --color-forest: var(--forest);
+  --color-moss-deep: var(--moss-deep);
+  --color-rose-dust: var(--rose-dust);
+  --color-rose-dust-foreground: var(--rose-dust-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
