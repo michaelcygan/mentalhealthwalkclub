@@ -6,7 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones } from "lucide-react";
 import { listHostPlaces } from "@/lib/places.functions";
 import { listMySavedTrails } from "@/lib/trails.functions";
 import { toast } from "sonner";
@@ -167,6 +167,14 @@ function ProfileTab() {
       >
         <span className="flex items-center gap-2 font-medium"><Compass className="h-4 w-4 text-forest" /> Discover</span>
         <span className="text-xs text-muted-foreground">Walks, groups & places ›</span>
+      </Link>
+
+      <Link
+        to="/listen"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><Headphones className="h-4 w-4 text-forest" /> Listen</span>
+        <span className="text-xs text-muted-foreground">Podcasts & playlists ›</span>
       </Link>
 
       <Link
