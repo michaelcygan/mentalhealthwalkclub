@@ -55,13 +55,18 @@ function TrailDetail() {
   function startWalkHere() {
     if (!state) return;
     const t = state.trail;
-    const params = new URLSearchParams({
-      trail_id: t.id,
-      lat: String(t.lat),
-      lng: String(t.lng),
-      label: t.name ?? "Trailhead",
-    });
-    navigate({ to: "/events", search: Object.fromEntries(params) as never });
+    try {
+      sessionStorage.setItem(
+        "walk_create_intent",
+        JSON.stringify({
+          trail_id: t.id,
+          lat: t.lat,
+          lng: t.lng,
+          label: t.name ?? "Trailhead",
+        }),
+      );
+    } catch { /* ignore */ }
+    navigate({ to: "/events" });
   }
 
   if (loading) {
