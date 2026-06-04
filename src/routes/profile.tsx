@@ -212,6 +212,30 @@ function ProfileTab() {
         </section>
       )}
 
+      {savedTrails.length > 0 && (
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Your trails</h2>
+            <Link to="/trails" className="text-[11px] text-forest underline">all</Link>
+          </div>
+          <ul className="space-y-2">
+            {savedTrails.slice(0, 4).map((t) => (
+              <li key={t.id}>
+                <Link
+                  to="/trails/$id"
+                  params={{ id: t.id }}
+                  className="flex items-center gap-2 rounded-2xl border border-border bg-background p-3 text-sm transition hover:bg-accent/30"
+                >
+                  <TreePine className="h-4 w-4 shrink-0 text-forest" />
+                  <span className="min-w-0 flex-1 truncate">{t.name ?? "Unnamed"}</span>
+                  <span className="text-[11px] text-muted-foreground">{t.kind ?? "trail"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
 
 
 
