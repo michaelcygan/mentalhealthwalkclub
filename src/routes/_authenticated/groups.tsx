@@ -80,15 +80,17 @@ function GroupsPage() {
   useEffect(() => {
     setLoading(true);
     (async () => {
-      const [m, p] = await Promise.all([
+      const [m, pl, pg] = await Promise.all([
         listMyGroups(),
-        discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope } }),
+        discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
+        discoverPublicGroups({ data: { lat: null, lng: null, scope: "global" } }),
       ]);
       setMine(m);
-      setPub(p.groups);
+      setPubLocal(pl.groups);
+      setPubGlobal(pg.groups);
       setLoading(false);
     })();
-  }, [coords, scope]);
+  }, [coords]);
 
   const submit = async () => {
     if (busy) return;
