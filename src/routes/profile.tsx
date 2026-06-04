@@ -198,6 +198,14 @@ function ProfileTab() {
         <span className="text-xs text-muted-foreground">Manage ›</span>
       </Link>
 
+      <Link
+        to="/shop"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><ShoppingBag className="h-4 w-4 text-forest" /> Shop</span>
+        <span className="text-xs text-muted-foreground">Merch — half funds nonprofits ›</span>
+      </Link>
+
       {hostPlaces.length > 0 && (
         <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
           <div className="mb-2 flex items-center justify-between">
