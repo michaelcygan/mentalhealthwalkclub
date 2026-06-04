@@ -31,6 +31,7 @@ import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticate
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
+import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticated/listen.$id'
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
@@ -144,6 +145,11 @@ const AuthenticatedPlacesKeyRoute = AuthenticatedPlacesKeyRouteImport.update({
   path: '/$key',
   getParentRoute: () => AuthenticatedPlacesRoute,
 } as any)
+const AuthenticatedListenIdRoute = AuthenticatedListenIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedListenRoute,
+} as any)
 const AuthenticatedGroupsSlugRoute = AuthenticatedGroupsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -175,13 +181,14 @@ export interface FileRoutesByFullPath {
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
-  '/listen': typeof AuthenticatedListenRoute
+  '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
+  '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -201,13 +208,14 @@ export interface FileRoutesByTo {
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
-  '/listen': typeof AuthenticatedListenRoute
+  '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
+  '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -229,13 +237,14 @@ export interface FileRoutesById {
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
-  '/_authenticated/listen': typeof AuthenticatedListenRoute
+  '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
+  '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/groups/$slug'
+    | '/listen/$id'
     | '/places/$key'
     | '/trails/$id'
     | '/admin/podcasts/$feedId'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/groups/$slug'
+    | '/listen/$id'
     | '/places/$key'
     | '/trails/$id'
     | '/admin/podcasts/$feedId'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/_authenticated/groups/$slug'
+    | '/_authenticated/listen/$id'
     | '/_authenticated/places/$key'
     | '/_authenticated/trails/$id'
     | '/admin/podcasts/$feedId'
@@ -496,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlacesKeyRouteImport
       parentRoute: typeof AuthenticatedPlacesRoute
     }
+    '/_authenticated/listen/$id': {
+      id: '/_authenticated/listen/$id'
+      path: '/$id'
+      fullPath: '/listen/$id'
+      preLoaderRoute: typeof AuthenticatedListenIdRouteImport
+      parentRoute: typeof AuthenticatedListenRoute
+    }
     '/_authenticated/groups/$slug': {
       id: '/_authenticated/groups/$slug'
       path: '/$slug'
@@ -531,6 +550,17 @@ const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
 const AuthenticatedGroupsRouteWithChildren =
   AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
 
+interface AuthenticatedListenRouteChildren {
+  AuthenticatedListenIdRoute: typeof AuthenticatedListenIdRoute
+}
+
+const AuthenticatedListenRouteChildren: AuthenticatedListenRouteChildren = {
+  AuthenticatedListenIdRoute: AuthenticatedListenIdRoute,
+}
+
+const AuthenticatedListenRouteWithChildren =
+  AuthenticatedListenRoute._addFileChildren(AuthenticatedListenRouteChildren)
+
 interface AuthenticatedPlacesRouteChildren {
   AuthenticatedPlacesKeyRoute: typeof AuthenticatedPlacesKeyRoute
 }
@@ -557,7 +587,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
-  AuthenticatedListenRoute: typeof AuthenticatedListenRoute
+  AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
 }
@@ -566,7 +596,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
-  AuthenticatedListenRoute: AuthenticatedListenRoute,
+  AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
 }
