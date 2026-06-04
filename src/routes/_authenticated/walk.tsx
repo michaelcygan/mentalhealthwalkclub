@@ -14,7 +14,7 @@ import { useStepCounter } from "@/hooks/use-step-counter";
 import { useGeolocation, useCurrentWeather } from "@/hooks/use-weather";
 import WalkWeather from "@/components/walk-page/walk-weather";
 import { listMyPlaylists, getPlaylist, listenCatalog } from "@/lib/playlists.functions";
-import { ALL_PROMPTS, moodToFamily, type ReflectionPrompt } from "@/lib/reflection-prompts";
+import { PROMPTS, moodToFamily, type ReflectionPrompt } from "@/lib/reflection-prompts";
 
 export const Route = createFileRoute("/_authenticated/walk")({
   component: SoloWalkPage,
@@ -224,7 +224,7 @@ function SoloWalkPage() {
   const reflectionPrompt: ReflectionPrompt | null = useMemo(() => {
     if (stage !== "post") return null;
     const family = moodToFamily(moodBefore);
-    const pool = ALL_PROMPTS.filter((p) => p.family === family || p.family === "universal");
+    const pool = PROMPTS.filter((p) => p.family === family || p.family === "universal");
     if (pool.length === 0) return null;
     return pool[Math.floor(Math.random() * pool.length)];
   }, [stage, moodBefore]);
