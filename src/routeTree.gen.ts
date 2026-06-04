@@ -24,7 +24,6 @@ import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
-import { Route as ApiPublicHooksRotatePodsRouteImport } from './routes/api/public/hooks/rotate-pods'
 import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
 
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -104,12 +103,6 @@ const ApiPublicHooksSyncPodcastFeedsRoute =
     path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksRotatePodsRoute =
-  ApiPublicHooksRotatePodsRouteImport.update({
-    id: '/api/public/hooks/rotate-pods',
-    path: '/api/public/hooks/rotate-pods',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksRotateCommonsRoute =
   ApiPublicHooksRotateCommonsRouteImport.update({
     id: '/api/public/hooks/rotate-commons',
@@ -132,7 +125,6 @@ export interface FileRoutesByFullPath {
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
-  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -151,7 +143,6 @@ export interface FileRoutesByTo {
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
-  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -171,7 +162,6 @@ export interface FileRoutesById {
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
-  '/api/public/hooks/rotate-pods': typeof ApiPublicHooksRotatePodsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -192,7 +182,6 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/rotate-commons'
-    | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -211,7 +200,6 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/rotate-commons'
-    | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   id:
@@ -230,7 +218,6 @@ export interface FileRouteTypes {
     | '/w/$code'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/rotate-commons'
-    | '/api/public/hooks/rotate-pods'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -247,7 +234,6 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
   ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
-  ApiPublicHooksRotatePodsRoute: typeof ApiPublicHooksRotatePodsRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -359,13 +345,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/rotate-pods': {
-      id: '/api/public/hooks/rotate-pods'
-      path: '/api/public/hooks/rotate-pods'
-      fullPath: '/api/public/hooks/rotate-pods'
-      preLoaderRoute: typeof ApiPublicHooksRotatePodsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/rotate-commons': {
       id: '/api/public/hooks/rotate-commons'
       path: '/api/public/hooks/rotate-commons'
@@ -421,7 +400,6 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,
   ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
-  ApiPublicHooksRotatePodsRoute: ApiPublicHooksRotatePodsRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
