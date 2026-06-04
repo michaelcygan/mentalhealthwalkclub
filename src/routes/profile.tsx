@@ -39,7 +39,7 @@ function ProfileTab() {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [, setGroups] = useState<Array<{id:string; name:string}>>([]);
   const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
