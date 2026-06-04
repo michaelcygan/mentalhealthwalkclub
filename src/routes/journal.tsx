@@ -531,6 +531,8 @@ function YearHeatmapSection({ walks }: { walks: Walk[] }) {
     </div>
   );
 }
+
+function WalkDetailPane({ walk }: { walk: Walk | undefined }) {
   const [photos, setPhotos] = useState<{ url: string; t: number }[]>([]);
   const [zoom, setZoom] = useState<number | null>(null);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
