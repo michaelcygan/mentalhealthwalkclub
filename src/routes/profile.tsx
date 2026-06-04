@@ -6,7 +6,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2 } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
@@ -146,6 +146,16 @@ function ProfileTab() {
       </section>
 
       <BillingCard />
+
+      <Link
+        to="/circles"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><Users className="h-4 w-4 text-forest" /> Circles & friends</span>
+        <span className="text-xs text-muted-foreground">Manage ›</span>
+      </Link>
+
+
 
 
       <button
