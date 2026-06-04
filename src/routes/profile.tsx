@@ -6,16 +6,12 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Trophy, Flame, Trash2 } from "lucide-react";
+import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
-import { MyFriendWalks } from "@/components/friend-walk/my-friend-walks";
-import { ProfileRouteMosaic } from "@/components/profile-route-mosaic";
-import { WalkerCardHeader } from "@/components/walker-card-header";
 import { BadgeWall } from "@/components/badge-wall";
-import { ProfileStatsGrid } from "@/components/profile-stats-grid";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { BillingCard } from "@/components/billing/billing-card";
 
@@ -105,17 +101,22 @@ function ProfileTab() {
 
   return (
     <div className="space-y-5 pb-24">
-      <WalkerCardHeader
-        initials={initials}
-        displayName={p.display_name || "Walker"}
-        city={p.location_label || p.city}
-        totalWalks={stats.totalWalks}
-        totalMinutes={stats.totalMinutes}
-        level={stats.level}
-        onAvatarLongPress={() => setEditing("name")}
-      />
-
-      <ProfileStatsGrid s={stats} />
+      <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+        <div className="flex items-center gap-4">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-accent font-serif text-xl text-forest">{initials}</span>
+          <div>
+            <h1 className="font-serif text-2xl">{p.display_name || "Walker"}</h1>
+            {(p.location_label || p.city) && (
+              <p className="text-sm text-muted-foreground">{p.location_label || p.city}</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+          <div><div className="font-serif text-xl tabular-nums">{stats.totalWalks}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">walks</div></div>
+          <div><div className="font-serif text-xl tabular-nums">{stats.totalMinutes}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">minutes</div></div>
+          <div><div className="font-serif text-xl tabular-nums">{stats.totalMiles.toFixed(1)}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">miles</div></div>
+        </div>
+      </section>
 
       {stats.weekStreak > 0 && (
         <div className="flex items-center justify-center gap-2 rounded-full border border-clay/30 bg-clay/10 py-2 text-sm">
@@ -124,23 +125,7 @@ function ProfileTab() {
         </div>
       )}
 
-      <Link
-        to="/leaderboard"
-        className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-soft transition active:scale-[0.99] hover:border-forest/40"
-      >
-        <span className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/60"><Trophy className="h-4 w-4 text-forest" /></span>
-          <span>
-            <div className="font-serif text-base">Leaderboard</div>
-            <div className="text-[11px] text-muted-foreground">Top 100 walkers · week, month, all-time</div>
-          </span>
-        </span>
-        <span className="text-muted-foreground">›</span>
-      </Link>
-
       <BadgeWall userId={user.id} />
-
-      <ProfileRouteMosaic userId={user.id} />
 
       <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <SectionHeading eyebrow="Pace yourself" title="Weekly goal" />
@@ -163,10 +148,6 @@ function ProfileTab() {
       </section>
 
       <BillingCard />
-
-      <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
-        <MyFriendWalks />
-      </section>
 
       <section className="rounded-3xl border border-border bg-card p-5">
         <SectionHeading eyebrow="Affinities" title="Your groups" />
@@ -225,8 +206,8 @@ function ProfileTab() {
             </section>
 
             {isAdmin && (
-              <Link to="/admin/music" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
-                <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Music library</span>
+              <Link to="/admin/podcasts" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
+                <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Podcasts</span>
                 <span className="text-xs text-muted-foreground">Manage</span>
               </Link>
             )}

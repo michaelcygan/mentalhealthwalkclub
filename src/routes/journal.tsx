@@ -14,7 +14,7 @@ import { bakeShareCard } from "@/lib/share-card";
 import { toast } from "sonner";
 import { TrackingStrip, type Period, type TrackingWalk } from "@/components/journal/tracking-strip";
 import { SignalsRow } from "@/components/journal/signals-row";
-import { WalkingWithYou } from "@/components/journal/walking-with-you";
+
 import { EntrySearch, type MoodFilter } from "@/components/journal/entry-search";
 import { EntryCard } from "@/components/journal/entry-card";
 
@@ -309,10 +309,6 @@ function JournalTab() {
         </section>
       )}
 
-      {/* Walking with you — non-competitive leaderboard */}
-      {primaryGroup && (
-        <WalkingWithYou userId={user.id} groupId={primaryGroup.id} groupName={primaryGroup.name} />
-      )}
 
       {/* Layer C — entries feed with search */}
       <section className="space-y-3">

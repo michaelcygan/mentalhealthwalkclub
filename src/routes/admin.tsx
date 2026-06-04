@@ -1,6 +1,6 @@
-import { createFileRoute, Outlet, Link, redirect, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Music, ChevronLeft, Headphones } from "lucide-react";
+import { ChevronLeft, Headphones } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -13,7 +13,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminLayout() {
-  const path = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -25,14 +24,8 @@ function AdminLayout() {
       </div>
       <nav className="flex gap-2">
         <Link
-          to="/admin/music"
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${path.startsWith("/admin/music") ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:bg-accent/40"}`}
-        >
-          <Music className="h-3.5 w-3.5" /> Music
-        </Link>
-        <Link
           to="/admin/podcasts"
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${path.startsWith("/admin/podcasts") ? "border-forest bg-forest text-primary-foreground" : "border-border bg-card hover:bg-accent/40"}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-forest bg-forest px-3 py-1.5 text-xs text-primary-foreground"
         >
           <Headphones className="h-3.5 w-3.5" /> Podcasts
         </Link>
