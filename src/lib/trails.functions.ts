@@ -4,6 +4,22 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FREE_SAVED_TRAILS_CAP = 5;
 
+async function fetchWikimediaThumb(name: string, lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggsradius=2000&ggscoord=${lat}|${lng}&ggslimit=10&ggsnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=800`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ thumburl?: string }> }> } };
+    const pages = Object.values(json.query?.pages ?? {});
+    if (pages.length === 0) return null;
+    const nameLower = name.toLowerCase();
+    const match = pages.find((p) => p.title?.toLowerCase().includes(nameLower)) ?? pages[0];
+    return match?.imageinfo?.[0]?.thumburl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
   const toRad = (n: number) => (n * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
