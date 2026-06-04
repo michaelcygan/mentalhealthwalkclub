@@ -168,6 +168,50 @@ function ProfileTab() {
         <span className="text-xs text-muted-foreground">Browse ›</span>
       </Link>
 
+      <Link
+        to="/places"
+        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+      >
+        <span className="flex items-center gap-2 font-medium"><MapPinIcon className="h-4 w-4 text-forest" /> Places</span>
+        <span className="text-xs text-muted-foreground">Discover ›</span>
+      </Link>
+
+      {hostPlaces.length > 0 && (
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Where you host</h2>
+            <Link to="/places" className="text-[11px] text-forest underline">all</Link>
+          </div>
+          <ul className="space-y-2">
+            {hostPlaces.slice(0, 4).map((pl) => (
+              <li key={pl.key}>
+                <Link
+                  to="/places/$key"
+                  params={{ key: pl.key }}
+                  className="block rounded-2xl border border-border bg-background p-3 text-sm transition hover:bg-accent/30"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{pl.label ?? pl.neighborhood ?? "Meetup spot"}</div>
+                      <div className="mt-0.5 inline-flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>{pl.group_count} group{pl.group_count === 1 ? "" : "s"}</span>
+                        {pl.next_summary && (
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            {pl.next_summary}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+
 
 
 
