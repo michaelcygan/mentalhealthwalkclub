@@ -209,6 +209,50 @@ export type Database = {
           },
         ]
       }
+      event_photos: {
+        Row: {
+          bytes: number | null
+          caption: string | null
+          created_at: string
+          event_id: string
+          height: number | null
+          id: string
+          storage_path: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          event_id: string
+          height?: number | null
+          id?: string
+          storage_path: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          event_id?: string
+          height?: number | null
+          id?: string
+          storage_path?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_photos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_rsvps: {
         Row: {
           checked_in_at: string | null
