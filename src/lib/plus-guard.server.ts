@@ -25,3 +25,14 @@ export async function requirePlus(
   if (error) throw new Error("Couldn't verify your subscription. Try again.");
   if (!data) throw new Error("Walk Club Plus is required for this. Start your free trial from your profile.");
 }
+
+/** Non-throwing variant — returns true when the user has an active Plus sub in the current Stripe env. */
+export async function isPlus(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const env = serverStripeEnv();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any).rpc("has_active_subscription", {
+    user_uuid: userId,
+    check_env: env,
+  });
+  return !!data;
+}

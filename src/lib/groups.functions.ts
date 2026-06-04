@@ -102,7 +102,24 @@ export const createGroup = createServerFn({ method: "POST" })
       if ((recent7 ?? 0) >= cap) {
         throw new Error(`You can create ${cap} public group${cap === 1 ? "" : "s"} per week.`);
       }
+    } else {
+      // Private group host cap for Free plan: 2 active private groups owned.
+      const FREE_PRIVATE_GROUPS_CAP = 2;
+      const { count: ownedPrivate } = await supabase
+        .from("groups")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", userId)
+        .eq("visibility", "private");
+      if ((ownedPrivate ?? 0) >= FREE_PRIVATE_GROUPS_CAP) {
+        const { isPlus } = await import("@/lib/plus-guard.server");
+        const plus = await isPlus(supabase, userId as string);
+        if (!plus) {
+          throw new Error(`Free plan caps private groups at ${FREE_PRIVATE_GROUPS_CAP}. Upgrade to Plus for unlimited.`);
+        }
+      }
     }
+
+
 
     // Unique slug per owner+global namespace.
     const base = slugify(data.name);

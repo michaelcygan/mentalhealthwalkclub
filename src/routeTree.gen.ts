@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as JournalRouteImport } from './routes/journal'
+import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -60,6 +61,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const JournalRoute = JournalRouteImport.update({
   id: '/journal',
   path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpactRoute = ImpactRouteImport.update({
+  id: '/impact',
+  path: '/impact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/impact'
     | '/journal'
     | '/privacy'
     | '/profile'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/impact'
     | '/journal'
     | '/privacy'
     | '/profile'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/impact'
     | '/journal'
     | '/privacy'
     | '/profile'
@@ -354,6 +366,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
+  ImpactRoute: typeof ImpactRoute
   JournalRoute: typeof JournalRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/journal'
       fullPath: '/journal'
       preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impact': {
+      id: '/impact'
+      path: '/impact'
+      fullPath: '/impact'
+      preLoaderRoute: typeof ImpactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -664,6 +684,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
+  ImpactRoute: ImpactRoute,
   JournalRoute: JournalRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,

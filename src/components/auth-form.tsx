@@ -171,7 +171,7 @@ export function AuthForm({
       <p className="mt-1 text-sm text-muted-foreground">
         {isSignup
           ? plan === "plus"
-            ? "30 days on us, then $4.99/mo. Cancel anytime — no charge until day 30."
+            ? "30 days on us, then $1.99/mo. 50% of every Plus dollar funds our nonprofit partner. Cancel anytime — no charge until day 30."
             : "Free forever. Unlimited Solo + Guided walks, 5 Walk & Talks a month."
           : "Lace up. Let's go."}
       </p>
@@ -207,7 +207,7 @@ export function AuthForm({
               <Sparkles className="h-3.5 w-3.5 text-forest" /> Plus
             </span>
             <span className="text-[11px] leading-tight text-muted-foreground">
-              Free 30 days · then $4.99/mo · Unlimited Walk &amp; Talks + Local RSVPs
+              Free 30 days · then $1.99/mo · Unlimited Circles, trails, groups · 50% to nonprofits
             </span>
           </button>
         </div>
