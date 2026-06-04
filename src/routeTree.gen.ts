@@ -24,7 +24,6 @@ import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
-import { Route as ApiPublicHooksRotateCommonsRouteImport } from './routes/api/public/hooks/rotate-commons'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -103,12 +102,6 @@ const ApiPublicHooksSyncPodcastFeedsRoute =
     path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksRotateCommonsRoute =
-  ApiPublicHooksRotateCommonsRouteImport.update({
-    id: '/api/public/hooks/rotate-commons',
-    path: '/api/public/hooks/rotate-commons',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -124,7 +117,6 @@ export interface FileRoutesByFullPath {
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
-  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -142,7 +134,6 @@ export interface FileRoutesByTo {
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
-  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -161,7 +152,6 @@ export interface FileRoutesById {
   '/events/$slug': typeof EventsSlugRoute
   '/w/$code': typeof WCodeRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
-  '/api/public/hooks/rotate-commons': typeof ApiPublicHooksRotateCommonsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -181,7 +171,6 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/admin/podcasts/$feedId'
-    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -199,7 +188,6 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/admin/podcasts/$feedId'
-    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   id:
@@ -217,7 +205,6 @@ export interface FileRouteTypes {
     | '/events/$slug'
     | '/w/$code'
     | '/admin/podcasts/$feedId'
-    | '/api/public/hooks/rotate-commons'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -233,7 +220,6 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRoute
-  ApiPublicHooksRotateCommonsRoute: typeof ApiPublicHooksRotateCommonsRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -345,13 +331,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/rotate-commons': {
-      id: '/api/public/hooks/rotate-commons'
-      path: '/api/public/hooks/rotate-commons'
-      fullPath: '/api/public/hooks/rotate-commons'
-      preLoaderRoute: typeof ApiPublicHooksRotateCommonsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -399,10 +378,18 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRoute,
-  ApiPublicHooksRotateCommonsRoute: ApiPublicHooksRotateCommonsRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
