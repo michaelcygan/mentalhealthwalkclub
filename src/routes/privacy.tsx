@@ -92,11 +92,10 @@ function PrivacyPage() {
       <h2>Important: Not medical advice</h2>
       <p className="rounded-2xl border border-clay/40 bg-clay/10 p-4">
         <strong>Mental Health Walk Club is not a medical service.</strong> Nothing in the app — including content from
-        facilitators, other walkers, podcasts, music, or audio rooms — is medical advice or a substitute for professional
-        diagnosis or treatment. The platform, its operators, and contributors assume no liability for any decisions,
-        injuries, harm, or outcomes related to your use of the app, including walks, audio rooms, in-person events, or
-        community interactions. If you are in crisis, contact your local emergency services or a crisis line (in the US,
-        call or text 988).
+        other walkers, podcasts, or music — is medical advice or a substitute for professional diagnosis or treatment.
+        The platform, its operators, and contributors assume no liability for any decisions, injuries, harm, or outcomes
+        related to your use of the app, including walks, in-person events, or community interactions. If you are in
+        crisis, contact your local emergency services or a crisis line (in the US, call or text 988).
       </p>
 
       <h2>Contact</h2>
