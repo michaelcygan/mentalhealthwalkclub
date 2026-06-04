@@ -1,163 +1,97 @@
-# Pivot Plan — Mental Health Walk Club v2 (revised v5)
+## Phase 5 — Discover hub + Parks & Trails
 
-One viral loop, two surfaces for it:
-1. **Personal**: post a walk → share a Partiful-style page → friends RSVP.
-2. **Communal**: join a public **Group** with a standing walk → meet regulars near you.
-
-Lo-fi, ambient, web-only, Stripe-only.
+Three small passes. After Pass A, the **Discover** tab is the unified entry point for Groups, Places, and the feed itself. Groups and Places stay as their own deep routes but surface as summary rails inside Discover.
 
 ---
 
-## Phase 1 — The Big Cut
+### Pass A — `/discover` becomes the hub (no schema)
 
-Same as v4. Remove native shell, audio rooms, live walks, GPS tracking, facilitator, leaderboard, practices, route mosaics, etc. Keep `friend_walks`, `event_rsvps`, `/w/$code`, share-card, `profiles`, `user_roles`, `badges`, `walker_level`, `walk_sessions`, `walk_photos`, `walk-snapshots`, podcasts, ambient music, weather, journal, accelerometer step counter, guest-id.
+**New surface**
+- New route `src/routes/_authenticated/discover.tsx`. Layout:
+  1. **Tonight near you** — public + group walks ≤25mi, next 48h. Up to 4 cards + "See all" → `/events`.
+  2. **Groups near you** — top 3 local public groups + "See all" → `/groups`.
+  3. **Global identity groups** — top 3 + "See all" → `/groups`.
+  4. **Places** — top 4 place tiles + "See all" → `/places`.
+  5. **Trails near you** — placeholder card "Coming in next pass" (replaced in Pass B).
 
----
+**Server fns**
+- New `src/lib/discover.functions.ts`: `discoverNearbyWalks({lat, lng, hours=48})` — queries `events` where `visibility='public'` OR `audience_mode='group'`, within Haversine 25mi, ordered by `starts_at`. RLS already filters what the user can see.
 
-## Phase 2 — The Walk Page (place-aware, gently social)
+**Nav rewire (per user direction)**
+- Replace the **Groups** card on `/profile` with a single **Discover** card.
+- Keep `/groups`, `/groups/$slug`, `/places`, `/places/$key` reachable (linked from Discover rails). They do not appear standalone on profile anymore.
+- Add an "Open in Discover" back-link breadcrumb on `/groups` and `/places` pointing to `/discover`.
+- If a bottom tab bar exists, swap its "Groups" slot for "Discover".
 
-Leaflet + CARTO Voyager (no key), single hand-drawn pin. Cover photo from Wikimedia Commons by lat/lng, fallback gradient. Hourly weather strip with reschedule auto-suggest. Trail/park badge when near a saved trail. RSVP (going/maybe/can't) + avatar stack. Lightweight comments + emoji reactions. Going-RSVP mini chat via Supabase Realtime (48h purge). "Join the Club" CTA for logged-out viewers.
-
-**Photos — present but quiet** (v4 framing kept):
-- Soft camera FAB on the active-walk screen, no pulsing.
-- Collapsible **Memory strip** on the walk page once 1+ photo exists; lightbox on tap; never dominates.
-- **Attendees-only by default**; per-walk toggle to "Public on this walk page". Never on a global feed.
-- No likes/counts publicly (uploader sees their own count). No face tagging. EXIF stripped server-side.
-- One gentle 24h post-walk prompt to attendees who didn't upload, dismissible, never repeats.
-- One-tap "Save this walk's memories" → zipped folder + one-page memento PDF (sentence summary, weather, who came).
-- Optional soften-after-90-days per walk.
-
-`friend_walks` gains: `meetup_lat`, `meetup_lng`, `meetup_label`, `cover_image_url`, `audience_mode`, `trail_id?`, `group_id?`, `photos_visibility`, `memory_softens_at?`. New tables: `walk_messages`, `walk_comments`, `walk_reactions`. `walk_photos` gains `attendee_only`.
-
----
-
-## Phase 3 — Circles + Audience Controls
-
-`circles` (owned, named, private) + `circle_members` + `friendships` (mutual). `walk_audience` modes: `public` / `friends` / `circles_allowlist` / `friends_except_blocklist` / `group` (new). RLS-only filtering; hidden walks 404 for excluded users.
+**Empty/no-location states**
+- If geolocation denied: Discover still loads Global rail + recent public groups + top places by group_count. Inline "Turn on location" nudge.
 
 ---
 
-## Phase 4 — Groups (back, but rebuilt for discovery + safety)
+### Pass B — Trails: schema + browse
 
-Brought back as the **communal** half of the viral loop. Two flavors share one table:
+**Schema (single migration)**
+- `trails (id uuid pk, source text default 'osm', osm_id text, kind text, name text, lat double precision, lng double precision, country text, region text, city text, tags jsonb, length_m int, last_synced_at timestamptz, created_at)` + unique `(source, osm_id)`. Public read; service-role write.
+- `user_saved_trails (id, user_id, trail_id, position int, note text, created_at)`. RLS: owner-only.
+- `trail_search_log (cell_key text pk, last_synced_at timestamptz)` — keyed by `round(lat,1)_round(lng,1)` so each ~7-mile cell refreshes at most weekly.
 
-- **Private group**: friend-of-friend feel, invite-only. (Effectively a Circle with a standing walk attached — but lives in `groups` so the surface is consistent.)
-- **Public group**: discoverable. Default surface is **local-only within a radius**; opt-in **global** for identity/topic groups ("Postpartum Walkers," "Sober Sunset Strolls," "Grief & Movement").
+**Server fns — `src/lib/trails.functions.ts`** (Worker-safe, plain `fetch`)
+- `discoverTrails({lat, lng})` — if the cell's `last_synced_at` is older than 7d (or missing), fetch Overpass (`node["leisure"="park"]`, `way["highway"="path"]["foot"="designated"]`, etc.) within ~25mi, upsert into `trails`, stamp the cell. Return rows within 25mi sorted by Haversine.
+- `listMySavedTrails()` — joined with positions, sorted by `position asc`.
+- `saveTrail({trail_id})` — appends to end, enforces Free cap of 5 (Plus removes; wired in Phase 8).
+- `unsaveTrail({trail_id})`.
+- `reorderSavedTrails({ids: string[]})` — single transaction updating positions.
 
-### Standing walks
-
-Every group can attach a recurring meetup pattern (e.g. *Sundays 9am, Prospect Park West Entrance*). Server materializes the next 4 occurrences as `friend_walks` rows scoped to the group, so each one gets a real walk page, RSVPs, weather, photos, mini chat — same primitive as personal walks. Cancel-one and skip-week supported.
-
-### Discovery & locality
-
-- `/discover` shows public groups within ~25mi by default; toggle for **global** identity groups.
-- Group cards show: name, one-line description, member count (rounded: 12, 40+, 120+), next walk time, neighborhood-level location (3-decimal geohash until the user joins), and a small photo from Wikimedia Commons of the meetup area.
-- Logged-out viewers always see a "Join the Club" landing instead of the live feed.
-
-### Safety + anti-spam (real, not theatre)
-
-- **Hard 18+ floor** via DOB attestation at signup; only the age-band enum is queryable.
-- **Group age policy** (host-set): `18+` (default), `21+`, `25+`, `40+`. RSVP/join gated by band; non-matching users see "this group is for ages 25+."
-- **Host trust score** before "create public group" unlocks: requires verified email + at least 3 completed walks + 14 days since signup + no active safety reports. Until then, hosts can create **private** groups freely.
-- **Public group review**: first public group from a new host enters a 24h soft-review queue (auto-approved if no admin flag); shown to user as "your group goes live within a day."
-- **Rate limits**: 1 public group per user per 7 days for the first 30 days; 3/week after. Standing walks per group capped at 2/week to prevent flooding.
-- **Profile-side display rules**: a user's hosted public groups appear on their profile only after the group has 3+ unique RSVPs from accounts >7 days old (kills empty/spam-shell groups).
-- **Block + report** flow: blocking a host hides their groups from `/discover`, walk pages, and search. Reports route to existing `safety_reports`; 2 upheld reports auto-quarantine the group pending review.
-- **No DMs in v1.** All conversation lives on a walk page (mini chat) or the group wall — public, accountable surfaces only. Cuts the most common harassment vector before it starts.
-- **Location precision**: public group cards show neighborhood/geohash-3 until you RSVP "going"; only then do you see the exact meetup pin. Personal/private groups same rule.
-- **Quiet abuse signal**: group is auto-hidden from discovery (not deleted) if it has 0 going-RSVPs across 3 consecutive standing walks AND <2 active members — silently kills bot-spawned groups without punishing legit slow starts.
-
-### Places card (your idea, expanded)
-
-Standing-walk meetup locations populate a **Places** card on the host's public profile *and* feed `/places`. So when a great organizer runs a standing Saturday walk at Inwood Hill Park, that park earns a tile with their group attached. Becomes a soft directory of meetup spots → drives both group discovery and trail/park exploration.
-
-- Place tile shows: photo (Wikimedia Commons), neighborhood, 1-line OSM tag summary, "X groups meet here," "next walk here: Sat 9am."
-- Tapping a Place shows the trail/park detail page + the groups meeting there + a "Start a walk here" CTA.
-
-### Data shape
-
-`groups (id, owner_id, name, slug, description, visibility, scope, age_band_min, radius_miles?, lat?, lng?, neighborhood, cover_image_url, status, trust_locked_until?, created_at)`
-`group_memberships (group_id, user_id, role, status, joined_at)`
-`group_standing_walks (id, group_id, day_of_week, start_local_time, timezone, meetup_lat, meetup_lng, meetup_label, trail_id?, active, created_at)`
-
-`friend_walks.group_id` ties materialized instances back. RLS: members see all group walks; non-members see only `public` group walks within the discovery radius and respect age-band.
-
-### Why this is safe-to-ship
-
-The risk of public groups isn't the concept — it's frictionless creation, unmoderated DMs, exact-location leakage, and minor access. Each of those gets a concrete brake above. Net effect: discovery comes back, the viral loop gets a second engine, and the abuse surface stays narrower than what Meetup or Facebook Groups ship today.
+**Routes**
+- `src/routes/_authenticated/trails.tsx` — two rails: **Saved** (drag-to-reorder via `@dnd-kit/core` + `@dnd-kit/sortable`) and **Near you**. Standard Tanstack route, ssr off (location-dependent).
+- Discover Pass A's trails placeholder becomes a real rail (4 nearest + "See all").
 
 ---
 
-## Phase 5 — Discovery feed + Parks & Trails
+### Pass C — Trail detail + "Start a walk here"
 
-`/discover` becomes the unified surface:
-- **Tonight near you**: public walks + group walks ≤25mi
-- **Groups for you**: nearby public groups + opt-in global identity groups
-- **Places**: parks/trails + meetup spots (from Phase 4 Places card)
-
-Trails seeded from OSM Overpass (free, no key), `user_saved_trails` with drag-to-reorder, trail detail page with "Start a walk here" CTA.
+- `src/routes/_authenticated/trails.$id.tsx` — Wikimedia Commons cover by lat/lng (reuse existing helper), OSM tag summary (`leisure`, `surface`, `length_m`), static `WalkMap` pin, Save/Unsave button.
+- "Start a walk here" CTA → existing walk-create flow with `meetup_lat/lng/label` + `trail_id` prefilled.
+- Add a small **Your trails** strip to `/profile` (3 chips + "See all").
+- Place-detail page (`/places/$key`) gets a "Trails near this place" line if any trail rows sit within ~1mi.
 
 ---
 
-## Phase 6 — Media (kept + leaned into)
+## After Phase 5 — sequence confirmed: 6 → 7 → 8 → 9 → 10
 
-Podcasts end-to-end. New `playlists`/`playlist_items` for curated ambient mixes around moods. `/listen` tab with three rails. Solo-walk pre-screen picks silence/ambient/podcast/playlist.
+### Phase 6 — Media + playlists (one pass)
+- Tables `playlists (id, owner_id, name, mood, is_public)`, `playlist_items (playlist_id, position, track_id, kind)`.
+- `/listen` route, three rails: Podcasts, Ambient mixes, Your queue.
+- Solo-walk pre-screen picker (silence / ambient / podcast / playlist) wires to existing player.
 
----
+### Phase 7 — Solo walks slim (one pass)
+- Strip map/distance/pace from the solo flow.
+- Keep timer, audio player, weather, mood pre/post, journal entry, accelerometer step counter, soft camera FAB, post-walk reflection prompt.
 
-## Phase 7 — Solo Walks, Simplified
+### Phase 8 — Plus retune + 50% impact (one pass)
+- Reprice `plus_monthly` to $1.99 in Stripe + UI strings.
+- Gates: Circles unlimited, audience precision per walk, unlimited journal, unlimited saved trails, unlimited groups (Free = host 2 private / join 5 public).
+- `requirePlus` middleware on gated server fns.
+- Monthly server fn populates existing `impact_donations` (gross→net→50% donated).
+- `/impact` page: running total, current partner, methodology blurb. Supporter badge on profile.
 
-Drop map/distance/pace. Keep timer, ambient/podcast/playlist player, weather, mood, journal, accelerometer, soft camera FAB, post-walk reflection.
+### Phase 9 — Merch v1 (one pass)
+- Tables `merch_products`, `merch_orders`. `/admin/merch` CRUD. Stripe Checkout. 2–3 starter SKUs.
 
----
-
-## Phase 8 — Merch v1
-
-`merch_products` + admin UI at `/admin/merch` + Stripe + `merch_orders`. 2-3 SKUs to start, nonprofit collabs later.
-
----
-
-## Phase 9 — Plus at $1.99/mo
-
-**Free**: unlimited walks, RSVPs, comments, Memories, solo walks, basic playlists, podcasts, up to 3 Circles, up to 20 friends, 5 saved trails, **join up to 5 public groups**, **host up to 2 private groups**, journal 5 entries/mo.
-
-**Plus** ($1.99/mo):
-1. Unlimited Circles + audience precision (allow/block per walk).
-2. Custom walk pages (palette + cover + hand-drawn pin style).
-3. Unlimited journal entries with prompts library.
-4. Plus playlists + guest-curated mixes.
-5. Unlimited saved trails + private trail notes.
-6. **Host unlimited groups (public + private)** + group cover customization + standing-walk recurrence beyond weekly (biweekly, monthly, seasonal).
-7. Seasonal challenges + exclusive badges.
-8. **Supporter badge** — **50% of every Plus dollar visibly funds the partner nonprofit** (shown on billing + `/impact`).
-
-Reprice existing `plus_monthly` to $1.99. Gates via `has_active_subscription` + `usePlus()` + server-side `requirePlus`. Monthly server fn sums net Plus revenue, writes 50% to `impact_donations`.
+### Phase 10 — Design polish (final pass, continuous)
+- Serif headlines + handwritten accents pass across new surfaces. Paper/grain texture. Slower transitions (300→500ms). Dusty-rose + deeper moss for Places/Trails. Sparkline + mood-line + yearly heatmap each paired with one plain sentence.
 
 ---
 
-## Phase 10 — Design
+## Technical notes
 
-Serif headlines + handwritten accents. Film-grain/paper textures. **Charts retained** where they help self-tracking — profile sparkline, journal mood line, yearly heatmap, Plus seasonal progress ring — each paired with a plain-language sentence. No charts on the walk page. Drop decorative stat tiles. Slower transitions (300→500ms). Add dusty-rose accent + deeper moss for Places/trails surfaces.
-
----
-
-## Build order
-
-```text
-1. The Big Cut
-2. Circles + audience
-3. Walk page v2
-4. Groups + standing walks + Places card
-5. Discovery + trails
-6. Solo walks slim
-7. Media + playlists
-8. Plus retune + 50% impact
-9. Merch
-10. Design polish (continuous)
-```
+- Overpass is keyless and rate-limited (~10k req/day per IP). 7-day per-cell cache keeps us well under that even for power users.
+- All Overpass + Wikimedia + Open-Meteo calls run inside `createServerFn` handlers — pure `fetch`, Worker-safe.
+- `friend_walks.trail_id` is already on the schema; no walk-side migration needed for Phase 5.
+- Free-tier trail cap of 5 is the only new gate in this phase; rest of the gating lives in Phase 8.
 
 ---
 
-## Tech notes
+## Starting point
 
-Keyless APIs only: Wikimedia Commons, Open-Meteo, OSM Overpass, CARTO basemap. All new tables get RLS + GRANT. Audience filtering enforced in RLS, not UI. Standing walks materialized by a nightly server fn (next 4 occurrences per group) with idempotent inserts on `(group_id, occurs_at)`. Trust score computed in a security-definer fn. Memento PDF via `@react-pdf/renderer` (Worker-safe). Public route loaders use public server fns with `supabaseAdmin` scoped by share code/slug.
+If approved, I'll start with **Pass A (Discover hub)** — no migration, fastest visible payoff, sets the navigation shape every later pass plugs into.
