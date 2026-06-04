@@ -177,6 +177,15 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: contain;
   }
+  body {
+    background-image:
+      radial-gradient(circle at 22% 18%, oklch(0.78 0.06 22 / 0.045) 0, transparent 50%),
+      radial-gradient(circle at 80% 70%, oklch(0.55 0.06 150 / 0.035) 0, transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.32  0 0 0 0 0.28  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: auto, auto, 220px 220px;
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-attachment: fixed, fixed, fixed;
+  }
   h1, h2, h3, .font-serif {
     font-family: var(--font-serif);
     letter-spacing: -0.01em;
