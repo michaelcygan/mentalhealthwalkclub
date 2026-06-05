@@ -12,18 +12,18 @@ export const getWalkByCode = createServerFn({ method: "GET" })
     const { data: event, error } = await supabaseAdmin
       .from("events")
       .select(
-        "id,slug,title,description,starts_at,ends_at,timezone,venue_name,address,city,region,state,country,lat,lng,vibe,visibility,host_user_id,attendee_count,image_url,meeting_point,accessibility_notes,event_type"
+        "id,slug,title,description,starts_at,ends_at,timezone,venue_name,address,city,region,state,country,lat,lng,vibe,visibility,host_user_id,attendee_count,image_url,cover_override_url,meeting_point,accessibility_notes,event_type,place_id,group_id,circle_id,pace,distance_meters,dog_friendly,kid_friendly"
       )
       .eq("slug", data.code)
-      .eq("visibility", "public")
+      .in("visibility", ["public", "group", "link_only"])
       .eq("status", "published")
       .maybeSingle();
 
     if (error) {
       console.error("getWalkByCode error", error);
-      return { event: null as null | NonNullable<typeof event>, host: null };
+      return { event: null as null | NonNullable<typeof event>, host: null, place: null, group: null, circle: null };
     }
-    if (!event) return { event: null, host: null };
+    if (!event) return { event: null, host: null, place: null, group: null, circle: null };
 
     let host: { display_name: string | null; avatar_url: string | null } | null = null;
     if (event.host_user_id) {
@@ -35,8 +35,39 @@ export const getWalkByCode = createServerFn({ method: "GET" })
       host = hostRow ?? null;
     }
 
-    return { event, host };
+    let place: { id: string; name: string; hero_url: string | null; hero_attribution: string | null; blurb: string | null; blurb_source: string | null; category: string | null } | null = null;
+    if (event.place_id) {
+      const { data: p } = await supabaseAdmin
+        .from("places")
+        .select("id,name,hero_url,hero_attribution,blurb,blurb_source,category")
+        .eq("id", event.place_id)
+        .maybeSingle();
+      place = p ?? null;
+    }
+
+    let group: { id: string; name: string; slug: string } | null = null;
+    if (event.group_id) {
+      const { data: g } = await supabaseAdmin
+        .from("groups")
+        .select("id,name,slug")
+        .eq("id", event.group_id)
+        .maybeSingle();
+      group = g ?? null;
+    }
+
+    let circle: { id: string; name: string; color: string | null } | null = null;
+    if (event.circle_id) {
+      const { data: c } = await supabaseAdmin
+        .from("circles")
+        .select("id,name,color")
+        .eq("id", event.circle_id)
+        .maybeSingle();
+      circle = c ?? null;
+    }
+
+    return { event, host, place, group, circle };
   });
+
 
 const EventIdInput = z.object({ eventId: z.string().uuid() });
 
