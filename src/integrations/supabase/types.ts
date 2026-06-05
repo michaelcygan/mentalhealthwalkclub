@@ -325,6 +325,80 @@ export type Database = {
           },
         ]
       }
+      event_broadcast_reactions: {
+        Row: {
+          broadcast_id: string
+          created_at: string
+          emoji: string
+          guest_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          broadcast_id: string
+          created_at?: string
+          emoji: string
+          guest_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          broadcast_id?: string
+          created_at?: string
+          emoji?: string
+          guest_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_broadcast_reactions_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "event_broadcasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_broadcast_reactions_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "event_rsvp_guests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_broadcasts: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_broadcasts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_circle_allowlist: {
         Row: {
           circle_id: string
@@ -402,6 +476,69 @@ export type Database = {
           },
         ]
       }
+      event_rsvp_guests: {
+        Row: {
+          claimed_user_id: string | null
+          created_at: string
+          email_encrypted: string
+          email_hash: string
+          event_id: string
+          id: string
+          ip_hash: string | null
+          name: string
+          referred_by_guest_id: string | null
+          referred_by_rsvp_id: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          claimed_user_id?: string | null
+          created_at?: string
+          email_encrypted: string
+          email_hash: string
+          event_id: string
+          id?: string
+          ip_hash?: string | null
+          name: string
+          referred_by_guest_id?: string | null
+          referred_by_rsvp_id?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          claimed_user_id?: string | null
+          created_at?: string
+          email_encrypted?: string
+          email_hash?: string
+          event_id?: string
+          id?: string
+          ip_hash?: string | null
+          name?: string
+          referred_by_guest_id?: string | null
+          referred_by_rsvp_id?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvp_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvp_guests_referred_by_guest_id_fkey"
+            columns: ["referred_by_guest_id"]
+            isOneToOne: false
+            referencedRelation: "event_rsvp_guests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_rsvps: {
         Row: {
           checked_in_at: string | null
@@ -454,10 +591,15 @@ export type Database = {
           breakout_rotate_minutes: number | null
           breakout_size: number
           capacity: number | null
+          circle_id: string | null
           city: string | null
+          closed_emails: string[]
           country: string | null
+          cover_override_url: string | null
           created_at: string
           description: string | null
+          distance_meters: number | null
+          dog_friendly: boolean
           donation_note: string | null
           donation_percent: number
           ended_at: string | null
@@ -468,11 +610,14 @@ export type Database = {
           id: string
           image_url: string | null
           is_seed: boolean
+          kid_friendly: boolean
           last_pod_rotation_at: string | null
           lat: number | null
           lng: number | null
           location_label: string | null
           meeting_point: string | null
+          pace: string | null
+          place_id: string | null
           practice_id: string | null
           price_cents: number
           region: string | null
@@ -497,10 +642,15 @@ export type Database = {
           breakout_rotate_minutes?: number | null
           breakout_size?: number
           capacity?: number | null
+          circle_id?: string | null
           city?: string | null
+          closed_emails?: string[]
           country?: string | null
+          cover_override_url?: string | null
           created_at?: string
           description?: string | null
+          distance_meters?: number | null
+          dog_friendly?: boolean
           donation_note?: string | null
           donation_percent?: number
           ended_at?: string | null
@@ -511,11 +661,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_seed?: boolean
+          kid_friendly?: boolean
           last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
           meeting_point?: string | null
+          pace?: string | null
+          place_id?: string | null
           practice_id?: string | null
           price_cents?: number
           region?: string | null
@@ -540,10 +693,15 @@ export type Database = {
           breakout_rotate_minutes?: number | null
           breakout_size?: number
           capacity?: number | null
+          circle_id?: string | null
           city?: string | null
+          closed_emails?: string[]
           country?: string | null
+          cover_override_url?: string | null
           created_at?: string
           description?: string | null
+          distance_meters?: number | null
+          dog_friendly?: boolean
           donation_note?: string | null
           donation_percent?: number
           ended_at?: string | null
@@ -554,11 +712,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_seed?: boolean
+          kid_friendly?: boolean
           last_pod_rotation_at?: string | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
           meeting_point?: string | null
+          pace?: string | null
+          place_id?: string | null
           practice_id?: string | null
           price_cents?: number
           region?: string | null
@@ -576,10 +737,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "events_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "events_host_user_id_fkey"
             columns: ["host_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -1018,6 +1193,63 @@ export type Database = {
           price_cents?: number
           slug?: string
           sort?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      places: {
+        Row: {
+          address: string | null
+          blurb: string | null
+          blurb_source: string | null
+          cached_at: string
+          category: string | null
+          created_at: string
+          google_place_id: string | null
+          hero_attribution: string | null
+          hero_source: string | null
+          hero_url: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          osm_static_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          blurb?: string | null
+          blurb_source?: string | null
+          cached_at?: string
+          category?: string | null
+          created_at?: string
+          google_place_id?: string | null
+          hero_attribution?: string | null
+          hero_source?: string | null
+          hero_url?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          osm_static_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          blurb?: string | null
+          blurb_source?: string | null
+          cached_at?: string
+          category?: string | null
+          created_at?: string
+          google_place_id?: string | null
+          hero_attribution?: string | null
+          hero_source?: string | null
+          hero_url?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          osm_static_url?: string | null
           updated_at?: string
         }
         Relationships: []

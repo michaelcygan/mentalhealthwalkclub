@@ -34,6 +34,7 @@ import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
+import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
 import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticated/listen.$id'
@@ -165,6 +166,11 @@ const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   path: '/$feedId',
   getParentRoute: () => AdminPodcastsRoute,
 } as any)
+const AuthenticatedWalkNewRoute = AuthenticatedWalkNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedWalkRoute,
+} as any)
 const AuthenticatedTrailsIdRoute = AuthenticatedTrailsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -216,7 +222,7 @@ export interface FileRoutesByFullPath {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/walk': typeof AuthenticatedWalkRoute
+  '/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
+  '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -248,7 +255,7 @@ export interface FileRoutesByTo {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/walk': typeof AuthenticatedWalkRoute
+  '/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
+  '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -282,7 +290,7 @@ export interface FileRoutesById {
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/_authenticated/walk': typeof AuthenticatedWalkRoute
+  '/_authenticated/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
+  '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -326,6 +335,7 @@ export interface FileRouteTypes {
     | '/listen/$id'
     | '/places/$key'
     | '/trails/$id'
+    | '/walk/new'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/listen/$id'
     | '/places/$key'
     | '/trails/$id'
+    | '/walk/new'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/_authenticated/listen/$id'
     | '/_authenticated/places/$key'
     | '/_authenticated/trails/$id'
+    | '/_authenticated/walk/new'
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
@@ -591,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPodcastsFeedIdRouteImport
       parentRoute: typeof AdminPodcastsRoute
     }
+    '/_authenticated/walk/new': {
+      id: '/_authenticated/walk/new'
+      path: '/new'
+      fullPath: '/walk/new'
+      preLoaderRoute: typeof AuthenticatedWalkNewRouteImport
+      parentRoute: typeof AuthenticatedWalkRoute
+    }
     '/_authenticated/trails/$id': {
       id: '/_authenticated/trails/$id'
       path: '/$id'
@@ -680,6 +699,17 @@ const AuthenticatedTrailsRouteChildren: AuthenticatedTrailsRouteChildren = {
 const AuthenticatedTrailsRouteWithChildren =
   AuthenticatedTrailsRoute._addFileChildren(AuthenticatedTrailsRouteChildren)
 
+interface AuthenticatedWalkRouteChildren {
+  AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
+}
+
+const AuthenticatedWalkRouteChildren: AuthenticatedWalkRouteChildren = {
+  AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
+}
+
+const AuthenticatedWalkRouteWithChildren =
+  AuthenticatedWalkRoute._addFileChildren(AuthenticatedWalkRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
@@ -687,7 +717,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
-  AuthenticatedWalkRoute: typeof AuthenticatedWalkRoute
+  AuthenticatedWalkRoute: typeof AuthenticatedWalkRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -697,7 +727,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
-  AuthenticatedWalkRoute: AuthenticatedWalkRoute,
+  AuthenticatedWalkRoute: AuthenticatedWalkRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

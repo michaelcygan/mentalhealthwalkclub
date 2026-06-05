@@ -47,7 +47,7 @@ export function HomeComposeFab() {
   if (!user) return null;
   if (shouldHide(path)) return null;
 
-  const go = (to: "/walk" | "/events") => {
+  const go = (to: "/walk" | "/walk/new") => {
     setOpen(false);
     haptics.tap();
     navigate({ to });
@@ -73,7 +73,7 @@ export function HomeComposeFab() {
             <FabAction
               label="Plan a walk"
               icon={<CalendarPlus className="h-4 w-4" />}
-              onClick={() => go("/events")}
+              onClick={() => go("/walk/new")}
             />
             <FabAction
               label="Walk solo"
