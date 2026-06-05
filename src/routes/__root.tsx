@@ -73,8 +73,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
-  { to: "/", label: "Walk", icon: Footprints, exact: true },
-  { to: "/events", label: "Walks", icon: Calendar },
+  { to: "/", label: "Home", icon: Footprints, exact: true },
+  { to: "/discover", label: "Discover", icon: Compass },
   { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
