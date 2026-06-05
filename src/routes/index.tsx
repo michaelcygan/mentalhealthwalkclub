@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
+import { HomeComposeFab } from "@/components/home-compose-fab";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
