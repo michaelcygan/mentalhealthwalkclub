@@ -156,8 +156,6 @@ function WalkTab() {
           <span className="text-xs text-muted-foreground">Discover →</span>
         </div>
       </Link>
-
-      <HomeComposeFab />
     </div>
   );
 }
