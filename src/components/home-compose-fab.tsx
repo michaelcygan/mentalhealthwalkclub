@@ -1,14 +1,37 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { Plus, X, Footprints, CalendarPlus } from "lucide-react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { Footprints, X, CalendarPlus } from "lucide-react";
 import { haptics } from "@/lib/device";
+import { useAuth } from "@/lib/auth-context";
 
 /**
- * Floating compose button for Home. Expands into Start solo / Plan a walk.
- * Sits above the mobile tab bar (respects safe-area inset).
+ * Global floating compose button. Expands into Start solo / Plan a walk.
+ * Mounted once in __root.tsx — gates its own visibility by auth + path.
  */
+
+const HIDDEN_EXACT = new Set([
+  "/walk",
+  "/auth",
+  "/welcome",
+  "/privacy",
+  "/terms",
+  "/shop/return",
+]);
+const HIDDEN_PREFIX = ["/admin", "/w/", "/listen/", "/events/"];
+
+function shouldHide(path: string) {
+  if (HIDDEN_EXACT.has(path)) return true;
+  if (path === "/admin") return true;
+  for (const p of HIDDEN_PREFIX) {
+    if (path.startsWith(p)) return true;
+  }
+  return false;
+}
+
 export function HomeComposeFab() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const path = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -17,6 +40,12 @@ export function HomeComposeFab() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // Close menu on route change.
+  useEffect(() => { setOpen(false); }, [path]);
+
+  if (!user) return null;
+  if (shouldHide(path)) return null;
 
   const go = (to: "/walk" | "/events") => {
     setOpen(false);
@@ -61,7 +90,7 @@ export function HomeComposeFab() {
           aria-label={open ? "Close compose menu" : "Start a walk"}
           className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-soft calm-transition active:scale-95 hover:opacity-90"
         >
-          {open ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
+          {open ? <X className="h-6 w-6" /> : <Footprints className="h-6 w-6" />}
         </button>
       </div>
     </>
