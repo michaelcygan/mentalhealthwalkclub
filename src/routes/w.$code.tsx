@@ -57,7 +57,7 @@ type RsvpStatus = "going" | "interested" | "cant_go";
 
 function WalkPage() {
   const { code } = Route.useParams();
-  const { event, host } = Route.useLoaderData();
+  const { event, host, group, circle } = Route.useLoaderData();
   if (!event) return null;
 
   const lat = event.lat != null ? Number(event.lat) : null;
