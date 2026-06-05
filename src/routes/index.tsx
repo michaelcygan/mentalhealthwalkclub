@@ -162,41 +162,6 @@ function WalkTab() {
   );
 }
 
-      <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">This week</div>
-            <div className="mt-1 font-serif text-2xl tabular-nums">{weeklyMinutes} <span className="text-base text-muted-foreground">min</span></div>
-          </div>
-          <div className="flex gap-1.5">
-            {weeklyDots.map((on, i) => (
-              <span key={i} className={`h-6 w-2 rounded-full ${on ? "bg-forest" : "bg-muted"}`} />
-            ))}
-          </div>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">Rest is part of walking.</p>
-      </Card>
-
-      <Link
-        to="/journal"
-        className="block rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/40"
-      >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 font-medium"><BookHeart className="h-4 w-4 text-forest" /> Journal</span>
-          <span className="text-xs text-muted-foreground">View →</span>
-        </div>
-        {lastReflection && (
-          <blockquote className="mt-2 font-serif text-sm italic text-muted-foreground line-clamp-2">"{lastReflection}"</blockquote>
-        )}
-      </Link>
-
-      <p className="px-1 pt-2 text-center font-serif text-xs italic text-muted-foreground">
-        Walk pages, friend RSVPs, and circles are rebuilding — back soon.
-      </p>
-    </div>
-  );
-}
-
 function InlineWeatherChip() {
   const { coords } = useGeolocation({ autoRequest: false, ipFallback: true });
   const { data } = useCurrentWeather(coords);
