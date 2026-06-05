@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Footprints, Compass, BookHeart, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { HomeComposeFab } from "@/components/home-compose-fab";
 import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
