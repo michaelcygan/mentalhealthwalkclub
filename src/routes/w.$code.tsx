@@ -10,6 +10,9 @@ import { toast } from "sonner";
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
 const AudiencePicker = lazy(() => import("@/components/walk-page/audience-picker"));
+const WalkBroadcasts = lazy(() =>
+  import("@/components/walk-page/walk-broadcasts").then((m) => ({ default: m.WalkBroadcasts }))
+);
 
 export const Route = createFileRoute("/w/$code")({
   loader: async ({ params }) => {
