@@ -99,6 +99,10 @@ function WalkPage() {
 
       <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} />
 
+      <Suspense fallback={null}>
+        <WalkBroadcasts eventId={event.id} hostId={event.host_user_id} />
+      </Suspense>
+
       <HostOnlyAudience eventId={event.id} hostId={event.host_user_id} />
 
       {hasMap ? (
