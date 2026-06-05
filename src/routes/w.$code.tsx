@@ -10,6 +10,9 @@ import { toast } from "sonner";
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
 const AudiencePicker = lazy(() => import("@/components/walk-page/audience-picker"));
+const WalkBroadcasts = lazy(() =>
+  import("@/components/walk-page/walk-broadcasts").then((m) => ({ default: m.WalkBroadcasts }))
+);
 
 export const Route = createFileRoute("/w/$code")({
   loader: async ({ params }) => {
@@ -54,7 +57,7 @@ type RsvpStatus = "going" | "interested" | "cant_go";
 
 function WalkPage() {
   const { code } = Route.useParams();
-  const { event, host } = Route.useLoaderData();
+  const { event, host, group, circle } = Route.useLoaderData();
   if (!event) return null;
 
   const lat = event.lat != null ? Number(event.lat) : null;
@@ -77,6 +80,15 @@ function WalkPage() {
         {host?.display_name ? (
           <p className="mt-1 text-xs text-muted-foreground">Hosted by {host.display_name}</p>
         ) : null}
+        {(group || circle) && (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-foreground/80">
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: circle?.color ?? "var(--forest, #4a6741)" }}
+            />
+            with {group?.name ?? circle?.name}
+          </div>
+        )}
       </header>
 
       {event.description ? (
@@ -86,6 +98,10 @@ function WalkPage() {
       ) : null}
 
       <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} />
+
+      <Suspense fallback={null}>
+        <WalkBroadcasts eventId={event.id} hostId={event.host_user_id} />
+      </Suspense>
 
       <HostOnlyAudience eventId={event.id} hostId={event.host_user_id} />
 
