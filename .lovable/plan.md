@@ -1,48 +1,51 @@
-## Tab-bar renovation: 5 → 4 tabs, FAB for compose
+## Compose FAB — global mount + audit
 
-Lightest-touch pass. No new routes, no schema, no business logic.
+### Move the FAB out of Home
 
-### New tab bar
+Remove `<HomeComposeFab />` from `src/routes/index.tsx` and mount it once globally inside `src/routes/__root.tsx`, alongside `<TabBar />`. This way it persists across every route by default and we gate visibility from one place.
 
-```
-Home · Discover · Journal · Profile
-```
+### Visibility rules (one helper inside the FAB)
 
-- **Home** (`/`) — renamed from "Walk". Same route file. Daily landing: weather strip, streak, "what's next" RSVP card, today's reflection nudge. Active-walk banner pinned to top when a session is running.
-- **Discover** (`/discover`) — new tab. Already absorbs the old `/events` purpose via its "Tonight near you" rail.
-- **Journal** (`/journal`) — unchanged.
-- **Profile** (`/profile`) — unchanged.
+The FAB returns `null` when:
+- user is not authenticated, OR
+- the current pathname matches any of:
+  - `/walk` (active walk)
+  - `/auth`, `/welcome`
+  - `/events/$slug` (e.g. `/events/something` — present but not exactly `/events`)
+  - `/listen/$id`
+  - `/admin` or `/admin/...`
+  - `/w/...`
+  - `/privacy`, `/terms`
+  - `/shop/return`
 
-`/events`, `/walk`, `/listen`, `/groups`, `/places`, `/trails`, `/impact`, `/shop` all stay reachable as deep links — only their tab-bar slot changes.
+Otherwise it renders. That covers Home, Discover, Journal, Profile, Groups, Places, Trails, Listen (index), Circles, Events list, Impact, Shop, and any nested rails.
 
-### Compose FAB on Home
+Implementation: a small `useRouterState({ select: s => s.location.pathname })` lookup at the top of `HomeComposeFab`, plus `useAuth()` for the auth gate. No prop drilling.
 
-A single floating action button bottom-right (above the tab bar, respecting `env(safe-area-inset-bottom)`). Tap to expand into two options:
+### Icon swap
 
-- **Start solo walk** → triggers the existing solo-walk flow on `/` (the pre-screen audio picker + start).
-- **Plan a walk** → routes to the existing "create event" flow (whatever `/` currently uses for the link/group walk path).
+- Closed: `Footprints` from lucide-react (replaces `Plus`).
+- Open: `X` (unchanged).
+- Same 56px circle, same forest background, same calm transition.
 
-Component lives at `src/components/home-compose-fab.tsx` (new). Uses a `Popover` or simple animated `div` — no new deps. Icon: `Plus` collapsed, rotates to `X` when open. Hidden when an active walk banner is showing (no double CTA).
+### Positioning sanity check
 
-### Files touched
-
-1. **`src/components/mobile-tab-bar.tsx`** — 4 tabs, swap order/labels:
-   - `Home` (Footprints icon, `/`, exact)
-   - `Discover` (Compass icon, `/discover`)
-   - `Journal` (BookHeart icon, `/journal`)
-   - `Profile` (UserIcon, `/profile`)
-   - Grid stays `grid-cols-4`.
-
-2. **`src/components/home-compose-fab.tsx`** *(new)* — the FAB + expand-to-two-actions UI.
-
-3. **`src/routes/index.tsx`** — mount `<HomeComposeFab />`. Audit existing inline "Start solo" / "Plan a walk" CTAs: if they were the page's primary buttons, demote them to inline secondary affordances (or remove if the FAB fully replaces them — I'll decide based on what's on the page today and note it before editing).
+- Mobile: stays bottom-right, `bottom: calc(env(safe-area-inset-bottom) + 72px)` to clear the tab bar.
+- Desktop: tab bar is hidden (`md:hidden`), so the +72px offset leaves a comfortable gap from the viewport edge. Confirmed visually with the current placement.
+- The expanded action labels ("Walk solo" / "Plan a walk") right-align so they don't collide with the sidebar.
 
 ### Out of scope
 
-- No changes to `/events`, `/walk`, or any walk-creation logic — the FAB just routes to existing flows.
-- No desktop nav changes unless `__root.tsx` has a top nav that lists the old "Walks" tab (quick audit; only edit if present).
-- No icon library additions — `Compass` and `Plus` are already in lucide-react.
+- No route changes, no new pages, no Plan-a-walk creation flow (still routes to `/events` placeholder per current behavior).
+- No icon library additions — `Footprints` is already imported elsewhere.
+- No changes to FAB animation timing or styling beyond the icon swap.
+
+### Files touched
+
+1. `src/components/home-compose-fab.tsx` — add auth + path gate, swap Plus → Footprints.
+2. `src/routes/__root.tsx` — import and mount `<HomeComposeFab />` once inside `TabBar` (or right alongside `<MobileTabBar />`).
+3. `src/routes/index.tsx` — remove the local mount and the now-unused import.
 
 ### Verification
 
-After the edit: load `/` on mobile viewport, confirm 4 tabs render, FAB expands, both actions route correctly, active-walk banner suppresses the FAB.
+After the edit, walk through: `/`, `/discover`, `/journal`, `/profile`, `/groups`, `/places`, `/trails`, `/listen`, `/shop`, `/impact` — FAB visible on all. Then `/walk`, `/auth`, `/events/some-slug`, `/admin` — FAB hidden.
