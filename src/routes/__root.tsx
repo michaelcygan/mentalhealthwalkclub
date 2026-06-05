@@ -3,7 +3,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Calendar, BookHeart, User as UserIcon } from "lucide-react";
+import { Footprints, Compass, BookHeart, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { LogoStamp } from "@/components/logo-stamp";
