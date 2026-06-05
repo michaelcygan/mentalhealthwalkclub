@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
-import { HomeComposeFab } from "@/components/home-compose-fab";
+
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
