@@ -47,7 +47,7 @@ export function HomeComposeFab() {
   if (!user) return null;
   if (shouldHide(path)) return null;
 
-  const go = (to: "/walk" | "/events") => {
+  const go = (to: "/walk" | "/walk/new") => {
     setOpen(false);
     haptics.tap();
     navigate({ to });
