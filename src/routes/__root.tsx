@@ -3,7 +3,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Calendar, BookHeart, User as UserIcon } from "lucide-react";
+import { Footprints, Compass, BookHeart, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { LogoStamp } from "@/components/logo-stamp";
@@ -73,8 +73,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
-  { to: "/", label: "Walk", icon: Footprints, exact: true },
-  { to: "/events", label: "Walks", icon: Calendar },
+  { to: "/", label: "Home", icon: Footprints, exact: true },
+  { to: "/discover", label: "Discover", icon: Compass },
   { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];

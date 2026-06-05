@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
+import { HomeComposeFab } from "@/components/home-compose-fab";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
@@ -72,7 +73,6 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
 
 function WalkTab() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [lastReflection, setLastReflection] = useState<string | null>(null);
@@ -119,22 +119,6 @@ function WalkTab() {
         <InlineWeatherChip />
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Button
-          onClick={() => navigate({ to: "/walk" })}
-          className="h-16 w-full rounded-2xl bg-forest text-base font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-90"
-        >
-          <Footprints className="mr-2 h-5 w-5" /> Walk solo
-        </Button>
-        <Button
-          onClick={() => navigate({ to: "/events" as never })}
-          variant="outline"
-          className="h-16 w-full rounded-2xl border-border text-base font-medium shadow-soft transition active:scale-[0.98]"
-        >
-          <CalendarPlus className="mr-2 h-5 w-5" /> Post a walk
-        </Button>
-      </div>
-
       <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
         <div className="flex items-baseline justify-between">
           <div>
@@ -163,9 +147,17 @@ function WalkTab() {
         )}
       </Link>
 
-      <p className="px-1 pt-2 text-center font-serif text-xs italic text-muted-foreground">
-        Walk pages, friend RSVPs, and circles are rebuilding — back soon.
-      </p>
+      <Link
+        to="/discover"
+        className="block rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/40"
+      >
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 font-medium"><CalendarPlus className="h-4 w-4 text-forest" /> Walks near you</span>
+          <span className="text-xs text-muted-foreground">Discover →</span>
+        </div>
+      </Link>
+
+      <HomeComposeFab />
     </div>
   );
 }
