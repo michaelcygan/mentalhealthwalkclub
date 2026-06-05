@@ -89,6 +89,8 @@ function TabBar() {
   return (
     <>
       <MobileTabBar />
+      <HomeComposeFab />
+
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
         <Link to="/" className="mb-8 flex items-center gap-2">
