@@ -172,7 +172,7 @@ export const createWalk = createServerFn({ method: "POST" })
         ends_at: data.ends_at ?? null,
         timezone: data.timezone ?? null,
         visibility,
-        audience_mode: data.audience === "open" ? "public" : "private",
+        audience_mode,
         group_id: data.audience === "group" ? data.group_id ?? null : null,
         circle_id: data.audience === "group" ? data.circle_id ?? null : null,
         place_id: data.place_id ?? null,
