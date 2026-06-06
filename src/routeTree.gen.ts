@@ -41,6 +41,9 @@ import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
+import { Route as ApiPublicWalkCodeRsvpRouteImport } from './routes/api/public/walk.$code.rsvp'
+import { Route as ApiPublicWalkCodeOgRouteImport } from './routes/api/public/walk.$code.og'
+import { Route as ApiPublicWalkCodeIcsRouteImport } from './routes/api/public/walk.$code.ics'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -203,6 +206,21 @@ const ApiPublicHooksSyncPodcastFeedsRoute =
     path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWalkCodeRsvpRoute = ApiPublicWalkCodeRsvpRouteImport.update({
+  id: '/api/public/walk/$code/rsvp',
+  path: '/api/public/walk/$code/rsvp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWalkCodeOgRoute = ApiPublicWalkCodeOgRouteImport.update({
+  id: '/api/public/walk/$code/og',
+  path: '/api/public/walk/$code/og',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWalkCodeIcsRoute = ApiPublicWalkCodeIcsRouteImport.update({
+  id: '/api/public/walk/$code/ics',
+  path: '/api/public/walk/$code/ics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -236,6 +254,9 @@ export interface FileRoutesByFullPath {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
+  '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
+  '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -269,6 +290,9 @@ export interface FileRoutesByTo {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
+  '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
+  '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -304,6 +328,9 @@ export interface FileRoutesById {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
+  '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
+  '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -339,6 +366,9 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
+    | '/api/public/walk/$code/ics'
+    | '/api/public/walk/$code/og'
+    | '/api/public/walk/$code/rsvp'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -372,6 +402,9 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
+    | '/api/public/walk/$code/ics'
+    | '/api/public/walk/$code/og'
+    | '/api/public/walk/$code/rsvp'
   id:
     | '__root__'
     | '/'
@@ -406,6 +439,9 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
+    | '/api/public/walk/$code/ics'
+    | '/api/public/walk/$code/og'
+    | '/api/public/walk/$code/rsvp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -424,6 +460,9 @@ export interface RootRouteChildren {
   WCodeRoute: typeof WCodeRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiPublicWalkCodeIcsRoute: typeof ApiPublicWalkCodeIcsRoute
+  ApiPublicWalkCodeOgRoute: typeof ApiPublicWalkCodeOgRoute
+  ApiPublicWalkCodeRsvpRoute: typeof ApiPublicWalkCodeRsvpRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -652,6 +691,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/walk/$code/rsvp': {
+      id: '/api/public/walk/$code/rsvp'
+      path: '/api/public/walk/$code/rsvp'
+      fullPath: '/api/public/walk/$code/rsvp'
+      preLoaderRoute: typeof ApiPublicWalkCodeRsvpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/walk/$code/og': {
+      id: '/api/public/walk/$code/og'
+      path: '/api/public/walk/$code/og'
+      fullPath: '/api/public/walk/$code/og'
+      preLoaderRoute: typeof ApiPublicWalkCodeOgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/walk/$code/ics': {
+      id: '/api/public/walk/$code/ics'
+      path: '/api/public/walk/$code/ics'
+      fullPath: '/api/public/walk/$code/ics'
+      preLoaderRoute: typeof ApiPublicWalkCodeIcsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -794,6 +854,9 @@ const rootRouteChildren: RootRouteChildren = {
   WCodeRoute: WCodeRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiPublicWalkCodeIcsRoute: ApiPublicWalkCodeIcsRoute,
+  ApiPublicWalkCodeOgRoute: ApiPublicWalkCodeOgRoute,
+  ApiPublicWalkCodeRsvpRoute: ApiPublicWalkCodeRsvpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
