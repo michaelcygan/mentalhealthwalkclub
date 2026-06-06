@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 function tileClass(active: boolean) {
   return cn(
-    "inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-sm font-medium transition",
+    "inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2.5 py-2.5 text-sm font-medium transition",
     active
       ? "border-forest bg-forest text-primary-foreground"
       : "border-border bg-card text-foreground hover:bg-accent/40"
