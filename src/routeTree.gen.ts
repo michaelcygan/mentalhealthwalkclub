@@ -42,6 +42,7 @@ import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
+import { Route as ApiPublicWalkCodeStoryRouteImport } from './routes/api/public/walk.$code.story'
 import { Route as ApiPublicWalkCodeRsvpRouteImport } from './routes/api/public/walk.$code.rsvp'
 import { Route as ApiPublicWalkCodeOgRouteImport } from './routes/api/public/walk.$code.og'
 import { Route as ApiPublicWalkCodeIcsRouteImport } from './routes/api/public/walk.$code.ics'
@@ -212,6 +213,11 @@ const ApiPublicHooksSyncPodcastFeedsRoute =
     path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWalkCodeStoryRoute = ApiPublicWalkCodeStoryRouteImport.update({
+  id: '/api/public/walk/$code/story',
+  path: '/api/public/walk/$code/story',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWalkCodeRsvpRoute = ApiPublicWalkCodeRsvpRouteImport.update({
   id: '/api/public/walk/$code/rsvp',
   path: '/api/public/walk/$code/rsvp',
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
   '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
   '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
+  '/api/public/walk/$code/story': typeof ApiPublicWalkCodeStoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
   '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
   '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
+  '/api/public/walk/$code/story': typeof ApiPublicWalkCodeStoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
   '/api/public/walk/$code/og': typeof ApiPublicWalkCodeOgRoute
   '/api/public/walk/$code/rsvp': typeof ApiPublicWalkCodeRsvpRoute
+  '/api/public/walk/$code/story': typeof ApiPublicWalkCodeStoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/api/public/walk/$code/ics'
     | '/api/public/walk/$code/og'
     | '/api/public/walk/$code/rsvp'
+    | '/api/public/walk/$code/story'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/public/walk/$code/ics'
     | '/api/public/walk/$code/og'
     | '/api/public/walk/$code/rsvp'
+    | '/api/public/walk/$code/story'
   id:
     | '__root__'
     | '/'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/public/walk/$code/ics'
     | '/api/public/walk/$code/og'
     | '/api/public/walk/$code/rsvp'
+    | '/api/public/walk/$code/story'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -475,6 +487,7 @@ export interface RootRouteChildren {
   ApiPublicWalkCodeIcsRoute: typeof ApiPublicWalkCodeIcsRoute
   ApiPublicWalkCodeOgRoute: typeof ApiPublicWalkCodeOgRoute
   ApiPublicWalkCodeRsvpRoute: typeof ApiPublicWalkCodeRsvpRoute
+  ApiPublicWalkCodeStoryRoute: typeof ApiPublicWalkCodeStoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -710,6 +723,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/walk/$code/story': {
+      id: '/api/public/walk/$code/story'
+      path: '/api/public/walk/$code/story'
+      fullPath: '/api/public/walk/$code/story'
+      preLoaderRoute: typeof ApiPublicWalkCodeStoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/walk/$code/rsvp': {
       id: '/api/public/walk/$code/rsvp'
       path: '/api/public/walk/$code/rsvp'
@@ -886,17 +906,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWalkCodeIcsRoute: ApiPublicWalkCodeIcsRoute,
   ApiPublicWalkCodeOgRoute: ApiPublicWalkCodeOgRoute,
   ApiPublicWalkCodeRsvpRoute: ApiPublicWalkCodeRsvpRoute,
+  ApiPublicWalkCodeStoryRoute: ApiPublicWalkCodeStoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

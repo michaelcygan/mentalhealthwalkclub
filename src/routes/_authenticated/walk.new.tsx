@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { ArrowLeft, MapPin, Loader2, Lock, Globe, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,14 @@ import {
   getOrCreateWalkPlace,
   type PlaceSuggestion,
 } from "@/lib/walk-places.functions";
-import { listMyHostableGroups, createWalk } from "@/lib/walks.functions";
+import { listMyHostableGroups, createWalk, getWalkPrefill } from "@/lib/walks.functions";
+import { supabase } from "@/integrations/supabase/client";
+
+const SearchSchema = z.object({ from: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional() });
 
 export const Route = createFileRoute("/_authenticated/walk/new")({
   component: ComposeWalkPage,
+  validateSearch: (s) => SearchSchema.parse(s),
   head: () => ({
     meta: [
       { title: "Plan a walk — Mental Health Walk Club" },
@@ -26,6 +31,7 @@ type Audience = "open" | "group" | "link_only";
 
 function ComposeWalkPage() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/_authenticated/walk/new" });
 
   // form state
   const [title, setTitle] = useState("");
@@ -73,6 +79,59 @@ function ComposeWalkPage() {
   useEffect(() => {
     listMyHostableGroups().then(setHostable).catch(() => {});
   }, []);
+
+  // prefill from ?from={code} — copy place/group/time-of-day from a past walk
+  useEffect(() => {
+    const fromCode = search.from;
+    if (!fromCode) return;
+    let cancel = false;
+    getWalkPrefill({ data: { code: fromCode } })
+      .then(async ({ prefill }) => {
+        if (cancel || !prefill) return;
+        if (prefill.title) setTitle(`${prefill.title} · again`);
+        if (prefill.vibe) setVibe(prefill.vibe);
+        if (prefill.meeting_point) setMeetingPoint(prefill.meeting_point);
+        if (prefill.pace === "easy" || prefill.pace === "moderate" || prefill.pace === "brisk") {
+          setPace(prefill.pace);
+        }
+        if (prefill.dog_friendly) setDogFriendly(true);
+        if (prefill.kid_friendly) setKidFriendly(true);
+        // time of day: shift previous start to next week, same hour/minute (local)
+        if (prefill.starts_at) {
+          const prev = new Date(prefill.starts_at);
+          const next = new Date();
+          next.setDate(next.getDate() + 7);
+          next.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
+          setStartsAt(localIso(next));
+        }
+        if (prefill.audience === "open" || prefill.audience === "group" || prefill.audience === "link_only") {
+          setAudience(prefill.audience);
+        }
+        if (prefill.group_id) setGroupChoice({ kind: "group", id: prefill.group_id });
+        else if (prefill.circle_id) setGroupChoice({ kind: "circle", id: prefill.circle_id });
+
+        if (prefill.place_id) {
+          const { data: p } = await supabase
+            .from("places")
+            .select("id,name,address,hero_url")
+            .eq("id", prefill.place_id)
+            .maybeSingle();
+          if (!cancel && p) {
+            setPickedPlace({
+              id: p.id,
+              name: p.name,
+              address: p.address,
+              hero_url: p.hero_url,
+            });
+            setPlaceQuery(p.name);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancel = true;
+    };
+  }, [search.from]);
 
   // debounced place search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

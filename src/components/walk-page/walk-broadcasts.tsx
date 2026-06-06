@@ -3,14 +3,18 @@ import { Send, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { sendBroadcast, listBroadcasts } from "@/lib/walks.functions";
+import { sendBroadcast, listBroadcasts, reactToBroadcast } from "@/lib/walks.functions";
 
+type Reaction = { emoji: string; user_id: string | null };
 type Broadcast = {
   id: string;
   body: string;
   created_at: string;
   author: { id: string; display_name: string | null; avatar_url: string | null };
+  reactions: Reaction[];
 };
+
+const EMOJIS: Array<"👍" | "❤️" | "🌧️" | "🌿"> = ["👍", "❤️", "🌧️", "🌿"];
 
 export function WalkBroadcasts({
   eventId,
@@ -34,11 +38,23 @@ export function WalkBroadcasts({
       })
       .finally(() => !cancel && setLoading(false));
 
+    // Per-mount nonce avoids StrictMode "add callbacks after subscribe()" crash
+    const nonce =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
     const ch = supabase
-      .channel(`event-broadcasts:${eventId}`)
+      .channel(`event-broadcasts:${eventId}:${nonce}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "event_broadcasts", filter: `event_id=eq.${eventId}` },
+        { event: "*", schema: "public", table: "event_broadcasts", filter: `event_id=eq.${eventId}` },
+        () => {
+          listBroadcasts({ data: { eventId } }).then(({ broadcasts }) => setItems(broadcasts));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_broadcast_reactions" },
         () => {
           listBroadcasts({ data: { eventId } }).then(({ broadcasts }) => setItems(broadcasts));
         }
@@ -62,6 +78,18 @@ export function WalkBroadcasts({
       toast.error(e instanceof Error ? e.message : "Couldn't send.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function react(broadcastId: string, emoji: "👍" | "❤️" | "🌧️" | "🌿") {
+    if (!user) {
+      toast.info("Sign in to react.");
+      return;
+    }
+    try {
+      await reactToBroadcast({ data: { broadcastId, emoji } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't react.");
     }
   }
 
@@ -100,14 +128,42 @@ export function WalkBroadcasts({
         ) : items.length === 0 ? (
           <p className="text-xs text-muted-foreground">No updates yet.</p>
         ) : (
-          items.map((b) => (
-            <div key={b.id} className="rounded-2xl bg-background/60 p-3">
-              <p className="text-sm">{b.body}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {b.author.display_name ?? "Host"} · {timeAgo(b.created_at)}
-              </p>
-            </div>
-          ))
+          items.map((b) => {
+            const counts = new Map<string, number>();
+            const mine = new Set<string>();
+            for (const r of b.reactions) {
+              counts.set(r.emoji, (counts.get(r.emoji) ?? 0) + 1);
+              if (user && r.user_id === user.id) mine.add(r.emoji);
+            }
+            return (
+              <div key={b.id} className="rounded-2xl bg-background/60 p-3">
+                <p className="text-sm">{b.body}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {b.author.display_name ?? "Host"} · {timeAgo(b.created_at)}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {EMOJIS.map((e) => {
+                    const n = counts.get(e) ?? 0;
+                    const isMine = mine.has(e);
+                    return (
+                      <button
+                        key={e}
+                        onClick={() => react(b.id, e)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
+                          isMine
+                            ? "border-forest bg-forest/10 text-forest"
+                            : "border-border bg-background/60 hover:bg-accent/40"
+                        }`}
+                      >
+                        <span>{e}</span>
+                        {n > 0 ? <span className="tabular-nums text-[10px]">{n}</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </section>

@@ -51,8 +51,13 @@ export function useSubscription(): SubscriptionState {
     setLoading(true);
     refresh();
     if (!user) return;
+    // Per-mount nonce avoids StrictMode "add callbacks after subscribe()" crash
+    const nonce =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
     const channel = supabase
-      .channel(`subscriptions:${user.id}`)
+      .channel(`subscriptions:${user.id}:${nonce}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` },

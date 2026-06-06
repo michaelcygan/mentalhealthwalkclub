@@ -259,7 +259,7 @@ function JournalTab() {
         <section className="space-y-2">
           <div className="flex items-baseline justify-between">
             <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Earned</div>
-            <Link to="/badges" className="text-xs text-muted-foreground hover:text-forest">See all</Link>
+            <Link to="/profile" className="text-xs text-muted-foreground hover:text-forest">See all</Link>
           </div>
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
             {badges.slice(0, 6).map((b, i) => (
