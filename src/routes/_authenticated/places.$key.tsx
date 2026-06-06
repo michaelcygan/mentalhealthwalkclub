@@ -114,8 +114,8 @@ function PlaceDetail() {
             {upcoming.map((e) => (
               <li key={e.id}>
                 <Link
-                  to="/events/$slug"
-                  params={{ slug: e.slug }}
+                  to="/w/$code"
+                  params={{ code: e.slug }}
                   className="block rounded-2xl border border-border bg-card p-3 text-sm shadow-soft transition hover:bg-accent/30"
                 >
                   <div className="flex items-center justify-between gap-3">

@@ -46,7 +46,7 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
         const t = await r.json().catch(() => ({}));
         throw new Error(t.error ?? "Couldn't RSVP");
       }
-      toast.success("You're in. We'll send a reminder.");
+      toast.success("You're in — your name's on the wall.");
       try {
         localStorage.setItem(`walk-rsvp:${code}`, JSON.stringify({ name: name.trim(), email: email.trim(), status: defaultStatus }));
       } catch {}
@@ -65,7 +65,7 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-2xl">RSVP without an account</SheetTitle>
           <SheetDescription>
-            Just a name + email so the host knows who's coming. No password, no spam.
+            Just a name + email so the host knows who's coming. No password, no account needed.
           </SheetDescription>
         </SheetHeader>
 

@@ -12,7 +12,7 @@ export const getWalkByCode = createServerFn({ method: "GET" })
     const { data: event, error } = await supabaseAdmin
       .from("events")
       .select(
-        "id,slug,title,description,starts_at,ends_at,timezone,venue_name,address,city,region,state,country,lat,lng,vibe,visibility,host_user_id,attendee_count,image_url,cover_override_url,meeting_point,accessibility_notes,event_type,place_id,group_id,circle_id,pace,distance_meters,dog_friendly,kid_friendly"
+        "id,slug,title,description,starts_at,ends_at,timezone,venue_name,address,city,lat,lng,vibe,visibility,host_user_id,attendee_count,image_url,cover_override_url,meeting_point,accessibility_notes,event_type,place_id,group_id,circle_id,pace,distance_meters,dog_friendly,kid_friendly"
       )
       .eq("slug", data.code)
       .in("visibility", ["public", "group", "link_only"])

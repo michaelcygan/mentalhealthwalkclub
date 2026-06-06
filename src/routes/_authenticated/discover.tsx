@@ -125,14 +125,14 @@ function DiscoverPage() {
           icon={<Footprints className="h-4 w-4" />}
           title={coords ? "Tonight near you" : "Coming up"}
           subtitle={coords ? "Within 25mi · next 48 hours" : "Next 48 hours"}
-          seeAllTo="/events"
+          seeAllTo="/walk/new"
           loading={loading}
           empty="No walks scheduled yet. Be the first to host one."
           items={walks}
           render={(w) => (
             <Link
-              to="/events/$slug"
-              params={{ slug: w.slug }}
+              to="/w/$code"
+              params={{ code: w.slug }}
               className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
             >
               <div className="flex items-start justify-between gap-3">
