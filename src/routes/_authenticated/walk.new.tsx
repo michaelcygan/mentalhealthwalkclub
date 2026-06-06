@@ -13,6 +13,9 @@ import {
 } from "@/lib/walk-places.functions";
 import { listMyHostableGroups, createWalk, getWalkPrefill } from "@/lib/walks.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { WhenPicker } from "@/components/walk-page/when-picker";
+import { FirstWalkCoach } from "@/components/walk-page/first-walk-coach";
+import { useAuth } from "@/lib/auth-context";
 
 const SearchSchema = z.object({ from: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional() });
 
