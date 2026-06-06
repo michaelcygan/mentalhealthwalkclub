@@ -446,8 +446,17 @@ function ComposeWalkPage() {
         </div>
       </section>
 
-      <div className="mt-8">
-        <Button onClick={submit} disabled={submitting} className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+      <div ref={submitRef} className="mt-8">
+        <Button
+          onClick={submit}
+          disabled={
+            submitting ||
+            !title.trim() ||
+            !startsAt ||
+            (audience === "group" && !groupChoice)
+          }
+          className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90"
+        >
           {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Create walk
         </Button>
@@ -455,6 +464,30 @@ function ComposeWalkPage() {
           You'll get a shareable link right after.
         </p>
       </div>
+
+      <FirstWalkCoach
+        enabled={coachEnabled}
+        steps={[
+          {
+            ref: whereRef,
+            title: "Start with a place",
+            body: "Search a park, trail, or neighborhood. You can change it later.",
+            ready: !!pickedPlace,
+          },
+          {
+            ref: whenRef,
+            title: "Pick a time",
+            body: "Tap a quick day, then scroll the wheel to set the time — like a phone.",
+            ready: !!startsAt && !!pickedPlace,
+          },
+          {
+            ref: submitRef,
+            title: "Share the link",
+            body: "You'll get a shareable link right after. Send it to one person — that's enough.",
+            ready: false,
+          },
+        ]}
+      />
     </main>
   );
 }
