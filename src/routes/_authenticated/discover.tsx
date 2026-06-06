@@ -276,7 +276,7 @@ function Rail<T>({
   icon: React.ReactNode;
   title: string;
   subtitle: string;
-  seeAllTo: "/events" | "/groups" | "/places" | "/trails";
+  seeAllTo: "/walk/new" | "/groups" | "/places" | "/trails";
   items: T[];
   loading: boolean;
   empty: string;
