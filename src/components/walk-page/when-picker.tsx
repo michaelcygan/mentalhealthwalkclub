@@ -1,10 +1,42 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarIcon, ChevronDown, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+
+function tileClass(active: boolean) {
+  return cn(
+    "inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-sm font-medium transition",
+    active
+      ? "border-forest bg-forest text-primary-foreground"
+      : "border-border bg-card text-foreground hover:bg-accent/40"
+  );
+}
+
+function DateTile({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button type="button" onClick={onClick} className={tileClass(active)}>
+      {children}
+    </button>
+  );
+}
+
+function formatChip(d: Date) {
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+
 
 /** value/onChange in local ISO format `YYYY-MM-DDTHH:mm` (same as input[type=datetime-local]) */
 export function WhenPicker({
