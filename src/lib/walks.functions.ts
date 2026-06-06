@@ -224,6 +224,7 @@ const ListBroadcastsInput = z.object({ eventId: z.string().uuid() });
 export const listBroadcasts = createServerFn({ method: "GET" })
   .inputValidator((d) => ListBroadcastsInput.parse(d))
   .handler(async ({ data }) => {
+    // user-scoped: RLS on event_broadcasts already restricts to visible events
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows } = await supabaseAdmin
       .from("event_broadcasts")
@@ -236,6 +237,22 @@ export const listBroadcasts = createServerFn({ method: "GET" })
       ? await supabaseAdmin.from("profiles").select("id,display_name,avatar_url").in("id", ids)
       : { data: [] as Array<{ id: string; display_name: string | null; avatar_url: string | null }> };
     const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
+
+    const broadcastIds = (rows ?? []).map((r) => r.id);
+    const { data: reactions } = broadcastIds.length
+      ? await supabaseAdmin
+          .from("event_broadcast_reactions")
+          .select("broadcast_id,emoji,user_id")
+          .in("broadcast_id", broadcastIds)
+      : { data: [] as Array<{ broadcast_id: string; emoji: string; user_id: string | null }> };
+
+    const reactionMap = new Map<string, Array<{ emoji: string; user_id: string | null }>>();
+    for (const r of reactions ?? []) {
+      const list = reactionMap.get(r.broadcast_id) ?? [];
+      list.push({ emoji: r.emoji, user_id: r.user_id });
+      reactionMap.set(r.broadcast_id, list);
+    }
+
     return {
       broadcasts: (rows ?? []).map((r) => ({
         id: r.id,
@@ -246,6 +263,152 @@ export const listBroadcasts = createServerFn({ method: "GET" })
           display_name: pmap.get(r.author_id)?.display_name ?? null,
           avatar_url: pmap.get(r.author_id)?.avatar_url ?? null,
         },
+        reactions: reactionMap.get(r.id) ?? [],
       })),
+    };
+  });
+
+/* ---------- reactions ---------- */
+
+const ReactInput = z.object({
+  broadcastId: z.string().uuid(),
+  emoji: z.enum(["👍", "❤️", "🌧️", "🌿"]),
+});
+
+export const reactToBroadcast = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => ReactInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // toggle: remove if exists, else insert
+    const { data: existing } = await supabase
+      .from("event_broadcast_reactions")
+      .select("id")
+      .eq("broadcast_id", data.broadcastId)
+      .eq("user_id", userId)
+      .eq("emoji", data.emoji)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from("event_broadcast_reactions").delete().eq("id", existing.id);
+      return { added: false };
+    }
+    const { error } = await supabase
+      .from("event_broadcast_reactions")
+      .insert({ broadcast_id: data.broadcastId, user_id: userId, emoji: data.emoji });
+    if (error) throw new Error(error.message);
+    return { added: true };
+  });
+
+/* ---------- attendees ---------- */
+
+const AttendeesInput = z.object({ code: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/) });
+
+export const listWalkAttendees = createServerFn({ method: "GET" })
+  .inputValidator((d) => AttendeesInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ev } = await supabaseAdmin
+      .from("events")
+      .select("id")
+      .eq("slug", data.code)
+      .in("visibility", ["public", "group", "link_only"])
+      .eq("status", "published")
+      .maybeSingle();
+    if (!ev) return { attendees: [], guests: 0, total: 0 };
+
+    const { data: rsvps } = await supabaseAdmin
+      .from("event_rsvps")
+      .select("user_id,status")
+      .eq("event_id", ev.id)
+      .eq("status", "going");
+    const ids = (rsvps ?? []).map((r) => r.user_id);
+    const { data: profs } = ids.length
+      ? await supabaseAdmin.from("profiles").select("id,display_name,avatar_url").in("id", ids)
+      : { data: [] as Array<{ id: string; display_name: string | null; avatar_url: string | null }> };
+
+    const { data: guestRows } = await supabaseAdmin
+      .from("event_rsvp_guests")
+      .select("id,name")
+      .eq("event_id", ev.id)
+      .eq("status", "going");
+
+    const attendees = (profs ?? []).map((p) => ({
+      id: p.id,
+      display_name: p.display_name,
+      avatar_url: p.avatar_url,
+    }));
+    const guests = (guestRows ?? []).map((g) => ({ id: g.id, name: g.name }));
+    return { attendees, guests: guests.length, guestList: guests, total: attendees.length + guests.length };
+  });
+
+/* ---------- host: remove RSVP ---------- */
+
+const RemoveRsvpInput = z.object({
+  eventId: z.string().uuid(),
+  rsvpUserId: z.string().uuid().optional().nullable(),
+  guestId: z.string().uuid().optional().nullable(),
+});
+
+export const removeRsvp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => RemoveRsvpInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ev } = await supabase
+      .from("events")
+      .select("host_user_id")
+      .eq("id", data.eventId)
+      .maybeSingle();
+    if (!ev || ev.host_user_id !== userId) throw new Error("Only the host can remove RSVPs.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.rsvpUserId) {
+      const { error } = await supabaseAdmin
+        .from("event_rsvps")
+        .delete()
+        .eq("event_id", data.eventId)
+        .eq("user_id", data.rsvpUserId);
+      if (error) throw new Error(error.message);
+    }
+    if (data.guestId) {
+      const { error } = await supabaseAdmin
+        .from("event_rsvp_guests")
+        .delete()
+        .eq("event_id", data.eventId)
+        .eq("id", data.guestId);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+/* ---------- prefill for "plan the next one" ---------- */
+
+export const getWalkPrefill = createServerFn({ method: "GET" })
+  .inputValidator((d) => AttendeesInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ev } = await supabaseAdmin
+      .from("events")
+      .select(
+        "title,vibe,starts_at,place_id,group_id,circle_id,pace,dog_friendly,kid_friendly,meeting_point,visibility"
+      )
+      .eq("slug", data.code)
+      .maybeSingle();
+    if (!ev) return { prefill: null };
+    return {
+      prefill: {
+        title: ev.title,
+        vibe: ev.vibe,
+        starts_at: ev.starts_at,
+        place_id: ev.place_id,
+        group_id: ev.group_id,
+        circle_id: ev.circle_id,
+        pace: ev.pace,
+        dog_friendly: ev.dog_friendly,
+        kid_friendly: ev.kid_friendly,
+        meeting_point: ev.meeting_point,
+        audience:
+          ev.visibility === "public" ? "open" : ev.visibility === "group" ? "group" : "link_only",
+      },
     };
   });
