@@ -33,6 +33,7 @@ import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
+import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
@@ -164,6 +165,11 @@ const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
   path: '/circles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const WCodeRecapRoute = WCodeRecapRouteImport.update({
+  id: '/recap',
+  path: '/recap',
+  getParentRoute: () => WCodeRoute,
+} as any)
 const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
   path: '/$feedId',
@@ -245,13 +251,14 @@ export interface FileRoutesByFullPath {
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/shop/return': typeof ShopReturnRoute
-  '/w/$code': typeof WCodeRoute
+  '/w/$code': typeof WCodeRouteWithChildren
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/w/$code/recap': typeof WCodeRecapRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -281,13 +288,14 @@ export interface FileRoutesByTo {
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/shop/return': typeof ShopReturnRoute
-  '/w/$code': typeof WCodeRoute
+  '/w/$code': typeof WCodeRouteWithChildren
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/w/$code/recap': typeof WCodeRecapRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -319,13 +327,14 @@ export interface FileRoutesById {
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
   '/shop/return': typeof ShopReturnRoute
-  '/w/$code': typeof WCodeRoute
+  '/w/$code': typeof WCodeRouteWithChildren
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/w/$code/recap': typeof WCodeRecapRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/w/$code/recap'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/w/$code/recap'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trails/$id'
     | '/_authenticated/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/w/$code/recap'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -457,7 +469,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRouteWithChildren
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
-  WCodeRoute: typeof WCodeRoute
+  WCodeRoute: typeof WCodeRouteWithChildren
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicWalkCodeIcsRoute: typeof ApiPublicWalkCodeIcsRoute
@@ -634,6 +646,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/circles'
       preLoaderRoute: typeof AuthenticatedCirclesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/w/$code/recap': {
+      id: '/w/$code/recap'
+      path: '/recap'
+      fullPath: '/w/$code/recap'
+      preLoaderRoute: typeof WCodeRecapRouteImport
+      parentRoute: typeof WCodeRoute
     }
     '/admin/podcasts/$feedId': {
       id: '/admin/podcasts/$feedId'
@@ -838,6 +857,16 @@ const ShopRouteChildren: ShopRouteChildren = {
 
 const ShopRouteWithChildren = ShopRoute._addFileChildren(ShopRouteChildren)
 
+interface WCodeRouteChildren {
+  WCodeRecapRoute: typeof WCodeRecapRoute
+}
+
+const WCodeRouteChildren: WCodeRouteChildren = {
+  WCodeRecapRoute: WCodeRecapRoute,
+}
+
+const WCodeRouteWithChildren = WCodeRoute._addFileChildren(WCodeRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -851,7 +880,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRouteWithChildren,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
-  WCodeRoute: WCodeRoute,
+  WCodeRoute: WCodeRouteWithChildren,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicWalkCodeIcsRoute: ApiPublicWalkCodeIcsRoute,
@@ -861,3 +890,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
