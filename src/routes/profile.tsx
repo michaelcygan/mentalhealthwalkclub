@@ -24,6 +24,29 @@ export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — Mental Health Walk Club" }] }),
 });
 
+function WalkClubStats({ userId }: { userId: string }) {
+  const [s, setS] = useState<{ walks_hosted: number; walks_attended: number; current_streak_weeks: number } | null>(null);
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("walks_hosted,walks_attended,current_streak_weeks")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => setS(data ?? null));
+  }, [userId]);
+  if (!s || (s.walks_hosted === 0 && s.walks_attended === 0)) return null;
+  return (
+    <section className="rounded-3xl border border-border bg-card/60 p-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Walk Club</p>
+      <div className="mt-2 grid grid-cols-3 gap-3 text-center">
+        <div><div className="font-serif text-xl tabular-nums">{s.walks_hosted}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">hosted</div></div>
+        <div><div className="font-serif text-xl tabular-nums">{s.walks_attended}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">attended</div></div>
+        <div><div className="font-serif text-xl tabular-nums">{s.current_streak_weeks}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">wk streak</div></div>
+      </div>
+    </section>
+  );
+}
+
 interface Profile {
   display_name: string | null;
   city: string | null;
@@ -153,6 +176,8 @@ function ProfileTab() {
       )}
 
       {stats.totalWalks > 0 && <WeeklySparkline userId={user.id} />}
+
+      <WalkClubStats userId={user.id} />
 
       <BadgeWall userId={user.id} />
 
