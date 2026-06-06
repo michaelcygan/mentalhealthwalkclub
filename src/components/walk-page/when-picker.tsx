@@ -57,38 +57,41 @@ export function WhenPicker({
 
   return (
     <div className="space-y-2">
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-        {presets.map((p, i) => (
-          <button
-            key={p.label}
-            type="button"
-            onClick={() => setDatePart(p.date)}
-            className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
-              activePreset === i
-                ? "border-forest bg-forest text-primary-foreground"
-                : "border-border bg-card text-foreground hover:bg-accent/40"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="flex items-stretch gap-2">
+        <div className="-ml-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 pb-1">
+          {presets.map((p, i) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => setDatePart(p.date)}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition",
+                activePreset === i
+                  ? "border-forest bg-forest text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-accent/40"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <Popover open={calOpen} onOpenChange={setCalOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
+              aria-label="Pick a date"
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition",
                 activePreset === -1
                   ? "border-forest bg-forest text-primary-foreground"
                   : "border-border bg-card text-foreground hover:bg-accent/40"
               )}
             >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              Pick a date
+              <CalendarIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Pick a date</span>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0" align="end" sideOffset={6}>
             <Calendar
               mode="single"
               selected={date}
@@ -105,6 +108,7 @@ export function WhenPicker({
           </PopoverContent>
         </Popover>
       </div>
+
 
       <button
         type="button"
