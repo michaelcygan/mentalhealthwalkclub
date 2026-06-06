@@ -255,7 +255,7 @@ function ComposeWalkPage() {
       </header>
 
       {/* WHERE */}
-      <section className="mt-6 space-y-2">
+      <section ref={whereRef} className="mt-6 space-y-2">
         <Label>Where</Label>
         {pickedPlace ? (
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -287,6 +287,8 @@ function ComposeWalkPage() {
                 onChange={(e) => setPlaceQuery(e.target.value)}
                 onFocus={() => suggestions.length && setShowSuggestions(true)}
                 placeholder="Search a park, trail, neighborhood…"
+                inputMode="search"
+                autoComplete="off"
                 className="pl-9"
               />
               {(searching || resolvingPlace) && (
@@ -317,13 +319,9 @@ function ComposeWalkPage() {
       </section>
 
       {/* WHEN */}
-      <section className="mt-6 space-y-2">
+      <section ref={whenRef} className="mt-6 space-y-2">
         <Label>When</Label>
-        <Input
-          type="datetime-local"
-          value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
-        />
+        <WhenPicker value={startsAt} onChange={setStartsAt} />
       </section>
 
       {/* TITLE + VIBE */}
