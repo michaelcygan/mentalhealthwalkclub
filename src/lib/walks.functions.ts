@@ -143,6 +143,9 @@ export const createWalk = createServerFn({ method: "POST" })
 
     const visibility =
       data.audience === "open" ? "public" : data.audience === "group" ? "group" : "link_only";
+    // audience_mode constraint allows: public | friends | circles_allowlist | friends_except_blocklist | group
+    const audience_mode =
+      data.audience === "group" ? "group" : "public";
 
     // generate unique slug
     let slug = randomSlug();
