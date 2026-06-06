@@ -23,12 +23,14 @@ export function WhenPicker({
     const t = new Date(today);
     list.push({ label: "Today", date: t });
     list.push({ label: "Tomorrow", date: addDays(t, 1) });
-    // next Sat & Sun (skip if matches today/tomorrow)
     const sat = nextDow(t, 6);
     const sun = nextDow(t, 0);
     if (diffDays(sat, t) > 1) list.push({ label: "Sat", date: sat });
     if (diffDays(sun, t) > 1) list.push({ label: "Sun", date: sun });
-    list.push({ label: "Next week", date: addDays(t, 7) });
+    // "Next week" = next Monday (not just +7d, so it never collides with Sat/Sun)
+    const mon = nextDow(t, 1);
+    const nextMon = diffDays(mon, t) < 7 ? addDays(mon, 7) : mon;
+    list.push({ label: "Next week", date: nextMon });
     return list;
   }, [today.getTime()]);
 
