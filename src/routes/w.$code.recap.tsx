@@ -118,6 +118,7 @@ function RecapPage() {
 
       <Link
         to="/walk/new"
+        search={{ from: code }}
         className="mt-6 block rounded-3xl border border-dashed border-border bg-card/40 p-5 text-center text-sm hover:bg-card/70"
       >
         Plan the next walk →
