@@ -66,7 +66,7 @@ function ProfileTab() {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
-  const [, setGroups] = useState<Array<{id:string; name:string}>>([]);
+  // (placeholder slot for upcoming group memberships)
   const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
@@ -81,7 +81,7 @@ function ProfileTab() {
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
-    setGroups([]);
+    // upcoming-group block intentionally empty
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
     supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
