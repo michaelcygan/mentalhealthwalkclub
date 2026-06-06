@@ -627,3 +627,22 @@
 @media (prefers-reduced-motion: reduce) {
   .atm-layer, .rsvp-confetti-piece { display: none !important; }
 }
+
+/* When-picker nudges */
+@media (prefers-reduced-motion: no-preference) {
+  .wp-chevron-nudge {
+    animation: wp-chevron-nudge 1.6s ease-in-out infinite;
+  }
+  .wp-pulse-ring {
+    animation: wp-pulse-ring 2s ease-out 1;
+  }
+}
+@keyframes wp-chevron-nudge {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+@keyframes wp-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 35%, transparent); }
+  70%  { box-shadow: 0 0 0 10px color-mix(in oklab, var(--forest) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 0%, transparent); }
+}
