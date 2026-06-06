@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 const LS_KEY = "mhwc.walk.coach.v1";
 
 type Step = {
-  ref: React.RefObject<HTMLElement>;
+  ref: React.RefObject<HTMLElement | null>;
   title: string;
   body: string;
   ready: boolean;
