@@ -13,6 +13,9 @@ import {
 } from "@/lib/walk-places.functions";
 import { listMyHostableGroups, createWalk, getWalkPrefill } from "@/lib/walks.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { WhenPicker } from "@/components/walk-page/when-picker";
+import { FirstWalkCoach } from "@/components/walk-page/first-walk-coach";
+import { useAuth } from "@/lib/auth-context";
 
 const SearchSchema = z.object({ from: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional() });
 
@@ -75,10 +78,26 @@ function ComposeWalkPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // load hostable groups once
+  // coach marks
+  const { user } = useAuth();
+  const whereRef = useRef<HTMLDivElement>(null);
+  const whenRef = useRef<HTMLDivElement>(null);
+  const submitRef = useRef<HTMLDivElement>(null);
+  const [coachEnabled, setCoachEnabled] = useState(false);
+
+  // load hostable groups + check first-walk status once
   useEffect(() => {
     listMyHostableGroups().then(setHostable).catch(() => {});
-  }, []);
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("walks_hosted")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data || (data.walks_hosted ?? 0) === 0) setCoachEnabled(true);
+      });
+  }, [user]);
 
   // prefill from ?from={code} — copy place/group/time-of-day from a past walk
   useEffect(() => {
@@ -236,7 +255,7 @@ function ComposeWalkPage() {
       </header>
 
       {/* WHERE */}
-      <section className="mt-6 space-y-2">
+      <section ref={whereRef} className="mt-6 space-y-2">
         <Label>Where</Label>
         {pickedPlace ? (
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -268,6 +287,8 @@ function ComposeWalkPage() {
                 onChange={(e) => setPlaceQuery(e.target.value)}
                 onFocus={() => suggestions.length && setShowSuggestions(true)}
                 placeholder="Search a park, trail, neighborhood…"
+                inputMode="search"
+                autoComplete="off"
                 className="pl-9"
               />
               {(searching || resolvingPlace) && (
@@ -298,13 +319,9 @@ function ComposeWalkPage() {
       </section>
 
       {/* WHEN */}
-      <section className="mt-6 space-y-2">
+      <section ref={whenRef} className="mt-6 space-y-2">
         <Label>When</Label>
-        <Input
-          type="datetime-local"
-          value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
-        />
+        <WhenPicker value={startsAt} onChange={setStartsAt} />
       </section>
 
       {/* TITLE + VIBE */}
@@ -429,8 +446,17 @@ function ComposeWalkPage() {
         </div>
       </section>
 
-      <div className="mt-8">
-        <Button onClick={submit} disabled={submitting} className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
+      <div ref={submitRef} className="mt-8">
+        <Button
+          onClick={submit}
+          disabled={
+            submitting ||
+            !title.trim() ||
+            !startsAt ||
+            (audience === "group" && !groupChoice)
+          }
+          className="w-full rounded-full bg-forest text-primary-foreground hover:opacity-90"
+        >
           {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Create walk
         </Button>
@@ -438,6 +464,30 @@ function ComposeWalkPage() {
           You'll get a shareable link right after.
         </p>
       </div>
+
+      <FirstWalkCoach
+        enabled={coachEnabled}
+        steps={[
+          {
+            ref: whereRef,
+            title: "Start with a place",
+            body: "Search a park, trail, or neighborhood. You can change it later.",
+            ready: !!pickedPlace,
+          },
+          {
+            ref: whenRef,
+            title: "Pick a time",
+            body: "Tap a quick day, then scroll the wheel to set the time — like a phone.",
+            ready: !!startsAt && !!pickedPlace,
+          },
+          {
+            ref: submitRef,
+            title: "Share the link",
+            body: "You'll get a shareable link right after. Send it to one person — that's enough.",
+            ready: false,
+          },
+        ]}
+      />
     </main>
   );
 }
