@@ -1,10 +1,15 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useSearch } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { z } from "zod";
 import { getWalkByCode } from "@/lib/walk-page.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import WalkWeather from "@/components/walk-page/walk-weather";
+import { Atmosphere } from "@/components/walk-page/atmosphere";
+import { RsvpConfetti } from "@/components/walk-page/rsvp-confetti";
+import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
+import { Share2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
@@ -14,20 +19,31 @@ const WalkBroadcasts = lazy(() =>
   import("@/components/walk-page/walk-broadcasts").then((m) => ({ default: m.WalkBroadcasts }))
 );
 
+const SearchSchema = z.object({ ref: z.string().uuid().optional() });
+
 export const Route = createFileRoute("/w/$code")({
+  validateSearch: (s) => SearchSchema.parse(s),
   loader: async ({ params }) => {
     const data = await getWalkByCode({ data: { code: params.code } });
     if (!data.event) throw notFound();
     return data;
   },
-  head: ({ params }) => ({
-    meta: [
-      { title: `walk · ${params.code} · Mental Health Walk Club` },
-      { name: "description", content: "Quiet walk, real people. RSVP and join the club." },
-      { property: "og:title", content: `Walk · ${params.code}` },
-      { property: "og:description", content: "Quiet walk, real people. RSVP and join the club." },
-    ],
-  }),
+  head: ({ params, loaderData }) => {
+    const title = loaderData?.event?.title ?? `Walk · ${params.code}`;
+    const desc = loaderData?.event?.description?.slice(0, 160) ?? "Quiet walk, real people. RSVP and join the club.";
+    const og = `/api/public/walk/${params.code}/og`;
+    return {
+      meta: [
+        { title: `${title} · Mental Health Walk Club` },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:image", content: og },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:image", content: og },
+      ],
+    };
+  },
   errorComponent: ({ error }) => (
     <Centered>
       <h1 className="font-serif text-2xl">Couldn't load this walk</h1>
@@ -57,18 +73,22 @@ type RsvpStatus = "going" | "interested" | "cant_go";
 
 function WalkPage() {
   const { code } = Route.useParams();
+  const search = useSearch({ from: "/w/$code" });
   const { event, host, group, circle } = Route.useLoaderData();
   if (!event) return null;
 
   const lat = event.lat != null ? Number(event.lat) : null;
   const lng = event.lng != null ? Number(event.lng) : null;
   const hasMap = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+  const isPast = event.ends_at
+    ? new Date(event.ends_at).getTime() < Date.now()
+    : new Date(event.starts_at).getTime() < Date.now() - 3 * 60 * 60 * 1000;
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-24 pt-6">
       <Link to="/" className="text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">← Mental Health Walk Club</Link>
 
-      <Cover event={event} />
+      <Cover event={event} lat={lat} lng={lng} startsAt={event.starts_at} />
 
       <header className="mt-5">
         <h1 className="font-serif text-3xl leading-tight">{event.title}</h1>
@@ -97,7 +117,19 @@ function WalkPage() {
         </p>
       ) : null}
 
-      <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} />
+      {isPast ? (
+        <Link
+          to="/w/$code/recap"
+          params={{ code }}
+          className="mt-5 inline-flex items-center gap-2 rounded-full bg-forest px-5 py-2 text-sm text-primary-foreground hover:opacity-90"
+        >
+          See the recap →
+        </Link>
+      ) : (
+        <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} refParam={search.ref ?? null} />
+      )}
+
+      <ShareRow code={code} title={event.title} />
 
       <Suspense fallback={null}>
         <WalkBroadcasts eventId={event.id} hostId={event.host_user_id} />
@@ -122,7 +154,7 @@ function WalkPage() {
         </section>
       )}
 
-      {hasMap ? (
+      {hasMap && !isPast ? (
         <section className="mt-6 space-y-2">
           <SectionLabel>Forecast around walk time</SectionLabel>
           <WalkWeather lat={lat!} lng={lng!} centerIso={event.starts_at} />
@@ -149,30 +181,86 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{children}</p>;
 }
 
-function Cover({ event }: { event: { image_url: string | null; city: string | null; vibe: string | null } }) {
-  if (event.image_url) {
-    return (
-      <div className="mt-4 overflow-hidden rounded-3xl border border-border">
-        <img src={event.image_url} alt="" className="h-48 w-full object-cover sm:h-60" loading="lazy" />
-      </div>
-    );
-  }
+function Cover({
+  event,
+  lat,
+  lng,
+  startsAt,
+}: {
+  event: { image_url: string | null; city: string | null; vibe: string | null };
+  lat: number | null;
+  lng: number | null;
+  startsAt: string;
+}) {
   return (
-    <div className="mt-4 flex h-40 items-end overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-forest/30 via-clay/20 to-cream p-5 sm:h-52">
-      <div>
-        <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{event.vibe ?? "quiet walk"}</div>
-        <div className="font-serif text-2xl text-foreground/85">{event.city ?? "Somewhere outside"}</div>
-      </div>
+    <div className="relative mt-4 overflow-hidden rounded-3xl border border-border">
+      {event.image_url ? (
+        <img src={event.image_url} alt="" className="h-48 w-full object-cover sm:h-60" loading="lazy" />
+      ) : (
+        <div className="flex h-40 items-end bg-gradient-to-br from-forest/30 via-clay/20 to-cream p-5 sm:h-52">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{event.vibe ?? "quiet walk"}</div>
+            <div className="font-serif text-2xl text-foreground/85">{event.city ?? "Somewhere outside"}</div>
+          </div>
+        </div>
+      )}
+      <Atmosphere lat={lat} lng={lng} startsAt={startsAt} />
     </div>
   );
 }
 
-function RsvpRow({ eventId, attendeeCount }: { eventId: string; attendeeCount: number; code: string }) {
+function ShareRow({ code, title }: { code: string; title: string }) {
+  const url = typeof window !== "undefined" ? `${window.location.origin}/w/${code}` : `/w/${code}`;
+  const share = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied");
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <button onClick={share} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40">
+        <Share2 className="h-3.5 w-3.5" /> Share
+      </button>
+      <a
+        href={`/api/public/walk/${encodeURIComponent(code)}/ics`}
+        className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40"
+      >
+        <CalendarPlus className="h-3.5 w-3.5" /> Add to calendar
+      </a>
+    </div>
+  );
+}
+
+function RsvpRow({
+  eventId,
+  attendeeCount,
+  code,
+  refParam,
+}: {
+  eventId: string;
+  attendeeCount: number;
+  code: string;
+  refParam: string | null;
+}) {
   const { user } = useAuth();
-  const { requireAuth } = useAuthPrompt();
+  const { openAuth } = useAuthPrompt();
   const [my, setMy] = useState<RsvpStatus | null>(null);
   const [count, setCount] = useState(attendeeCount);
   const [busy, setBusy] = useState(false);
+  const [confetti, setConfetti] = useState(0);
+  const [guestOpen, setGuestOpen] = useState(false);
+  const [guestStatus, setGuestStatus] = useState<"going" | "maybe" | "declined">("going");
+  const [guestDone, setGuestDone] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return !!localStorage.getItem(`walk-rsvp:${code}`); } catch { return false; }
+  });
 
   useEffect(() => {
     if (!user) { setMy(null); return; }
@@ -182,12 +270,15 @@ function RsvpRow({ eventId, attendeeCount }: { eventId: string; attendeeCount: n
     return () => { cancel = true; };
   }, [eventId, user]);
 
-  const set = (next: RsvpStatus) => requireAuth(async () => {
+  const setLoggedIn = async (next: RsvpStatus) => {
     if (!user || busy) return;
     setBusy(true);
     const prev = my;
     setMy(next);
-    if (prev !== "going" && next === "going") setCount((n) => n + 1);
+    if (prev !== "going" && next === "going") {
+      setCount((n) => n + 1);
+      setConfetti((c) => c + 1);
+    }
     if (prev === "going" && next !== "going") setCount((n) => Math.max(0, n - 1));
     const { error } = await supabase
       .from("event_rsvps")
@@ -204,19 +295,51 @@ function RsvpRow({ eventId, attendeeCount }: { eventId: string; attendeeCount: n
       next === "interested" ? "Saved as interested." :
       "Marked can't go."
     );
-  });
+  };
+
+  const click = (next: RsvpStatus) => {
+    if (user) return setLoggedIn(next);
+    // logged-out → guest sheet (map "interested" → "maybe", "cant_go" → "declined")
+    setGuestStatus(next === "going" ? "going" : next === "interested" ? "maybe" : "declined");
+    setGuestOpen(true);
+  };
 
   return (
     <section className="mt-6 rounded-3xl border border-border bg-card p-4 shadow-soft">
+      <RsvpConfetti trigger={confetti} />
       <SectionLabel>RSVP</SectionLabel>
       <p className="mt-1 text-sm text-muted-foreground">
         {count === 0 ? "Be the first to say you're in." : count === 1 ? "1 walker is going." : `${count} walkers are going.`}
       </p>
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <RsvpBtn label="I'm in" active={my === "going"} disabled={busy} onClick={() => set("going")} variant="primary" />
-        <RsvpBtn label="Interested" active={my === "interested"} disabled={busy} onClick={() => set("interested")} />
-        <RsvpBtn label="Can't go" active={my === "cant_go"} disabled={busy} onClick={() => set("cant_go")} />
+        <RsvpBtn label={guestDone && !user ? "✓ You're in" : "I'm in"} active={my === "going"} disabled={busy} onClick={() => click("going")} variant="primary" />
+        <RsvpBtn label="Interested" active={my === "interested"} disabled={busy} onClick={() => click("interested")} />
+        <RsvpBtn label="Can't go" active={my === "cant_go"} disabled={busy} onClick={() => click("cant_go")} />
       </div>
+      {!user && !guestDone ? (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Have an account?{" "}
+          <button onClick={() => openAuth("login")} className="underline">
+            Sign in
+          </button>{" "}
+          to RSVP in one tap.
+        </p>
+      ) : null}
+
+      <GuestRsvpSheet
+        code={code}
+        open={guestOpen}
+        onOpenChange={setGuestOpen}
+        defaultStatus={guestStatus}
+        refParam={refParam}
+        onSuccess={() => {
+          setGuestDone(true);
+          if (guestStatus === "going") {
+            setCount((n) => n + 1);
+            setConfetti((c) => c + 1);
+          }
+        }}
+      />
     </section>
   );
 }
