@@ -9,8 +9,9 @@ import WalkWeather from "@/components/walk-page/walk-weather";
 import { Atmosphere } from "@/components/walk-page/atmosphere";
 import { RsvpConfetti } from "@/components/walk-page/rsvp-confetti";
 import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
-import { Share2, CalendarPlus } from "lucide-react";
+import { Share2, CalendarPlus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { AttendeeStack } from "@/components/walk-page/attendee-stack";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
@@ -126,7 +127,13 @@ function WalkPage() {
           See the recap →
         </Link>
       ) : (
-        <RsvpRow eventId={event.id} attendeeCount={event.attendee_count} code={code} refParam={search.ref ?? null} />
+        <RsvpRow
+          eventId={event.id}
+          hostId={event.host_user_id}
+          attendeeCount={event.attendee_count}
+          code={code}
+          refParam={search.ref ?? null}
+        />
       )}
 
       <ShareRow code={code} title={event.title} />
@@ -223,6 +230,7 @@ function ShareRow({ code, title }: { code: string; title: string }) {
       /* user cancelled */
     }
   };
+  const storyHref = `/api/public/walk/${encodeURIComponent(code)}/story`;
   return (
     <div className="mt-4 flex flex-wrap gap-2">
       <button onClick={share} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40">
@@ -234,17 +242,28 @@ function ShareRow({ code, title }: { code: string; title: string }) {
       >
         <CalendarPlus className="h-3.5 w-3.5" /> Add to calendar
       </a>
+      <a
+        href={storyHref}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40"
+        title="Open a story-sized share card (1080×1920)"
+      >
+        <ImageIcon className="h-3.5 w-3.5" /> Story card
+      </a>
     </div>
   );
 }
 
 function RsvpRow({
   eventId,
+  hostId,
   attendeeCount,
   code,
   refParam,
 }: {
   eventId: string;
+  hostId: string | null;
   attendeeCount: number;
   code: string;
   refParam: string | null;
@@ -276,17 +295,14 @@ function RsvpRow({
     const prev = my;
     setMy(next);
     if (prev !== "going" && next === "going") {
-      setCount((n) => n + 1);
       setConfetti((c) => c + 1);
     }
-    if (prev === "going" && next !== "going") setCount((n) => Math.max(0, n - 1));
     const { error } = await supabase
       .from("event_rsvps")
       .upsert({ event_id: eventId, user_id: user.id, status: next }, { onConflict: "event_id,user_id" });
     setBusy(false);
     if (error) {
       setMy(prev);
-      setCount(attendeeCount);
       toast.error(error.message);
       return;
     }
@@ -326,6 +342,8 @@ function RsvpRow({
         </p>
       ) : null}
 
+      <AttendeeStack code={code} eventId={eventId} hostId={hostId} onCountChange={setCount} />
+
       <GuestRsvpSheet
         code={code}
         open={guestOpen}
@@ -335,7 +353,6 @@ function RsvpRow({
         onSuccess={() => {
           setGuestDone(true);
           if (guestStatus === "going") {
-            setCount((n) => n + 1);
             setConfetti((c) => c + 1);
           }
         }}
