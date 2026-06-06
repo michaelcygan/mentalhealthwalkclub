@@ -107,6 +107,12 @@ export function WhenPicker({
         if (d) {
           setDatePart(d);
           setCalOpen(false);
+          if (!sameDay(d, todayDate) && !sameDay(d, tomorrowDate)) {
+            window.setTimeout(() => {
+              markTimeTouched();
+              setTimeOpen(true);
+            }, 180);
+          }
         }
       }}
       disabled={(d) => d < startOfDay(new Date())}
@@ -117,7 +123,7 @@ export function WhenPicker({
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-[1fr_1fr_1.5fr] gap-2">
         <DateTile active={isToday} onClick={() => setDatePart(todayDate)}>
           Today
         </DateTile>
@@ -126,7 +132,7 @@ export function WhenPicker({
         </DateTile>
         {isMobile ? (
           <DateTile active={isCustom} onClick={() => setCalOpen(true)}>
-            <CalendarIcon className="h-3.5 w-3.5" />
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{isCustom ? formatChip(date) : "Pick a date"}</span>
           </DateTile>
         ) : (
@@ -137,7 +143,7 @@ export function WhenPicker({
                 className={tileClass(isCustom)}
                 aria-label="Pick a date"
               >
-                <CalendarIcon className="h-3.5 w-3.5" />
+                <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{isCustom ? formatChip(date) : "Pick a date"}</span>
               </button>
             </PopoverTrigger>
