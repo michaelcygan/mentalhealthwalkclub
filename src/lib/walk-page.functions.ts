@@ -174,3 +174,57 @@ export const deleteEventPhoto = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ---------- recap ---------- */
+
+export const getWalkRecap = createServerFn({ method: "GET" })
+  .inputValidator((d) => CodeInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: ev } = await supabaseAdmin
+      .from("events")
+      .select(
+        "id,slug,title,starts_at,ends_at,city,vibe,image_url,host_user_id,attendee_count,lat,lng,distance_meters,place_id"
+      )
+      .eq("slug", data.code)
+      .in("visibility", ["public", "link_only", "group"])
+      .eq("status", "published")
+      .maybeSingle();
+    if (!ev) return { event: null, attendees: [], guests: 0, host: null };
+
+    const { data: rsvps } = await supabaseAdmin
+      .from("event_rsvps")
+      .select("user_id")
+      .eq("event_id", ev.id)
+      .eq("status", "going");
+
+    const userIds = (rsvps ?? []).map((r) => r.user_id);
+    const { data: profs } = userIds.length
+      ? await supabaseAdmin.from("profiles").select("id,display_name,avatar_url").in("id", userIds)
+      : { data: [] as Array<{ id: string; display_name: string | null; avatar_url: string | null }> };
+
+    const { count: guestCount } = await supabaseAdmin
+      .from("event_rsvp_guests")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("status", "going");
+
+    let host: { display_name: string | null; avatar_url: string | null } | null = null;
+    if (ev.host_user_id) {
+      const { data: h } = await supabaseAdmin
+        .from("profiles")
+        .select("display_name,avatar_url")
+        .eq("id", ev.host_user_id)
+        .maybeSingle();
+      host = h ?? null;
+    }
+
+    return {
+      event: ev,
+      attendees: (profs ?? []) as Array<{ id: string; display_name: string | null; avatar_url: string | null }>,
+      guests: guestCount ?? 0,
+      host,
+    };
+  });
+

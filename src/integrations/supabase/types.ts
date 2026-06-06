@@ -1440,6 +1440,7 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          current_streak_weeks: number
           display_name: string | null
           id: string
           is_host_account: boolean
@@ -1452,6 +1453,8 @@ export type Database = {
           state: string | null
           updated_at: string
           username: string | null
+          walks_attended: number
+          walks_hosted: number
         }
         Insert: {
           age_band?: string | null
@@ -1460,6 +1463,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          current_streak_weeks?: number
           display_name?: string | null
           id: string
           is_host_account?: boolean
@@ -1472,6 +1476,8 @@ export type Database = {
           state?: string | null
           updated_at?: string
           username?: string | null
+          walks_attended?: number
+          walks_hosted?: number
         }
         Update: {
           age_band?: string | null
@@ -1480,6 +1486,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          current_streak_weeks?: number
           display_name?: string | null
           id?: string
           is_host_account?: boolean
@@ -1492,6 +1499,8 @@ export type Database = {
           state?: string | null
           updated_at?: string
           username?: string | null
+          walks_attended?: number
+          walks_hosted?: number
         }
         Relationships: []
       }
@@ -2079,6 +2088,7 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      recompute_walker_metrics: { Args: { _uid: string }; Returns: undefined }
       set_my_dob: { Args: { _dob: string }; Returns: string }
       user_in_event_allowlist: {
         Args: { _event: string; _user: string }
