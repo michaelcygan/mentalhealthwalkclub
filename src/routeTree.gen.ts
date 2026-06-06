@@ -26,13 +26,13 @@ import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMerchRouteImport } from './routes/admin.merch'
-import { Route as AuthenticatedWalkRouteImport } from './routes/_authenticated/walk'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
+import { Route as AuthenticatedWalkIndexRouteImport } from './routes/_authenticated/walk.index'
 import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
@@ -131,11 +131,6 @@ const AdminMerchRoute = AdminMerchRouteImport.update({
   path: '/merch',
   getParentRoute: () => AdminRoute,
 } as any)
-const AuthenticatedWalkRoute = AuthenticatedWalkRouteImport.update({
-  id: '/walk',
-  path: '/walk',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedTrailsRoute = AuthenticatedTrailsRouteImport.update({
   id: '/trails',
   path: '/trails',
@@ -166,6 +161,11 @@ const AuthenticatedCirclesRoute = AuthenticatedCirclesRouteImport.update({
   path: '/circles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWalkIndexRoute = AuthenticatedWalkIndexRouteImport.update({
+  id: '/walk/',
+  path: '/walk/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const WCodeRecapRoute = WCodeRecapRouteImport.update({
   id: '/recap',
   path: '/recap',
@@ -177,9 +177,9 @@ const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   getParentRoute: () => AdminPodcastsRoute,
 } as any)
 const AuthenticatedWalkNewRoute = AuthenticatedWalkNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AuthenticatedWalkRoute,
+  id: '/walk/new',
+  path: '/walk/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTrailsIdRoute = AuthenticatedTrailsIdRouteImport.update({
   id: '/$id',
@@ -252,7 +252,6 @@ export interface FileRoutesByFullPath {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -265,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
+  '/walk/': typeof AuthenticatedWalkIndexRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -290,7 +290,6 @@ export interface FileRoutesByTo {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -303,6 +302,7 @@ export interface FileRoutesByTo {
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
+  '/walk': typeof AuthenticatedWalkIndexRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -330,7 +330,6 @@ export interface FileRoutesById {
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
-  '/_authenticated/walk': typeof AuthenticatedWalkRouteWithChildren
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -343,6 +342,7 @@ export interface FileRoutesById {
   '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
+  '/_authenticated/walk/': typeof AuthenticatedWalkIndexRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -370,7 +370,6 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
-    | '/walk'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -383,6 +382,7 @@ export interface FileRouteTypes {
     | '/walk/new'
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
+    | '/walk/'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -408,7 +408,6 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
-    | '/walk'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -421,6 +420,7 @@ export interface FileRouteTypes {
     | '/walk/new'
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
+    | '/walk'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -447,7 +447,6 @@ export interface FileRouteTypes {
     | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
-    | '/_authenticated/walk'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -460,6 +459,7 @@ export interface FileRouteTypes {
     | '/_authenticated/walk/new'
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
+    | '/_authenticated/walk/'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -611,13 +611,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMerchRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_authenticated/walk': {
-      id: '/_authenticated/walk'
-      path: '/walk'
-      fullPath: '/walk'
-      preLoaderRoute: typeof AuthenticatedWalkRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/trails': {
       id: '/_authenticated/trails'
       path: '/trails'
@@ -660,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCirclesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/walk/': {
+      id: '/_authenticated/walk/'
+      path: '/walk'
+      fullPath: '/walk/'
+      preLoaderRoute: typeof AuthenticatedWalkIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/w/$code/recap': {
       id: '/w/$code/recap'
       path: '/recap'
@@ -676,10 +676,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/walk/new': {
       id: '/_authenticated/walk/new'
-      path: '/new'
+      path: '/walk/new'
       fullPath: '/walk/new'
       preLoaderRoute: typeof AuthenticatedWalkNewRouteImport
-      parentRoute: typeof AuthenticatedWalkRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/trails/$id': {
       id: '/_authenticated/trails/$id'
@@ -798,17 +798,6 @@ const AuthenticatedTrailsRouteChildren: AuthenticatedTrailsRouteChildren = {
 const AuthenticatedTrailsRouteWithChildren =
   AuthenticatedTrailsRoute._addFileChildren(AuthenticatedTrailsRouteChildren)
 
-interface AuthenticatedWalkRouteChildren {
-  AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
-}
-
-const AuthenticatedWalkRouteChildren: AuthenticatedWalkRouteChildren = {
-  AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
-}
-
-const AuthenticatedWalkRouteWithChildren =
-  AuthenticatedWalkRoute._addFileChildren(AuthenticatedWalkRouteChildren)
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
@@ -816,7 +805,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
-  AuthenticatedWalkRoute: typeof AuthenticatedWalkRouteWithChildren
+  AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
+  AuthenticatedWalkIndexRoute: typeof AuthenticatedWalkIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -826,7 +816,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
-  AuthenticatedWalkRoute: AuthenticatedWalkRouteWithChildren,
+  AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
+  AuthenticatedWalkIndexRoute: AuthenticatedWalkIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -911,3 +902,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

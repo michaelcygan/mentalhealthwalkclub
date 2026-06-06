@@ -16,7 +16,7 @@ import WalkWeather from "@/components/walk-page/walk-weather";
 import { listMyPlaylists, getPlaylist, listenCatalog } from "@/lib/playlists.functions";
 import { PROMPTS, moodToFamily, type ReflectionPrompt } from "@/lib/reflection-prompts";
 
-export const Route = createFileRoute("/_authenticated/walk")({
+export const Route = createFileRoute("/_authenticated/walk/")({
   component: SoloWalkPage,
   head: () => ({
     meta: [
