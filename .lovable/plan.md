@@ -1,112 +1,38 @@
-# Polish the Plan-a-walk flow
+# When picker — second pass
 
-## 1. Fix the "Create walk" crash (root cause of the error toast)
+## Reduce date row to 3 affordances
 
-The DB constraint `events_audience_mode_check` only allows
-`public | friends | circles_allowlist | friends_except_blocklist | group`.
-`createWalk` writes `audience_mode = 'private'` for both `group` and
-`link_only` audiences, which fails the check.
-
-Fix in `src/lib/walks.functions.ts` (createWalk handler):
-- `open` → `audience_mode = 'public'`, `visibility = 'public'`
-- `group` → `audience_mode = 'group'`, `visibility = 'group'`
-- `link_only` → `audience_mode = 'public'`, `visibility = 'link_only'`
-  (link_only is publicly viewable to anyone with the link; visibility
-  already encodes that — audience_mode just needs a legal value)
-
-No migration. No data backfill needed (no successful inserts yet).
-
-## 2. Modernize "When" — mobile-first date + time
-
-Replace the lone `<input type="datetime-local">` with a 2026-style
-composite picker built from existing shadcn pieces (no new deps).
-
-### Quick-date chips (always visible)
-
-A single row above the picker with smart presets:
+Replace the scrollable preset list with exactly three equal-width tiles in a single non-scrolling row that fits any phone width:
 
 ```text
-[ Today ] [ Tomorrow ] [ Sat ] [ Sun ] [ Next week ] [ Pick a date ]
+[ Today ] [ Tomorrow ] [ Pick a date ]
 ```
 
-- Active chip = highlighted forest pill.
-- "Pick a date" opens a `Popover` + `Calendar` (already in
-  `src/components/ui/calendar.tsx`) for any other date.
-- Past dates disabled.
+- `grid grid-cols-3 gap-2`, each tile a full pill with same height as the time row beneath it.
+- Active date highlights whichever tile owns it (Today/Tomorrow auto, else "Pick a date" lights up and its label swaps to the selected date, e.g. "Sat, Jun 13" — so the user always sees their chosen date on the trigger).
+- Tap "Pick a date" → open the existing `Calendar` popover. On screens < `sm`, render it as a bottom `Sheet` instead of a popover so the calendar isn't cramped or clipped on mobile.
+- Remove Sat / Sun / Next week presets entirely (the calendar covers them; three options keeps cognitive load low).
 
-### Time as a drum-wheel sheet
+## Make the time row obviously tappable
 
-Tapping the time row opens a bottom `Sheet` with three scroll-snap
-columns (Hour · Minute · AM/PM) — iOS-style wheels built from a
-vertical `overflow-y-auto snap-y snap-mandatory` list with item-height
-snapping. Lightweight (~120 LOC), no library.
+The current "5:00 PM · America/Chicago" row reads like static text. Three changes:
 
-- Minutes step by 5 (00, 05, 10, …55).
-- Pre-selects nearest future :00 or :30.
-- Center row is the selection; faded neighbors above/below.
-- Sheet footer: large "Set time" button.
+1. **Label the action**: prepend a small lozenge on the right that reads "Tap to change" in tiny uppercase; replaces the plain chevron. After the user opens the wheel once, the lozenge fades out and a plain chevron remains.
+2. **Animated nudge**: the right-side chevron gently bounces (subtle 6px translateY loop, 1.6s, ease-in-out, infinite) until the user has either opened the time sheet at least once OR moved the time off the default. Stops immediately on first interaction. Respects `prefers-reduced-motion` (static chevron).
+3. **Soft pulse ring**: a one-shot, very low-opacity forest ring (`ring-2 ring-forest/30`) pulses on the time row for ~2 seconds after the date changes, then stops — a visual handoff from "you picked a day" to "now pick a time."
 
-### Display row
+Persistence: store `mhwc.walk.time.touched = "1"` in localStorage so the nudge never re-appears on subsequent visits.
 
-The collapsed control reads:
+## Why this is calmer, not lazier
 
-```text
-Tomorrow, Jun 8  ·  5:00 PM        [chevron]
-```
+- 3 tiles always fit a 320px viewport — no horizontal scroll, no clipped chips.
+- "Pick a date" tile doubles as the selected-date display, so there's no information lost from dropping Sat/Sun/Next week.
+- The animated chevron + handoff pulse are the cheapest possible "do this next" hint — no copy, no modal, no friction.
+- All animation stops on first interaction. No bounce-inducing motion lingering on the page.
 
-- Tapping the date side scrolls chips/opens calendar.
-- Tapping the time side opens the wheel sheet.
-- Smart timezone hint underneath ("Times in your timezone — America/Chicago").
+## Files
 
-### File layout
+- `src/components/walk-page/when-picker.tsx` — restructure date row to 3 tiles; conditionally render calendar in Sheet on mobile, Popover on `sm+`; add animated chevron + pulse handoff; add localStorage touched flag.
+- `src/styles.css` — add a small `@keyframes wp-chevron-nudge` and `@keyframes wp-pulse-ring` plus matching utility classes scoped to the picker, gated behind `@media (prefers-reduced-motion: no-preference)`.
 
-- New `src/components/walk-page/when-picker.tsx` — exports `<WhenPicker value onChange />` with date chips + wheel sheet.
-- `walk.new.tsx` swaps the `<Input type="datetime-local">` block for `<WhenPicker />`.
-
-## 3. First-walk walkthrough (2-3 coach marks)
-
-Show only when the host has never created a walk
-(`profiles.walks_hosted === 0`, fetched once on mount via the existing
-client).
-
-- Step 1 (on Where): "Start with a place — search a park, trail, or
-  neighborhood."
-- Step 2 (on When, after place is picked): "Tap to set a time —
-  scroll like a phone wheel."
-- Step 3 (on Create button, after time is set): "You'll get a
-  shareable link — send it to one person, that's enough."
-
-### Implementation
-
-- New `src/components/walk-page/first-walk-coach.tsx` — a tiny
-  controlled overlay component. Renders a fixed-position dark scrim
-  with a single tooltip card pointing at a ref'd target element via
-  `getBoundingClientRect`.
-- State: `step: 0|1|2|3` (3 = done). Dismisses to `localStorage`
-  key `mhwc.walk.coach.v1 = "done"` so it never re-shows once
-  finished or skipped.
-- Skip link in every step. Auto-advances when the relevant field is
-  filled (place picked → step 2 unlocks; time set → step 3 unlocks).
-
-## 4. Small polish (same pass)
-
-- "Where" search input: add `inputMode="search"` and
-  `autoComplete="off"`, and show recent picks (last 3 places from
-  `getMyRecentWalkPlaces` if it exists, else skip — read-only check).
-- "Title" auto-suggests `Walk at {place}` only if user hasn't typed.
-  Already does this — keep.
-- Disable "Create walk" until title + startsAt + (audience !== group ||
-  groupChoice) are valid — currently relies on toast errors after click.
-- Add `aria-label`s on the wheel columns for accessibility.
-
-## Technical summary
-
-**Edited files**
-- `src/lib/walks.functions.ts` — fix `audience_mode` mapping.
-- `src/routes/_authenticated/walk.new.tsx` — swap When control, mount coach, disable submit when invalid.
-
-**New files**
-- `src/components/walk-page/when-picker.tsx` — chips + wheel sheet.
-- `src/components/walk-page/first-walk-coach.tsx` — 3-step overlay.
-
-**No DB migration. No new dependencies.** Wheel uses native scroll-snap; calendar uses existing `react-day-picker`-based shadcn `Calendar`; sheet uses existing shadcn `Sheet`.
+No DB changes. No new deps.
