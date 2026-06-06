@@ -319,7 +319,7 @@ function RsvpRow({
       {!user && !guestDone ? (
         <p className="mt-3 text-[11px] text-muted-foreground">
           Have an account?{" "}
-          <button onClick={() => openAuth("login")} className="underline">
+          <button onClick={() => openAuth("signin")} className="underline">
             Sign in
           </button>{" "}
           to RSVP in one tap.
