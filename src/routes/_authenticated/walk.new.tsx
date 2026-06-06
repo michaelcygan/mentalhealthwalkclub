@@ -78,10 +78,26 @@ function ComposeWalkPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // load hostable groups once
+  // coach marks
+  const { user } = useAuth();
+  const whereRef = useRef<HTMLDivElement>(null);
+  const whenRef = useRef<HTMLDivElement>(null);
+  const submitRef = useRef<HTMLDivElement>(null);
+  const [coachEnabled, setCoachEnabled] = useState(false);
+
+  // load hostable groups + check first-walk status once
   useEffect(() => {
     listMyHostableGroups().then(setHostable).catch(() => {});
-  }, []);
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("walks_hosted")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data || (data.walks_hosted ?? 0) === 0) setCoachEnabled(true);
+      });
+  }, [user]);
 
   // prefill from ?from={code} — copy place/group/time-of-day from a past walk
   useEffect(() => {
