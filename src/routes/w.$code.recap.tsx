@@ -87,7 +87,7 @@ function RecapPage() {
           <div className="mt-6">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Walkers</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {attendees.slice(0, 24).map((a) => (
+              {attendees.slice(0, 24).map((a: { id: string; display_name: string | null; avatar_url: string | null }) => (
                 <div key={a.id} className="flex items-center gap-2 rounded-full border border-border bg-card/70 px-2.5 py-1 text-xs">
                   {a.avatar_url ? (
                     <img src={a.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
