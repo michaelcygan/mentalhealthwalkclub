@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useServerFn } from "@tanstack/react-start";
 import { getCircleActivity, sendHighFive, type CircleActivityItem } from "@/lib/social.functions";
 import { Hand, ArrowRight } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -25,7 +25,6 @@ function initials(name: string | null | undefined): string {
 export function FriendPulse() {
   const fetchActivity = useServerFn(getCircleActivity);
   const fireFive = useServerFn(sendHighFive);
-  const { toast } = useToast();
   const [items, setItems] = useState<CircleActivityItem[] | null>(null);
   const [fivedLocal, setFivedLocal] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,9 +43,9 @@ export function FriendPulse() {
     try {
       await fireFive({ data: { walkSessionId } });
       setFivedLocal((s) => new Set(s).add(walkSessionId));
-      toast({ title: "High-five sent 👋" });
+      toast.success("High-five sent 👋");
     } catch (e) {
-      toast({ title: "Couldn't send", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+      toast.error(e instanceof Error ? e.message : "Couldn't send");
     } finally { setBusy(null); }
   };
 
