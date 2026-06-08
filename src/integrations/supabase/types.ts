@@ -209,6 +209,86 @@ export type Database = {
           },
         ]
       }
+      blog_feeds: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          last_sync_error: string | null
+          last_synced_at: string | null
+          publisher: string | null
+          rss_url: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          publisher?: string | null
+          rss_url: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          publisher?: string | null
+          rss_url?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          created_at: string
+          feed_id: string
+          guid: string
+          id: string
+          image_url: string | null
+          link: string
+          published_at: string | null
+          summary: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          feed_id: string
+          guid: string
+          id?: string
+          image_url?: string | null
+          link: string
+          published_at?: string | null
+          summary?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          feed_id?: string
+          guid?: string
+          id?: string
+          image_url?: string | null
+          link?: string
+          published_at?: string | null
+          summary?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "blog_feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_members: {
         Row: {
           circle_id: string
@@ -1050,6 +1130,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      high_fives: {
+        Row: {
+          created_at: string
+          from_user_id: string
+          id: string
+          to_user_id: string
+          walk_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id: string
+          id?: string
+          to_user_id: string
+          walk_session_id: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          to_user_id?: string
+          walk_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "high_fives_walk_session_id_fkey"
+            columns: ["walk_session_id"]
+            isOneToOne: false
+            referencedRelation: "walk_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       impact_donations: {
         Row: {

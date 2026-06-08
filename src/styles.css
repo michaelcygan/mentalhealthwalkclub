@@ -646,3 +646,35 @@
   70%  { box-shadow: 0 0 0 10px color-mix(in oklab, var(--forest) 0%, transparent); }
   100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--forest) 0%, transparent); }
 }
+
+/* Home ambient backdrop */
+@media (prefers-reduced-motion: no-preference) {
+  .wp-backdrop-drift {
+    animation: wp-backdrop-drift 40s ease-in-out infinite alternate;
+    will-change: transform, opacity;
+  }
+  .wp-dust {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.45);
+    filter: blur(1px);
+    animation: wp-dust-float linear infinite;
+    will-change: transform, opacity;
+  }
+  .wp-reflect-fade { animation: wp-reflect-fade 600ms ease-out 1; }
+}
+@keyframes wp-backdrop-drift {
+  0%   { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  100% { transform: translate3d(2%, 1%, 0) scale(1.05); }
+}
+@keyframes wp-dust-float {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.5; }
+  100% { transform: translate3d(20px, -120px, 0); opacity: 0; }
+}
+@keyframes wp-reflect-fade {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
