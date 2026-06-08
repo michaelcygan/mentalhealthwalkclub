@@ -151,7 +151,7 @@ export async function parseBlogFeed(rssUrl: string): Promise<ParsedFeed> {
 
     const guidNode = item.guid ?? item.id;
     const guid = (typeof guidNode === "object" ? pickText(guidNode) : (guidNode as string | undefined)) ?? link;
-    const title = pickText(item.title) ?? "Untitled";
+    const title = cleanText(pickText(item.title)) ?? "Untitled";
     const summary = stripHtml(
       pickText(item.description) ??
         pickText(item.summary) ??
