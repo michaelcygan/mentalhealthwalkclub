@@ -54,3 +54,39 @@ export const createPodcastFeed = createServerFn({ method: "POST" })
     try { await syncFeedById(row.id); } catch { /* surface via last_sync_error */ }
     return { id: row.id };
   });
+
+import { z as _z } from "zod";
+const RecentInput = _z.object({ limit: _z.number().int().min(1).max(24).default(6) });
+
+export interface PodcastEpisodeCard {
+  id: string;
+  title: string;
+  image_url: string | null;
+  duration_seconds: number;
+  publisher: string | null;
+  published_at: string | null;
+}
+
+/** Public-safe: latest active podcast episodes across active feeds. */
+export const recentPodcastEpisodes = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => RecentInput.parse(d ?? {}))
+  .handler(async ({ data }): Promise<PodcastEpisodeCard[]> => {
+    const { data: rows } = await supabaseAdmin
+      .from("podcast_episodes")
+      .select("id,title,image_url,duration_seconds,published_at,is_active,podcast_feeds!inner(publisher,is_active)")
+      .eq("is_active", true)
+      .eq("podcast_feeds.is_active", true)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(data.limit);
+    return (rows ?? []).map((r) => {
+      const feed = (r as unknown as { podcast_feeds: { publisher: string | null } }).podcast_feeds;
+      return {
+        id: r.id as string,
+        title: r.title as string,
+        image_url: (r.image_url as string | null) ?? null,
+        duration_seconds: (r.duration_seconds as number) ?? 0,
+        publisher: feed?.publisher ?? null,
+        published_at: (r.published_at as string | null) ?? null,
+      };
+    });
+  });
