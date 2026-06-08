@@ -451,3 +451,133 @@ export const removeBlocklistUser = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ---------------- HOME: FRIEND PULSE ---------------- */
+
+export interface CircleActivityItem {
+  kind: "completed_walk" | "posted_walk";
+  ts: string;
+  user: { id: string; display_name: string | null; username: string | null; avatar_url: string | null };
+  // for completed_walk
+  walk_session_id?: string;
+  duration_min?: number;
+  already_fived?: boolean;
+  // for posted_walk
+  event_id?: string;
+  event_slug?: string | null;
+  event_title?: string | null;
+  starts_at?: string | null;
+}
+
+export const getCircleActivity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CircleActivityItem[]> => {
+    const { supabase, userId } = context;
+
+    // Find circle-mates
+    const { data: myCircles } = await supabase
+      .from("circle_members")
+      .select("circle_id")
+      .eq("user_id", userId)
+      .eq("status", "active");
+    const circleIds = (myCircles ?? []).map((r) => r.circle_id);
+    if (!circleIds.length) return [];
+
+    const { data: mateRows } = await supabase
+      .from("circle_members")
+      .select("user_id")
+      .in("circle_id", circleIds)
+      .eq("status", "active");
+    const mateIds = Array.from(new Set((mateRows ?? []).map((r) => r.user_id).filter((id) => id !== userId)));
+    if (!mateIds.length) return [];
+
+    const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+
+    const [{ data: walks }, { data: events }] = await Promise.all([
+      supabase
+        .from("walk_sessions")
+        .select("id,user_id,duration_seconds,ended_at,status")
+        .in("user_id", mateIds)
+        .eq("status", "completed")
+        .gte("ended_at", since)
+        .order("ended_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("events")
+        .select("id,slug,title,host_user_id,starts_at,status,created_at")
+        .in("host_user_id", mateIds)
+        .eq("status", "published")
+        .gte("starts_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
+
+    const walkIds = (walks ?? []).map((w) => w.id);
+    const { data: fives } = walkIds.length
+      ? await supabase
+          .from("high_fives")
+          .select("walk_session_id")
+          .eq("from_user_id", userId)
+          .in("walk_session_id", walkIds)
+      : { data: [] as Array<{ walk_session_id: string }> };
+    const fivedSet = new Set((fives ?? []).map((f) => f.walk_session_id));
+
+    const allUserIds = Array.from(new Set([
+      ...((walks ?? []).map((w) => w.user_id)),
+      ...((events ?? []).map((e) => e.host_user_id)),
+    ]));
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id,display_name,username,avatar_url")
+      .in("id", allUserIds);
+    const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
+
+    const items: CircleActivityItem[] = [];
+    for (const w of walks ?? []) {
+      const u = pmap.get(w.user_id);
+      if (!u) continue;
+      items.push({
+        kind: "completed_walk",
+        ts: w.ended_at as string,
+        user: { id: u.id, display_name: u.display_name, username: u.username, avatar_url: u.avatar_url },
+        walk_session_id: w.id,
+        duration_min: Math.round((w.duration_seconds ?? 0) / 60),
+        already_fived: fivedSet.has(w.id),
+      });
+    }
+    for (const e of events ?? []) {
+      const u = pmap.get(e.host_user_id);
+      if (!u) continue;
+      items.push({
+        kind: "posted_walk",
+        ts: e.created_at as string,
+        user: { id: u.id, display_name: u.display_name, username: u.username, avatar_url: u.avatar_url },
+        event_id: e.id,
+        event_slug: e.slug,
+        event_title: e.title,
+        starts_at: e.starts_at,
+      });
+    }
+    items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+    return items.slice(0, 6);
+  });
+
+const HighFiveInput = z.object({ walkSessionId: z.string().uuid() });
+export const sendHighFive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => HighFiveInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: walk } = await supabase
+      .from("walk_sessions")
+      .select("user_id")
+      .eq("id", data.walkSessionId)
+      .maybeSingle();
+    if (!walk) throw new Error("Walk not found.");
+    if (walk.user_id === userId) throw new Error("You can't high-five yourself.");
+    const { error } = await supabase
+      .from("high_fives")
+      .insert({ from_user_id: userId, to_user_id: walk.user_id, walk_session_id: data.walkSessionId });
+    if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+    return { ok: true };
+  });
