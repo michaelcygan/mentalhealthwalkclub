@@ -50,7 +50,7 @@ export function ReflectionRotator() {
   const current = prompts[idx];
   if (!current) return null;
 
-  const journalLink = `/journal?prompt=${encodeURIComponent(current.text)}`;
+  
 
   return (
     <Card
@@ -61,7 +61,7 @@ export function ReflectionRotator() {
       onTouchEnd={() => setPaused(false)}
     >
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">A small question</div>
-      <Link to="/journal" search={{ prompt: current.text } as never} className="mt-2 block">
+      <Link to="/journal" className="mt-2 block">
         <p key={current.id} className="wp-reflect-fade font-serif text-xl leading-snug text-foreground">
           {current.text}
         </p>
@@ -75,7 +75,6 @@ export function ReflectionRotator() {
         <div className="flex items-center gap-1.5">
           <Link
             to="/journal"
-            search={{ prompt: current.text } as never}
             className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:opacity-90"
           >
             <BookHeart className="h-3.5 w-3.5" /> Save
@@ -89,7 +88,7 @@ export function ReflectionRotator() {
           </button>
         </div>
       </div>
-      <a className="sr-only" href={journalLink}>Open journal</a>
+      
     </Card>
   );
 }
