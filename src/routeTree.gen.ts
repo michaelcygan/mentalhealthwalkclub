@@ -42,6 +42,7 @@ import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSyncPodcastFeedsRouteImport } from './routes/api/public/hooks/sync-podcast-feeds'
+import { Route as ApiPublicHooksSyncBlogFeedsRouteImport } from './routes/api/public/hooks/sync-blog-feeds'
 import { Route as ApiPublicWalkCodeStoryRouteImport } from './routes/api/public/walk.$code.story'
 import { Route as ApiPublicWalkCodeRsvpRouteImport } from './routes/api/public/walk.$code.rsvp'
 import { Route as ApiPublicWalkCodeOgRouteImport } from './routes/api/public/walk.$code.og'
@@ -213,6 +214,12 @@ const ApiPublicHooksSyncPodcastFeedsRoute =
     path: '/api/public/hooks/sync-podcast-feeds',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncBlogFeedsRoute =
+  ApiPublicHooksSyncBlogFeedsRouteImport.update({
+    id: '/api/public/hooks/sync-blog-feeds',
+    path: '/api/public/hooks/sync-blog-feeds',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWalkCodeStoryRoute = ApiPublicWalkCodeStoryRouteImport.update({
   id: '/api/public/walk/$code/story',
   path: '/api/public/walk/$code/story',
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk/': typeof AuthenticatedWalkIndexRoute
+  '/api/public/hooks/sync-blog-feeds': typeof ApiPublicHooksSyncBlogFeedsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -303,6 +311,7 @@ export interface FileRoutesByTo {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk': typeof AuthenticatedWalkIndexRoute
+  '/api/public/hooks/sync-blog-feeds': typeof ApiPublicHooksSyncBlogFeedsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -343,6 +352,7 @@ export interface FileRoutesById {
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/_authenticated/walk/': typeof AuthenticatedWalkIndexRoute
+  '/api/public/hooks/sync-blog-feeds': typeof ApiPublicHooksSyncBlogFeedsRoute
   '/api/public/hooks/sync-podcast-feeds': typeof ApiPublicHooksSyncPodcastFeedsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/walk/$code/ics': typeof ApiPublicWalkCodeIcsRoute
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
     | '/walk/'
+    | '/api/public/hooks/sync-blog-feeds'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
     | '/walk'
+    | '/api/public/hooks/sync-blog-feeds'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -460,6 +472,7 @@ export interface FileRouteTypes {
     | '/admin/podcasts/$feedId'
     | '/w/$code/recap'
     | '/_authenticated/walk/'
+    | '/api/public/hooks/sync-blog-feeds'
     | '/api/public/hooks/sync-podcast-feeds'
     | '/api/public/payments/webhook'
     | '/api/public/walk/$code/ics'
@@ -482,6 +495,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRouteWithChildren
+  ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicWalkCodeIcsRoute: typeof ApiPublicWalkCodeIcsRoute
@@ -723,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncPodcastFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-blog-feeds': {
+      id: '/api/public/hooks/sync-blog-feeds'
+      path: '/api/public/hooks/sync-blog-feeds'
+      fullPath: '/api/public/hooks/sync-blog-feeds'
+      preLoaderRoute: typeof ApiPublicHooksSyncBlogFeedsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/walk/$code/story': {
       id: '/api/public/walk/$code/story'
       path: '/api/public/walk/$code/story'
@@ -892,6 +913,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRouteWithChildren,
+  ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicWalkCodeIcsRoute: ApiPublicWalkCodeIcsRoute,
