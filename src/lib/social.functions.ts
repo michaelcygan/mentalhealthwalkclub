@@ -525,7 +525,7 @@ export const getCircleActivity = createServerFn({ method: "GET" })
     const allUserIds = Array.from(new Set([
       ...((walks ?? []).map((w) => w.user_id)),
       ...((events ?? []).map((e) => e.host_user_id)),
-    ]));
+    ])).filter((x): x is string => typeof x === "string");
     const { data: profs } = await supabase
       .from("profiles")
       .select("id,display_name,username,avatar_url")
@@ -546,6 +546,7 @@ export const getCircleActivity = createServerFn({ method: "GET" })
       });
     }
     for (const e of events ?? []) {
+      if (!e.host_user_id) continue;
       const u = pmap.get(e.host_user_id);
       if (!u) continue;
       items.push({
