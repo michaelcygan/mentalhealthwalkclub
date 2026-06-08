@@ -170,3 +170,49 @@ export function nextRainMinutes(points: MinuteRainPoint[], thresholdMm = 0.2): n
   }
   return null;
 }
+
+export interface DailyPoint {
+  iso: string;       // YYYY-MM-DD
+  tempMaxF: number;
+  tempMinF: number;
+  precipProb: number; // 0-100
+  windMph: number;
+  code: number;
+  label: string;
+  tone: WeatherTone;
+}
+
+/** 7-day daily forecast. */
+export async function getDaily(lat: number, lng: number, days = 7): Promise<DailyPoint[]> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+    `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,weather_code` +
+    `&forecast_days=${Math.min(Math.max(days, 1), 14)}` +
+    `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=mm&timezone=auto`;
+  const data = await getJson<{ daily?: { time: string[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max: number[]; weather_code: number[] } }>(url, keyOf(lat, lng, `daily-${days}`));
+  const d = data?.daily;
+  if (!d?.time?.length) return [];
+  const out: DailyPoint[] = [];
+  for (let i = 0; i < d.time.length; i++) {
+    const code = d.weather_code[i] ?? 0;
+    const info = describeCode(code, true);
+    out.push({
+      iso: d.time[i],
+      tempMaxF: Math.round(d.temperature_2m_max[i] ?? 0),
+      tempMinF: Math.round(d.temperature_2m_min[i] ?? 0),
+      precipProb: Math.round(d.precipitation_probability_max?.[i] ?? 0),
+      windMph: Math.round(d.wind_speed_10m_max?.[i] ?? 0),
+      code,
+      label: info.label,
+      tone: info.tone,
+    });
+  }
+  return out;
+}
+
+/** Walk-score: 'good' | 'okay' | 'tough' based on temp/precip/wind. */
+export function dailyWalkScore(p: DailyPoint): "good" | "okay" | "tough" {
+  if (p.precipProb >= 70 || p.windMph >= 22 || p.tempMaxF <= 28 || p.tempMaxF >= 100) return "tough";
+  if (p.precipProb >= 40 || p.windMph >= 15 || p.tempMaxF <= 40 || p.tempMaxF >= 92) return "okay";
+  return "good";
+}
