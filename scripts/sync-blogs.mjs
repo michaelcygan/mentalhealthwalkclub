@@ -14,12 +14,17 @@ const pickText = (n) => {
   }
   return null;
 };
-const stripHtml = (s) => !s ? null : s.replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&hellip;/g,"…").replace(/\s+/g," ").trim() || null;
+
+const NAMED = { nbsp:" ", amp:"&", lt:"<", gt:">", quot:'"', apos:"'", hellip:"…", mdash:"—", ndash:"–", lsquo:"‘", rsquo:"’", ldquo:"“", rdquo:"”", bull:"•", middot:"·", trade:"™", copy:"©", reg:"®", deg:"°", laquo:"«", raquo:"»" };
+const decodeEnt = (s) => s
+  .replace(/&#x([0-9a-fA-F]+);/g, (_,h)=>{ try{return String.fromCodePoint(parseInt(h,16));}catch{return _;} })
+  .replace(/&#(\d+);/g, (_,d)=>{ try{return String.fromCodePoint(parseInt(d,10));}catch{return _;} })
+  .replace(/&([a-zA-Z]+);/g, (m,n)=> NAMED[n] ?? m);
+const cleanText = (s) => !s ? null : decodeEnt(s.replace(/<[^>]*>/g," ")).replace(/\s+/g," ").trim() || null;
 
 function firstImg(item) {
   for (const k of ["media:content","media:thumbnail"]) {
-    const arr = asArray(item[k]);
-    for (const x of arr) { const u = x?.["@_url"]; if (typeof u === "string") return u; }
+    for (const x of asArray(item[k])) { const u = x?.["@_url"]; if (typeof u === "string") return u; }
   }
   const enc = item.enclosure;
   if (enc && String(enc["@_type"]||"").startsWith("image/") && typeof enc["@_url"]==="string") return enc["@_url"];
@@ -37,8 +42,8 @@ async function syncFeed(feed) {
   const doc = parser.parse(await res.text());
   const channel = doc?.rss?.channel ?? doc?.channel ?? doc?.feed;
   const isAtom = Boolean(doc?.feed);
-  const feedTitle = pickText(channel.title);
-  const feedAuthor = pickText(channel["dc:creator"]) ?? pickText(channel["itunes:author"]) ?? pickText(channel.author) ?? null;
+  const feedTitle = cleanText(pickText(channel.title));
+  const feedAuthor = cleanText(pickText(channel["dc:creator"]) ?? pickText(channel["itunes:author"]) ?? pickText(channel.author));
   const feedImage = pickText(channel.image?.url) ?? channel["itunes:image"]?.["@_href"] ?? null;
   const items = asArray(isAtom ? channel.entry : channel.item);
   const posts = [];
@@ -50,8 +55,8 @@ async function syncFeed(feed) {
     else if (lk && typeof lk === "object") { link = lk["@_href"] ?? lk["#text"] ?? null; }
     if (!link) continue;
     const guid = (typeof item.guid === "object" ? pickText(item.guid) : item.guid) ?? item.id ?? link;
-    const title = pickText(item.title) ?? "Untitled";
-    const summary = stripHtml(pickText(item.description) ?? pickText(item.summary) ?? pickText(item["content:encoded"]));
+    const title = cleanText(pickText(item.title)) ?? "Untitled";
+    const summary = cleanText(pickText(item.description) ?? pickText(item.summary) ?? pickText(item["content:encoded"]));
     const pub = pickText(item.pubDate) ?? pickText(item.published) ?? pickText(item.updated);
     posts.push({
       feed_id: feed.id,

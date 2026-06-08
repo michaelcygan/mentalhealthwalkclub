@@ -43,18 +43,32 @@ function pickText(node: unknown): string | null {
   return null;
 }
 
-function stripHtml(s: string | null): string | null {
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+  hellip: "…", mdash: "—", ndash: "–", lsquo: "‘", rsquo: "’",
+  ldquo: "“", rdquo: "”", bull: "•", middot: "·", trade: "™",
+  copy: "©", reg: "®", deg: "°", laquo: "«", raquo: "»",
+};
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => {
+      try { return String.fromCodePoint(parseInt(h, 16)); } catch { return _; }
+    })
+    .replace(/&#(\d+);/g, (_, d) => {
+      try { return String.fromCodePoint(parseInt(d, 10)); } catch { return _; }
+    })
+    .replace(/&([a-zA-Z]+);/g, (m, n) => NAMED_ENTITIES[n] ?? m);
+}
+
+function cleanText(s: string | null): string | null {
   if (!s) return null;
   const noTags = s.replace(/<[^>]*>/g, " ");
-  const decoded = noTags
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&hellip;/g, "…");
-  return decoded.replace(/\s+/g, " ").trim() || null;
+  return decodeEntities(noTags).replace(/\s+/g, " ").trim() || null;
+}
+
+function stripHtml(s: string | null): string | null {
+  return cleanText(s);
 }
 
 function firstImg(item: Record<string, unknown>): string | null {
@@ -137,7 +151,7 @@ export async function parseBlogFeed(rssUrl: string): Promise<ParsedFeed> {
 
     const guidNode = item.guid ?? item.id;
     const guid = (typeof guidNode === "object" ? pickText(guidNode) : (guidNode as string | undefined)) ?? link;
-    const title = pickText(item.title) ?? "Untitled";
+    const title = cleanText(pickText(item.title)) ?? "Untitled";
     const summary = stripHtml(
       pickText(item.description) ??
         pickText(item.summary) ??
