@@ -8,6 +8,13 @@ import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
+import { AmbientBackdrop } from "@/components/home/ambient-backdrop";
+import { ReflectionRotator } from "@/components/home/reflection-rotator";
+import { WeekSummary } from "@/components/home/week-summary";
+import { WeatherForecast } from "@/components/home/weather-forecast";
+import { FriendPulse } from "@/components/home/friend-pulse";
+import { PodcastRail } from "@/components/home/podcast-rail";
+import { BlogRail } from "@/components/home/blog-rail";
 
 
 export const Route = createFileRoute("/")({
@@ -29,7 +36,12 @@ function HomeRoute() {
   }
 
   if (!user) return <LoggedOutHome onSignUp={() => openAuth("signup")} onSignIn={() => openAuth("signin")} />;
-  return <WalkTab />;
+  return (
+    <>
+      <AmbientBackdrop />
+      <HomeTab />
+    </>
+  );
 }
 
 function LoggedOutHome({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => void }) {
@@ -71,37 +83,24 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
   );
 }
 
-function WalkTab() {
+function HomeTab() {
   const { user } = useAuth();
-  const [weeklyMinutes, setWeeklyMinutes] = useState(0);
-  const [weeklyDots, setWeeklyDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [lastReflection, setLastReflection] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    const since = new Date(); since.setDate(since.getDate() - 7); since.setHours(0, 0, 0, 0);
-    supabase.from("walk_sessions")
-      .select("id,started_at,duration_seconds,status,reflection_note")
+    const since = new Date(); since.setDate(since.getDate() - 30); since.setHours(0, 0, 0, 0);
+    supabase
+      .from("walk_sessions")
+      .select("reflection_note,started_at,status")
       .eq("user_id", user.id)
+      .eq("status", "completed")
+      .not("reflection_note", "is", null)
       .gte("started_at", since.toISOString())
       .order("started_at", { ascending: false })
+      .limit(1)
       .then(({ data }) => {
-        const rows = data ?? [];
-        const completed = rows.filter(r => r.status === "completed");
-        const mins = completed.reduce((s, r) => s + Math.round((r.duration_seconds ?? 0) / 60), 0);
-        setWeeklyMinutes(mins);
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const dots = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(today); d.setDate(d.getDate() - (6 - i));
-          const next = new Date(d); next.setDate(next.getDate() + 1);
-          return rows.some(r => {
-            const t = new Date(r.started_at).getTime();
-            return t >= d.getTime() && t < next.getTime() && r.status === "completed";
-          });
-        });
-        setWeeklyDots(dots);
-        const recent = completed.find(r => r.reflection_note);
-        if (recent) setLastReflection(recent.reflection_note);
+        if (data?.[0]?.reflection_note) setLastReflection(data[0].reflection_note as string);
       });
   }, [user]);
 
@@ -119,24 +118,31 @@ function WalkTab() {
         <InlineWeatherChip />
       </div>
 
-      <Card className="rounded-2xl border-border bg-card p-5 shadow-soft">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">This week</div>
-            <div className="mt-1 font-serif text-2xl tabular-nums">{weeklyMinutes} <span className="text-base text-muted-foreground">min</span></div>
-          </div>
-          <div className="flex gap-1.5">
-            {weeklyDots.map((on, i) => (
-              <span key={i} className={`h-6 w-2 rounded-full ${on ? "bg-forest" : "bg-muted"}`} />
-            ))}
-          </div>
+      <ReflectionRotator />
+
+      <WeekSummary />
+
+      <WeatherForecast />
+
+      <FriendPulse />
+
+      <PodcastRail />
+
+      <BlogRail />
+
+      <Link
+        to="/discover"
+        className="block rounded-2xl border border-border bg-card/90 p-4 text-sm shadow-soft backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/40"
+      >
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 font-medium"><CalendarPlus className="h-4 w-4 text-forest" /> Walks near you</span>
+          <span className="text-xs text-muted-foreground">Discover →</span>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Rest is part of walking.</p>
-      </Card>
+      </Link>
 
       <Link
         to="/journal"
-        className="block rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/40"
+        className="block rounded-2xl border border-border bg-card/90 p-4 text-sm shadow-soft backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/40"
       >
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 font-medium"><BookHeart className="h-4 w-4 text-forest" /> Journal</span>
@@ -145,16 +151,6 @@ function WalkTab() {
         {lastReflection && (
           <blockquote className="mt-2 font-serif text-sm italic text-muted-foreground line-clamp-2">"{lastReflection}"</blockquote>
         )}
-      </Link>
-
-      <Link
-        to="/discover"
-        className="block rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition hover:-translate-y-px hover:border-forest/40"
-      >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 font-medium"><CalendarPlus className="h-4 w-4 text-forest" /> Walks near you</span>
-          <span className="text-xs text-muted-foreground">Discover →</span>
-        </div>
       </Link>
     </div>
   );
