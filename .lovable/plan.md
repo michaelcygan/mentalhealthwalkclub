@@ -1,59 +1,57 @@
-## For You v2 — make it the page you open first
+## Home v2 — one island, smarter rails, less scroll
 
-Today the "For You" segment shows four good-but-static modules: On this day, Mood pulse, Insights strip, Quick prompts. It reads more like a stats preview than a personal home. v2 reshapes it into a glanceable, reflective surface that surprises a little each visit, while reusing the Discover "pill island" language already locked in elsewhere.
+The Home tab is solid but reads as a stack of independent cards: greeting, weather chip, two CTA buttons, reflection rotator, week chart, 7-day forecast, friend pulse, podcasts, blog, then two duplicate "go to other tab" links. v2 consolidates the top fold into a single Today island, makes every section context-aware, and trims redundancy with the bottom nav.
 
 ### Layout (top → bottom)
 
 ```text
-1. Daily Compass island        ← new (hero)
-2. Mood pulse mini             ← kept, tightened
-3. Carry forward               ← new
-4. Patterns strip              ← kept (InsightsStrip)
-5. On this day rail            ← kept, slimmed
-6. Reflect in 30s              ← new (replaces PromptChipsRow here)
-7. Word cloud / echoes         ← new
-8. Gentle next step            ← new (footer CTA)
+1. Today island               ← new (replaces greeting + streak + weather chip + 2 CTAs)
+2. Best window today          ← new (contextual, hides when irrelevant)
+3. Reflect in 30s             ← replaces ReflectionRotator (matches Journal pattern)
+4. Week pulse                 ← refined WeekSummary (more compact + tap to expand)
+5. Friend pulse               ← capped to 3, with "See all" link
+6. 7-day outlook              ← collapsed by default with "Best day" pill
+7. Listen & read              ← combined PodcastRail + BlogRail under one segmented strip
 ```
 
-Same rhythm as Discover: one hero island, then snap rails, then a single soft footer prompt. No accordions. Nothing taller than ~200px on mobile.
+Same rhythm as Discover and Journal: one hero island, then snap rails. The two duplicate footer links ("Walks near you", "Journal") are removed — both already live in the bottom nav.
 
 ### New modules
 
-1. **Daily Compass island** — one rounded card that answers "where am I today?" at a glance. Three pieces stacked tight:
-   - Greeting tuned to time of day + first name ("Good evening, Sam").
-   - One-line read of the user's last 7 days, picked from a small ruleset against `stats` + `entries`: e.g. "3 walks, mood trending up", "A quiet week — your last walk lifted you +1.4", "Two reflections in a row. Keep going."
-   - A weather-style mood chip (sun / cloud / mixed) derived from `moodArc30` last-7 average.
-   Tap → opens the same Write sheet pre-filled with the matching universal prompt for that read.
+1. **Today island** — one rounded gradient card that owns the top fold:
+   - Greeting + first name + streak chip (Flame icon, "3w") on one line.
+   - One contextual line: "Best walk today 6–7pm · 64° clear" or "Rain easing by 4pm" or "A quiet day — perfect for a slow loop". Derived from the existing daily weather + walk-score helpers already wired into WeatherForecast.
+   - Inline mini week ring: 7 dots, today highlighted, filled where you walked. Same data as WeekSummary, reused.
+   - Two CTAs side-by-side: **Walk now** (primary, becomes **Resume walk** when an in-progress `walk_sessions` row exists) and **Plan a walk**.
+   - Weather pill tucked in the top right.
+   No nested cards. ~180px tall on mobile.
 
-2. **Carry forward** — resurfaces one of the user's own past sentences. Picks from reflections + walk reflection notes, prefers entries 30–120 days old with body length 40–280 chars, deterministic per day so it doesn't churn on re-render. Styled as a pull-quote with date + "from your journal". Two small actions: "Save" (pins to memories) and "Reflect on this" (opens Write sheet with the quote as the prompt).
+2. **Best window today** — single pill card surfacing the highest-walk-score hourly window from the existing daily forecast (when one is meaningfully better than the rest). Tap → opens `/walk/new` with the time prefilled. Hidden when no daylight remains or no clear winner exists.
 
-3. **Reflect in 30s** — replaces the generic PromptChipsRow on For You. A single card with one prompt chosen by context (mood trending down → tender family; trending up → light; steady → universal) plus a 3-chip "or try" row. Tapping any chip opens the Write sheet. Eyebrow shows "Today's prompt" with a subtle refresh icon that rotates within today's pool.
-
-4. **Word cloud / echoes** — small strip showing the 5 most-used meaningful words across the user's reflections in the last 30 days, sized by frequency. Built client-side from `entries` (reflection bodies + walk reflection notes) with a built-in stopword list. Tap a word → opens the entries feed filtered to that word (handled in entries segment later; for now tap scrolls to On this day and highlights matching cards). Hidden when fewer than 5 unique qualifying words exist.
-
-5. **Gentle next step** — a single low-pressure footer card with one of: "Take a 10-minute walk", "Write a line about today", "Revisit a memory" — chosen based on what's missing today (no walk, no entry, or both done → "Rest counts too"). Tap routes accordingly (start walk, open Write, scroll to On this day).
+3. **Reflect in 30s** — replace the auto-rotating ReflectionRotator with the same one-prompt + 3-alt pattern already shipped on Journal "For You". Stops the constant motion at the top of the page, matches design language, and removes the duplicate "write" CTA users already get from the journal tab.
 
 ### Refinements to kept modules
 
-- **Mood pulse mini**: add a small 7d / 30d toggle (segmented pill, same style as JournalSegmented) and surface the "best day" + "lowest day" as tiny markers on the sparkline. Keeps height the same.
-- **InsightsStrip**: unchanged logic, but move under Carry forward so the page leads with reflection, not stats.
-- **OnThisDayRail**: keep, but cap to 5 cards on For You (full list stays in Memories segment).
+- **Week pulse**: drop the secondary `delta vs last week` line into a tiny chip beside the total ("18 min · 2 walks · +6 min"). Cap card height; expose a "View journal" tap that routes to `/journal?segment=stats`.
+- **FriendPulse**: cap rendered items to 3; if there are more, add a small "See all" link to `/discover` (Friends going section). Hide the entire card when zero items rather than a tall pulse skeleton.
+- **WeatherForecast**: collapse to a single "Best walking day: Sat ↑" pill by default; tap to expand the existing 7-tile row inline. Saves ~120px until needed.
+- **Podcasts + Blog**: render under a single "Listen & read" card with a 2-tab segmented control (Listen / Read), reusing both existing rails. Avoids two near-identical horizontal scrollers stacked back-to-back.
+- **Footer**: remove the two duplicate "Walks near you" and "Journal" link cards. Replace with a single quiet serif line ("Still here. Still walking.") matching the Journal footer voice. The bottom nav already provides these jumps.
 
 ### Behaviour rules
 
-- All new modules render gracefully when data is thin: Daily Compass falls back to a warm welcome; Carry forward hides; Echoes hides; Reflect in 30s always shows.
-- Deterministic-per-day picks (Carry forward, Reflect in 30s default) use the same day-seed pattern already in `prompt-chips-row.tsx` so re-renders feel stable.
-- No new server reads. Everything derives from the existing `stats` + `entries` already loaded on `/journal`.
-- No new tables, no new server functions.
+- All new logic is client-side, computed from data already loaded by existing hooks (`useProfileStats`, `useCurrentWeather`, `getDaily`, `getCircleActivity`) plus one tiny additional query for any in-progress walk session (1 row, same `walk_sessions` table) — added to the same `useEffect` that already runs for `lastReflection`.
+- Renders gracefully with thin data: no weather → no Best window pill, island shows just greeting + CTAs; no walks → mini ring shows seven empty dots and Week pulse shows "First walk of the week?"; no friends → FriendPulse hidden.
+- The `lastReflection` quote currently shown inside the Journal footer link is moved up into the Reflect-in-30s card as a small "Last time you wrote: …" caption (tap to expand into full entry).
 
 ### Files
 
-- New: `src/components/journal/daily-compass.tsx`, `carry-forward.tsx`, `reflect-30s.tsx`, `word-echoes.tsx`, `gentle-next-step.tsx`.
-- New small helper: `src/lib/journal-derive.ts` for shared computations (last-7 read, day-seed quote pick, stopword tokenizer).
-- Edited: `src/routes/journal.tsx` (For You segment composition only), `src/components/journal/mood-pulse-mini.tsx` (7d/30d toggle + min/max dots).
+- New: `src/components/home/today-island.tsx`, `best-window.tsx`, `reflect-30s.tsx` (thin wrapper that imports the existing `journal/reflect-30s.tsx` so behaviour stays identical), `listen-and-read.tsx`.
+- Edited: `src/routes/index.tsx` (compose new layout, remove duplicate footer links, drop the old greeting/CTAs/InlineWeatherChip), `src/components/home/week-summary.tsx` (compact header chip + tap target), `src/components/home/friend-pulse.tsx` (3-cap + See all), `src/components/home/weather-forecast.tsx` (collapsed default + Best-day pill).
+- Untouched: `ReflectionRotator` (kept in the file but no longer rendered — safe to delete in a follow-up if you confirm).
 
 ### Out of scope
 
-- Cross-user comparisons, AI-generated summaries, push notifications, editing past entries from For You, persisting "pinned" memories (Carry forward "Save" is a no-op visual for v2 unless we already have a memories table — check during implementation; otherwise hide the Save action).
+- Push notifications, AI-generated daily summaries, route recommendations, persisting "Best window" prefill in `/walk/new` beyond a query param, deleting `ReflectionRotator` (kept in case you want it back), redesigning `AmbientBackdrop`.
 
-Ready to build when you give the word.
+Ready to build on your word.

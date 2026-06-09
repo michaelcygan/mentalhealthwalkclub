@@ -49,11 +49,21 @@ export function FriendPulse() {
     } finally { setBusy(null); }
   };
 
+  const shown = items.slice(0, 3);
+  const more = items.length - shown.length;
+
   return (
     <Card className="rounded-2xl border-border bg-card/90 p-4 shadow-soft backdrop-blur-sm">
-      <div className="mb-3 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Friend pulse</div>
+      <div className="mb-3 flex items-center justify-between px-1">
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Friend pulse</div>
+        {more > 0 && (
+          <Link to="/discover" className="text-[11px] text-muted-foreground hover:text-foreground">
+            See all {items.length} →
+          </Link>
+        )}
+      </div>
       <ul className="space-y-2">
-        {items.map((it, i) => {
+        {shown.map((it, i) => {
           const name = it.user.display_name ?? it.user.username ?? "A friend";
           return (
             <li key={i} className="flex items-center gap-3 rounded-xl bg-background/60 p-2.5">
