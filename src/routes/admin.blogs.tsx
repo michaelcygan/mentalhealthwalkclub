@@ -47,7 +47,7 @@ function AdminBlogs() {
     setBusy(true);
     try {
       const r = await syncAll();
-      toast.success(`Synced ${r.feeds ?? 0} feeds · ${r.posts ?? 0} posts`);
+      toast.success(`Synced ${r.ok}/${r.scanned} feeds${r.failed ? ` · ${r.failed} failed` : ""}`);
       load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sync failed");

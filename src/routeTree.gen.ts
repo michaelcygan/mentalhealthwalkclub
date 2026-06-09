@@ -30,6 +30,7 @@ import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMerchRouteImport } from './routes/admin.merch'
 import { Route as AdminEventsRouteImport } from './routes/admin.events'
+import { Route as AdminBlogsRouteImport } from './routes/admin.blogs'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
@@ -154,6 +155,11 @@ const AdminMerchRoute = AdminMerchRouteImport.update({
 const AdminEventsRoute = AdminEventsRouteImport.update({
   id: '/events',
   path: '/events',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBlogsRoute = AdminBlogsRouteImport.update({
+  id: '/blogs',
+  path: '/blogs',
   getParentRoute: () => AdminRoute,
 } as any)
 const AuthenticatedTrailsRoute = AuthenticatedTrailsRouteImport.update({
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/blogs': typeof AdminBlogsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/blogs': typeof AdminBlogsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -374,6 +382,7 @@ export interface FileRoutesById {
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/blogs': typeof AdminBlogsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
+    | '/admin/blogs'
     | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
+    | '/admin/blogs'
     | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
@@ -506,6 +517,7 @@ export interface FileRouteTypes {
     | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
+    | '/admin/blogs'
     | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
@@ -702,6 +714,13 @@ declare module '@tanstack/react-router' {
       path: '/events'
       fullPath: '/admin/events'
       preLoaderRoute: typeof AdminEventsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/blogs': {
+      id: '/admin/blogs'
+      path: '/blogs'
+      fullPath: '/admin/blogs'
+      preLoaderRoute: typeof AdminBlogsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_authenticated/trails': {
@@ -936,12 +955,14 @@ const AdminPodcastsRouteWithChildren = AdminPodcastsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminBlogsRoute: typeof AdminBlogsRoute
   AdminEventsRoute: typeof AdminEventsRoute
   AdminMerchRoute: typeof AdminMerchRoute
   AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminBlogsRoute: AdminBlogsRoute,
   AdminEventsRoute: AdminEventsRoute,
   AdminMerchRoute: AdminMerchRoute,
   AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
