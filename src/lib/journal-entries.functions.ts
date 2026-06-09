@@ -247,6 +247,13 @@ export const listJournalFeed = createServerFn({ method: "GET" })
     return [...walkEntries, ...reflectionEntries].sort((a, b) => (a.at < b.at ? 1 : -1));
   });
 
+export interface JournalBadge {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  earned_at: string;
+}
 export interface JournalStats {
   lifetime: { entries: number; walks: number; minutes: number; stepsLogged: number };
   /** ISO date strings (YYYY-MM-DD) — past 365 days */
@@ -256,7 +263,9 @@ export interface JournalStats {
   minutesByDay: Record<string, number>;
   /** After-walk mood scores past 30 days, oldest-first */
   moodArc30: { date: string; score: number }[];
-  latestBadge: { name: string; description: string | null; earned_at: string } | null;
+  /** Most recently earned badges, newest first (cap 20) */
+  badges: JournalBadge[];
+  badgesCount: number;
 }
 
 function isoDay(d: Date): string {
