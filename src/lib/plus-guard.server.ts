@@ -36,3 +36,38 @@ export async function isPlus(supabase: SupabaseClient, userId: string): Promise<
   });
   return !!data;
 }
+
+export type CapSurface = "saved_reads" | "playlists" | "collections_follow";
+
+const COLUMN_MAP: Record<CapSurface, "saved_reads_cap" | "playlists_cap" | "collections_follow_cap"> = {
+  saved_reads: "saved_reads_cap",
+  playlists: "playlists_cap",
+  collections_follow: "collections_follow_cap",
+};
+
+/**
+ * Soft-cap gate: throws if a free user is at/over the configured cap for the surface.
+ * Plus users bypass the cap. Caps live in membership_settings (admin-tunable).
+ */
+export async function requireUnderCap(
+  supabase: SupabaseClient,
+  userId: string,
+  opts: { surface: CapSurface; currentCount: number },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: settings } = await (supabase as any)
+    .from("membership_settings")
+    .select(COLUMN_MAP[opts.surface])
+    .eq("id", true)
+    .maybeSingle();
+  const cap = (settings?.[COLUMN_MAP[opts.surface]] as number | undefined) ?? null;
+  if (cap === null) return;
+  if (opts.currentCount < cap) return;
+  if (await isPlus(supabase, userId)) return;
+  const labels: Record<CapSurface, string> = {
+    saved_reads: `Free plan keeps up to ${cap} saved reads`,
+    playlists: `Free plan keeps up to ${cap} custom playlists`,
+    collections_follow: `Free plan follows up to ${cap} collections`,
+  };
+  throw new Error(`${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
+}

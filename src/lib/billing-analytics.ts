@@ -9,7 +9,17 @@ export type BillingEventType =
   | "subscription_cancel_clicked"
   | "subscription_resumed"
   | "billing_portal_opened"
-  | "payment_method_update_clicked";
+  | "payment_method_update_clicked"
+  | "plan_switch_yearly_clicked"
+  | "plan_switch_yearly_completed"
+  | "patron_intent_selected"
+  | "patron_amount_chosen"
+  | "patron_checkout_opened"
+  | "patron_checkout_dismissed"
+  | "patron_subscribed"
+  | "cap_upsell_shown"
+  | "cap_upsell_dismissed"
+  | "cap_upsell_converted";
 
 export async function trackBillingEvent(
   eventType: BillingEventType,

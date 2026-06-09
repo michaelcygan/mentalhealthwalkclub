@@ -3,6 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { type StripeEnv, createStripeClient } from "@/lib/stripe.server";
 
 const PLUS_TRIAL_DAYS = 30;
+const PATRON_MIN_CENTS_FALLBACK = 300;
+const PATRON_MAX_CENTS = 100_000; // $1,000/mo sanity cap
 
 async function resolveOrCreateCustomer(
   stripe: ReturnType<typeof createStripeClient>,
@@ -53,12 +55,13 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const plan: PlusPlan = data.plan ?? "plus_monthly";
 
-    // Don't double-subscribe
+    // Don't double-subscribe (Plus only — Patron is a separate row)
     const { data: existing } = await supabase
       .from("subscriptions")
-      .select("status, current_period_end")
+      .select("status, current_period_end, subscription_kind")
       .eq("user_id", userId)
       .eq("environment", data.environment)
+      .eq("subscription_kind", "plus")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -70,7 +73,6 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
     }
 
     const stripe = createStripeClient(data.environment);
-
     const prices = await stripe.prices.list({ lookup_keys: [plan] });
     if (!prices.data.length) throw new Error("Plus price not configured");
     const stripePrice = prices.data[0];
@@ -89,14 +91,100 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
-      metadata: { userId: userId as string, managed_payments: "true" },
+      metadata: { userId: userId as string, kind: "plus", managed_payments: "true" },
       subscription_data: {
         trial_period_days: PLUS_TRIAL_DAYS,
-        metadata: { userId: userId as string },
+        metadata: { userId: userId as string, kind: "plus" },
       },
-      // Full compliance handling — Stripe acts as merchant of record (tax + fraud + disputes + support).
       managed_payments: { enabled: true },
-    } as any);
+    } as never);
+
+    return session.client_secret;
+  });
+
+export const createPatronCheckoutSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { amountCents: number; returnUrl: string; environment: StripeEnv }) => {
+      if (
+        !Number.isInteger(data.amountCents) ||
+        data.amountCents < 100 ||
+        data.amountCents > PATRON_MAX_CENTS
+      ) {
+        throw new Error("Pick an amount between $1 and $1,000");
+      }
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: settings } = await supabase
+      .from("membership_settings")
+      .select("patron_min_cents, patron_signups_paused")
+      .eq("id", true)
+      .maybeSingle();
+    if (settings?.patron_signups_paused) {
+      throw new Error("Patron signups are paused right now. Try again soon.");
+    }
+    const minCents = settings?.patron_min_cents ?? PATRON_MIN_CENTS_FALLBACK;
+    if (data.amountCents < minCents) {
+      throw new Error(`Minimum monthly amount is $${(minCents / 100).toFixed(0)}.`);
+    }
+
+    // Block double-subscribe (Patron only — Plus is independent)
+    const { data: existing } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .eq("environment", data.environment)
+      .eq("subscription_kind", "patron")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (
+      existing &&
+      ["trialing", "active", "past_due"].includes(existing.status as string)
+    ) {
+      throw new Error("You're already a Patron. Use 'Change amount' in Settings.");
+    }
+
+    const stripe = createStripeClient(data.environment);
+
+    const { data: userResp } = await supabase.auth.getUser();
+    const email = userResp.user?.email ?? undefined;
+
+    const customerId = await resolveOrCreateCustomer(stripe, {
+      email,
+      userId: userId as string,
+    });
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product: "patron",
+            unit_amount: data.amountCents,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      ui_mode: "embedded_page",
+      return_url: data.returnUrl,
+      customer: customerId,
+      metadata: { userId: userId as string, kind: "patron" },
+      subscription_data: {
+        metadata: {
+          userId: userId as string,
+          kind: "patron",
+          amount_cents: String(data.amountCents),
+        },
+      },
+      managed_payments: { enabled: true },
+    } as never);
 
     return session.client_secret;
   });
@@ -106,19 +194,25 @@ type PortalFlow = "payment_method_update" | "subscription_cancel" | "subscriptio
 export const createBillingPortalSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { returnUrl?: string; environment: StripeEnv; flow?: PortalFlow }) => data,
+    (data: {
+      returnUrl?: string;
+      environment: StripeEnv;
+      flow?: PortalFlow;
+      kind?: "plus" | "patron";
+    }) => data,
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: sub, error } = await supabase
+    let q = supabase
       .from("subscriptions")
-      .select("stripe_customer_id, stripe_subscription_id, status")
+      .select("stripe_customer_id, stripe_subscription_id, status, subscription_kind")
       .eq("user_id", userId)
       .eq("environment", data.environment)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (data.kind) q = q.eq("subscription_kind", data.kind);
+    const { data: sub, error } = await q.maybeSingle();
     if (error || !sub?.stripe_customer_id) throw new Error("No subscription found");
 
     const stripe = createStripeClient(data.environment);
@@ -159,6 +253,7 @@ export const resumePlusSubscription = createServerFn({ method: "POST" })
       .select("stripe_subscription_id, status, cancel_at_period_end")
       .eq("user_id", userId)
       .eq("environment", data.environment)
+      .eq("subscription_kind", "plus")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -170,4 +265,45 @@ export const resumePlusSubscription = createServerFn({ method: "POST" })
       cancel_at_period_end: false,
     });
     return { ok: true, alreadyActive: false };
+  });
+
+/**
+ * One-shot read used by use-membership: returns Plus + Patron state.
+ * Wraps the user_membership Postgres helper so RLS is bypassed safely.
+ */
+export const getMembershipState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { environment: StripeEnv }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: rows } = await (supabase as never as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
+    }).rpc("user_membership", { _user: userId, _env: data.environment });
+    const row = Array.isArray(rows) ? (rows[0] as Record<string, unknown> | undefined) : undefined;
+    return {
+      isPlus: Boolean(row?.is_plus),
+      isPatron: Boolean(row?.is_patron),
+      patronCents: Number(row?.patron_cents ?? 0),
+      plusInterval: (row?.plus_interval as "monthly" | "yearly" | null) ?? null,
+    };
+  });
+
+/** Public read of cap settings — used to size soft caps on the client. */
+export const getMembershipSettings = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => data ?? {})
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("membership_settings")
+      .select("saved_reads_cap, playlists_cap, collections_follow_cap, patron_min_cents, patron_suggested_amounts, patron_signups_paused")
+      .eq("id", true)
+      .maybeSingle();
+    return data ?? {
+      saved_reads_cap: 15,
+      playlists_cap: 3,
+      collections_follow_cap: 5,
+      patron_min_cents: 300,
+      patron_suggested_amounts: [300, 500, 1000, 2500],
+      patron_signups_paused: false,
+    };
   });
