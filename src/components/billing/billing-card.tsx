@@ -27,10 +27,12 @@ interface BillingNotice {
 
 export function BillingCard() {
   const { loading, isPlus, isTrialing, cancelAtPeriodEnd, currentPeriodEnd, raw, refresh } = useSubscription();
+  const { plusInterval, refresh: refreshMembership } = useMembership();
   const { openPlusCheckout } = useAuthPrompt();
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<BillingNotice | null>(null);
+  const [switchOpen, setSwitchOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
