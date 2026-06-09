@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, RefreshCw, Trash2, Plus, BookOpen } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, Plus, BookOpen, Inbox, Check, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   listBlogFeedsAdmin, createBlogFeed, toggleBlogFeed, deleteBlogFeed, syncBlogFeedsAdmin,
 } from "@/lib/blog-feeds.functions";
+import { adminListContentRequests, adminUpdateContentRequest } from "@/lib/content-suggestions.functions";
 
 export const Route = createFileRoute("/admin/blogs")({ component: AdminBlogs });
 
@@ -133,6 +134,81 @@ function AdminBlogs() {
           </div>
         ))}
       </section>
+
+      <SuggestionsInbox />
     </div>
+  );
+}
+
+type Suggestion = { id: string; title: string; url: string | null; kind: string; notes: string | null; status: string; created_at: string };
+
+function SuggestionsInbox() {
+  const [rows, setRows] = useState<Suggestion[] | null>(null);
+  const [filter, setFilter] = useState<"open" | "in_review" | "approved" | "declined" | "all">("open");
+  const list = useServerFn(adminListContentRequests);
+  const update = useServerFn(adminUpdateContentRequest);
+
+  const load = async () => {
+    try { const r = await list({ data: { status: filter } }); setRows(r as Suggestion[]); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Load failed"); }
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [filter]);
+
+  const setStatus = async (id: string, status: "in_review" | "approved" | "declined") => {
+    await update({ data: { id, status } });
+    load();
+  };
+
+  return (
+    <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 font-serif text-lg"><Inbox className="h-4 w-4" /> Suggestions inbox</div>
+        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} className="rounded-full border border-border bg-background px-2 py-1 text-xs">
+          <option value="open">Open</option>
+          <option value="in_review">In review</option>
+          <option value="approved">Approved</option>
+          <option value="declined">Declined</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+      {rows === null ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-sm text-muted-foreground">Nothing here.</div>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((r) => (
+            <li key={r.id} className="rounded-xl border border-border bg-background p-3">
+              <div className="flex items-start gap-2">
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] capitalize">{r.kind}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 font-serif text-sm">{r.title}</p>
+                  {r.notes && <p className="line-clamp-2 text-[11px] text-muted-foreground">{r.notes}</p>}
+                  <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString()} · {r.status}</p>
+                </div>
+                {r.url && (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="rounded-full p-1.5 text-muted-foreground hover:text-foreground" aria-label="Open">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              {r.status !== "approved" && r.status !== "declined" && (
+                <div className="mt-2 flex gap-1.5">
+                  {r.status !== "in_review" && (
+                    <Button size="sm" variant="outline" className="h-7 rounded-full text-[11px]" onClick={() => setStatus(r.id, "in_review")}>Review</Button>
+                  )}
+                  <Button size="sm" className="h-7 rounded-full text-[11px]" onClick={() => setStatus(r.id, "approved")}>
+                    <Check className="mr-1 h-3 w-3" /> Approve
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 rounded-full text-[11px]" onClick={() => setStatus(r.id, "declined")}>
+                    <X className="mr-1 h-3 w-3" /> Decline
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
