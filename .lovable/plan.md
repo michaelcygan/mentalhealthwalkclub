@@ -1,135 +1,64 @@
-## Goal
+## What's actually in the module today
 
-Turn Home from a static dashboard into a calm, alive landing surface that rewards opening the app — utility (weather, stats), content (reflections, podcasts, blog posts), and connection (friend activity / high-fives). Built only from primitives already in the codebase, plus a new lightweight blog-feed table that mirrors the podcast pipeline.
+You're right to ask. The current "A Small Question" prompts come from `src/lib/reflection-prompts.ts` — a hand-written library of ~150 paraphrased prompts ("how do you recharge when people-time becomes too much?"). They were *inspired by* the spirit of the doc but are NOT the literal 100+ questions from `Mental Health Questions.docx` ("What is your favorite way to unwind after a stressful day?", "Share a self-care practice you swear by.", etc.). I'll swap in the doc's questions verbatim.
 
-## Layout (top → bottom, mobile-first)
+## Plan
+
+### 1. Daily Reflections — rename + Write CTA
+
+In `src/components/home/reflection-rotator.tsx`:
+- Title eyebrow becomes **DAILY REFLECTION** (the card itself titled "Daily Reflections" in the Home tab).
+- Replace the **Save** pill with **Write** (Pencil icon). Tapping it opens a writing sheet pre-filled with the current question as the prompt context.
+- Shuffle pill stays.
+
+### 2. Writing sheet → saves to Journal
+
+Reuse shadcn `Sheet` (bottom sheet on mobile, side on desktop). Contents:
+- Eyebrow: today's date
+- The question (serif, italic)
+- Auto-focused `<Textarea>` with placeholder "Start where you are…"
+- Footer: character count (subtle), **Cancel** + **Save to journal** (primary). Cmd/Ctrl+Enter also saves.
+
+On save: insert one row into a new `journal_entries` table, toast "Saved to your journal", close sheet. No mood selection required (keeps friction low) — they can edit/expand later in Journal.
+
+### 3. New table — `journal_entries`
+
+A lightweight standalone-entry table separate from `walk_sessions` (which is walk-scoped).
 
 ```text
-┌─ ambient backdrop (lofi gradient + slow drift, weather-tinted) ─┐
-│  Greeting · Mike                                                │
-│  weather pill                                                    │
-│                                                                  │
-│  ┌─ Reflection card (rotating prompt, 12s auto-advance) ──────┐ │
-│  │  "what is your body asking for in this exact minute?"     │ │
-│  │  · · ● · ·     [Save to journal] [Shuffle]                │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─ This Week (upgraded) ─────────────────────────────────────┐ │
-│  │  7 day-bars sized by minutes, today ringed                 │ │
-│  │  142 min · 3 walks · 2.4 mi   ↗ +18 min vs last week       │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─ 7-day weather forecast (horizontal scroll) ───────────────┐ │
-│  │  Today  Sat  Sun  Mon …   icon · hi/lo · rain% · walk-score │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─ Friend pulse (circles activity) ──────────────────────────┐ │
-│  │  avatar · "Jess just finished a 32 min walk"  [👋 high-five]│ │
-│  │  avatar · "Tom posted a walk for Sat 8am"     [RSVP →]      │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─ Listen — podcasts (horizontal rail) ──────────────────────┐ │
-│  │  4–6 recent podcast episode cards → /listen/$id            │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─ Read — blog posts (horizontal rail) ──────────────────────┐ │
-│  │  4–6 recent posts from MedlinePlus, SAMHSA, Psych Today    │ │
-│  │  cards link to source URL (open in new tab)                │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  Walks near you (link card)                                      │
-│  Journal (link card, keeps last-reflection preview)              │
-└──────────────────────────────────────────────────────────────────┘
+journal_entries
+  id uuid pk
+  user_id uuid → auth.users (cascade)
+  prompt_text text       -- the question that was on screen (nullable for free entries)
+  prompt_id   text        -- e.g. "q_042" so we can avoid repeats over time
+  body        text not null
+  source      text       -- 'home_reflection' | 'journal_freeform'
+  created_at, updated_at
 ```
+RLS: user can CRUD only their own rows. GRANT to authenticated + service_role.
 
-Composer FAB and mobile tab bar unchanged. Ambient music stays exclusive to the walk experience — not surfaced on Home.
+### 4. Journal page — surface reflections
 
-## Modules in detail
+In `src/routes/journal.tsx`, add a new "Reflections" section above the walk Entries feed (only if any exist):
+- Header "Reflections" with a "+ New" button that opens the same writing sheet (no preset prompt).
+- List most recent 10 as small cards (date, prompt in muted serif, first 3 lines of body, tap to expand inline).
+Walks feed stays exactly as-is.
 
-**1. Ambient backdrop**
-Fixed, behind content. Soft 3-stop oklch gradient that drifts ~40s, tinted by current weather tone (clear → warm cream, cloud → cool gray, rain → muted blue, night → deeper indigo). Plus a few floating "dust" specks for lofi feel. CSS-only, GPU-cheap, respects `prefers-reduced-motion`. No video.
+### 5. Replace prompt library with the doc verbatim
 
-**2. Rotating reflection card**
-Pulls from `src/lib/reflection-prompts.ts`. 5 prompts per session, weighted to universal + noticing/reflecting. Crossfade every 12s, pause on tap, dots underneath. Actions: **Save to journal** (prefills a new journal entry with the prompt) and **Shuffle**. Tapping the card also opens journal-new with the prompt prefilled.
+Rewrite `src/lib/reflection-prompts.ts` so `PROMPTS` is the 100+ questions from `Mental Health Questions.docx`, in order, with stable ids `q_001…q_NNN` and `family: "universal"`, `depth: "reflecting"` (so the family/depth machinery still type-checks). Drop the paraphrased set. The home rotator continues to pick 5 per session via the existing seeded shuffle, so users see different questions on different visits but the underlying source is now the uploaded doc.
 
-**3. This Week (upgraded)**
-- 7 vertical bars sized by that day's minutes (today gets a ring), not on/off dots.
-- Headline numbers: minutes · walks · miles.
-- Delta line: "+18 min vs last week" computed from a second 7-day query.
-- Empathetic copy stays.
-
-**4. 7-day weather forecast**
-- New helper `getDaily(lat,lng,7)` in `src/lib/weather.ts` using Open-Meteo `daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code`.
-- Horizontal scrollable row of 7 day chips: weekday short, weather glyph, hi/lo °F, rain%.
-- Tiny "walk-score" badge (good / okay / tough) derived from temp + precip + wind.
-
-**5. Friend pulse**
-- New `getCircleActivity` server fn in `src/lib/social.functions.ts`: last ~5 events across the user's circles — someone completed a walk or posted one. RLS-scoped to my circle memberships.
-- Each row: avatar + one-line text + relative time + one action:
-  - Completed walk → **👋 High-five** (new `sendHighFive` server fn).
-  - Posted walk → **RSVP →** to `/w/$code`.
-- New table `high_fives(id, from_user_id, walk_session_id, created_at, unique(from_user_id, walk_session_id))` with RLS scoped to authenticated users (only circle-mates can send/see). Full GRANTs included in the migration.
-- Soft heart pulse on tap; toast confirms.
-
-**6. Listen — podcasts (content rail)**
-- Reuse `podcast_episodes` (already powered by the RSS pipeline). New server fn `recentPodcastEpisodes({ limit: 6 })` returns the latest published episodes across active feeds with cover + title + publisher + duration.
-- Horizontal rail of cards; tap → `/listen/$id`. Ambient mixes intentionally excluded — those belong to the walk surface only.
-
-**7. Read — blog posts (content rail, NEW)**
-- New tables that mirror the podcast pattern:
-  - `blog_feeds(id, rss_url, title, publisher, image_url, is_active, last_synced_at, last_sync_error, created_at)`
-  - `blog_posts(id, feed_id → blog_feeds, guid, title, summary, link, image_url, published_at, created_at, unique(feed_id, guid))`
-- Seed three feeds via migration:
-  - https://medlineplus.gov/feeds/topics/mentalhealth.xml
-  - https://www.samhsa.gov/blog/rss
-  - https://www.psychologytoday.com/us/blog/mental-health-nerd/feed
-- New `src/lib/blogs.server.ts` — parses RSS via the existing `fast-xml-parser` (already used by `podcasts.server.ts`). Mirrors `syncFeedById` / `syncAllActiveFeeds`. Skips items missing a link; cap 50 per feed; strips HTML from summaries; first image lifted from `media:content` / `media:thumbnail` / `<enclosure type=image/*>` / first `<img>` in content.
-- New `src/lib/blogs.functions.ts` — `recentBlogPosts({ limit: 6 })`: public-safe server fn using `supabaseAdmin` returning only safe columns (title, summary, link, image_url, publisher, published_at). Plus an admin `syncBlogFeeds` matching the podcast admin shape.
-- New cron route `src/routes/api/public/hooks/sync-blog-feeds.ts` (mirrors `sync-podcast-feeds.ts`) — separate cron schedule registered (every 6h).
-- Card → opens source URL in a new tab (`target="_blank" rel="noopener noreferrer"`). Small chip on the card shows publisher.
-
-**8. Walks near you + Journal**
-Same behaviors, restyled to match the new spacing. Journal card keeps the last-reflection blockquote.
+Note: this also means the heavier mood-targeted prompts used elsewhere (walk-end reflection screens, if any) will fall back to the universal pool — acceptable since the doc questions are designed to work for any mood.
 
 ## Files
 
-New:
-- `src/components/home/ambient-backdrop.tsx`
-- `src/components/home/reflection-rotator.tsx`
-- `src/components/home/week-summary.tsx`
-- `src/components/home/weather-forecast.tsx`
-- `src/components/home/friend-pulse.tsx`
-- `src/components/home/podcast-rail.tsx`
-- `src/components/home/blog-rail.tsx`
-- `src/hooks/use-daily-weather.ts`
-- `src/lib/blogs.server.ts`
-- `src/lib/blogs.functions.ts`
-- `src/routes/api/public/hooks/sync-blog-feeds.ts`
-
-Edited:
-- `src/routes/index.tsx` — compose the new Home; logged-out hero unchanged.
-- `src/lib/weather.ts` — add `DailyPoint` + `getDaily()`.
-- `src/lib/social.functions.ts` — add `getCircleActivity()` and `sendHighFive()`.
-- `src/lib/podcasts.functions.ts` — add `recentPodcastEpisodes()` (public-safe).
-- `src/styles.css` — keyframes for backdrop drift + dust, gated behind `prefers-reduced-motion: no-preference`.
-
-Migrations:
-- `blog_feeds`, `blog_posts` (with GRANTs + RLS: public SELECT on safe columns via a security-definer fn used by `recentBlogPosts`; writes locked to `service_role`).
-- `high_fives` (with GRANTs + RLS scoped to circle-mates).
-- Seed the three RSS feeds; trigger an initial sync via the new cron route after the migration runs.
-
-## Technical notes
-
-- Reads happen client-side from a signed-in component (Home is not under `_authenticated/`, so guard by `useAuth().user`). Server fns are called via `useServerFn` + `useQuery`.
-- Reflection picks are seeded in `sessionStorage` to avoid repeats.
-- Weather reuses `weather.ts`'s in-module cache.
-- Blog RSS sync runs server-side (Worker-safe, `fast-xml-parser`, identical to podcasts).
-- No new npm dependencies.
-- High-five action is idempotent thanks to the unique constraint; UI flips to "✓ Sent" after success.
-- All animations respect `prefers-reduced-motion`.
+- **Edited**: `src/components/home/reflection-rotator.tsx` (rename + Write CTA + sheet trigger), `src/lib/reflection-prompts.ts` (replace contents), `src/routes/index.tsx` (heading wording if any), `src/routes/journal.tsx` (Reflections section + "+ New" button)
+- **New**: `src/components/home/reflection-write-sheet.tsx` (shared writing sheet, used from Home and Journal), `src/lib/journal-entries.functions.ts` (create/list server fns using `requireSupabaseAuth`)
+- **Migration**: `journal_entries` table + RLS + grants
 
 ## Out of scope
 
-- Push notifications, real-time presence, comments threads.
-- Ambient mixes on Home (kept exclusive to walks per your call).
-- In-app blog reader view (cards link out to the source — can be added later if you want to keep readers in-app).
+- Editing/deleting reflections inline (read-only list for v1; only Save flow + view)
+- Mood tagging on a reflection
+- Searching across reflections
+- Push notifications / daily reminder to write
