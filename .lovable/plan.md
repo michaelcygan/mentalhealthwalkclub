@@ -1,93 +1,63 @@
-# IA refactor: More tab + Settings, slimmer Profile
+# Audit & finish-line pass: More → Settings flow
 
-## Why
-The Profile page is doing three jobs at once: (1) it's your identity card, (2) it's a directory of every other section (Discover, Listen, Circles, Shop, host Places, saved Trails), and (3) it's the Settings drawer (name/bio/location, safety, admin, sign out, delete). That's heavy for a tab and makes Profile feel like a junk drawer.
+## The headline fix: Help & Safety
 
-For v1 of Mental Health Walk Club, the cleanest split is:
-- **More** = navigation hub + account utilities (replaces the Profile tab)
-- **Profile** = who you are + what you've done (your "page")
-- **Settings** = how the app behaves + account safety
+Today, tapping **Help & safety** in /more deep-links to `/settings#safety`, which dumps people into the full settings page (account form, notifications, billing) and scrolls them to a small card. For someone in distress, that is the wrong moment to navigate a settings dashboard.
 
-This also frees the 4th tab slot for a true "everything else" hub — which is where 2026 mobile IA is trending (Instagram, Threads, Strava all collapse secondary destinations behind a hub rather than competing for a tab).
+**Fix:** create a dedicated `/support` route — a single-purpose, calm page that does one thing well.
 
-## Tab bar after
-Home · Discover · Journal · **More** (4 tabs, unchanged count)
+`/support` page content (mobile-first, generous spacing, no other chrome):
+1. **Quiet header** — "You're not alone." Sub: "If you're in crisis, help is available right now."
+2. **Primary action — 988 (US)**: a large, full-width call button (`tel:988`) labeled "Call 988 — Suicide & Crisis Lifeline". Secondary button "Text 988". Both use respectful, non-alarming copy and a softer color treatment (not destructive red — use `forest`/calm tones with a clear hierarchy).
+3. **If in immediate danger** card — a single line directing to local emergency services (911 for US, with copy acknowledging international users: "or your local emergency number").
+4. **More ways to get help** — a short, scannable list:
+   - Crisis Text Line — text HOME to 741741
+   - Trans Lifeline — 1-877-565-8860
+   - Veterans Crisis Line — 988 then press 1
+   - International: link to `findahelpline.com`
+5. **Quiet footer** — "This isn't therapy. Mental Health Walk Club is a community, not a clinical service." + link to `/privacy`.
 
-Icon: `Menu` (or `Grid2x2`/`LayoutGrid`) from lucide. Active pill behavior carries over from the current pill island.
+No nav clutter, no settings, no upsells. A simple `← Back` chevron returns to wherever they came from (`router.history.back()`).
 
-## /more — new route
-A short, scannable hub. Mobile-first single column, ~3 sections.
+Wire-up:
+- `src/routes/more.tsx` — change `Help & safety` row to `to="/support"` (drop the `hash="safety"`).
+- `src/routes/settings.tsx` — leave the existing `#safety` block as a slimmer "Safety & support" card that simply links out to `/support` (so settings still surfaces it, but isn't the destination).
+- Add a discreet `/support` link in the auth footer and in the journal compose sheet, since those are emotional-load moments.
 
-1. **Profile mini-card** (tappable → `/profile`)
-   - Avatar (or initials), display name, `Supporter` chip if Plus
-   - Sub-line: city · "Walker since {Mon YYYY}"
-   - Chevron right
-2. **Explore** (link rows, same visual language as today's profile rows)
-   - Listen — Podcasts & playlists
-   - Circles & friends
-   - Events
-   - Shop — Merch
-   - Impact (only if Plus, or always with "Learn more")
-3. **Account**
-   - Settings → `/settings`
-   - Help & safety (jumps to Settings → Safety section)
-   - Admin · Podcasts (admins only)
-   - Sign out
+## Other gaps worth closing in this pass
 
-No stats, no badges, no goal editing, no host-places, no saved-trails on /more. Those belong on /profile.
+A. **Settings → "Membership" only appears for some**. The `BillingCard` already handles plus vs. free, but for free users the section header reads "Membership" with a Plus pitch — that's fine. Verify the card renders something useful when signed-in-but-free; no change expected, just a spot check.
 
-## /profile — slimmed to the identity page
-Keep it focused on "this is me and my walking life". Order:
+B. **Appearance card promises a theme switcher that doesn't switch themes** ("Theme support is rolling out. Preference is saved."). Two options — pick one:
+   - **Recommended:** remove the Appearance card from `/settings` for v1. Shipping a control that doesn't do anything erodes trust.
+   - Alternative: wire it up to toggle a `dark` class on `<html>` (small lift, but out of scope unless you want it).
 
-1. Identity card: avatar, name, "hello again" handwriting, city, Supporter chip, **Edit profile** pill (top-right, opens a small sheet for name / bio / location / privacy — same controls that currently live in the Settings drawer, but scoped to *profile fields* only)
-2. 3-stat row: walks · time · miles (already there)
-3. Week streak ribbon (already there)
-4. Weekly sparkline
-5. Walk Club stats (hosted/attended/streak)
-6. Badge wall
-7. Weekly goal
-8. Billing card (Plus state)
-9. Where you host (host places)
-10. Your trails (saved trails)
+C. **Notifications card** has the same shape — toggles persist to `localStorage` but nothing reads them yet. Keep it (it's harmless and signals intent), but add a single line: "We'll honor these the moment notifications turn on." Slightly more honest than the current copy.
 
-Remove from /profile: the Discover / Listen / Circles / Shop link rows (they live on /more), the Settings & safety button (lives on /more → Settings), Sign out, Delete account, Safety panel (all migrate to /settings).
+D. **More → "Circles & friends"** links to `/circles`, which lives under `_authenticated`. Confirm the route exists and the link types resolve (it does — `src/routes/_authenticated/circles.tsx`). No code change; flagged so we don't ship a dead link.
 
-## /settings — new route
-Single scrollable page (not a bottom sheet). Sections:
+E. **More → "Events"** links to `/events`. Confirm `/events` index renders something meaningful for a brand-new user (empty state vs. a wall of nothing). Out of scope to redesign, but worth a quick check in the same pass — if it's barren, hide the row behind a flag for v1.
 
-1. **Account**
-   - Display name, location, bio, privacy toggle (`is_private`)
-   - Email (read-only, from auth)
-2. **Membership**
-   - Plus status, manage billing → Stripe portal (reuse BillingCard, or a compact row)
-   - Impact link (if Plus)
-3. **Notifications** *(v1 scaffold — toggles for: walk reminders, friend RSVPs, weekly recap email; persists to a new `notification_prefs` jsonb on profiles or a dedicated table; safe to ship even if some toggles are not wired to a sender yet — they capture intent)*
-4. **Appearance** *(v1: theme — system / light / dark; reuse if a theme provider exists, otherwise persist preference only)*
-5. **Connected accounts** *(only render if relevant integrations exist — e.g. Spotify/Apple ambient picker; otherwise omit)*
-6. **Privacy & data**
-   - Privacy policy → `/privacy`
-   - Terms → `/terms`
-   - Download my data *(stub button "coming soon" or hide for v1 — to be decided)*
-7. **Safety & support**
-   - Crisis copy + 988 link (moved from Profile settings sheet)
-8. **Admin** (admins only) — link to `/admin/podcasts`, `/admin/merch`, `/admin`
-9. **Sign out** button
-10. **Delete account** (destructive, with the same double-confirm flow)
+F. **Profile's "Edit profile" sheet vs. Settings → Account** — two places edit the same fields. Keep both (people tap their name to edit; people who land in Settings expect a form), but make sure both write through the same patch shape (they do today). No change.
 
-## Files & changes (technical)
-- `src/components/mobile-tab-bar.tsx` — swap the 4th tab: `{ to: "/more", label: "More", icon: Menu }`. Update desktop sidebar `TABS` in `src/routes/__root.tsx` the same way.
-- `src/routes/more.tsx` — new file. Pulls display_name/avatar/city via the same `profiles` query used today; renders the mini-card + Explore + Account sections; owns Sign out.
-- `src/routes/profile.tsx` — remove Discover/Listen/Circles/Shop rows, remove the settings sheet + safety + admin + sign out + delete. Add a small "Edit profile" sheet that only edits `display_name`, `location`, `bio`, `is_private`. Keep stats, sparkline, WalkClubStats, BadgeWall, goal, BillingCard, host places, saved trails.
-- `src/routes/settings.tsx` — new file. Account form, Membership (BillingCard), Notifications scaffold, Appearance, Connected (conditional), Privacy & data, Safety, Admin (conditional), Sign out, Delete account. Reuse `LocationAutosuggest`, `deleteMyAccount`, `useSubscription`, `useAuth`.
-- Optional: extract a shared `AccountFieldsForm` component so /profile's edit sheet and /settings → Account use the same controls.
-- No DB migration required for v1; notification prefs can be a `localStorage` placeholder for the first ship if we want to avoid a schema change. (Open question below.)
+G. **Sign out lives in both /more and /settings**. That's fine — both are reasonable spots — but the **delete account** flow only lives in /settings. Good. No change.
 
-## Out of scope for this pass
-- New notification *delivery* (we'd only persist toggle state).
-- Theme system if one doesn't already exist — Appearance section becomes "coming soon" or is omitted.
-- Reworking Discover / Journal / Home content.
+H. **Admin row** shows in both /more and /settings for admins. Keep /settings (canonical), drop the row from /more's Account section to reduce noise. Admins know where to find it.
+
+## Files touched
+
+- **NEW** `src/routes/support.tsx` — the dedicated crisis-support page (~120 lines, no data loading, static content, server-safe).
+- `src/routes/more.tsx` — repoint Help & safety row to `/support`; remove the Admin row from Account (admins still reach it via /settings).
+- `src/routes/settings.tsx` — slim the inline Safety block to a single link to `/support`; remove Appearance card (B above); soften Notifications copy.
+- `src/routes/auth.tsx` — add a small "In crisis? Get help" link in the footer.
+- `src/components/home/reflection-write-sheet.tsx` (or wherever the journal compose lives) — add a discreet support link near the bottom of the sheet. Will confirm exact file before editing.
+
+## Out of scope
+
+- Theming system, real notification delivery, redesigning Events/Circles indices, any backend changes. This is a flow & finish pass only.
 
 ## Open questions
-1. **Notifications in v1**: ship the toggles UI now with `localStorage` persistence, or wait until we wire actual senders? I'd lean ship-the-UI so the IA feels complete.
-2. **Edit profile**: keep it as a sheet on /profile *and* mirror in /settings → Account, or single source of truth in /settings and remove the sheet from /profile? My recommendation: keep the lightweight sheet on /profile (people expect to tap their own name to edit) and have /settings → Account be the canonical form.
-3. **Events** on /more: include now or wait until the Events surface is more fleshed out?
+
+1. **Appearance card**: remove for v1 (my recommendation) or wire up a real dark mode toggle now?
+2. **Support page**: US-first 988 with international links below, or lead with a region detector? US-first is faster to ship and the audience skew supports it — I'd recommend that.
+3. **Admin row in /more**: OK to remove, or keep it for one-tap access for you while testing?
