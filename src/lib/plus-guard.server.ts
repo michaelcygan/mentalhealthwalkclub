@@ -69,5 +69,21 @@ export async function requireUnderCap(
     playlists: `Free plan keeps up to ${cap} custom playlists`,
     collections_follow: `Free plan follows up to ${cap} collections`,
   };
-  throw new Error(`${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
+  // Structured prefix so the client can detect a cap-limit error and open the upsell sheet.
+  throw new Error(`CAP_LIMIT|${opts.surface}|${cap}|${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
+}
+
+/** Parse a cap-limit error thrown by requireUnderCap. Returns null if not a cap error. */
+export function parseCapError(
+  err: unknown,
+): { surface: CapSurface; cap: number; message: string } | null {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (!msg.startsWith("CAP_LIMIT|")) return null;
+  const [, surface, cap, ...rest] = msg.split("|");
+  if (!surface || !cap) return null;
+  return {
+    surface: surface as CapSurface,
+    cap: Number(cap),
+    message: rest.join("|"),
+  };
 }
