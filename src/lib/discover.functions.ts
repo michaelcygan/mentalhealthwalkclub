@@ -153,7 +153,7 @@ export const discoverFriendsGoing = createServerFn({ method: "GET" })
 
     // Resolve going friend profiles per event
     const rsvpMap = new Map<string, string[]>();
-    for (const r of rsvps ?? []) {
+    for (const r of rsvpRows ?? []) {
       const list = rsvpMap.get(r.event_id) ?? [];
       list.push(r.user_id);
       rsvpMap.set(r.event_id, list);
@@ -201,7 +201,7 @@ export interface FriendGoingEvent {
   image_url: string | null;
   audience_mode: string;
   visibility: string;
-  host_user_id: string;
+  host_user_id: string | null;
   miles: number | null;
   going_friends: Array<{ id: string; display_name: string | null; avatar_url: string | null }>;
   going_count: number;
