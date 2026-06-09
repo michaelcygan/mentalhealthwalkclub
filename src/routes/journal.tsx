@@ -308,8 +308,12 @@ function JournalTab() {
       )}
 
 
+      {/* Daily Reflections — written entries */}
+      <JournalReflections />
+
       {/* Layer C — entries feed with search */}
       <section className="space-y-3">
+
         <div className="flex items-baseline justify-between">
           <SectionHeading eyebrow="Your walks" title="Entries" />
           <span className="text-xs text-muted-foreground tabular-nums">{filteredWalks.length} of {walks.length}</span>
