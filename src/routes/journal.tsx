@@ -25,6 +25,11 @@ import { TimeOfDayRhythm } from "@/components/journal/time-of-day-rhythm";
 import { MoodWeatherGrid } from "@/components/journal/mood-weather-grid";
 import { WalkTypeBar } from "@/components/journal/walk-type-bar";
 import { ShareMonthCard } from "@/components/journal/share-month-card";
+import { DailyCompass } from "@/components/journal/daily-compass";
+import { CarryForward } from "@/components/journal/carry-forward";
+import { Reflect30s } from "@/components/journal/reflect-30s";
+import { WordEchoes } from "@/components/journal/word-echoes";
+import { GentleNextStep } from "@/components/journal/gentle-next-step";
 import { ReflectionWriteSheet } from "@/components/home/reflection-write-sheet";
 import {
   getJournalStats,
@@ -133,11 +138,19 @@ function JournalTab() {
       <JournalSegmented value={segment} onChange={setSegment} />
 
       {segment === "for-you" && (
-        <div className="space-y-6">
-          <OnThisDayRail entries={entries} />
+        <div className="space-y-5">
+          <DailyCompass user={user} stats={stats} entries={entries} onSaved={() => void reload()} />
           <MoodPulseMini stats={stats} />
+          <CarryForward entries={entries} onSaved={() => void reload()} />
           <InsightsStrip stats={stats} entries={entries} />
-          <PromptChipsRow onSaved={() => void reload()} />
+          <OnThisDayRail entries={entries} />
+          <Reflect30s stats={stats} entries={entries} onSaved={() => void reload()} />
+          <WordEchoes entries={entries} />
+          <GentleNextStep
+            stats={stats}
+            onSaved={() => void reload()}
+            onScrollToMemories={() => setSegment("memories")}
+          />
         </div>
       )}
 

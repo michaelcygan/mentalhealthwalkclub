@@ -1,26 +1,58 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import type { JournalStats } from "@/lib/journal-entries.functions";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 
+type Range = "7d" | "30d";
+
 export function MoodPulseMini({ stats }: { stats: JournalStats }) {
   const reduce = useReducedMotion();
-  const arc = stats.moodArc30;
+  const [range, setRange] = useState<Range>("30d");
+  const arc = useMemo(
+    () => (range === "7d" ? stats.moodArc30.slice(-7) : stats.moodArc30),
+    [stats.moodArc30, range],
+  );
 
-  const { path, avg, delta, last } = useMemo(() => {
-    if (arc.length < 2) return { path: null as string | null, avg: null as number | null, delta: 0, last: null as number | null };
+  const { path, avg, delta, last, points, minIdx, maxIdx } = useMemo(() => {
+    if (arc.length < 2)
+      return {
+        path: null as string | null,
+        avg: null as number | null,
+        delta: 0,
+        last: null as number | null,
+        points: [] as { x: number; y: number }[],
+        minIdx: -1,
+        maxIdx: -1,
+      };
     const w = 100;
     const h = 28;
     const ys = arc.map((p) => h - (Math.max(0, Math.min(10, p.score)) / 10) * h);
     const xs = arc.map((_, i) => (i / (arc.length - 1)) * w);
-    const path = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)},${ys[i].toFixed(2)}`).join(" ");
+    const path = xs
+      .map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)},${ys[i].toFixed(2)}`)
+      .join(" ");
     const avg = arc.reduce((s, p) => s + p.score, 0) / arc.length;
     const half = Math.floor(arc.length / 2);
     const first = arc.slice(0, half);
     const second = arc.slice(half);
     const firstAvg = first.reduce((s, p) => s + p.score, 0) / Math.max(1, first.length);
     const secondAvg = second.reduce((s, p) => s + p.score, 0) / Math.max(1, second.length);
-    return { path, avg, delta: secondAvg - firstAvg, last: arc[arc.length - 1]?.score ?? null };
+    let minIdx = 0;
+    let maxIdx = 0;
+    for (let i = 1; i < arc.length; i++) {
+      if (arc[i].score < arc[minIdx].score) minIdx = i;
+      if (arc[i].score > arc[maxIdx].score) maxIdx = i;
+    }
+    const points = xs.map((x, i) => ({ x, y: ys[i] }));
+    return {
+      path,
+      avg,
+      delta: secondAvg - firstAvg,
+      last: arc[arc.length - 1]?.score ?? null,
+      points,
+      minIdx,
+      maxIdx,
+    };
   }, [arc]);
 
   if (!path) {
@@ -32,22 +64,44 @@ export function MoodPulseMini({ stats }: { stats: JournalStats }) {
   }
 
   const trendIcon =
-    delta > 0.3 ? <TrendingUp className="h-3.5 w-3.5 text-forest" /> :
-    delta < -0.3 ? <TrendingDown className="h-3.5 w-3.5 text-clay" /> :
-    <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
+    delta > 0.3 ? (
+      <TrendingUp className="h-3.5 w-3.5 text-forest" />
+    ) : delta < -0.3 ? (
+      <TrendingDown className="h-3.5 w-3.5 text-clay" />
+    ) : (
+      <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+    );
   const trendLabel =
-    delta > 0.3 ? `Trending up · ${delta.toFixed(1)}` :
-    delta < -0.3 ? `Trending down · ${delta.toFixed(1)}` :
-    "Steady";
+    delta > 0.3
+      ? `Trending up · ${delta.toFixed(1)}`
+      : delta < -0.3
+        ? `Trending down · ${delta.toFixed(1)}`
+        : "Steady";
 
   return (
     <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-      <div className="flex items-baseline justify-between">
-        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">Mood pulse · 30d</div>
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          {trendIcon}
-          <span className="tabular-nums">{trendLabel}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-clay/80">
+          Mood pulse
         </div>
+        <div className="inline-flex rounded-full bg-secondary p-0.5 text-[10px] font-medium">
+          {(["7d", "30d"] as Range[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              className={`rounded-full px-2 py-0.5 transition ${
+                range === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+        {trendIcon}
+        <span className="tabular-nums">{trendLabel}</span>
       </div>
       <svg viewBox="0 0 100 28" className="mt-2 h-14 w-full" preserveAspectRatio="none">
         <defs>
@@ -75,6 +129,24 @@ export function MoodPulseMini({ stats }: { stats: JournalStats }) {
           animate={{ pathLength: 1 }}
           transition={{ duration: 0.9, ease: "easeOut" }}
         />
+        {maxIdx >= 0 && points[maxIdx] && (
+          <circle
+            cx={points[maxIdx].x}
+            cy={points[maxIdx].y}
+            r="1.4"
+            fill="var(--forest, #2f5d3a)"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        {minIdx >= 0 && points[minIdx] && minIdx !== maxIdx && (
+          <circle
+            cx={points[minIdx].x}
+            cy={points[minIdx].y}
+            r="1.4"
+            fill="var(--clay)"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
       </svg>
       <div className="mt-1 flex items-baseline justify-between text-[11px] text-muted-foreground">
         <span>
