@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import type { FeedEntry } from "@/lib/journal-entries.functions";
 import { EntryRow } from "./entry-row";
 
-type Filter = "all" | "reflection" | "walk" | "photos";
+type Filter = "all" | "reflection" | "walk" | "photos" | "mood-up";
 
 interface Props {
   entries: FeedEntry[];
@@ -25,6 +25,11 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
       if (filter === "reflection" && e.kind !== "reflection") return false;
       if (filter === "walk" && e.kind !== "walk") return false;
       if (filter === "photos" && (e.photo_count ?? 0) === 0) return false;
+      if (filter === "mood-up") {
+        if (e.kind !== "walk") return false;
+        if (e.mood_before_score == null || e.mood_after_score == null) return false;
+        if (e.mood_after_score <= e.mood_before_score) return false;
+      }
       if (q) {
         const hay = [
           e.body,
@@ -59,10 +64,9 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
   return (
     <>
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your journal</div>
-            <h2 className="font-serif text-lg leading-tight text-foreground">Entries</h2>
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Your entries
           </div>
           <span className="text-xs tabular-nums text-muted-foreground">
             {filtered.length} of {entries.length}
@@ -91,6 +95,7 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
             <Footprints className="h-3 w-3" /> Walks
           </Chip>
           <Chip active={filter === "photos"} onClick={() => setFilter("photos")}>With photos</Chip>
+          <Chip active={filter === "mood-up"} onClick={() => setFilter("mood-up")}>Mood ↑</Chip>
         </div>
 
         {entries.length === 0 ? (
