@@ -3,9 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { listSavedReads, toggleSavedRead, type SavedReadCard } from "@/lib/saved-reads.functions";
 import { toast } from "sonner";
+import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
+import { UpsellSheet } from "@/components/membership/upsell-sheet";
 
 export function SavedReadsList() {
   const [items, setItems] = useState<SavedReadCard[] | null>(null);
+  const [capError, setCapError] = useState<CapError | null>(null);
   const fetchSaved = useServerFn(listSavedReads);
   const toggle = useServerFn(toggleSavedRead);
 
@@ -20,7 +23,9 @@ export function SavedReadsList() {
       await toggle({ data: { post_id: id } });
       setItems((cur) => (cur ?? []).filter((i) => i.id !== id));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not remove");
+      const cap = parseCapError(e);
+      if (cap) setCapError(cap);
+      else toast.error(e instanceof Error ? e.message : "Could not remove");
     }
   }
 
