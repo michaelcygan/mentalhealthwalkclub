@@ -1,146 +1,142 @@
-# Listen v3 — search, filters, and admin curation
 
-## Goal
+# Plus + Patron membership plan
 
-Right now Listen surfaces rails by section, but there's no way to look something up. Users will search by show name, artist, host, topic, or article title — and they'll come back if the page gets better the more they use it. Admins should be able to shape what's surfaced without leaving the page.
+## Direction
 
-## What's new (mobile-first)
+Two membership shapes, neither one gating the core product:
 
-```
-┌─────────────────────────────────────────────────┐
-│ Listen & Read                                   │
-│                                                 │
-│  ╭─ Today's pick island ─────────────────╮      │
-│  ╰───────────────────────────────────────╯      │
-│                                                 │
-│  🔎  Search shows, artists, articles…   ⌥ ▾    │  ← new search bar + filter sheet
-│  [ Calm ][ Focus ][ Sleep ][ Outdoors ] (chips) │  ← mood / category chips
-│                                                 │
-│  [ Listen ][ Read ][ Yours ]                    │
-│  …rails or search results…                      │
-│                                                 │
-│  Collections                                    │
-│  ╭ Sunday reset ╮ ╭ Walk to think ╮ ╭ Rainy ╮   │  ← admin-curated bundles
-│                                                 │
-│  Trending this week  ·  Recently added          │  ← derived rails
-└─────────────────────────────────────────────────┘
-```
+- **Plus** — $1.99/mo or $19/yr. The functional tier: unlimited Circles/Groups/Trails today, plus gentle unlocks for the new Listen/Home surfaces.
+- **Patron** — name-your-price monthly donation ($3+ minimum). The mission tier. Stacks on top of Plus or stands alone. Bigger nonprofit share, Founding badge, early access. No extra feature gates.
 
-### 1. Cross-catalog search
+Soft caps on free stay gentle — value-led conversion, not friction.
 
-A single search field at the top, debounced (~200ms). One server fn `searchListen({ q, kinds, moods })` runs four parallel `ilike` queries (or `websearch_to_tsquery` if we add a tsvector later) and returns a unified `SearchHit[]` shape:
+## What Plus gates (existing + new)
 
-```
-{ kind: "podcast"|"ambient"|"guided"|"blog",
-  id, title, subtitle, cover, badge?, link?, duration? }
-```
+Already enforced server-side:
+- Unlimited Circles (free cap)
+- Unlimited private Groups (free cap)
+- Unlimited Saved Trails (free cap)
 
-Results replace the rails while the query is non-empty, grouped by kind with "Show all" toggles. Empty result shows a "Try fewer words / check spelling" hint plus a `Suggest content` link that opens an admin-receivable form (lands in a tiny `content_requests` table — admins see it in Admin → Blogs).
+New gentle nudges (added this round):
+- **Saved reads** — free cap 15, Plus unlimited
+- **Custom playlists** — free cap 3, Plus unlimited
+- **Follow collections** — free cap 5, Plus unlimited
+- **Best walking window** — free shows today; Plus shows the 7-day window with hourly precision
+- **Walk recap share cards** — Plus unlocks themes + remove watermark
+- **Journal export** — Plus only
 
-Fields searched per source:
-- `podcast_episodes.title` + parent `podcast_feeds.title/publisher`
-- `ambient_tracks.title` + `artist` + `genre`
-- `guided_tracks.title` + `host`
-- `blog_posts.title` + `summary` + parent `blog_feeds.publisher`
+Every cap surfaces a soft upsell sheet (not a hard wall) with a "Maybe later" dismiss. Caps are enforced server-side too (re-using `isPlus`/`requirePlus` from `plus-guard.server.ts`).
 
-### 2. Filter chips (mood + category)
+## What Patron unlocks
 
-A horizontal scroll of chips derived from the unique non-null values in `mood_tags` / `category` / `genre` (computed server-side, cached for the session). Selecting chips narrows both rails and search results — they OR within a facet, AND across facets. URL-persisted: `?moods=calm,focus&kinds=podcast,ambient`. Tapping a chip deep-links and survives reloads.
+Mission-aligned, not feature-gating:
+- Founding Patron badge on profile + on every walk/post (small leaf icon)
+- Listed (optional) on `/impact` Patron wall
+- Patron-only monthly thank-you email with impact recap
+- Early access flag (`is_patron_early_access`) for opt-in beta features
+- 80% of every Patron dollar to nonprofit (vs 50% for Plus) — explicit in copy
 
-### 3. Smart rails (stickiness loops)
+Patron does **not** imply Plus. Two separate subscriptions. UI nudges Patrons to add Plus if they hit a cap.
 
-Replaces nothing — appends below the existing rails:
-- **Recently added** — last 14 days across podcasts/ambient/guided/blogs.
-- **Trending this week** — based on a new tiny `listen_events` table (`user_id, kind, item_id, action: 'open'|'play'|'save'|'queue', at`). Trending = count of distinct users in last 7 days. Fire events client-side on tile tap & on play start; never block UI.
-- **Because you saved X** — when a user has ≥3 saved reads or queue items, surface up to 6 items sharing mood tags with their picks. Pure derived, no ML.
-- **Collections** — admin-curated bundles (see §4).
+## Checkout & upgrade flow
 
-### 4. Collections (admin-curated)
+### Plan picker
 
-New `listen_collections` table (`id, slug, name, blurb, cover_url, is_published, sort_order`) and `listen_collection_items` (`collection_id, kind, item_id, position`). Admin can build mixed-kind bundles like "Sunday reset" or "Rainy day walks". On Listen they render as a snap rail of cover cards; tapping opens `/listen/collection/$slug` with the full list and a "Play all" + "Add all to a playlist" action.
+`PlusCheckout` dialog gets a segmented control: **Monthly $1.99** / **Yearly $19** (save 20%, "1 month free"). Yearly already exists in `billing.functions.ts` as `plus_yearly` — just needs to be exposed and registered as a Stripe price.
 
-### 5. Inline admin controls
+### Patron flow
 
-When the signed-in user has the `admin` role (already checked via `has_role`), every tile, search result, and collection card gets a tiny menu:
-- ★ Toggle featured / Set rank
-- 🧷 Add to collection (mini sheet of existing collections + "New…")
-- 🚫 Hide from Listen (sets `is_active = false`)
-- ✎ Edit metadata (opens admin route in new tab)
+New `PatronCheckout` component using Stripe `price_data` with `recurring: { interval: "month" }` and a custom `unit_amount` chosen by the user. Embedded checkout, same look as Plus.
 
-These are surfaced via a single `<AdminTileMenu>` that mounts only when `useIsAdmin()` is true. No mode switch — admins just see extra affordances on the same page.
+Entry points:
+- `/impact` page primary CTA: "Become a Patron"
+- Profile → Billing card: "Give monthly" link under Plus card
+- After Plus purchase success screen: "Want to give more? Become a Patron"
 
-### 6. Admin home additions
+Amount picker: $3 / $5 / $10 / $25 chips + custom field. Minimum $3 (covers Stripe fee floor).
 
-`/admin` gets two new cards (full pages already linked from nav):
-- **`/admin/collections`** — CRUD for collections + drag-reorder items, pulls from `searchListen` to add cross-kind items.
-- **`/admin/insights`** — read-only: top searched terms (last 30d from a `search_log` table), zero-result queries (the gold for `content_requests` triage), trending items, % of users with ≥1 saved read, conversion from search → play. All deterministic counts.
+### Billing card
 
-A new "Suggested content" inbox lands under `/admin/blogs` (compact list of `content_requests` rows with title/url/category/notes, "approve & add feed" CTA when a URL is provided).
+`billing-card.tsx` becomes two stacked sub-cards:
+1. **Plus** — current behavior, with new "Switch to yearly" CTA when monthly
+2. **Patron** — shows current amount + "Change amount" / "Pause" / "Cancel" actions
 
-## How this connects to Admin
+Both use the same Stripe billing portal underneath.
 
-| Surface | What admin controls |
-|---|---|
-| Today's pick | Already respects `is_featured` + `featured_rank`. Inline ★ on the island lets admin overwrite the pick from the page itself. |
-| Mood/category chips | Auto-derived from real data; admin doesn't curate the chip list, just the items' `mood_tags`/`category`/`genre` (already editable on item detail pages). |
-| Collections | Created/edited at `/admin/collections` and inline via "Add to collection" on every tile. |
-| Search | Searches active items only; admin "Hide from Listen" pulls items out instantly. |
-| Trending | Pure event-count; admin sees the leaderboard in `/admin/insights` but doesn't edit it. |
-| Suggested content | Empty-search "Suggest content" form posts into `content_requests`; admin triages from `/admin/blogs`. |
-| Saved-for-later & playlists | User-owned, never visible to admin (privacy). |
+## Admin
+
+`/admin/membership` (new route under existing admin layout):
+- Tier breakdown: free / Plus monthly / Plus yearly / Patron (by amount bucket)
+- MRR + nonprofit-share running total (live from `billing_events`)
+- Toggle: pause Patron signups, edit minimum amount, edit suggested amounts
+- Toggle: pause/resume each free cap (in case we want to A/B loosen)
+- Read-only list of recent Patron subscribers (with opt-in-to-wall flag)
+
+Cap thresholds (saved reads 15, playlists 3, collections 5) live in a `membership_settings` row so admin can tune without a deploy.
+
+## Telemetry
+
+Extend `billing-analytics.ts` event vocabulary:
+- `patron_intent_selected`, `patron_amount_chosen`, `patron_checkout_opened`, `patron_subscribed`
+- `cap_hit` with `{ surface: "saved_reads" | "playlists" | ... , action: "upsell_shown" | "dismissed" | "converted" }`
+- `plan_switch_yearly_clicked`, `plan_switch_yearly_completed`
+
+Insights dashboard (existing `/admin/insights`) gets a "Membership" panel: cap-hit funnel, conversion by surface.
 
 ## Technical details
 
-- **DB migration (one)**
-  - `listen_collections` + `listen_collection_items` with RLS: public can SELECT where `is_published=true`; admins (`has_role(auth.uid(),'admin')`) can do everything.
-  - `listen_events (id, user_id, kind, item_id, action, created_at)` — RLS: a user can insert their own rows; nobody can read except service_role (admin insights call uses `supabaseAdmin`).
-  - `content_requests (id, user_id, title, url, kind, notes, status, created_at)` — RLS: any authenticated user can insert; admins read/update.
-  - `search_log (id, user_id, q, result_count, created_at)` — same RLS as `listen_events`.
-  - GRANTs per template rule; never edit `auth`/`storage`.
+### Schema (one migration)
 
-- **New server fns** (`createServerFn`, all `requireSupabaseAuth`)
-  - `searchListen({ q, kinds, moods, limit })` — debounced caller, runs the four queries in parallel, also writes to `search_log` (fire-and-forget).
-  - `logListenEvent({ kind, item_id, action })`
-  - `trendingListen({ window: '7d' })` / `recentlyAddedListen({ days: 14 })` / `becauseYouLiked({ limit })`.
-  - Collections: `listCollections`, `getCollection`, `adminUpsertCollection`, `adminAddCollectionItem`, `adminRemoveCollectionItem`, `adminReorderCollectionItems`.
-  - Suggestions: `createContentRequest`, `adminListContentRequests`, `adminUpdateContentRequest`.
-  - Insights: `adminInsightsOverview` (returns top-terms, zero-result terms, trending items, retention basics).
+- `membership_settings` — singleton row (`id boolean primary key default true`) with `saved_reads_cap`, `playlists_cap`, `collections_follow_cap`, `patron_min_cents`, `patron_suggested_amounts int[]`, `patron_signups_paused boolean`
+- `patron_profile` — `user_id`, `display_on_wall boolean`, `early_access boolean`, `joined_at` (filled from webhook)
+- Add `tier` derived column logic via SQL helper `public.user_membership(uuid)` returning `{ is_plus, is_patron, patron_cents, plan }`
 
-- **New components**
-  - `src/components/listen/search-bar.tsx` (with debounce + filter sheet trigger)
-  - `src/components/listen/filter-chips.tsx`
-  - `src/components/listen/search-results.tsx` (grouped by kind)
-  - `src/components/listen/collections-rail.tsx`
-  - `src/components/listen/trending-rail.tsx` + `recently-added-rail.tsx` + `because-you-liked-rail.tsx`
-  - `src/components/listen/admin-tile-menu.tsx`
-  - `src/components/listen/suggest-content-dialog.tsx`
-  - `src/hooks/use-is-admin.ts` (single source of truth for the admin flag)
+Existing `subscriptions` table reused for both Plus and Patron rows. Distinguish via `price_id` prefix: `plus_*` vs `patron_*` (Patron uses dynamic `price_data` — store `"patron_custom"` in `price_id` and `unit_amount` in a new `monthly_amount_cents` column on `subscriptions`).
 
-- **New routes**
-  - `src/routes/_authenticated/listen.collection.$slug.tsx`
-  - `src/routes/admin.collections.tsx` (+ optional detail `admin.collections.$id.tsx`)
-  - `src/routes/admin.insights.tsx`
+RLS: `membership_settings` readable by `anon` + `authenticated`, writable by admin role only. `patron_profile` readable by anyone (for wall), writable by owner.
 
-- **Edited**
-  - `src/routes/_authenticated/listen.tsx` — mount search bar + filter chips above the segmented tabs; render `<SearchResults>` when `q` is non-empty (hides rails); always render Collections + Trending + Recently added under the chosen tab; wire `useIsAdmin` to mount `AdminTileMenu` on every Tile.
-  - `src/routes/admin.tsx` — add Collections, Insights nav chips.
-  - `src/lib/playlists.functions.ts` — extend Tile rows with `mood_tags` so chip filtering works client-side without re-querying.
+### Server functions
 
-- **No new deps.** Postgres `ilike` + indexes for now; we can graduate to `tsvector` + `pg_trgm` if/when traffic warrants.
+New in `src/lib/billing.functions.ts`:
+- `createPatronCheckoutSession({ amountCents, returnUrl, env })` — embedded checkout, dynamic `price_data`, `subscription_data.metadata: { userId, kind: "patron" }`
+- `updatePatronAmount({ amountCents, env })` — cancels current and creates new subscription (Stripe portal route)
+- `getMembershipState()` — returns `{ isPlus, isPatron, patronCents, planInterval }` for one client call
 
-## Out of scope (intentionally)
+New in `src/lib/plus-guard.server.ts`:
+- `requireUnderCap(supabase, userId, { surface, currentCount })` — central helper used by the new soft-cap call sites
 
-- Full-text search ranking / typo tolerance (Postgres ILIKE for v3; `pg_trgm` if needed later).
-- In-app player upgrades, social sharing of search results.
-- Personalized ML recommendations — "Because you liked" stays rule-based.
-- Comments/likes on blog posts.
-- Editor-defined chip taxonomy — derived from real data so it's always honest.
-- Renaming `/listen` to `/library` — still premature.
+### Webhook updates
 
-## One call I want you to make before I build
+`src/routes/api/public/payments/webhook.ts` — when `subscription.metadata.kind === "patron"`, insert/update with `price_id = "patron_custom"`, set `monthly_amount_cents` from the line item's unit_amount, and populate/refresh `patron_profile`.
 
-**Trending & search-log writes:** I want to log play/save/search events to power Trending and the Admin Insights page. These are anonymous in admin view (counts only), but the rows include `user_id` so we can do "Because you liked". Two options:
-1. **Per-user rows kept indefinitely** (default; small table, supports personal recs).
-2. **Aggregate-only** — counts per item per day, no user_id (cleaner privacy, no personal recs).
+### Components
 
-Default is (1) with RLS so users can read only their own events. Want me to go that way or switch to (2)?
+- `src/components/billing/plan-picker.tsx` — monthly/yearly segmented control
+- `src/components/billing/patron-checkout.tsx`
+- `src/components/billing/patron-amount-picker.tsx`
+- `src/components/billing/patron-card.tsx`
+- `src/components/membership/upsell-sheet.tsx` — generic soft-cap sheet (title, body, CTA, "maybe later")
+- `src/components/membership/founding-badge.tsx` — small leaf icon used everywhere a user is rendered
+- `src/hooks/use-membership.ts` — superset of `use-subscription.ts`, exposes Plus + Patron flags
+
+### Routes
+
+- `src/routes/admin.membership.tsx` — new admin route
+- `src/routes/impact.tsx` — add Patron section + (optional) wall
+- `src/routes/_authenticated/profile.tsx` — billing card renders both sub-cards
+
+### Stripe products
+
+Need to create:
+- `plus_yearly` price ($19) on existing `plus` product (one-time setup via `payments--create_price`)
+- `patron` product (no fixed price — dynamic via `price_data`)
+
+Compliance handling (`managed_payments: { enabled: true }`) stays on for both; Stripe handles tax/fraud/disputes.
+
+## Out of scope
+
+- Mid-cycle Plus → Patron prorating (use end-of-period switch)
+- Gift Plus / Patron
+- One-time donations (Patron is recurring only)
+- Family / Duo plan
+- Wall moderation tools beyond the opt-in flag
