@@ -339,6 +339,17 @@ function ListenPage() {
 
       <SuggestContentDialog open={openSuggest} onOpenChange={setOpenSuggest} prefill={q} />
 
+      {capError && (
+        <UpsellSheet
+          open={!!capError}
+          onOpenChange={(o) => !o && setCapError(null)}
+          surface={capError.surface}
+          title={CAP_UPSELL_COPY[capError.surface].title}
+          body={CAP_UPSELL_COPY[capError.surface].body(capError.cap)}
+          cap={capError.cap}
+        />
+      )}
+
       <p className="mt-10 text-center font-serif text-xs italic text-muted-foreground">
         Editor's notes update weekly.
       </p>
