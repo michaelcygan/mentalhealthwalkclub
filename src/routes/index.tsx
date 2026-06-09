@@ -113,10 +113,10 @@ function HomeTab() {
   const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{greet}{name ? "," : ""}</div>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-0.5 flex items-center gap-2">
           <h1 className="font-serif text-3xl leading-tight">{name || "Welcome back"}</h1>
           {stats.weekStreak > 0 && (
             <span

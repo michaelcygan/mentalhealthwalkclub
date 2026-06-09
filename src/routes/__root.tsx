@@ -150,18 +150,18 @@ function TabBar() {
         </div>
       </aside>
 
-      {/* Floating mobile header island */}
+      {/* Persistent full-width mobile header */}
       <header
-        className="pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4 md:hidden"
-        style={{ top: "calc(env(safe-area-inset-top) + 8px)" }}
+        className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 md:hidden"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className="pointer-events-auto flex w-full max-w-[calc(100%-0.5rem)] items-center justify-between gap-2 rounded-full border border-border/60 bg-background/70 py-1.5 pl-2 pr-1.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
-          <Link to="/" className="flex items-center gap-2 pr-2" aria-label="Mental Health Walk Club — home">
-            <LogoStamp tone="dark" size={30} />
+        <div className="flex h-12 items-center justify-between gap-2 px-4">
+          <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={28} />
             <span className="font-serif text-[12px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
           </Link>
           {!user ? (
-            <Button size="sm" onClick={() => openAuth("signup")} className="h-9 rounded-full bg-forest px-4 text-primary-foreground hover:opacity-90">
+            <Button size="sm" onClick={() => openAuth("signup")} className="h-8 rounded-full bg-forest px-3.5 text-primary-foreground hover:opacity-90">
               Sign up
             </Button>
           ) : (
@@ -169,7 +169,7 @@ function TabBar() {
               to="/support"
               aria-label="Get support"
               title="Get support"
-              className="grid h-9 w-9 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
+              className="grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
             >
               <LifeBuoy className="h-4 w-4" />
             </Link>
@@ -191,7 +191,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div className="mx-auto max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+68px)] pb-[calc(8rem+env(safe-area-inset-bottom))] md:px-8 md:pt-10 md:pb-12">
+        <div className="mx-auto max-w-3xl px-4 pt-3 pb-[calc(8rem+env(safe-area-inset-bottom))] md:px-8 md:pt-10 md:pb-12">
           {children}
         </div>
       </main>
