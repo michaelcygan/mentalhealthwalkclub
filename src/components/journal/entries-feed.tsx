@@ -1,19 +1,20 @@
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Footprints, PenLine } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { motion } from "motion/react";
 import type { FeedEntry } from "@/lib/journal-entries.functions";
 import { EntryRow } from "./entry-row";
-import { ReflectionWriteSheet } from "@/components/home/reflection-write-sheet";
 
 type Filter = "all" | "reflection" | "walk" | "photos";
 
 interface Props {
   entries: FeedEntry[];
   onChanged: () => void;
+  onWrite: () => void;
 }
 
-export function EntriesFeed({ entries, onChanged }: Props) {
+export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
