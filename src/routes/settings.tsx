@@ -267,16 +267,3 @@ function LinkRow({ to, label }: { to: string; label: string }) {
   );
 }
 
-function ThemeChip({ current, value, label, Icon, onSelect }: { current: ThemePref; value: ThemePref; label: string; Icon: typeof Sun; onSelect: (v: ThemePref) => void }) {
-  const active = current === value;
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(value)}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border p-2.5 text-sm transition ${active ? "border-forest bg-forest/10 text-forest" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
-  );
-}
