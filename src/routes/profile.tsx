@@ -17,7 +17,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { BadgeWall } from "@/components/badge-wall";
 import { useProfileStats } from "@/hooks/use-profile-stats";
 import { WeeklySparkline } from "@/components/charts/weekly-sparkline";
-import { BillingCard } from "@/components/billing/billing-card";
 import { useSubscription } from "@/hooks/use-subscription";
 
 export const Route = createFileRoute("/profile")({
@@ -208,7 +207,7 @@ function ProfileTab() {
         </div>
       </section>
 
-      <BillingCard />
+      
 
       {hostPlaces.length > 0 && (
         <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
