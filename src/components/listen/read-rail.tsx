@@ -17,6 +17,7 @@ function estReadMin(summary: string | null) {
 export function ReadRail() {
   const [posts, setPosts] = useState<BlogPostCard[] | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [capError, setCapError] = useState<CapError | null>(null);
   const fetchPosts = useServerFn(recentBlogPosts);
   const fetchSaved = useServerFn(listSavedPostIds);
   const toggle = useServerFn(toggleSavedRead);
