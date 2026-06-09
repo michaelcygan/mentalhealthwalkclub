@@ -89,8 +89,7 @@ function MorePage() {
 
       <Section title="Account">
         <Row to="/settings" icon={Settings} label="Settings" hint="Account, notifications, billing" />
-        <Row to="/settings" icon={ShieldCheck} label="Help & safety" hint="Crisis support" hash="safety" />
-        {isAdmin && <Row to="/admin" icon={Settings} label="Admin" hint="Manage content" />}
+        <Row to="/support" icon={ShieldCheck} label="Help & safety" hint="Crisis support" />
       </Section>
 
       <Button variant="outline" onClick={signOut} className="w-full rounded-full">
