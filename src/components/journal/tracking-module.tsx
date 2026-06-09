@@ -213,7 +213,7 @@ function CountUp({ to }: { to: number }) {
   const [n, setN] = useState(0);
   const reduce =
     typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  useMemo(() => {
+  useEffect(() => {
     if (reduce) { setN(to); return; }
     let raf = 0;
     const start = performance.now();
