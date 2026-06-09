@@ -66,7 +66,7 @@ export function HomeComposeFab() {
 
       <div
         className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-2"
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
       >
         {open && (
           <div className="pointer-events-auto flex flex-col items-end gap-2">
