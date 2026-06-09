@@ -80,6 +80,9 @@ function AuthPage() {
             <div className="rounded-3xl border border-border bg-card p-7 shadow-elevated">
               <AuthForm defaultMode={mode ?? "signup"} defaultPlan={plan ?? "free"} />
             </div>
+            <p className="mt-4 text-center text-[11px] text-muted-foreground">
+              In crisis? <Link to="/support" className="underline hover:text-foreground">Get support</Link>
+            </p>
           </div>
         </div>
       </div>
