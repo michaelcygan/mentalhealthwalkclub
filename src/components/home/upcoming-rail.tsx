@@ -1,24 +1,34 @@
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, MapPin, Users } from "lucide-react";
-import { getHomeUpcoming, type HomeUpcomingMine } from "@/lib/discover.functions";
+import {
+  getHomeUpcoming,
+  type HomeUpcomingMine,
+  type FriendGoingEvent,
+} from "@/lib/discover.functions";
 import { FriendsGoingRow } from "@/components/discover/friends-going-row";
 
 export function UpcomingRail() {
   const fetchUpcoming = useServerFn(getHomeUpcoming);
-  const qc = useQueryClient();
-  const { data } = useQuery({
-    queryKey: ["home-upcoming"],
-    queryFn: () => fetchUpcoming(),
-    staleTime: 60_000,
-  });
+  const [data, setData] = useState<{ mine: HomeUpcomingMine[]; friends: FriendGoingEvent[] } | null>(null);
+
+  const load = useCallback(() => {
+    fetchUpcoming()
+      .then(setData)
+      .catch(() => setData({ mine: [], friends: [] }));
+  }, [fetchUpcoming]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (!data) return null;
   const { mine, friends } = data;
   if (mine.length === 0 && friends.length === 0) return null;
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["home-upcoming"] });
+  const invalidate = () => load();
+
 
   return (
     <section className="space-y-3">
