@@ -381,6 +381,42 @@ export type Database = {
           },
         ]
       }
+      content_requests: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string | null
+          notes: string | null
+          status: string
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       event_blocklist: {
         Row: {
           created_at: string
@@ -1256,6 +1292,128 @@ export type Database = {
           source?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      listen_collection_items: {
+        Row: {
+          collection_id: string
+          created_at: string
+          id: string
+          item_id: string
+          kind: string
+          position: number
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          kind: string
+          position?: number
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          kind?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listen_collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "listen_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listen_collections: {
+        Row: {
+          blurb: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          blurb?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          blurb?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      listen_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          item_id: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          item_id: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      listen_search_log: {
+        Row: {
+          created_at: string
+          id: string
+          q: string
+          result_count: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          q: string
+          result_count?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          q?: string
+          result_count?: number
+          user_id?: string | null
         }
         Relationships: []
       }
