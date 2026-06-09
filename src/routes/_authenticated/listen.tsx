@@ -125,7 +125,7 @@ function ListenPage() {
   }
 
   const updateSearch = (patch: Partial<{ tab: typeof tab; q: string; moods: string; kinds: string }>) =>
-    navigate({ to: "/listen", search: (prev) => ({ ...prev, ...patch }), replace: true });
+    navigate({ to: "/listen", search: (prev: z.infer<typeof SearchSchema>) => ({ ...prev, ...patch }), replace: true });
 
   const setTab = (t: "listen" | "read" | "yours") => updateSearch({ tab: t });
 
