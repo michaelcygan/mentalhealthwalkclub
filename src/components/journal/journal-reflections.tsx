@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import { Plus, PenLine, ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { listJournalEntries, type JournalEntry } from "@/lib/journal-entries.functions";
@@ -15,18 +14,21 @@ export function JournalReflections() {
   const fetcher = useServerFn(listJournalEntries);
   const [writeOpen, setWriteOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["journal-entries"],
-    queryFn: () => fetcher({ data: { limit: 20 } }),
-  });
+  const load = useCallback(async () => {
+    try {
+      const rows = await fetcher({ data: { limit: 20 } });
+      setEntries(rows ?? []);
+    } catch {
+      setEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetcher]);
 
-  // Refetch when the sheet closes (an entry may have been added)
-  useEffect(() => {
-    if (!writeOpen) refetch();
-  }, [writeOpen, refetch]);
-
-  const entries: JournalEntry[] = data ?? [];
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <>
