@@ -1,101 +1,90 @@
-# Journal v2 — world-class redesign
+# Journal Stats v2 — sticky additions
 
-Bring the Journal into the same design language as Discover (segmented island, snap rails, cover/list variants, optimistic micro-interactions, tighter mobile rhythm) while making it dramatically more useful as *data for the user and a space for reflection*.
+The Stats segment currently shows: period toggle + 4-up counters, insights strip, year heatmap, 30d mood arc, badges. Strong bones, but nothing that pulls the user *back* tomorrow or reveals a delightful pattern. Add six modules — each one is small, computed from data already on hand, and earns its place.
 
-## Goals
-- Use the Discover visual system (sticky segmented island, snap carousels, soft cards, motion language).
-- Cut chrome, recover vertical space on 390×728.
-- Promote real value: today's reflection, streak + week, mood trend, on-this-day, search/filter — without overwhelming.
-- Make reflecting itself feel rewarding (1-tap entry from anywhere on the page).
+## What gets added (ordered by impact)
 
-## New page structure (top → bottom)
+### 1. Weekly goal ring (top of Stats)
+A round-trip reason to return.
+
+- User sets a weekly target: walks/week (1–7) or minutes/week (30–600). Default: 3 walks.
+- Big animated progress ring + "2 of 3 walks · 1 day left" copy.
+- "Edit goal" opens a tiny sheet (chip presets + numeric). Persisted to a new `user_goals` row (user_id, kind, target, updated_at) so it follows the user across devices.
+- On hit: confetti pulse + warm copy ("You showed up. Three for three.").
+
+### 2. Personal bests strip
+A reward surface for long-time users.
+
+Snap rail of 4 cards:
+- **Longest streak** (days)
+- **Longest walk** (minutes)
+- **Biggest mood lift** (+N, with date)
+- **Most active day** (minutes in a single day)
+
+All computed client-side from feed entries + `minutesByDay`.
+
+### 3. This month vs last month
+Direct progress signal.
+
+Three-row mini table with sparkbars + delta chips:
+- Walks · `12 vs 8` `+50%`
+- Minutes · `4h 20m vs 3h 10m` `+37%`
+- Avg mood lift · `+1.4 vs +0.9` `+0.5`
+
+Up = forest, down = clay, flat = muted. Tap to swap to "this week vs last week".
+
+### 4. Time-of-day rhythm
+"When do you walk?" Four-bucket bar chart: Early (5–8) · Morning (8–12) · Afternoon (12–17) · Evening (17–22). Tallest bucket labeled as "Your hour" with a soft glow.
+
+### 5. Mood × weather
+Tiny grid: sun · cloud · rain · night. For each, show count + avg mood-after. Reveals "Cloudy walks still lift you +1.2" — the kind of insight that travels by screenshot.
+
+### 6. Walk-type breakdown
+Stacked bar (single thin row, segmented by `walk_type` color) under personal bests, with a 3-item legend ("solo 62% · social 24% · phone 14%"). Quiet, factual.
+
+## New "Share my month" card (footer of Stats)
+A single tappable card that opens a generated 1080×1920 shareable image: month name, minutes, walks, top mood, a quote pulled from the user's longest reflection that month. Uses `share()` already in `lib/device`. Sticky-by-default because it turns Stats into something users want to post.
+
+## Layout
 
 ```
-Header (compact)             — "Journal" h1 (no subtitle), Write pill right
-Today island                 — combined "today" card: prompt + streak chip + Write
-Segmented island (sticky)    — For you · Reflect · Stats · Entries · Memories
-[For you]
-  Tonight rail (snap)        — "On this day" cards (1y / 1mo ago) + last entry card
-  Mood pulse mini            — sparkline + 7-day dots + delta
-  Quick prompts row (snap)   — 4–6 prompt chips → opens write sheet pre-filled
-[Reflect]
-  Daily prompt (full)        — current prompt + shuffle + write
-  Theme prompts (snap)       — grief, gratitude, body, work, etc.
-  Voice/photo entry tiles    — kept text-only for v1, photo placeholder via existing sheet
-[Stats]
-  Hero: showing-up streak + week ring (kept, denser)
-  Period toggle (week/month/all) — pill, matches Discover
-  4-up counters (entries / walks / minutes / active days)
-  Year heatmap (existing)
-  Mood arc 30d (existing) + new "best day of week" + "avg mood after walk vs no-walk"
-  Badges carousel (existing)
-[Entries]
-  Sticky search + filter chips (All / Reflections / Walks / Photos / Mood↑)
-  Month group headers (existing) — denser row variant
-  Entry rows use new "compact" + "expanded" variants
-[Memories]
-  On-this-day grid + photo memories strip (reuse Discover MemoriesStrip styling)
+Stats segment
+├── Weekly goal ring                (new)
+├── Tracking module (period + 4-up)
+├── This month vs last              (new)
+├── Personal bests strip            (new)
+├── Time-of-day rhythm              (new)
+├── Mood × weather                  (new)
+├── Walk-type breakdown             (new)
+├── Year heatmap
+├── Mood arc 30d
+├── Insights strip (best day / walks lift / consistency)
+├── Badges
+└── Share my month                  (new)
 ```
 
-Default landing segment: **For you**.
-
-## Space optimization (mobile)
-
-- Remove "A quiet page for the walking life." subtitle.
-- Header padding tightened to match Discover (`pt-2 pb-3`).
-- Merge today-prompt + tracking hero into a single **Today island** so the fold shows: prompt, streak, week dots, Write — all together.
-- Tracking module's "View more stats" expander is replaced by the **Stats** segment (no accordion, no nested borders).
-- Entry rows: compact variant by default (tap to expand inline). Move mood/photo/note metadata into a single chip row.
-- Section labels use the Discover micro-eyebrow (`text-[11px] uppercase tracking-[0.14em]`) instead of duplicate eyebrow + serif headline.
-
-## New "useful" features
-
-1. **On this day** — surface entries/walks from same date 1mo/3mo/1y ago. Top of For you.
-2. **Mood pulse mini** — sparkline of last 14 days' mood-after with weekly delta badge.
-3. **Walk vs no-walk mood** — single sentence: "Your mood-after averages **7.2** on walking days, **5.4** otherwise." Computed from existing data.
-4. **Best day of week** — "Tuesdays show up most. Sundays have your highest mood-after." Computed client-side from `stats`.
-5. **Quick prompt chips** — 1-tap to open ReflectionWriteSheet pre-filled with that prompt.
-6. **Search shortcuts** — chips for "Mood↑" (entries where after > before), "With photos", "Walks 30+ min".
-7. **Streak save** — when streak is active and user hasn't shown up today, Today island shows "Keep your N-day streak — write one line" (gentle, not alarmist).
-8. **Share day** — long-press / menu on an entry already exists; add "Copy to clipboard" + use existing `share()`.
-
-All derived client-side from current `JournalStats` + feed payload. No new server function required for v1.
-
-## Components (new + edited)
-
-New (`src/components/journal/`):
-- `today-island.tsx` — merged prompt + streak + week ring + Write.
-- `segmented-island.tsx` — sticky segmented control matching Discover.
-- `on-this-day-rail.tsx` — snap carousel of historical entries.
-- `mood-pulse-mini.tsx` — sparkline + delta + insight line.
-- `insights-strip.tsx` — best-day + walk-vs-no-walk insight cards.
-- `prompt-chips-row.tsx` — snap row of prompt chips opening the write sheet.
-
-Edited:
-- `journal.tsx` — full rewrite around segmented island; default segment "For you".
-- `tracking-module.tsx` — slim down: drop accordion, expose just hero+counters; full stats live in Stats segment.
-- `stats-panel.tsx` — add `BestDayOfWeek` + `WalkVsNoWalkMood` blocks; keep heatmap/mood arc/badges.
-- `entries-feed.tsx` — add Mood↑ chip; tighter sticky month header; compact-default row.
-- `entry-row.tsx` — denser default; expand-on-tap; unify metadata chip row.
-- `today-prompt-card.tsx` — kept as fallback (used inside Reflect segment); Today island supersedes on For you.
-
-Reused: `ReflectionWriteSheet`, `BadgesCarousel`, `WeatherPill`, `share`/`haptics`, `PROMPTS`.
+Insights strip stays but moves below the new modules so the strongest signals land first.
 
 ## Technical notes
 
-- No DB migration. All insights derived from `getJournalStats` (`minutesByDay`, `walkDays`, `entryDays`, `moodArc30`) and the existing `listJournalFeed` payload.
-- On-this-day filter runs on `entries` client-side by `at` date components.
-- Walk-vs-no-walk mood: pair `mood_after_score` from walk entries vs reflection entries; if reflection data lacks score, fall back to "walking days vs non-walking days" using only walk entries' mood_after_score grouped by `walkDays`.
-- Segmented island reuses Discover's `motion.span layoutId` pill pattern for continuity.
-- Sticky behavior: header is normal flow; segmented island uses `position: sticky; top: <appHeaderHeight>` like Discover.
-- Reduced motion: respect `useReducedMotion()` for all count-ups, sparkline draw, segment transitions.
+- **No new server reads required** for modules 2–6 and the share card; all derived from `listJournalFeed` (walk entries carry `started_at`, `duration_seconds`, `mood_*_score`, `walk_type`, `weather_at_end`) plus the existing `JournalStats` payload. If the feed limit (100) becomes the bottleneck, raise it to 200 for the Stats route.
+- **Goal persistence**: new `user_goals` table — `id`, `user_id` (fk auth.users), `kind` ('walks_per_week' | 'minutes_per_week'), `target` int, `updated_at`. RLS: user can read/write own row only. GRANT select/insert/update to authenticated; service_role full. New server fns `getUserGoal` and `setUserGoal` in `src/lib/user-goals.functions.ts`.
+- **Share card**: render an off-screen `<div>` styled at 1080×1920, snapshot via `html-to-image` (small dep) → `share({ files: [...] })`. Fallback: download blob.
+- **Components** (all under `src/components/journal/`): `weekly-goal-ring.tsx`, `month-vs-month.tsx`, `personal-bests-strip.tsx`, `time-of-day-rhythm.tsx`, `mood-weather-grid.tsx`, `walk-type-bar.tsx`, `share-month-card.tsx`. Insertion is purely in the Stats branch of `journal.tsx`.
+- **Motion**: ring uses `motion` stroke-dashoffset; bars stagger in with `useReducedMotion()` respect; everything else fade-up like the rest of the page.
 
 ## Quality bar (390×728)
 
-- Fold shows: Header, Today island (prompt + streak + Write), segmented island. No need to scroll past chrome.
-- "Write" round-trip < 200ms feedback (haptic + sheet open).
-- Segment switch is instant; segments stay mounted so scroll position is preserved per segment.
-- All copy stays in the existing warm/neutral voice; no clinical jargon.
+- Goal ring is the first thing the user sees in Stats; full ring visible without scroll.
+- Every new module renders gracefully with zero data (e.g. "Set a target to track your week" / "Walk a few more times to see your time-of-day rhythm").
+- No new module taller than ~180px on mobile.
 
 ## Out of scope (fast-follow)
-- Voice notes, photo-only entries, calendar/grid view, export-to-PDF, AI summary of the month. Stub UI only if there's room; otherwise omit.
+- Editable personal-best photo backdrops.
+- Goal history / streaks of hit-goal weeks.
+- Year-in-review long-form recap.
+- Friend comparisons (privacy work needed).
+
+---
+
+If you'd rather ship a tighter v1, I'd cut to: **Weekly goal ring + Personal bests + This month vs last + Mood × weather**. Those four carry most of the stickiness. Tell me "tight version" or "ship all" and I'll execute.
