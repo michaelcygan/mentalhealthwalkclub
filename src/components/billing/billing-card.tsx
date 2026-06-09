@@ -233,6 +233,12 @@ export function BillingCard() {
           </div>
         </div>
       </div>
+      <SwitchToYearlyDialog
+        open={switchOpen}
+        onOpenChange={setSwitchOpen}
+        onConfirm={switchYearly}
+        loading={busy === "switch"}
+      />
     </section>
   );
 }
