@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
-import { Shuffle, BookHeart } from "lucide-react";
+import { Shuffle, PenLine } from "lucide-react";
 import { PROMPTS, type ReflectionPrompt } from "@/lib/reflection-prompts";
+import { ReflectionWriteSheet } from "./reflection-write-sheet";
 
 /** Stable shuffle from a numeric seed (mulberry32). */
 function shuffled<T>(arr: T[], seed: number): T[] {
@@ -20,10 +20,7 @@ function shuffled<T>(arr: T[], seed: number): T[] {
 }
 
 function pickFive(seed: number): ReflectionPrompt[] {
-  const pool = PROMPTS.filter(
-    (p) => (p.family === "universal" || p.family === "steady") &&
-           (p.depth === "noticing" || p.depth === "reflecting")
-  );
+  const pool = PROMPTS.filter((p) => p.family === "universal");
   return shuffled(pool, seed).slice(0, 5);
 }
 
@@ -40,55 +37,70 @@ export function ReflectionRotator() {
   const prompts = useMemo(() => pickFive(seed), [seed]);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [writeOpen, setWriteOpen] = useState(false);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || writeOpen) return;
     const t = window.setInterval(() => setIdx((i) => (i + 1) % prompts.length), 12000);
     return () => window.clearInterval(t);
-  }, [paused, prompts.length]);
+  }, [paused, writeOpen, prompts.length]);
 
   const current = prompts[idx];
   if (!current) return null;
 
-  
-
   return (
-    <Card
-      className="rounded-2xl border-border bg-card/90 p-5 shadow-soft backdrop-blur-sm"
-      onMouseDown={() => setPaused(true)}
-      onMouseUp={() => setPaused(false)}
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
-    >
-      <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">A small question</div>
-      <Link to="/journal" className="mt-2 block">
-        <p key={current.id} className="wp-reflect-fade font-serif text-xl leading-snug text-foreground">
-          {current.text}
-        </p>
-      </Link>
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex gap-1.5">
-          {prompts.map((_, i) => (
-            <span key={i} className={`h-1.5 w-1.5 rounded-full transition ${i === idx ? "bg-foreground" : "bg-muted"}`} />
-          ))}
+    <>
+      <Card
+        className="rounded-2xl border-border bg-card/90 p-5 shadow-soft backdrop-blur-sm"
+        onMouseDown={() => setPaused(true)}
+        onMouseUp={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => setPaused(false)}
+      >
+        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Daily Reflection
         </div>
-        <div className="flex items-center gap-1.5">
-          <Link
-            to="/journal"
-            className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:opacity-90"
-          >
-            <BookHeart className="h-3.5 w-3.5" /> Save
-          </Link>
-          <button
-            type="button"
-            onClick={() => setIdx((i) => (i + 1) % prompts.length)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:opacity-90"
-          >
-            <Shuffle className="h-3.5 w-3.5" /> Shuffle
-          </button>
+        <button
+          type="button"
+          onClick={() => setWriteOpen(true)}
+          className="mt-2 block w-full text-left"
+          aria-label="Write a reflection"
+        >
+          <p key={current.id} className="wp-reflect-fade font-serif text-xl leading-snug text-foreground">
+            {current.text}
+          </p>
+        </button>
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex gap-1.5">
+            {prompts.map((_, i) => (
+              <span key={i} className={`h-1.5 w-1.5 rounded-full transition ${i === idx ? "bg-foreground" : "bg-muted"}`} />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setWriteOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-forest px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+            >
+              <PenLine className="h-3.5 w-3.5" /> Write
+            </button>
+            <button
+              type="button"
+              onClick={() => setIdx((i) => (i + 1) % prompts.length)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:opacity-90"
+            >
+              <Shuffle className="h-3.5 w-3.5" /> Shuffle
+            </button>
+          </div>
         </div>
-      </div>
-      
-    </Card>
+      </Card>
+
+      <ReflectionWriteSheet
+        open={writeOpen}
+        onOpenChange={setWriteOpen}
+        prompt={{ id: current.id, text: current.text }}
+        source="home_reflection"
+      />
+    </>
   );
 }

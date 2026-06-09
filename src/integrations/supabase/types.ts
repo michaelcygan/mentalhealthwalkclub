@@ -1208,6 +1208,39 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_entries: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          prompt_id: string | null
+          prompt_text: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          prompt_id?: string | null
+          prompt_text?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          prompt_id?: string | null
+          prompt_text?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       merch_orders: {
         Row: {
           amount_cents: number
