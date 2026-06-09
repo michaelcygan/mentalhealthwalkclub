@@ -9,8 +9,7 @@ export function ListenAndRead() {
   const [tab, setTab] = useState<Tab>("listen");
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="font-serif text-lg text-foreground">Listen &amp; read</h2>
+      <div className="mb-2 flex justify-end px-1">
         <div className="inline-flex rounded-full bg-secondary p-0.5 text-[11px] font-medium">
           <button
             type="button"
