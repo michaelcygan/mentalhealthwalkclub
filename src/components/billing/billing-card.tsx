@@ -103,6 +103,21 @@ export function BillingCard() {
     }
   };
 
+  const switchYearly = async () => {
+    setBusy("switch");
+    try {
+      const r = await switchPlusToYearly({ data: { environment: getStripeEnvironment() } });
+      void trackBillingEvent("plan_switched_to_yearly");
+      toast.success(r.alreadyYearly ? "You're already on yearly." : "Switched to yearly. Thank you!");
+      setSwitchOpen(false);
+      await Promise.all([refresh(), refreshMembership()]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't switch plans");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (!isPlus) {
     return (
       <section className="rounded-3xl border border-forest/30 bg-accent/30 p-5 shadow-soft">
