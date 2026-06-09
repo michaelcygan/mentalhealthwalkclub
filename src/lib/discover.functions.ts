@@ -318,60 +318,22 @@ export const discoverMemories = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Recent walk sessions with photos
-    const { data: walkPhotos } = await supabase
-      .from("walk_photos")
-      .select("id,walk_session_id,storage_path,width,height,taken_at_seconds,created_at")
+    const { data: walkSessions } = await supabase
+      .from("walk_sessions")
+      .select("id,started_at,ended_at,duration_seconds,event_id")
       .eq("user_id", userId)
-      .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .order("created_at", { ascending: false })
-      .limit(40);
+      .eq("status", "completed")
+      .gte("ended_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .order("ended_at", { ascending: false })
+      .limit(data.limit);
 
-    // Group by walk_session, keep first photo
-    const walkMap = new Map<
-      string,
-      { id: string; photoId: string; storage_path: string; width: number | null; height: number | null; date: string }
-    >();
-    for (const p of walkPhotos ?? []) {
-      if (!walkMap.has(p.walk_session_id)) {
-        walkMap.set(p.walk_session_id, {
-          id: p.walk_session_id,
-          photoId: p.id,
-          storage_path: p.storage_path,
-          width: p.width,
-          height: p.height,
-          date: p.created_at,
-        });
-      }
-    }
-
-    const walkSessionIds = Array.from(walkMap.keys());
-    let walkSessions: Array<{ id: string; started_at: string; duration_seconds: number | null }> = [];
-    if (walkSessionIds.length) {
-      const { data: ws } = await supabase
-        .from("walk_sessions")
-        .select("id,started_at,duration_seconds")
-        .in("id", walkSessionIds)
-        .eq("status", "completed");
-      walkSessions = ws ?? [];
-    }
-
-    const memories = walkSessions
-      .map((ws) => {
-        const photo = walkMap.get(ws.id);
-        if (!photo) return null;
-        return {
-          id: ws.id,
-          kind: "walk" as const,
-          photoUrl: photo.storage_path,
-          width: photo.width,
-          height: photo.height,
-          date: ws.started_at,
-          duration_min: ws.duration_seconds ? Math.round(ws.duration_seconds / 60) : null,
-        };
-      })
-      .filter(Boolean)
-      .slice(0, data.limit);
+    const memories = (walkSessions ?? []).map((ws) => ({
+      id: ws.id,
+      kind: "walk" as const,
+      date: ws.started_at,
+      duration_min: ws.duration_seconds ? Math.round(ws.duration_seconds / 60) : null,
+      event_id: ws.event_id,
+    }));
 
     return { memories };
   });
