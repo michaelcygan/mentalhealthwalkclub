@@ -117,7 +117,13 @@ function ListenPage() {
       setName(""); setMood(""); setIsPublic(false);
       navigate({ to: "/listen/$id", params: { id } });
     } catch (e) {
-      toast.error((e as Error).message);
+      const cap = parseCapError(e);
+      if (cap) {
+        setOpenCreate(false);
+        setCapError(cap);
+      } else {
+        toast.error((e as Error).message);
+      }
     }
   }
 
