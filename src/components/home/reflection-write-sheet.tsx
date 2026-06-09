@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +11,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   prompt?: { id?: string; text?: string } | null;
   source?: "home_reflection" | "journal_freeform";
+  onSaved?: () => void;
 }
 
-export function ReflectionWriteSheet({ open, onOpenChange, prompt, source = "home_reflection" }: Props) {
+export function ReflectionWriteSheet({ open, onOpenChange, prompt, source = "home_reflection", onSaved }: Props) {
   const create = useServerFn(createJournalEntry);
-  const qc = useQueryClient();
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -46,7 +45,7 @@ export function ReflectionWriteSheet({ open, onOpenChange, prompt, source = "hom
         },
       });
       toast.success("Saved to your journal");
-      qc.invalidateQueries({ queryKey: ["journal-entries"] });
+      onSaved?.();
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save");
