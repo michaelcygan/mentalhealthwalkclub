@@ -82,36 +82,39 @@ export function MobileTabBar() {
           )}
         </AnimatePresence>
 
-        <ul className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2 py-1.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
-          {left.map((t) => (
-            <TabItem key={t.to} {...t} active={isActive(t.to, t.exact)} reduceMotion={!!reduceMotion} />
-          ))}
+        <div className="pointer-events-auto relative flex w-full max-w-sm items-center rounded-full border border-border/60 bg-background/70 px-2 py-1.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
+          <ul className="flex flex-1 items-center justify-around gap-1 pr-7">
+            {left.map((t) => (
+              <TabItem key={t.to} {...t} side="left" active={isActive(t.to, t.exact)} reduceMotion={!!reduceMotion} />
+            ))}
+          </ul>
+
+          <ul className="flex flex-1 items-center justify-around gap-1 pl-7">
+            {right.map((t) => (
+              <TabItem key={t.to} {...t} side="right" active={isActive(t.to, t.exact)} reduceMotion={!!reduceMotion} />
+            ))}
+          </ul>
 
           {showCompose && (
-            <li>
-              <motion.button
-                type="button"
-                onClick={() => { haptics.tap(); setComposeOpen((v) => !v); }}
-                whileTap={{ scale: 0.9 }}
-                aria-expanded={composeOpen}
-                aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
-                className="mx-0.5 grid h-11 w-11 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--forest)_70%,transparent)] transition active:scale-95"
+            <motion.button
+              type="button"
+              onClick={() => { haptics.tap(); setComposeOpen((v) => !v); }}
+              whileTap={{ scale: 0.9 }}
+              aria-expanded={composeOpen}
+              aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
+              className="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_10px_24px_-8px_color-mix(in_oklab,var(--forest)_70%,transparent)] ring-4 ring-background/70 transition active:scale-95"
+              style={{ marginTop: "-4px" }}
+            >
+              <motion.span
+                animate={{ rotate: composeOpen ? 45 : 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                className="grid place-items-center"
               >
-                <motion.span
-                  animate={{ rotate: composeOpen ? 45 : 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                  className="grid place-items-center"
-                >
-                  <Plus className="h-5 w-5" strokeWidth={2.4} />
-                </motion.span>
-              </motion.button>
-            </li>
+                <Plus className="h-5 w-5" strokeWidth={2.4} />
+              </motion.span>
+            </motion.button>
           )}
-
-          {right.map((t) => (
-            <TabItem key={t.to} {...t} active={isActive(t.to, t.exact)} reduceMotion={!!reduceMotion} />
-          ))}
-        </ul>
+        </div>
       </nav>
     </>
   );
@@ -123,12 +126,14 @@ function TabItem({
   icon: Icon,
   active,
   reduceMotion,
+  side,
 }: {
   to: string;
   label: string;
   icon: typeof Footprints;
   active: boolean;
   reduceMotion: boolean;
+  side: "left" | "right";
 }) {
   return (
     <li>
@@ -147,7 +152,7 @@ function TabItem({
         >
           {active && (
             <motion.span
-              layoutId="tab-active-pill"
+              layoutId={`tab-active-pill-${side}`}
               transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
               className="absolute inset-0 -z-10 rounded-full"
               style={{ backgroundColor: "color-mix(in oklab, var(--forest) 14%, transparent)" }}
