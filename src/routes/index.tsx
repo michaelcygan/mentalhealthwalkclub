@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { AmbientBackdrop } from "@/components/home/ambient-backdrop";
 import { TodayIsland } from "@/components/home/today-island";
+import { UpcomingRail } from "@/components/home/upcoming-rail";
 import { BestWindow } from "@/components/home/best-window";
 import { Reflect30s } from "@/components/home/reflect-30s";
 import { WeekSummary } from "@/components/home/week-summary";
@@ -107,6 +108,7 @@ function HomeTab() {
   return (
     <div className="space-y-4 pb-20">
       <TodayIsland user={user} />
+      <UpcomingRail />
       <BestWindow />
       <Reflect30s lastReflection={lastReflection} />
       <WeekSummary />

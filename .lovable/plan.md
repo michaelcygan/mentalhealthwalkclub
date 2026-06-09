@@ -1,49 +1,39 @@
-# Finish Plus + Patron integration
+## Goal
 
-A focused second pass to complete what the first pass scaffolded. No new tiering concepts — just wiring the existing pieces into the live flows and verifying.
+Surface scheduled walks on the Home page so a user who has RSVP'd (or is hosting) sees them immediately, alongside a small dose of friend activity for walks worth joining.
 
-## 1. Enforce free-tier soft caps (gentle nudges)
+## What lands on Home
 
-Use the existing `requireUnderCap` guard from `src/lib/plus-guard.server.ts` and surface `UpsellSheet` on the client when the server returns the cap error.
+A new `UpcomingRail` block, placed directly under `TodayIsland` (top of the feed, above `BestWindow`):
 
-- **Saved reads** (`src/lib/saved-reads.functions.ts`): call `requireUnderCap("saved_reads")` in the create/save mutation.
-- **Playlists** (`src/lib/playlists.functions.ts`): call `requireUnderCap("playlists")` in the create-playlist mutation.
-- **Collections followed** (`src/lib/collections.functions.ts`): call `requireUnderCap("collections_follow")` in the follow mutation.
+1. **Your next walks** — events where you are host or have RSVP'd `going`, `starts_at >= now()`, ordered soonest first, up to 3.
+   - Card shows: cover, title, "Today 5:00 PM" / "Thu, Jun 11", venue, "You're going" or "You're hosting" pill, plus `going_count` if > 1.
+   - Tap → `/w/{slug}`.
+2. **Friends going this week** — up to 3 upcoming public/link_only events where ≥1 mutual-follow friend RSVP'd `going`, within next 7 days, excluding events you're already on. Shows friend avatar stack + "Maya + 2 going".
+   - Tap → `/w/{slug}`. Single "I'm in" quick-RSVP via existing `quickRsvpEvent`.
+3. **Empty state** — if no personal RSVPs and no friend activity, the whole rail hides (no clutter on Home). If only friend activity exists, render just that subsection.
 
-Client side: catch the typed cap error in the three call sites (saved-reads list/button, playlist create dialog, collection follow button) and open `<UpsellSheet/>` with the matching reason copy. Plus users bypass automatically (guard returns early).
+Headline: "Upcoming" with subcopy "Walks you're on + friends going this week".
 
-## 2. "Switch to yearly" on the active billing card
+## Technical Details
 
-`SwitchToYearlyDialog` already exists in `src/components/billing/plan-picker.tsx`. Wire it up:
+- **New server fn** `getHomeUpcoming` in `src/lib/discover.functions.ts` (auth-protected). Returns `{ mine: UpcomingMine[]; friends: FriendsGoingEvent[] }`.
+  - `mine`: query `events` joined with `event_rsvps` filtered by `user_id = auth.uid() AND status='going'` UNION events where `host_user_id = auth.uid()`, `starts_at >= now()`, `status='published'`, limit 3.
+  - `friends`: reuse the logic in `discoverFriendsGoing` but narrow the window to next 7 days and exclude events already in `mine`. Cap at 3.
+- **New component** `src/components/home/upcoming-rail.tsx` — renders both subsections with existing card styling tokens (cream card, forest accents). Reuses `RsvpPill` for quick "I'm in".
+- **Home wiring** in `src/routes/index.tsx`: insert `<UpcomingRail />` between `<TodayIsland />` and `<BestWindow />`. Component self-hides when both lists are empty (returns `null`), so the layout stays clean for new users.
+- **Data fetching**: `useQuery` against the new server fn with a 60s `staleTime`; invalidate on `quickRsvpEvent` success so the rail updates after RSVP.
 
-- Add a `switchToYearly` server fn in `src/lib/billing.functions.ts` that finds the user's active monthly Plus sub and calls Stripe `subscriptions.update` with the yearly price + `proration_behavior: "always_invoice"`.
-- In `src/components/billing/billing-card.tsx`, when `useMembership()` reports `plusInterval === "monthly"`, show a "Switch to yearly · save $4.88" button that opens the dialog and calls the new fn. Toast on success and `refresh()` membership.
+## Out of Scope
 
-## 3. Founding badge across the app
+- No changes to `/discover` (the "This week near you" section there stays).
+- No notifications, push, or calendar export from this rail.
+- No new RSVP states or copy overhaul.
+- No design-token or layout changes outside the new component.
 
-Render `<FoundingBadge/>` next to patron display names. Add a tiny `usePatronIds()` hook that fetches `patron_profile` rows where `display_on_wall = true` once and caches in React Query, then drop the badge into:
+## Verify
 
-- `src/components/discover/friends-going-row.tsx` (attendee names)
-- `src/components/walk-page/attendee-stack.tsx` (hover/long-press name)
-- `src/components/discover/circle-row.tsx` (member names)
-- `src/routes/profile.tsx` header (own profile, if patron)
-
-Badge is the small leaf chip — non-intrusive, title="Founding Patron".
-
-## 4. Admin polish
-
-- In `src/routes/admin.membership.tsx`, derive the env tile filter from `getStripeEnvironment()` instead of `window.__env`.
-- Add a "Pause Patron signups" check in `createPatronCheckoutSession` so the toggle actually blocks new checkouts (existing patrons unaffected).
-
-## 5. Verify
-
-- `invoke-server-function` the three guarded mutations as a free user to confirm the cap error shape, then as a Plus user to confirm bypass.
-- Smoke `createPatronCheckoutSession` (sandbox) at $5/mo and confirm the webhook writes `patron` row + `patron_profile`.
-- Hit `createSwitchToYearly` against a sandbox monthly sub and confirm `price_id` flips to `plus_yearly` in the `subscriptions` table.
-- Inspect `/impact`, `/settings`, `/admin/membership` in the preview to confirm no console errors.
-
-## Out of scope
-
-- No new tiers, no price changes, no new products.
-- No copy overhaul on the upsell sheet beyond reason-specific lines.
-- No changes to the auth flow.
+- As a user with a future RSVP: rail shows it first with correct time/venue.
+- As a user with no RSVPs but a friend RSVP'd this week: rail shows only the friends subsection.
+- As a brand-new user with neither: rail does not render and Home looks identical to today.
+- Quick-RSVP from the friends subsection moves the event into `mine` on next refetch.

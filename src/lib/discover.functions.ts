@@ -389,3 +389,162 @@ export const setEventFeatured = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ---------- Home upcoming rail ---------- */
+
+export interface HomeUpcomingMine {
+  id: string;
+  slug: string;
+  title: string;
+  starts_at: string;
+  timezone: string | null;
+  venue_name: string | null;
+  city: string | null;
+  image_url: string | null;
+  attendee_count: number;
+  role: "host" | "going";
+}
+
+export const getHomeUpcoming = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ mine: HomeUpcomingMine[]; friends: FriendGoingEvent[] }> => {
+    const { supabase, userId } = context;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const weekIso = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Hosted
+    const { data: hosted } = await supabase
+      .from("events")
+      .select("id,slug,title,starts_at,timezone,venue_name,city,image_url,attendee_count")
+      .eq("host_user_id", userId)
+      .eq("status", "published")
+      .gte("starts_at", nowIso)
+      .order("starts_at", { ascending: true })
+      .limit(5);
+
+    // RSVP'd going
+    const { data: rsvps } = await supabase
+      .from("event_rsvps")
+      .select("event_id")
+      .eq("user_id", userId)
+      .eq("status", "going");
+    const rsvpIds = (rsvps ?? []).map((r) => r.event_id);
+
+    let going: typeof hosted = [];
+    if (rsvpIds.length) {
+      const { data } = await supabase
+        .from("events")
+        .select("id,slug,title,starts_at,timezone,venue_name,city,image_url,attendee_count")
+        .in("id", rsvpIds)
+        .eq("status", "published")
+        .gte("starts_at", nowIso)
+        .order("starts_at", { ascending: true })
+        .limit(5);
+      going = data ?? [];
+    }
+
+    const seen = new Set<string>();
+    const mine: HomeUpcomingMine[] = [];
+    for (const e of hosted ?? []) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      mine.push({ ...e, role: "host" });
+    }
+    for (const e of going ?? []) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      mine.push({ ...e, role: "going" });
+    }
+    mine.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+    const mineTop = mine.slice(0, 3);
+    const mineIds = new Set(mineTop.map((m) => m.id));
+
+    // Friends going this week (reuse logic, narrow window, exclude mine)
+    const { data: friendRows } = await supabase
+      .from("friendships")
+      .select("user_low,user_high")
+      .eq("status", "accepted")
+      .or(`user_low.eq.${userId},user_high.eq.${userId}`);
+    const friendIds = Array.from(
+      new Set((friendRows ?? []).map((r) => (r.user_low === userId ? r.user_high : r.user_low))),
+    );
+
+    const { data: myCircles } = await supabase
+      .from("circle_members")
+      .select("circle_id")
+      .eq("user_id", userId)
+      .eq("status", "active");
+    const circleIds = (myCircles ?? []).map((r) => r.circle_id);
+    let mateIds: string[] = [];
+    if (circleIds.length) {
+      const { data: mateRows } = await supabase
+        .from("circle_members")
+        .select("user_id")
+        .in("circle_id", circleIds)
+        .eq("status", "active");
+      mateIds = Array.from(
+        new Set((mateRows ?? []).map((r) => r.user_id).filter((id) => id !== userId)),
+      );
+    }
+    const connectedIds = Array.from(new Set([...friendIds, ...mateIds]));
+
+    let friends: FriendGoingEvent[] = [];
+    if (connectedIds.length) {
+      const { data: friendRsvps } = await supabase
+        .from("event_rsvps")
+        .select("event_id,user_id")
+        .in("user_id", connectedIds)
+        .eq("status", "going");
+      const candidateIds = Array.from(
+        new Set((friendRsvps ?? []).map((r) => r.event_id).filter((id) => !mineIds.has(id))),
+      );
+
+      if (candidateIds.length) {
+        const { data: events } = await supabase
+          .from("events")
+          .select(
+            "id,slug,title,starts_at,timezone,venue_name,city,neighborhood:meeting_point,lat,lng,attendee_count,image_url,audience_mode,visibility,host_user_id",
+          )
+          .in("id", candidateIds)
+          .eq("status", "published")
+          .gte("starts_at", nowIso)
+          .lte("starts_at", weekIso)
+          .order("starts_at", { ascending: true })
+          .limit(3);
+
+        if (events?.length) {
+          const rsvpMap = new Map<string, string[]>();
+          for (const r of friendRsvps ?? []) {
+            const list = rsvpMap.get(r.event_id) ?? [];
+            list.push(r.user_id);
+            rsvpMap.set(r.event_id, list);
+          }
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("id,display_name,username,avatar_url")
+            .in("id", connectedIds);
+          const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
+          friends = events.map((e) => {
+            const goingIds = (rsvpMap.get(e.id) ?? []).filter((id) => id !== userId);
+            const goingFriends = goingIds
+              .map((id) => pmap.get(id))
+              .filter(Boolean) as Array<{ id: string; display_name: string | null; avatar_url: string | null }>;
+            return {
+              ...e,
+              miles: null,
+              going_friends: goingFriends.slice(0, 3).map((p) => ({
+                id: p.id,
+                display_name: p.display_name,
+                avatar_url: p.avatar_url,
+              })),
+              going_count: goingIds.length,
+            };
+          });
+        }
+      }
+    }
+
+    return { mine: mineTop, friends };
+  });
+
