@@ -8,7 +8,15 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { TrackingModule } from "@/components/journal/tracking-module";
+import { TodayIsland } from "@/components/journal/today-island";
+import { JournalSegmented, type JournalSegment } from "@/components/journal/journal-segmented";
+import { OnThisDayRail } from "@/components/journal/on-this-day-rail";
+import { MoodPulseMini } from "@/components/journal/mood-pulse-mini";
+import { InsightsStrip } from "@/components/journal/insights-strip";
+import { PromptChipsRow } from "@/components/journal/prompt-chips-row";
 import { TodayPromptCard } from "@/components/journal/today-prompt-card";
+import { MemoriesGrid } from "@/components/journal/memories-grid";
+import { StatsPanel } from "@/components/journal/stats-panel";
 import { EntriesFeed } from "@/components/journal/entries-feed";
 import { ReflectionWriteSheet } from "@/components/home/reflection-write-sheet";
 import {
@@ -40,6 +48,7 @@ function JournalTab() {
   const [stats, setStats] = useState<JournalStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [writeOpen, setWriteOpen] = useState(false);
+  const [segment, setSegment] = useState<JournalSegment>("for-you");
 
   const reload = useCallback(async () => {
     if (!user) {
@@ -98,39 +107,66 @@ function JournalTab() {
   }
 
   return (
-    <div className="space-y-5 pb-8">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-3xl">Journal</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A quiet page for the walking life.</p>
-        </div>
+    <div className="mx-auto max-w-2xl space-y-4 pb-24">
+      <header className="flex items-center justify-between gap-3 pt-1">
+        <h1 className="font-serif text-3xl leading-tight">Journal</h1>
         <motion.button
           type="button"
           onClick={() => setWriteOpen(true)}
           whileTap={{ scale: 0.95 }}
-          whileHover={{ scale: 1.03 }}
-          className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
+          className="inline-flex items-center gap-1.5 rounded-full bg-forest px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95"
         >
-          <motion.span
-            initial={{ rotate: -8 }}
-            animate={{ rotate: [-8, 6, 0] }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <PenLine className="h-3.5 w-3.5" />
-          </motion.span>
+          <PenLine className="h-3.5 w-3.5" />
           Write
         </motion.button>
       </header>
 
-      <TrackingModule stats={stats} />
+      <TodayIsland stats={stats} wroteToday={wroteToday} onSaved={() => void reload()} />
 
-      <TodayPromptCard wroteToday={wroteToday} onSaved={() => void reload()} />
+      <JournalSegmented value={segment} onChange={setSegment} />
 
-      <EntriesFeed
-        entries={entries}
-        onChanged={() => void reload()}
-        onWrite={() => setWriteOpen(true)}
-      />
+      {segment === "for-you" && (
+        <div className="space-y-6">
+          <OnThisDayRail entries={entries} />
+          <MoodPulseMini stats={stats} />
+          <InsightsStrip stats={stats} entries={entries} />
+          <PromptChipsRow onSaved={() => void reload()} />
+        </div>
+      )}
+
+      {segment === "reflect" && (
+        <div className="space-y-6">
+          <TodayPromptCard wroteToday={wroteToday} onSaved={() => void reload()} />
+          <PromptChipsRow onSaved={() => void reload()} eyebrow="More prompts" count={8} />
+          <PromptChipsRow onSaved={() => void reload()} family="tender" eyebrow="When it's tender" />
+          <PromptChipsRow onSaved={() => void reload()} family="light" eyebrow="When it feels light" />
+        </div>
+      )}
+
+      {segment === "stats" && (
+        <div className="space-y-6">
+          <TrackingModule stats={stats} />
+          <InsightsStrip stats={stats} entries={entries} />
+          <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+            <StatsPanel stats={stats} />
+          </div>
+        </div>
+      )}
+
+      {segment === "entries" && (
+        <EntriesFeed
+          entries={entries}
+          onChanged={() => void reload()}
+          onWrite={() => setWriteOpen(true)}
+        />
+      )}
+
+      {segment === "memories" && (
+        <div className="space-y-6">
+          <OnThisDayRail entries={entries} />
+          <MemoriesGrid entries={entries} />
+        </div>
+      )}
 
       <p className="pt-2 text-center font-serif text-xs italic text-muted-foreground">
         Still here. Still walking.{" "}
