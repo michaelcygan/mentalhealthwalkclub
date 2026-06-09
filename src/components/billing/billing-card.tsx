@@ -187,6 +187,18 @@ export function BillingCard() {
           <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
           <div className="mt-4 grid gap-2">
+            {plusInterval === "monthly" && !endingSoon && status !== "past_due" && (
+              <Button
+                onClick={() => {
+                  void trackBillingEvent("plan_switch_yearly_clicked");
+                  setSwitchOpen(true);
+                }}
+                className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
+              >
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Switch to yearly — save $4.88
+              </Button>
+            )}
             {status === "past_due" && (
               <Button disabled={busy === "card"} onClick={() => openPortal("payment_method_update", "card")} className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90">
                 <CreditCard className="mr-2 h-4 w-4" />
