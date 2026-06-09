@@ -185,7 +185,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8 md:pt-10 md:pb-12 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-12">
+        <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8 md:pt-10 md:pb-12 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-12">
           {children}
         </div>
       </main>
