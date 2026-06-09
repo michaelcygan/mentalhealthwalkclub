@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { recentBlogPosts, type BlogPostCard } from "@/lib/blogs.functions";
 import { listSavedPostIds, toggleSavedRead } from "@/lib/saved-reads.functions";
+import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
+import { UpsellSheet } from "@/components/membership/upsell-sheet";
 
 function estReadMin(summary: string | null) {
   if (!summary) return null;
