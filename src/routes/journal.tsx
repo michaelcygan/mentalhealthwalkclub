@@ -18,6 +18,13 @@ import { TodayPromptCard } from "@/components/journal/today-prompt-card";
 import { MemoriesGrid } from "@/components/journal/memories-grid";
 import { StatsPanel } from "@/components/journal/stats-panel";
 import { EntriesFeed } from "@/components/journal/entries-feed";
+import { WeeklyGoalRing } from "@/components/journal/weekly-goal-ring";
+import { MonthVsMonth } from "@/components/journal/month-vs-month";
+import { PersonalBestsStrip } from "@/components/journal/personal-bests-strip";
+import { TimeOfDayRhythm } from "@/components/journal/time-of-day-rhythm";
+import { MoodWeatherGrid } from "@/components/journal/mood-weather-grid";
+import { WalkTypeBar } from "@/components/journal/walk-type-bar";
+import { ShareMonthCard } from "@/components/journal/share-month-card";
 import { ReflectionWriteSheet } from "@/components/home/reflection-write-sheet";
 import {
   getJournalStats,
