@@ -53,7 +53,7 @@ function AdminMembershipPage() {
 
     // Tier breakdown via two parallel reads
     (async () => {
-      const env = (typeof window !== "undefined" ? (window as unknown as { __env?: string }).__env : null) ?? "live";
+      const env = getStripeEnvironment();
       const [{ data: subs }, { data: patronRows }] = await Promise.all([
         supabase
           .from("subscriptions" as never)
