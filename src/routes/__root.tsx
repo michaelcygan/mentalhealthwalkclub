@@ -191,10 +191,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div
-          className="mx-auto max-w-3xl px-4 md:px-8 md:pt-10 md:pb-12 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-12"
-          style={{ paddingTop: "calc(env(safe-area-inset-top) + 68px)" }}
-        >
+        <div className="mx-auto max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+68px)] pb-[calc(8rem+env(safe-area-inset-bottom))] md:px-8 md:pt-10 md:pb-12">
           {children}
         </div>
       </main>
