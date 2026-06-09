@@ -109,7 +109,7 @@ export function BillingCard() {
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">$1.99/month. Cancel anytime.</p>
             <Button
-              onClick={openPlusCheckout}
+              onClick={() => openPlusCheckout()}
               className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90"
             >
               Become a supporter

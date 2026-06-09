@@ -34,6 +34,18 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
   const periodEnd = item?.current_period_end ?? subscription.current_period_end;
   const eventAtIso = new Date(eventCreated * 1000).toISOString();
 
+  // Kind: 'plus' or 'patron'. Patron rows use price_data, so price_id is opaque —
+  // we tag the row with subscription_kind from metadata and store the monthly amount.
+  const kind: "plus" | "patron" =
+    subscription.metadata?.kind === "patron" ? "patron" : "plus";
+  const unitAmount =
+    typeof item?.price?.unit_amount === "number"
+      ? item.price.unit_amount
+      : kind === "patron"
+        ? Number(subscription.metadata?.amount_cents ?? 0) || null
+        : null;
+  const normalizedPriceId = kind === "patron" ? "patron_custom" : priceId;
+
   // Out-of-order guard: skip if a newer event has already been applied.
   const { data: existing } = await getSupabase()
     .from("subscriptions")
@@ -53,7 +65,7 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
         stripe_subscription_id: subscription.id,
         stripe_customer_id: subscription.customer,
         product_id: productId,
-        price_id: priceId,
+        price_id: normalizedPriceId,
         status: subscription.status,
         current_period_start: periodStart
           ? new Date(periodStart * 1000).toISOString()
@@ -63,11 +75,35 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
           : null,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
         environment: env,
+        subscription_kind: kind,
+        monthly_amount_cents: unitAmount,
         last_event_at: eventAtIso,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" },
     );
+
+  // Mirror patron state into patron_profile so the wall + admin can read it.
+  if (kind === "patron") {
+    const active = ["active", "trialing", "past_due"].includes(subscription.status);
+    if (active) {
+      await getSupabase()
+        .from("patron_profile")
+        .upsert(
+          {
+            user_id: userId,
+            monthly_amount_cents: unitAmount ?? 0,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+    } else {
+      await getSupabase()
+        .from("patron_profile")
+        .update({ monthly_amount_cents: 0, updated_at: new Date().toISOString() })
+        .eq("user_id", userId);
+    }
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, eventCreated: number) {
