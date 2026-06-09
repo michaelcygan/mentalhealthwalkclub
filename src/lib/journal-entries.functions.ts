@@ -247,6 +247,13 @@ export const listJournalFeed = createServerFn({ method: "GET" })
     return [...walkEntries, ...reflectionEntries].sort((a, b) => (a.at < b.at ? 1 : -1));
   });
 
+export interface JournalBadge {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  earned_at: string;
+}
 export interface JournalStats {
   lifetime: { entries: number; walks: number; minutes: number; stepsLogged: number };
   /** ISO date strings (YYYY-MM-DD) — past 365 days */
@@ -256,7 +263,9 @@ export interface JournalStats {
   minutesByDay: Record<string, number>;
   /** After-walk mood scores past 30 days, oldest-first */
   moodArc30: { date: string; score: number }[];
-  latestBadge: { name: string; description: string | null; earned_at: string } | null;
+  /** Most recently earned badges, newest first (cap 20) */
+  badges: JournalBadge[];
+  badgesCount: number;
 }
 
 function isoDay(d: Date): string {
@@ -289,10 +298,10 @@ export const getJournalStats = createServerFn({ method: "GET" })
         .order("created_at", { ascending: true }),
       supabase
         .from("user_badges")
-        .select("earned_at, badge_definitions(name,description)")
+        .select("badge_id, earned_at, badge_definitions(id,name,description,icon)")
         .eq("user_id", userId)
         .order("earned_at", { ascending: false })
-        .limit(1),
+        .limit(20),
       supabase
         .from("walk_sessions")
         .select("id,duration_seconds,steps", { count: "exact", head: false })
@@ -341,16 +350,19 @@ export const getJournalStats = createServerFn({ method: "GET" })
       stepsLogged: lifetimeWalksRows.reduce((s, w) => s + (w.steps ?? 0), 0),
     };
 
-    const latestBadgeRow = (badgeRes.data ?? [])[0] as
-      | { earned_at: string; badge_definitions: { name: string; description: string | null } | null }
-      | undefined;
-    const latestBadge = latestBadgeRow?.badge_definitions
-      ? {
-          name: latestBadgeRow.badge_definitions.name,
-          description: latestBadgeRow.badge_definitions.description,
-          earned_at: latestBadgeRow.earned_at,
-        }
-      : null;
+    const badgeRows = (badgeRes.data ?? []) as Array<{
+      earned_at: string;
+      badge_definitions: { id: string; name: string; description: string | null; icon: string | null } | null;
+    }>;
+    const badges: JournalBadge[] = badgeRows
+      .filter((r) => r.badge_definitions)
+      .map((r) => ({
+        id: r.badge_definitions!.id,
+        name: r.badge_definitions!.name,
+        description: r.badge_definitions!.description,
+        icon: r.badge_definitions!.icon,
+        earned_at: r.earned_at,
+      }));
 
     return {
       lifetime,
@@ -358,6 +370,7 @@ export const getJournalStats = createServerFn({ method: "GET" })
       entryDays: Array.from(entryDaysSet),
       minutesByDay,
       moodArc30,
-      latestBadge,
+      badges,
+      badgesCount: badges.length,
     };
   });

@@ -1,108 +1,79 @@
-## Goal
+## Journal page — MVP polish pass
 
-Reshape `/journal` around the act of writing — a calm tracking header, one unified feed, a single writing flow, and an expandable stats view. Strip everything that assumed GPS/collaborative virtual walks. Keep meaningful walking signal (minutes, days, mood lift, photos) without pretending we have route data.
+Answering the asks directly, then layering on the world-class flourishes.
 
-## What gets removed
+### 1. Anything left from the revamp?
+Functionally, the revamp is complete — feed, tracking, stats, writing flow all landed. What's left is **craft**: compose affordance, iconography, smart units, badge surface, motion. Everything below is that pass.
 
-- Route map snapshots everywhere on this surface (entry card art, detail pane map, share-card baking using the snapshot).
-- Distance/miles UI and computations (mi stat, mood-arc captions referencing miles, share text). Tracking module loses "miles".
-- Steps as a hero metric. Replaced by **Steps logged** wherever it shows, with quieter visual weight (acknowledges phone-locked walks under-count).
-- `SignalsRow` (badge/rank/streak chips) — the streak now lives in Tracking; latest badge gets one small pill inside the expanded stats. No "rank in group" anywhere.
-- "Earned" badge scroller as a top-level section — folded into expanded stats.
-- The right-side desktop `WalkDetailPane` and the mobile detail Drawer (replaces with inline entry expansion, see below). The "edit reflection" textarea moves into the unified write sheet.
-- Separate `JournalReflections` block above the walks feed — merged into one feed.
-- `EntrySearch` mood "Felt lighter / Felt heavier" chips — replaced by a filter row that matches the new entry taxonomy.
-
-## New shape of `/journal`
+### 2. Compose button — move out of the floating FAB
+Replace the green floating "+" (which collides with bottom nav and looks heavy on mobile) with a **pill in the header**, right-aligned next to "Journal":
 
 ```text
-[ Header: Journal · "Where every walk gets to land." ]
-
-[ Tracking module ]                          <- always-visible glance
-  ├─ Showing-up streak (one flame, days)
-  ├─ This week ring: 3/7 days · 42 min
-  ├─ Period toggle (week / month / all)
-  └─ "View more stats" chevron → expands in place
-       ├─ Lifetime: entries written · walks · minutes · steps logged
-       ├─ 52-week heatmap (intensity = any "showing up" day)
-       ├─ 30-day mood arc (after-walk score)
-       └─ Latest badge pill (link to /profile)
-
-[ Today's prompt card ]                      <- gentle nudge, one card
-  small rotating reflection prompt + "Write" button
-  (reuses PROMPTS pool; if already wrote today → "Add another")
-
-[ Entries ]
-  ├─ Search input
-  ├─ Filter chips: All · Reflections · Walks · With photos
-  ├─ Month-grouped feed of unified Entry cards
-  └─ Floating "+" FAB → opens write sheet (freeform)
+Journal                              [ ✎  Write ]
+A quiet page for the walking life.
 ```
 
-## Unified Entry model (client-side)
+- Pill: forest background, small pen icon + "Write", rounded-full, subtle shadow.
+- Sticks to the top of the page (no scroll-follow / no FAB).
+- Tapping opens the same `ReflectionWriteSheet` it does today.
+- Remove the fixed-position `<button>` in `entries-feed.tsx` entirely.
 
-One `JournalEntry` shape rendered for both sources, sorted by `created_at` / `started_at` desc:
+### 3. New streak icon (not a flame)
+Flame is overused and slightly aggressive for a mental health surface. Swap to **`Sprout` from lucide-react** in the `clay` color — it matches the brand (walking, growing, gentle), and pairs naturally with "showing up". Used in:
+- `tracking-module.tsx` hero number
+- anywhere else the flame appears (search confirms only one spot)
 
-- **Reflection entries** (`journal_entries` rows): kind=`reflection`, shows date, optional prompt (italic serif), body, "Edit"/"Delete" in entry menu.
-- **Walk entries** (`walk_sessions` rows where note OR photos OR mood exist): kind=`walk`, shows date + time, duration · steps-logged (when present), mood before→after with delta, optional weather pill, photo strip (up to 3 thumbs from `walk_photos`), optional reflection_note as italic quote, "Add reflection" if missing.
-- Bare walks with no note/photos/mood do **not** show as cards — they still count toward tracking minutes and the showing-up streak.
+### 4. Expanded stats — smart units + badge carousel
 
-Cards stay distinct visually (a soft "Walk" or "Reflection" eyebrow + icon), satisfying the "keep walks as their own card type" choice while living in one feed.
+**Smart unit formatting** for the lifetime row. New tiny helper `formatDuration(minutes)`:
+- `< 60` → `"42 min"`
+- `< 24 × 60` → `"3.4 hrs"` (one decimal, drop if .0)
+- `< 365 × 24 × 60` → `"12 days"` (walking days equivalent at 24h, or we use 60-min "walking days" — see note)
+- `≥ year` → `"1.2 yrs"`
 
-### Tap-to-expand (no drawer)
+Practical mapping for *walking* minutes: minutes → hours after 60, → days after 24 hrs, → years after 365 days. Same helper applied to the period row (week/month/all) and the lifetime row, so a long-time user sees "2.3 yrs" instead of "1,204,800". Steps logged keeps `toLocaleString()` with a comma.
 
-Tapping an entry expands it inline: full body, all photos in a 3-up grid, weather, full mood block, share button (text-only — no baked map card). Re-tapping collapses. This removes the desktop side pane and the mobile vaul drawer entirely.
+**Badges metric + carousel** replaces the single "Latest badge" row:
 
-## Writing flow polish
+```text
+┌─────────┐  ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐  →
+│   12    │  │🏅│ │🏅│ │🏅│ │🏅│ │🏅│
+│ BADGES  │  └──┘ └──┘ └──┘ └──┘ └──┘
+└─────────┘
+```
 
-`ReflectionWriteSheet` is already the right primitive. Upgrades:
+- Left: count tile (`12 / BADGES EARNED`), same visual weight as other stats.
+- Right: horizontal scroll-snap rail of earned badges, newest first, ~56px circles with icon + tiny name underneath. Edge fade on the right to hint scrollability.
+- Tap a badge → opens a small dialog (reuse `@/components/ui/dialog`) showing icon, name, description, earned date, and a "View all" link to `/profile`.
+- Pulls from `user_badges` + `badge_definitions` — extend `getJournalStats` to return `badges: { id, name, description, icon, earned_at }[]` (cap at ~20 most recent for the rail; the dialog can still show one).
 
-- Today's date as quiet eyebrow, prompt (if any) in serif italic, soft cream paper background.
-- Larger textarea, comfortable line-height, generous max-width, auto-grow up to viewport.
-- Inline "Change prompt" link → rotates within the current 5-prompt seed.
-- Inline "Skip prompt" → blanks the prompt; entry saves as freeform.
-- ⌘/Ctrl+Enter to save (already there); also Esc to confirm-discard if there's unsaved text.
-- Auto-save draft to `localStorage` keyed by date so a refresh doesn't lose writing.
-- After save: toast + sheet closes + feed updates locally (already wired via `onSaved`).
+### 5. World-class flourishes (lightweight, ship-safe)
 
-## Tracking module rewrite (`tracking-strip.tsx`)
+Project already uses `motion/react` elsewhere; reuse, no new deps.
 
-- Replace "miles" tile with "entries this {period}".
-- Showing-up streak (days, computed from union of walk dates and journal_entry dates) moves up next to the week ring as the hero number.
-- "Steps logged" stat: smaller, with a `?` tooltip explaining it's a partial count.
-- The card itself becomes the expand surface — chevron toggles the stats panel inline (heatmap, mood arc, badge pill). The standalone "Lifetime stats" section is removed.
+- **Streak number count-up**: `motion`'s `animate(useMotionValue, ...)` on mount so the streak rolls from 0 → N over ~600ms. Same for the lifetime stat tiles when "View more stats" expands.
+- **Heatmap reveal**: stagger cells fading in column-by-column (50ms total) when stats expand. Today's cell gets a soft pulsing ring.
+- **Stats expand**: `AnimatePresence` + height/opacity transition instead of the current snap-open.
+- **Entry rows**: fade+rise on mount (stagger 30ms), tap scales to 0.98, expand uses layout animation so the row grows in place smoothly.
+- **Filter chips**: spring on active change; active chip gets a subtle `layoutId` underline that slides between chips.
+- **Write pill**: gentle hover/tap scale; the pen icon does a tiny wiggle once per session as a discoverability cue.
+- **Empty state**: the "blank first page" card fades the sprout/streak in once data lands.
+- **Pull-to-refresh polish**: project already has `use-pull-to-refresh` — wire it on `/journal` to re-call `reload()`, with the sprout icon as the indicator (continuity with the streak).
+- **Reduced motion**: respect `prefers-reduced-motion` — all motion blocks fall back to instant.
 
-## Data + server work
+### Files touched
 
-- New server fn `listJournalFeed` in `src/lib/journal-entries.functions.ts` returning `{ entries: JournalEntry[] }` already-unified server-side: pulls `journal_entries` + qualifying `walk_sessions` for the user, signs `walk_photos` URLs in batch, and returns a single sorted list. This replaces three separate browser-side fetches and all the per-walk URL signing loops in `journal.tsx`.
-- New server fn `getJournalStats` returning `{ entriesCount, walksCount, minutes, stepsLogged, showingUpStreak, weekDots, monthlyMinutes, twelveWeekHeatmap, moodArc30, latestBadge }`. Tracking module and expanded stats both read from this single payload.
-- New server fn `deleteJournalEntry` (for the entry overflow menu).
-- `updateWalkReflection` server fn so the inline "Add reflection" on a walk entry doesn't need to call `supabase` from the component.
-- `journal.tsx` becomes a thin route shell that uses these two queries; no direct `supabase.from(...)` calls, no signed-URL juggling, no `bakeShareCard` import.
+- `src/routes/journal.tsx` — header gets the Write pill; remove header padding tweaks only as needed; wire pull-to-refresh.
+- `src/components/journal/entries-feed.tsx` — delete floating FAB and its `writeOpen` state (lift to `journal.tsx` so the header pill controls the sheet); keep search/filter; chip motion.
+- `src/components/journal/tracking-module.tsx` — swap Flame → Sprout; count-up; smart-unit helper for period row.
+- `src/components/journal/stats-panel.tsx` — smart-unit helper for lifetime row; replace "Latest badge" block with badges count + carousel + dialog; heatmap stagger + today pulse.
+- `src/components/journal/entry-row.tsx` — mount stagger, tap scale, layout-animated expand.
+- **New** `src/lib/format-duration.ts` — single shared helper.
+- **New** `src/components/journal/badges-carousel.tsx` — the carousel + dialog component.
+- `src/lib/journal-entries.functions.ts` — extend `getJournalStats` to also return `badges` array (newest 20) and `badgesCount`.
 
-## File changes
-
-- **Edit** `src/routes/journal.tsx` — strip ~600 lines, become a layout that renders `<JournalHeader />`, `<TrackingModule />`, `<TodayPromptCard />`, `<EntriesFeed />`. Delete `WalkDetailPane`, `MoodArcSection`, `YearHeatmapSection`, `HeatmapCaption`, `Heatmap`, `MoodArc`, `contextLineFor`, local `Stat`.
-- **New** `src/components/journal/tracking-module.tsx` — replaces `tracking-strip.tsx`, owns expanded stats panel.
-- **New** `src/components/journal/today-prompt-card.tsx` — small surface with one rotating prompt + Write button (reuses `ReflectionWriteSheet`).
-- **New** `src/components/journal/entries-feed.tsx` — search, filter chips, month groups, renders `EntryRow`.
-- **New** `src/components/journal/entry-row.tsx` — unified card with inline expand for both kinds; subsumes `entry-card.tsx`.
-- **New** `src/components/journal/stats-panel.tsx` — heatmap + mood arc + lifetime numbers + latest badge, mounted inside Tracking module.
-- **New** `src/lib/journal-entries.functions.ts` additions: `listJournalFeed`, `getJournalStats`, `deleteJournalEntry`, `updateWalkReflection`.
-- **Edit** `src/components/home/reflection-write-sheet.tsx` — auto-save draft, change/skip prompt controls, polish.
-- **Delete** `src/components/journal/tracking-strip.tsx`, `src/components/journal/signals-row.tsx`, `src/components/journal/journal-reflections.tsx`, `src/components/journal/entry-card.tsx`, `src/components/journal/entry-search.tsx`. (Home reflection rotator is untouched.)
-
-## Out of scope (deliberately)
-
-- No new tables, no schema migrations. `journal_entries`, `walk_sessions`, `walk_photos` are sufficient.
-- No new badges or gamification.
-- No reminders / push / notification work.
-- No export/PDF; that's a future ask.
-
-## Verification
-
-- Build passes, route loads at `/journal`, expanded stats opens and closes.
-- Writing a reflection from `TodayPromptCard` appears at the top of Entries immediately.
-- Filter chips narrow correctly; search matches both reflection bodies and walk notes/moods.
-- A walk with photos shows the photo strip; a walk with no note/photos/mood does not appear in the feed but its minutes still appear in Tracking.
-- Streak number reflects unioned days (a journal-only day keeps it alive).
+### Out of scope (deliberately)
+- No new tables, no schema changes.
+- No new badge artwork — uses whatever `badge_definitions.icon` already provides.
+- No haptics / sound.
+- No reminders, no streak-freeze mechanics.
