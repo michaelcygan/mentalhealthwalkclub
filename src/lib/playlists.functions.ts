@@ -168,21 +168,27 @@ export const listenCatalog = createServerFn({ method: "GET" })
     const [pods, amb, guided] = await Promise.all([
       supabase
         .from("podcast_episodes")
-        .select("id,title,image_url,duration_seconds,walk_fit_score,published_at")
+        .select("id,title,image_url,duration_seconds,walk_fit_score,published_at,is_featured,featured_rank")
         .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("featured_rank", { ascending: true, nullsFirst: false })
         .order("walk_fit_score", { ascending: false })
         .order("published_at", { ascending: false })
         .limit(12),
       supabase
         .from("ambient_tracks")
-        .select("id,title,artist,cover_path,duration_seconds,mood_tags")
+        .select("id,title,artist,cover_path,duration_seconds,mood_tags,is_featured,featured_rank")
         .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("featured_rank", { ascending: true, nullsFirst: false })
         .order("sort_order", { ascending: true })
         .limit(12),
       supabase
         .from("guided_tracks")
-        .select("id,title,host,cover_url,duration_seconds,category")
+        .select("id,title,host,cover_url,duration_seconds,category,is_featured,featured_rank")
         .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("featured_rank", { ascending: true, nullsFirst: false })
         .order("sort_order", { ascending: true })
         .limit(12),
     ]);
@@ -192,3 +198,4 @@ export const listenCatalog = createServerFn({ method: "GET" })
       guided: guided.data ?? [],
     };
   });
+
