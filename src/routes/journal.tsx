@@ -17,6 +17,7 @@ import { SignalsRow } from "@/components/journal/signals-row";
 
 import { EntrySearch, type MoodFilter } from "@/components/journal/entry-search";
 import { EntryCard } from "@/components/journal/entry-card";
+import { JournalReflections } from "@/components/journal/journal-reflections";
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
