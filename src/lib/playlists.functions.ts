@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireUnderCap } from "@/lib/plus-guard.server";
 
 const ItemKind = z.enum(["podcast_episode", "ambient_track", "guided_track"]);
 
