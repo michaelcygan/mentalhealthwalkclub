@@ -64,10 +64,9 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
   return (
     <>
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your journal</div>
-            <h2 className="font-serif text-lg leading-tight text-foreground">Entries</h2>
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Your entries
           </div>
           <span className="text-xs tabular-nums text-muted-foreground">
             {filtered.length} of {entries.length}
