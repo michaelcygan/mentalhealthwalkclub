@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Sprout } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { JournalStats } from "@/lib/journal-entries.functions";
