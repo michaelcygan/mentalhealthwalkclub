@@ -3,10 +3,10 @@ import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { Footprints, Compass, BookHeart, Menu } from "lucide-react";
+import { Home as HomeIcon, Footprints, Compass, BookHeart, Menu, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
-import { HomeComposeFab } from "@/components/home-compose-fab";
+import { NowPlayingDock } from "@/components/now-playing-dock";
 import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
@@ -14,7 +14,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="font-serif text-7xl text-foreground">404</h1>
         <h2 className="mt-4 text-xl text-foreground">This path doesn't exist yet.</h2>
@@ -33,7 +33,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Mental Health Walk Club — You don't have to walk through it alone" },
       { name: "description", content: "Post a walk, share a page, RSVP with friends. A warm, community-first walking app." },
       { property: "og:title", content: "Mental Health Walk Club" },
@@ -73,8 +73,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
-  { to: "/", label: "Home", icon: Footprints, exact: true },
+const TABS: Array<{ to: string; label: string; icon: typeof HomeIcon; exact?: boolean }> = [
+  { to: "/", label: "Home", icon: HomeIcon, exact: true },
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/more", label: "More", icon: Menu },
@@ -89,10 +89,9 @@ function TabBar() {
   return (
     <>
       <MobileTabBar />
-      <HomeComposeFab />
+      <NowPlayingDock />
 
-
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-dvh w-60 flex-col border-r border-border bg-sidebar px-5 py-8 md:flex">
         <Link to="/" className="mb-8 flex items-center gap-2">
           <LogoStamp tone="dark" size={57} />
           <span className="font-serif text-[15px] leading-tight text-sidebar-foreground">
@@ -130,6 +129,16 @@ function TabBar() {
           })}
         </ul>
 
+        {user && (
+          <Link
+            to="/support"
+            className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent/60"
+          >
+            <LifeBuoy className="h-4.5 w-4.5" />
+            Get support
+          </Link>
+        )}
+
         <div className="mt-auto pt-6 space-y-3">
           <p className="font-serif text-xs italic leading-relaxed text-muted-foreground">
             You don't have to walk through it alone.
@@ -141,35 +150,32 @@ function TabBar() {
         </div>
       </aside>
 
-      {!user ? (
-        <header className="sticky top-0 z-30 flex items-center justify-between glass px-4 py-2.5 md:hidden">
-          <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
-            <LogoStamp tone="dark" size={36} />
-            <span className="font-serif text-[13px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
+      {/* Floating mobile header island */}
+      <header
+        className="pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4 md:hidden"
+        style={{ top: "calc(env(safe-area-inset-top) + 8px)" }}
+      >
+        <div className="pointer-events-auto flex w-full max-w-[calc(100%-0.5rem)] items-center justify-between gap-2 rounded-full border border-border/60 bg-background/70 py-1.5 pl-2 pr-1.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
+          <Link to="/" className="flex items-center gap-2 pr-2" aria-label="Mental Health Walk Club — home">
+            <LogoStamp tone="dark" size={30} />
+            <span className="font-serif text-[12px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
           </Link>
-          <Button size="sm" onClick={() => openAuth("signup")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Sign up</Button>
-        </header>
-      ) : (
-        <header className="sticky top-0 z-30 flex items-center justify-between glass px-4 py-2 md:hidden">
-          <Link to="/" className="flex items-center gap-2" aria-label="Mental Health Walk Club — home">
-            <LogoStamp tone="dark" size={36} />
-            <span className="font-serif text-[13px] leading-[1.05] text-foreground/85">Mental Health<br/>Walk Club</span>
-          </Link>
-          <Link
-            to="/profile"
-            aria-label="Profile"
-            className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-border bg-accent/40 text-forest transition active:scale-95"
-          >
-            {user.user_metadata?.avatar_url ? (
-              <img src={user.user_metadata.avatar_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="font-serif text-sm font-semibold">
-                {(user.user_metadata?.display_name || user.email || "?").charAt(0).toUpperCase()}
-              </span>
-            )}
-          </Link>
-        </header>
-      )}
+          {!user ? (
+            <Button size="sm" onClick={() => openAuth("signup")} className="h-9 rounded-full bg-forest px-4 text-primary-foreground hover:opacity-90">
+              Sign up
+            </Button>
+          ) : (
+            <Link
+              to="/support"
+              aria-label="Get support"
+              title="Get support"
+              className="grid h-9 w-9 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
+            >
+              <LifeBuoy className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
+      </header>
     </>
   );
 }
@@ -182,10 +188,13 @@ function AppFrame({ children }: { children: React.ReactNode }) {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <TabBar />
       <main className="md:pl-60">
-        <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8 md:pt-10 md:pb-12 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-12">
+        <div
+          className="mx-auto max-w-3xl px-4 md:px-8 md:pt-10 md:pb-12 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-12"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 68px)" }}
+        >
           {children}
         </div>
       </main>
@@ -208,3 +217,5 @@ function RootComponent() {
     </AuthProvider>
   );
 }
+
+// Reset md: padding-top via inline class (since style is mobile-tuned). On md+, the floating header is hidden.
