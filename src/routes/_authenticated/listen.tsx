@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { ArrowLeft, Headphones, Plus, Trash2, Music, Mic2, Waves, ListMusic, BookOpen, Bookmark } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, Headphones, Plus, Trash2, Music, Mic2, Waves, ListMusic, BookOpen, Bookmark, Sparkles, TrendingUp, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,9 +17,19 @@ import {
 import { TodayPick } from "@/components/listen/today-pick";
 import { ReadRail } from "@/components/listen/read-rail";
 import { SavedReadsList } from "@/components/listen/saved-reads-list";
+import { ListenSearchBar } from "@/components/listen/search-bar";
+import { ListenFilters, ActiveChipsBar, type Kind } from "@/components/listen/filter-chips";
+import { SearchResults } from "@/components/listen/search-results";
+import { CollectionsRail } from "@/components/listen/collections-rail";
+import { HitsRail } from "@/components/listen/hits-rail";
+import { SuggestContentDialog } from "@/components/listen/suggest-content-dialog";
+import { searchListen, type SearchHit } from "@/lib/listen-search.functions";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
+  q: z.string().max(120).catch(""),
+  moods: z.string().catch(""),
+  kinds: z.string().catch(""),
 });
 
 export const Route = createFileRoute("/_authenticated/listen")({
