@@ -298,10 +298,10 @@ export const getJournalStats = createServerFn({ method: "GET" })
         .order("created_at", { ascending: true }),
       supabase
         .from("user_badges")
-        .select("earned_at, badge_definitions(name,description)")
+        .select("badge_id, earned_at, badge_definitions(id,name,description,icon)")
         .eq("user_id", userId)
         .order("earned_at", { ascending: false })
-        .limit(1),
+        .limit(20),
       supabase
         .from("walk_sessions")
         .select("id,duration_seconds,steps", { count: "exact", head: false })
