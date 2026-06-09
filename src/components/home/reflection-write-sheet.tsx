@@ -23,6 +23,7 @@ export function ReflectionWriteSheet({ open, onOpenChange, prompt, source = "hom
   useEffect(() => {
     if (open) {
       setBody("");
+      // Focus after the sheet animation
       const t = window.setTimeout(() => ref.current?.focus(), 120);
       return () => window.clearTimeout(t);
     }

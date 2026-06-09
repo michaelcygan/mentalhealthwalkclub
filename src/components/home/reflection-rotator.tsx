@@ -63,12 +63,21 @@ export function ReflectionRotator() {
         <button
           type="button"
           onClick={() => setWriteOpen(true)}
-          className="mt-2 block w-full text-left"
+          className="mt-2 grid w-full text-left"
           aria-label="Write a reflection"
         >
-          <p key={current.id} className="wp-reflect-fade font-serif text-xl leading-snug text-foreground">
+          {PROMPTS.map((prompt) => (
+            <span
+              key={`sizer-${prompt.id}`}
+              aria-hidden="true"
+              className="invisible col-start-1 row-start-1 block font-serif text-xl leading-snug"
+            >
+              {prompt.text}
+            </span>
+          ))}
+          <span key={current.id} className="wp-reflect-fade col-start-1 row-start-1 block font-serif text-xl leading-snug text-foreground">
             {current.text}
-          </p>
+          </span>
         </button>
         <div className="mt-4 flex items-center justify-between">
           <div className="flex gap-1.5">

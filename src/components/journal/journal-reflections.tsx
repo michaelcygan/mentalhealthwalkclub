@@ -18,17 +18,18 @@ export function JournalReflections() {
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const rows = await fetcher({ data: { limit: 20 } });
-      setEntries(rows ?? []);
-    } catch {
-      setEntries([]);
+      const result = await fetcher({ data: { limit: 20 } });
+      setEntries(result ?? []);
     } finally {
       setIsLoading(false);
     }
   }, [fetcher]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <>
