@@ -66,6 +66,15 @@ export const toggleSavedRead = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return { saved: false };
     }
+    // Soft-cap gate before insert (Plus users bypass).
+    const { count } = await supabase
+      .from("saved_reads")
+      .select("post_id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    await requireUnderCap(supabase, userId, {
+      surface: "saved_reads",
+      currentCount: count ?? 0,
+    });
     const { error } = await supabase
       .from("saved_reads")
       .insert({ user_id: userId, post_id: data.post_id });
