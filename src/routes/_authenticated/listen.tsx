@@ -74,6 +74,7 @@ function ListenPage() {
   const [name, setName] = useState("");
   const [mood, setMood] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [capError, setCapError] = useState<CapError | null>(null);
 
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
