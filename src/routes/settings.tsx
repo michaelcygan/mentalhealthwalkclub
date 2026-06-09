@@ -165,16 +165,7 @@ function SettingsPage() {
         <ToggleRow label="Walk reminders" hint="Nudges before scheduled walks" checked={notifs.walk_reminders} onChange={(v) => updateNotif("walk_reminders", v)} />
         <ToggleRow label="Friend RSVPs" hint="When friends join your walks" checked={notifs.friend_rsvps} onChange={(v) => updateNotif("friend_rsvps", v)} />
         <ToggleRow label="Weekly recap" hint="A gentle Sunday summary" checked={notifs.weekly_recap} onChange={(v) => updateNotif("weekly_recap", v)} />
-        <p className="px-1 pt-1 text-[11px] text-muted-foreground">More channels coming soon. Your choices are saved on this device.</p>
-      </SectionCard>
-
-      <SectionCard title="Appearance" icon={Sun}>
-        <div className="flex gap-2">
-          <ThemeChip current={theme} value="system" label="System" Icon={Laptop} onSelect={updateTheme} />
-          <ThemeChip current={theme} value="light" label="Light" Icon={Sun} onSelect={updateTheme} />
-          <ThemeChip current={theme} value="dark" label="Dark" Icon={Moon} onSelect={updateTheme} />
-        </div>
-        <p className="px-1 pt-2 text-[11px] text-muted-foreground">Theme support is rolling out. Preference is saved.</p>
+        <p className="px-1 pt-1 text-[11px] text-muted-foreground">We'll honor these the moment notifications turn on.</p>
       </SectionCard>
 
       <SectionCard title="Privacy & data" icon={FileText}>
@@ -183,15 +174,11 @@ function SettingsPage() {
       </SectionCard>
 
       <section id="safety" className="rounded-3xl border border-border bg-card p-5 shadow-soft">
-        <h2 className="flex items-center gap-2 font-serif text-lg"><Shield className="h-4 w-4 text-forest" />Safety & support</h2>
-        <div className="mt-3 space-y-2 text-sm">
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
-            <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger? Call your local emergency services.</div>
-          </div>
-          <div className="rounded-xl bg-secondary p-3">
-            US mental health crisis: call or text <a href="tel:988" className="font-medium text-forest underline">988</a>.
-          </div>
-        </div>
+        <h2 className="flex items-center gap-2 font-serif text-lg"><Shield className="h-4 w-4 text-forest" />Safety &amp; support</h2>
+        <p className="mt-2 text-sm text-muted-foreground">If you're in crisis or need someone to talk to, we keep a quiet page with direct lines.</p>
+        <Link to="/support" className="mt-3 inline-flex items-center justify-center rounded-full bg-forest px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+          Open support
+        </Link>
       </section>
 
       {isAdmin && (
