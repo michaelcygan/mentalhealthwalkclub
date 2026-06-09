@@ -112,6 +112,7 @@ export function JournalReflections() {
         onOpenChange={setWriteOpen}
         prompt={null}
         source="journal_freeform"
+        onSaved={() => void load()}
       />
     </>
   );
