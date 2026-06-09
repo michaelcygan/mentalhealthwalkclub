@@ -1417,6 +1417,39 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_settings: {
+        Row: {
+          collections_follow_cap: number
+          id: boolean
+          patron_min_cents: number
+          patron_signups_paused: boolean
+          patron_suggested_amounts: number[]
+          playlists_cap: number
+          saved_reads_cap: number
+          updated_at: string
+        }
+        Insert: {
+          collections_follow_cap?: number
+          id?: boolean
+          patron_min_cents?: number
+          patron_signups_paused?: boolean
+          patron_suggested_amounts?: number[]
+          playlists_cap?: number
+          saved_reads_cap?: number
+          updated_at?: string
+        }
+        Update: {
+          collections_follow_cap?: number
+          id?: boolean
+          patron_min_cents?: number
+          patron_signups_paused?: boolean
+          patron_suggested_amounts?: number[]
+          playlists_cap?: number
+          saved_reads_cap?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       merch_orders: {
         Row: {
           amount_cents: number
@@ -1515,6 +1548,33 @@ export type Database = {
           slug?: string
           sort?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      patron_profile: {
+        Row: {
+          display_on_wall: boolean
+          early_access: boolean
+          joined_at: string
+          monthly_amount_cents: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          display_on_wall?: boolean
+          early_access?: boolean
+          joined_at?: string
+          monthly_amount_cents?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          display_on_wall?: boolean
+          early_access?: boolean
+          joined_at?: string
+          monthly_amount_cents?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1935,11 +1995,13 @@ export type Database = {
           gateway: string
           id: string
           last_event_at: string | null
+          monthly_amount_cents: number | null
           price_id: string
           product_id: string
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string | null
+          subscription_kind: string
           updated_at: string | null
           user_id: string
         }
@@ -1952,11 +2014,13 @@ export type Database = {
           gateway?: string
           id?: string
           last_event_at?: string | null
+          monthly_amount_cents?: number | null
           price_id: string
           product_id: string
           status?: string
           stripe_customer_id: string
           stripe_subscription_id?: string | null
+          subscription_kind?: string
           updated_at?: string | null
           user_id: string
         }
@@ -1969,11 +2033,13 @@ export type Database = {
           gateway?: string
           id?: string
           last_event_at?: string | null
+          monthly_amount_cents?: number | null
           price_id?: string
           product_id?: string
           status?: string
           stripe_customer_id?: string
           stripe_subscription_id?: string | null
+          subscription_kind?: string
           updated_at?: string | null
           user_id?: string
         }
@@ -2474,6 +2540,15 @@ export type Database = {
       user_in_event_blocklist: {
         Args: { _event: string; _user: string }
         Returns: boolean
+      }
+      user_membership: {
+        Args: { _env?: string; _user: string }
+        Returns: {
+          is_patron: boolean
+          is_plus: boolean
+          patron_cents: number
+          plus_interval: string
+        }[]
       }
     }
     Enums: {
