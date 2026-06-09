@@ -18,7 +18,6 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [writeOpen, setWriteOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
