@@ -94,7 +94,7 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
         </div>
 
         {entries.length === 0 ? (
-          <EmptyEntries onWrite={() => setWriteOpen(true)} />
+          <EmptyEntries onWrite={onWrite} />
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             Nothing matches that filter.
@@ -107,41 +107,31 @@ export function EntriesFeed({ entries, onChanged, onWrite }: Props) {
                   {month}
                 </div>
                 <div className="space-y-3">
-                  {items.map((entry) => (
-                    <EntryRow
-                      key={`${entry.kind}-${entry.id}`}
-                      entry={entry}
-                      active={openId === `${entry.kind}-${entry.id}`}
-                      onToggle={() =>
-                        setOpenId(openId === `${entry.kind}-${entry.id}` ? null : `${entry.kind}-${entry.id}`)
-                      }
-                      onChanged={onChanged}
-                    />
-                  ))}
+                  {items.map((entry, idx) => {
+                    const key = `${entry.kind}-${entry.id}`;
+                    return (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: Math.min(idx * 0.03, 0.18), duration: 0.28, ease: "easeOut" }}
+                        layout
+                      >
+                        <EntryRow
+                          entry={entry}
+                          active={openId === key}
+                          onToggle={() => setOpenId(openId === key ? null : key)}
+                          onChanged={onChanged}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
         )}
       </section>
-
-      {/* Floating compose */}
-      <button
-        type="button"
-        onClick={() => setWriteOpen(true)}
-        className="fixed bottom-24 right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-elevated transition active:scale-95 md:bottom-8"
-        aria-label="Write a new entry"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-
-      <ReflectionWriteSheet
-        open={writeOpen}
-        onOpenChange={setWriteOpen}
-        prompt={null}
-        source="journal_freeform"
-        onSaved={onChanged}
-      />
     </>
   );
 }
