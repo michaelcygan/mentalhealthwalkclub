@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Shield, AlertTriangle, LogOut, Trash2, Settings as SettingsIcon, Bell, Sparkles, ChevronRight, FileText, ShieldCheck, Sun, Moon, Laptop } from "lucide-react";
+import { ArrowLeft, Shield, LogOut, Trash2, Settings as SettingsIcon, Bell, Sparkles, ChevronRight, FileText, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
