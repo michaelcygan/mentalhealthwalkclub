@@ -73,17 +73,3 @@ export async function requireUnderCap(
   throw new Error(`CAP_LIMIT|${opts.surface}|${cap}|${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
 }
 
-/** Parse a cap-limit error thrown by requireUnderCap. Returns null if not a cap error. */
-export function parseCapError(
-  err: unknown,
-): { surface: CapSurface; cap: number; message: string } | null {
-  const msg = err instanceof Error ? err.message : String(err ?? "");
-  if (!msg.startsWith("CAP_LIMIT|")) return null;
-  const [, surface, cap, ...rest] = msg.split("|");
-  if (!surface || !cap) return null;
-  return {
-    surface: surface as CapSurface,
-    cap: Number(cap),
-    message: rest.join("|"),
-  };
-}
