@@ -29,6 +29,7 @@ import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMerchRouteImport } from './routes/admin.merch'
+import { Route as AdminMembershipRouteImport } from './routes/admin.membership'
 import { Route as AdminInsightsRouteImport } from './routes/admin.insights'
 import { Route as AdminEventsRouteImport } from './routes/admin.events'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
@@ -153,6 +154,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
 const AdminMerchRoute = AdminMerchRouteImport.update({
   id: '/merch',
   path: '/merch',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMembershipRoute = AdminMembershipRouteImport.update({
+  id: '/membership',
+  path: '/membership',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminInsightsRoute = AdminInsightsRouteImport.update({
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -362,6 +369,7 @@ export interface FileRoutesByTo {
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -411,6 +419,7 @@ export interface FileRoutesById {
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -460,6 +469,7 @@ export interface FileRouteTypes {
     | '/admin/collections'
     | '/admin/events'
     | '/admin/insights'
+    | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -507,6 +517,7 @@ export interface FileRouteTypes {
     | '/admin/collections'
     | '/admin/events'
     | '/admin/insights'
+    | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/admin/collections'
     | '/admin/events'
     | '/admin/insights'
+    | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -744,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/merch'
       fullPath: '/admin/merch'
       preLoaderRoute: typeof AdminMerchRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/membership': {
+      id: '/admin/membership'
+      path: '/membership'
+      fullPath: '/admin/membership'
+      preLoaderRoute: typeof AdminMembershipRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/insights': {
@@ -1020,6 +1039,7 @@ interface AdminRouteChildren {
   AdminCollectionsRoute: typeof AdminCollectionsRoute
   AdminEventsRoute: typeof AdminEventsRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
+  AdminMembershipRoute: typeof AdminMembershipRoute
   AdminMerchRoute: typeof AdminMerchRoute
   AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
 }
@@ -1029,6 +1049,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCollectionsRoute: AdminCollectionsRoute,
   AdminEventsRoute: AdminEventsRoute,
   AdminInsightsRoute: AdminInsightsRoute,
+  AdminMembershipRoute: AdminMembershipRoute,
   AdminMerchRoute: AdminMerchRoute,
   AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
 }

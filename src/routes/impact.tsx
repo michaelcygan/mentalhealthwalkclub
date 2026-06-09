@@ -2,6 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { listImpactDonations } from "@/lib/impact.functions";
 import { Heart, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { useAuthPrompt } from "@/lib/auth-prompt";
+import { FoundingBadge } from "@/components/membership/founding-badge";
 
 export const Route = createFileRoute("/impact")({
   component: ImpactPage,
@@ -46,6 +50,8 @@ function ImpactPage() {
     notes: string | null;
   }>>([]);
   const [total, setTotal] = useState(0);
+  const [wall, setWall] = useState<{ user_id: string; display_name: string | null }[]>([]);
+  const { openPatronFlow } = useAuthPrompt();
 
   useEffect(() => {
     listImpactDonations()
@@ -54,6 +60,23 @@ function ImpactPage() {
         setTotal(r.total_donated_cents);
       })
       .catch(() => {});
+    (async () => {
+      const { data: pats } = await supabase
+        .from("patron_profile" as never)
+        .select("user_id, monthly_amount_cents")
+        .eq("display_on_wall", true)
+        .gt("monthly_amount_cents", 0)
+        .order("joined_at", { ascending: false })
+        .limit(30);
+      const rows = (pats as unknown as { user_id: string }[]) ?? [];
+      if (rows.length === 0) return;
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", rows.map((r) => r.user_id));
+      const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+      setWall(rows.map((r) => ({ user_id: r.user_id, display_name: nameMap.get(r.user_id) ?? null })));
+    })();
   }, []);
 
   const current = rows[0];
