@@ -143,6 +143,40 @@ function ImpactPage() {
         )}
       </section>
 
+      <section className="mt-10 rounded-3xl border border-rose-200 bg-rose-50/40 p-6">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-rose-100 text-rose-600">
+            <Heart className="h-5 w-5" />
+          </span>
+          <div className="flex-1">
+            <h2 className="font-serif text-xl">Become a Patron</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose your own monthly amount. 80% goes straight to our nonprofit partner. Cancel anytime.
+            </p>
+            <Button
+              onClick={() => openPatronFlow(500)}
+              className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
+            >
+              Give monthly
+            </Button>
+          </div>
+        </div>
+        {wall.length > 0 && (
+          <div className="mt-6 border-t border-rose-200 pt-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Patron wall</p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {wall.map((p) => (
+                <li key={p.user_id} className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-card px-3 py-1 text-xs">
+                  <FoundingBadge size="xs" />
+                  <span>{p.display_name ?? "Patron"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
