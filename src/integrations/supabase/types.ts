@@ -22,6 +22,7 @@ export type Database = {
           cover_path: string | null
           created_at: string
           duration_seconds: number
+          featured_rank: number | null
           genre: string | null
           id: string
           is_active: boolean
@@ -39,6 +40,7 @@ export type Database = {
           cover_path?: string | null
           created_at?: string
           duration_seconds?: number
+          featured_rank?: number | null
           genre?: string | null
           id?: string
           is_active?: boolean
@@ -56,6 +58,7 @@ export type Database = {
           cover_path?: string | null
           created_at?: string
           duration_seconds?: number
+          featured_rank?: number | null
           genre?: string | null
           id?: string
           is_active?: boolean
@@ -248,10 +251,12 @@ export type Database = {
       blog_posts: {
         Row: {
           created_at: string
+          featured_rank: number | null
           feed_id: string
           guid: string
           id: string
           image_url: string | null
+          is_featured: boolean
           link: string
           published_at: string | null
           summary: string | null
@@ -259,10 +264,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          featured_rank?: number | null
           feed_id: string
           guid: string
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           link: string
           published_at?: string | null
           summary?: string | null
@@ -270,10 +277,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          featured_rank?: number | null
           feed_id?: string
           guid?: string
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           link?: string
           published_at?: string | null
           summary?: string | null
@@ -1087,12 +1096,14 @@ export type Database = {
           cover_url: string | null
           created_at: string
           duration_seconds: number
+          featured_rank: number | null
           generative_key: string | null
           host: string | null
           host_role: string | null
           id: string
           intro_seconds: number
           is_active: boolean
+          is_featured: boolean
           mood_tags: string[]
           sort_order: number
           title: string
@@ -1104,12 +1115,14 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           duration_seconds?: number
+          featured_rank?: number | null
           generative_key?: string | null
           host?: string | null
           host_role?: string | null
           id?: string
           intro_seconds?: number
           is_active?: boolean
+          is_featured?: boolean
           mood_tags?: string[]
           sort_order?: number
           title: string
@@ -1121,12 +1134,14 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           duration_seconds?: number
+          featured_rank?: number | null
           generative_key?: string | null
           host?: string | null
           host_role?: string | null
           id?: string
           intro_seconds?: number
           is_active?: boolean
+          is_featured?: boolean
           mood_tags?: string[]
           sort_order?: number
           title?: string
@@ -1474,6 +1489,7 @@ export type Database = {
           description: string | null
           duration_seconds: number
           episode_url: string | null
+          featured_rank: number | null
           feed_id: string
           guid: string
           id: string
@@ -1492,6 +1508,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number
           episode_url?: string | null
+          featured_rank?: number | null
           feed_id: string
           guid: string
           id?: string
@@ -1510,6 +1527,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number
           episode_url?: string | null
+          featured_rank?: number | null
           feed_id?: string
           guid?: string
           id?: string
@@ -1719,6 +1737,32 @@ export type Database = {
             columns: ["walk_session_id"]
             isOneToOne: false
             referencedRelation: "walk_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_reads: {
+        Row: {
+          post_id: string
+          saved_at: string
+          user_id: string
+        }
+        Insert: {
+          post_id: string
+          saved_at?: string
+          user_id: string
+        }
+        Update: {
+          post_id?: string
+          saved_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_reads_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
             referencedColumns: ["id"]
           },
         ]

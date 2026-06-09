@@ -1,7 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Headphones, Plus, Trash2, Music, Mic2, Waves, ListMusic } from "lucide-react";
+import { z } from "zod";
+import { ArrowLeft, Headphones, Plus, Trash2, Music, Mic2, Waves, ListMusic, BookOpen, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,13 +13,21 @@ import { Switch } from "@/components/ui/switch";
 import {
   listMyPlaylists, createPlaylist, deletePlaylist, listenCatalog,
 } from "@/lib/playlists.functions";
+import { TodayPick } from "@/components/listen/today-pick";
+import { ReadRail } from "@/components/listen/read-rail";
+import { SavedReadsList } from "@/components/listen/saved-reads-list";
+
+const SearchSchema = z.object({
+  tab: z.enum(["listen", "read", "yours"]).catch("listen"),
+});
 
 export const Route = createFileRoute("/_authenticated/listen")({
   component: ListenPage,
+  validateSearch: SearchSchema,
   head: () => ({
     meta: [
-      { title: "Listen — Mental Health Walk Club" },
-      { name: "description", content: "Podcasts, ambient mixes and your walk playlists." },
+      { title: "Listen & Read — Mental Health Walk Club" },
+      { name: "description", content: "Podcasts, ambient mixes, articles, and your walking queues." },
     ],
   }),
 });
@@ -33,6 +42,7 @@ function fmtMins(s: number | null | undefined) {
 
 function ListenPage() {
   const navigate = useNavigate();
+  const { tab } = useSearch({ from: "/_authenticated/listen" });
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [catalog, setCatalog] = useState<Awaited<ReturnType<typeof listenCatalog>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,108 +83,158 @@ function ListenPage() {
     refresh();
   }
 
+  const setTab = (t: "listen" | "read" | "yours") =>
+    navigate({ to: "/listen", search: { tab: t }, replace: true });
+
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
       <Link to="/profile" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> Back
       </Link>
-      <header className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 font-serif text-3xl">
-            <Headphones className="h-6 w-6 text-forest" /> Listen
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Podcasts, ambient mixes, and your walking queues.</p>
-        </div>
-        <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="rounded-full"><Plus className="mr-1 h-4 w-4" /> Playlist</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>New playlist</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="pl-name">Name</Label>
-                <Input id="pl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Morning reset" />
-              </div>
-              <div>
-                <Label htmlFor="pl-mood">Mood (optional)</Label>
-                <Input id="pl-mood" value={mood} onChange={(e) => setMood(e.target.value)} placeholder="calm, focus, uplift…" />
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-border p-3">
-                <div>
-                  <p className="text-sm">Public</p>
-                  <p className="text-xs text-muted-foreground">Others can view and add to their queue.</p>
-                </div>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleCreate} className="rounded-full">Create</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <header className="mb-5">
+        <h1 className="flex items-center gap-2 font-serif text-3xl">
+          <Headphones className="h-6 w-6 text-forest" /> Listen &amp; Read
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">Something for every walk.</p>
       </header>
 
-      <Section title="Your queue" icon={<ListMusic className="h-4 w-4 text-forest" />}>
-        {loading ? (
-          <Skeleton n={2} />
-        ) : playlists.length === 0 ? (
-          <Empty text="No playlists yet. Build one to soundtrack your next walk." />
-        ) : (
-          <ul className="space-y-2">
-            {playlists.map((p) => (
-              <li key={p.id} className="flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-soft">
-                <Link to="/listen/$id" params={{ id: p.id }} className="min-w-0 flex-1 -m-1 rounded-2xl p-1 hover:bg-accent/20">
-                  <p className="truncate font-serif text-base">{p.name}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {p.item_count} {p.item_count === 1 ? "track" : "tracks"}
-                    {p.mood && ` · ${p.mood}`}
-                    {p.is_public && " · public"}
-                  </p>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(p.id)}
-                  className="rounded-full p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+      {loading || !catalog ? (
+        <div className="mb-6 h-36 animate-pulse rounded-3xl bg-card" />
+      ) : (
+        <TodayPick pods={catalog.podcasts} ambient={catalog.ambient} guided={catalog.guided} />
+      )}
 
-      <Section title="Podcasts for walking" icon={<Mic2 className="h-4 w-4 text-forest" />}>
-        {loading ? <Skeleton n={3} /> : (
-          <HorizontalRail>
-            {(catalog?.podcasts ?? []).map((e) => (
-              <Tile key={e.id} title={e.title} sub={fmtMins(e.duration_seconds)} cover={e.image_url ?? null} />
-            ))}
-          </HorizontalRail>
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <div className="inline-flex rounded-full bg-secondary p-0.5 text-xs font-medium">
+          {(["listen", "read", "yours"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 capitalize transition ${
+                tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {t === "listen" && <Headphones className="h-3 w-3" />}
+              {t === "read" && <BookOpen className="h-3 w-3" />}
+              {t === "yours" && <ListMusic className="h-3 w-3" />}
+              {t}
+            </button>
+          ))}
+        </div>
+        {tab === "yours" && (
+          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="rounded-full"><Plus className="mr-1 h-4 w-4" /> Playlist</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>New playlist</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="pl-name">Name</Label>
+                  <Input id="pl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Morning reset" />
+                </div>
+                <div>
+                  <Label htmlFor="pl-mood">Mood (optional)</Label>
+                  <Input id="pl-mood" value={mood} onChange={(e) => setMood(e.target.value)} placeholder="calm, focus, uplift…" />
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-border p-3">
+                  <div>
+                    <p className="text-sm">Public</p>
+                    <p className="text-xs text-muted-foreground">Others can view and add to their queue.</p>
+                  </div>
+                  <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCreate} className="rounded-full">Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
-      </Section>
+      </div>
 
-      <Section title="Ambient mixes" icon={<Waves className="h-4 w-4 text-forest" />}>
-        {loading ? <Skeleton n={3} /> : (
-          <HorizontalRail>
-            {(catalog?.ambient ?? []).map((t) => (
-              <Tile key={t.id} title={t.title} sub={t.artist ?? fmtMins(t.duration_seconds)} cover={null} />
-            ))}
-          </HorizontalRail>
-        )}
-      </Section>
+      {tab === "listen" && (
+        <>
+          <Section title="Podcasts for walking" icon={<Mic2 className="h-4 w-4 text-forest" />}>
+            {loading ? <RailSkeleton /> : (
+              <HorizontalRail>
+                {(catalog?.podcasts ?? []).map((e) => (
+                  <Tile key={e.id} title={e.title} sub={fmtMins(e.duration_seconds)} cover={e.image_url ?? null} featured={!!e.is_featured} />
+                ))}
+              </HorizontalRail>
+            )}
+          </Section>
 
-      <Section title="Guided walks" icon={<Music className="h-4 w-4 text-forest" />}>
-        {loading ? <Skeleton n={3} /> : (
-          <HorizontalRail>
-            {(catalog?.guided ?? []).map((g) => (
-              <Tile key={g.id} title={g.title} sub={g.host ?? fmtMins(g.duration_seconds)} cover={g.cover_url ?? null} />
-            ))}
-          </HorizontalRail>
-        )}
-      </Section>
+          <Section title="Ambient mixes" icon={<Waves className="h-4 w-4 text-forest" />}>
+            {loading ? <RailSkeleton /> : (
+              <HorizontalRail>
+                {(catalog?.ambient ?? []).map((t) => (
+                  <Tile key={t.id} title={t.title} sub={t.artist ?? fmtMins(t.duration_seconds)} cover={null} featured={!!t.is_featured} />
+                ))}
+              </HorizontalRail>
+            )}
+          </Section>
+
+          <Section title="Guided walks" icon={<Music className="h-4 w-4 text-forest" />}>
+            {loading ? <RailSkeleton /> : (
+              <HorizontalRail>
+                {(catalog?.guided ?? []).map((g) => (
+                  <Tile key={g.id} title={g.title} sub={g.host ?? fmtMins(g.duration_seconds)} cover={g.cover_url ?? null} featured={!!g.is_featured} />
+                ))}
+              </HorizontalRail>
+            )}
+          </Section>
+        </>
+      )}
+
+      {tab === "read" && (
+        <>
+          <Section title="Fresh from the blogs we follow" icon={<BookOpen className="h-4 w-4 text-forest" />}>
+            <ReadRail />
+          </Section>
+          <Section title="Saved for later" icon={<Bookmark className="h-4 w-4 text-forest" />}>
+            <SavedReadsList />
+          </Section>
+        </>
+      )}
+
+      {tab === "yours" && (
+        <Section title="Your queue" icon={<ListMusic className="h-4 w-4 text-forest" />}>
+          {loading ? (
+            <Skeleton n={2} />
+          ) : playlists.length === 0 ? (
+            <Empty text="No playlists yet. Build one to soundtrack your next walk." />
+          ) : (
+            <ul className="space-y-2">
+              {playlists.map((p) => (
+                <li key={p.id} className="flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-soft">
+                  <Link to="/listen/$id" params={{ id: p.id }} className="min-w-0 flex-1 -m-1 rounded-2xl p-1 hover:bg-accent/20">
+                    <p className="truncate font-serif text-base">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {p.item_count} {p.item_count === 1 ? "track" : "tracks"}
+                      {p.mood && ` · ${p.mood}`}
+                      {p.is_public && " · public"}
+                    </p>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p.id)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
+      <p className="mt-10 text-center font-serif text-xs italic text-muted-foreground">
+        Editor's notes update weekly.
+      </p>
     </div>
   );
 }
@@ -204,6 +264,16 @@ function Skeleton({ n }: { n: number }) {
   );
 }
 
+function RailSkeleton() {
+  return (
+    <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="h-52 w-40 shrink-0 animate-pulse rounded-2xl bg-card" />
+      ))}
+    </div>
+  );
+}
+
 function HorizontalRail({ children }: { children: React.ReactNode }) {
   return (
     <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
@@ -212,12 +282,17 @@ function HorizontalRail({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Tile({ title, sub, cover }: { title: string; sub: string; cover: string | null }) {
+function Tile({ title, sub, cover, featured }: { title: string; sub: string; cover: string | null; featured?: boolean }) {
   return (
-    <div className="w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 shadow-soft">
+    <div className="relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 shadow-soft">
       <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-forest/10">
         {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : null}
       </div>
+      {featured && (
+        <span className="absolute right-3 top-3 rounded-full bg-forest/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary-foreground">
+          Pick
+        </span>
+      )}
       <p className="truncate font-serif text-sm">{title}</p>
       <p className="truncate text-[11px] text-muted-foreground">{sub}</p>
     </div>

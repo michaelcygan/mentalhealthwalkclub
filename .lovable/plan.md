@@ -1,57 +1,108 @@
-## Home v2 — one island, smarter rails, less scroll
+# Listen v2 — a unified audio + reading hub
 
-The Home tab is solid but reads as a stack of independent cards: greeting, weather chip, two CTA buttons, reflection rotator, week chart, 7-day forecast, friend pulse, podcasts, blog, then two duplicate "go to other tab" links. v2 consolidates the top fold into a single Today island, makes every section context-aware, and trims redundancy with the bottom nav.
+## The strategic call
 
-### Layout (top → bottom)
+Don't spin up a separate Content page. The audience and intent overlap (something to walk with), splitting them would dilute both, and Home already pairs them via `listen-and-read.tsx`. Keep the route at `/listen` but reposition the page as **"Listen & Read"** — one hub for everything you press play on or take with you on a walk. A dedicated `/content` route only makes sense once we have long-form video, courses, or guides; we're not there yet.
 
-```text
-1. Today island               ← new (replaces greeting + streak + weather chip + 2 CTAs)
-2. Best window today          ← new (contextual, hides when irrelevant)
-3. Reflect in 30s             ← replaces ReflectionRotator (matches Journal pattern)
-4. Week pulse                 ← refined WeekSummary (more compact + tap to expand)
-5. Friend pulse               ← capped to 3, with "See all" link
-6. 7-day outlook              ← collapsed by default with "Best day" pill
-7. Listen & read              ← combined PodcastRail + BlogRail under one segmented strip
+This also matches the design language we've been rolling out on Home / Journal / Discover: a single island up top, segmented snap rails below.
+
+## Layout (top → bottom, mobile 390)
+
+```
+┌─ Back  ─────────────────────────────────────────┐
+│ 🎧 Listen & Read                                │
+│ Something for every walk.                       │
+│                                                 │
+│  ╭─ Today's pick island ───────────────────╮    │
+│  │ [cover]  "Quiet morning, slow start"    │    │
+│  │          Ambient mix · 32 min           │    │
+│  │          ▶ Play   ＋ Add to walk        │    │
+│  ╰─────────────────────────────────────────╯    │
+│                                                 │
+│  [ Listen ][ Read ][ Yours ]   (segmented)      │
+│                                                 │
+│  — when Listen —                                │
+│  Podcasts for walking          → snap rail      │
+│  Ambient mixes                 → snap rail      │
+│  Guided walks                  → snap rail      │
+│                                                 │
+│  — when Read —                                  │
+│  Fresh from the blogs we follow → snap rail     │
+│  Saved for later (if any)       → list          │
+│                                                 │
+│  — when Yours —                                 │
+│  Your queues / playlists  + New playlist        │
+│  Recently played                                │
+│                                                 │
+│ Footer: "Editor's notes update weekly."         │
+└─────────────────────────────────────────────────┘
 ```
 
-Same rhythm as Discover and Journal: one hero island, then snap rails. The two duplicate footer links ("Walks near you", "Journal") are removed — both already live in the bottom nav.
+The current page's three audio rails + playlist list all stay — they just move under tabs so the page stops feeling like an endless scroll of disconnected sections.
 
-### New modules
+## What's new
 
-1. **Today island** — one rounded gradient card that owns the top fold:
-   - Greeting + first name + streak chip (Flame icon, "3w") on one line.
-   - One contextual line: "Best walk today 6–7pm · 64° clear" or "Rain easing by 4pm" or "A quiet day — perfect for a slow loop". Derived from the existing daily weather + walk-score helpers already wired into WeatherForecast.
-   - Inline mini week ring: 7 dots, today highlighted, filled where you walked. Same data as WeekSummary, reused.
-   - Two CTAs side-by-side: **Walk now** (primary, becomes **Resume walk** when an in-progress `walk_sessions` row exists) and **Plan a walk**.
-   - Weather pill tucked in the top right.
-   No nested cards. ~180px tall on mobile.
+### 1. Today's pick island (`today-pick.tsx`)
+A single hero card chosen client-side from `listenCatalog`:
+- Morning → top guided walk or calm ambient
+- Afternoon → top podcast (`walk_fit_score`)
+- Evening → ambient mix tagged `wind-down`
+Falls back gracefully if a bucket is empty. Two actions: **Play** (opens detail) and **Add to walk** (pre-fills `/walk/new` audio).
 
-2. **Best window today** — single pill card surfacing the highest-walk-score hourly window from the existing daily forecast (when one is meaningfully better than the rest). Tap → opens `/walk/new` with the time prefilled. Hidden when no daylight remains or no clear winner exists.
+### 2. Segmented tabs: Listen / Read / Yours
+Replaces the flat stack. Uses the same pill segment control as Journal segments. Tab state lives in the URL (`?tab=read`) so deep links work.
 
-3. **Reflect in 30s** — replace the auto-rotating ReflectionRotator with the same one-prompt + 3-alt pattern already shipped on Journal "For You". Stops the constant motion at the top of the page, matches design language, and removes the duplicate "write" CTA users already get from the journal tab.
+### 3. Read tab — blog posts surface here
+Pulls from existing `recentBlogPosts(limit:12)`. Cards mirror the Tile shape (cover, title, publisher · est. read time). Tapping opens the source link in a new tab; a bookmark icon saves it to **Saved for later** (new tiny table `saved_reads`). This is the bridge between the blog feeds (already in Admin via the sync hook) and the user.
 
-### Refinements to kept modules
+### 4. Yours tab
+Owns the existing playlists block + a new **Recently played** rail (derived from `walk_sessions.audio_*` we already store). Keeps creation/deletion exactly as today.
 
-- **Week pulse**: drop the secondary `delta vs last week` line into a tiny chip beside the total ("18 min · 2 walks · +6 min"). Cap card height; expose a "View journal" tap that routes to `/journal?segment=stats`.
-- **FriendPulse**: cap rendered items to 3; if there are more, add a small "See all" link to `/discover` (Friends going section). Hide the entire card when zero items rather than a tall pulse skeleton.
-- **WeatherForecast**: collapse to a single "Best walking day: Sat ↑" pill by default; tap to expand the existing 7-tile row inline. Saves ~120px until needed.
-- **Podcasts + Blog**: render under a single "Listen & read" card with a 2-tab segmented control (Listen / Read), reusing both existing rails. Avoids two near-identical horizontal scrollers stacked back-to-back.
-- **Footer**: remove the two duplicate "Walks near you" and "Journal" link cards. Replace with a single quiet serif line ("Still here. Still walking.") matching the Journal footer voice. The bottom nav already provides these jumps.
+### 5. Visual polish to match Home/Journal
+- Round corners → `rounded-3xl` islands, `rounded-2xl` tiles (already close)
+- Soft dashed empty states → swap the dotted block for the same `border-dashed` pattern used in Journal
+- Section headings → align icon + serif heading sizes with `daily-compass`
 
-### Behaviour rules
+## How it connects to Admin
 
-- All new logic is client-side, computed from data already loaded by existing hooks (`useProfileStats`, `useCurrentWeather`, `getDaily`, `getCircleActivity`) plus one tiny additional query for any in-progress walk session (1 row, same `walk_sessions` table) — added to the same `useEffect` that already runs for `lastReflection`.
-- Renders gracefully with thin data: no weather → no Best window pill, island shows just greeting + CTAs; no walks → mini ring shows seven empty dots and Week pulse shows "First walk of the week?"; no friends → FriendPulse hidden.
-- The `lastReflection` quote currently shown inside the Journal footer link is moved up into the Reflect-in-30s card as a small "Last time you wrote: …" caption (tap to expand into full entry).
+Admin already manages **Podcasts** and **Merch / Events**. To make Listen v2 fully editable we add:
 
-### Files
+1. **`/admin/blogs`** — list `blog_feeds`, toggle `is_active`, add/remove feeds, "Sync now" button calling `syncBlogFeedsNow`. Mirrors the existing `admin.podcasts.tsx` pattern.
+2. **Editor's pick flag** — a `is_featured boolean` + `featured_rank int` on `podcast_episodes`, `ambient_tracks`, `guided_tracks`, and `blog_posts`. Admin gets a star toggle on each row. The Listen page's Today's pick prefers featured items before falling back to score-based selection.
+3. **Admin nav** — add `Blogs` chip next to `Podcasts` in `admin.tsx`.
 
-- New: `src/components/home/today-island.tsx`, `best-window.tsx`, `reflect-30s.tsx` (thin wrapper that imports the existing `journal/reflect-30s.tsx` so behaviour stays identical), `listen-and-read.tsx`.
-- Edited: `src/routes/index.tsx` (compose new layout, remove duplicate footer links, drop the old greeting/CTAs/InlineWeatherChip), `src/components/home/week-summary.tsx` (compact header chip + tap target), `src/components/home/friend-pulse.tsx` (3-cap + See all), `src/components/home/weather-forecast.tsx` (collapsed default + Best-day pill).
-- Untouched: `ReflectionRotator` (kept in the file but no longer rendered — safe to delete in a follow-up if you confirm).
+No new admin auth — all four admin routes already use the same `user_roles` check in `admin.tsx`'s `beforeLoad`.
 
-### Out of scope
+## Technical details
 
-- Push notifications, AI-generated daily summaries, route recommendations, persisting "Best window" prefill in `/walk/new` beyond a query param, deleting `ReflectionRotator` (kept in case you want it back), redesigning `AmbientBackdrop`.
+- **Files to create**
+  - `src/components/listen/today-pick.tsx`
+  - `src/components/listen/segmented-tabs.tsx` (or reuse the Journal one if generic enough)
+  - `src/components/listen/read-rail.tsx` (uses `recentBlogPosts`)
+  - `src/components/listen/saved-reads-list.tsx`
+  - `src/components/listen/recently-played.tsx`
+  - `src/routes/admin.blogs.tsx`
+  - `src/lib/saved-reads.functions.ts` (`listSavedReads`, `toggleSavedRead`)
+  - `src/lib/listen-curation.functions.ts` (`setFeatured`, used by admin)
+- **Files to edit**
+  - `src/routes/_authenticated/listen.tsx` — reshape into hero + tabs, keep playlist CRUD intact
+  - `src/routes/admin.tsx` — add Blogs nav chip
+  - `src/lib/playlists.functions.ts` — extend `listenCatalog` to return `is_featured` + recently-played rows
+- **DB migration (one)**
+  - `create table public.saved_reads (user_id uuid, post_id uuid, saved_at timestamptz default now(), primary key (user_id, post_id))` with `GRANT` for `authenticated` + `service_role` + RLS scoped to `auth.uid()`.
+  - `alter table podcast_episodes / ambient_tracks / guided_tracks / blog_posts add column is_featured boolean default false, add column featured_rank int`.
+- **No new dependencies, no new edge functions.** All data fetched via existing `createServerFn` patterns.
 
-Ready to build on your word.
+## Out of scope (call out explicitly)
+
+- In-app audio player upgrade (still hands off to the existing detail route).
+- AI-generated "for you" picks — today's island uses simple deterministic rules.
+- Comments / reactions on blog posts.
+- Migration of `/listen` to `/library` or `/content` — defer until the content mix actually broadens (video, courses).
+- Moving blog/podcast settings out of Admin into user-facing "Following" controls — future, once we have more feeds.
+
+## Open question before I build
+
+Two small forks I want your call on:
+1. **Tabs vs. one long page.** Tabs keep things tight but hide rails behind a tap. The alternative is everything in one scroll with sticky section headers. I'd default to tabs — okay?
+2. **Saved reads scope.** Save-for-later inside the app, or just open the article externally and let the browser bookmark it? Saving in-app is a small table but creates a real "library" feeling — worth it?
