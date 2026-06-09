@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as MoreRouteImport } from './routes/more'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as EventsRouteImport } from './routes/events'
@@ -63,6 +65,11 @@ const ShopRoute = ShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -71,6 +78,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JournalRoute = JournalRouteImport.update({
@@ -248,8 +260,10 @@ export interface FileRoutesByFullPath {
   '/events': typeof EventsRouteWithChildren
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
+  '/more': typeof MoreRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
@@ -287,8 +301,10 @@ export interface FileRoutesByTo {
   '/events': typeof EventsRouteWithChildren
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
+  '/more': typeof MoreRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
@@ -328,8 +344,10 @@ export interface FileRoutesById {
   '/events': typeof EventsRouteWithChildren
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
+  '/more': typeof MoreRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/shop': typeof ShopRouteWithChildren
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
@@ -369,8 +387,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/impact'
     | '/journal'
+    | '/more'
     | '/privacy'
     | '/profile'
+    | '/settings'
     | '/shop'
     | '/terms'
     | '/welcome'
@@ -408,8 +428,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/impact'
     | '/journal'
+    | '/more'
     | '/privacy'
     | '/profile'
+    | '/settings'
     | '/shop'
     | '/terms'
     | '/welcome'
@@ -448,8 +470,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/impact'
     | '/journal'
+    | '/more'
     | '/privacy'
     | '/profile'
+    | '/settings'
     | '/shop'
     | '/terms'
     | '/welcome'
@@ -489,8 +513,10 @@ export interface RootRouteChildren {
   EventsRoute: typeof EventsRouteWithChildren
   ImpactRoute: typeof ImpactRoute
   JournalRoute: typeof JournalRoute
+  MoreRoute: typeof MoreRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
   ShopRoute: typeof ShopRouteWithChildren
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -527,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -539,6 +572,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/journal': {
@@ -907,8 +947,10 @@ const rootRouteChildren: RootRouteChildren = {
   EventsRoute: EventsRouteWithChildren,
   ImpactRoute: ImpactRoute,
   JournalRoute: JournalRoute,
+  MoreRoute: MoreRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
   ShopRoute: ShopRouteWithChildren,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,

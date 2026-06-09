@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -6,11 +6,12 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Shield, LogOut, AlertTriangle, User as UserIcon, Pencil, Target, Check, Settings, Flame, Trash2, Users, Compass, CalendarDays, TreePine, Headphones, Heart, ShoppingBag } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { User as UserIcon, Pencil, Target, Check, Flame, CalendarDays, TreePine, Heart, Settings } from "lucide-react";
 import { listHostPlaces } from "@/lib/places.functions";
 import { listMySavedTrails } from "@/lib/trails.functions";
 import { toast } from "sonner";
-import { deleteMyAccount } from "@/lib/account.functions";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
 import { BadgeWall } from "@/components/badge-wall";
@@ -59,20 +60,16 @@ interface Profile {
   is_private: boolean;
 }
 
-
 function ProfileTab() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { openAuth } = useAuthPrompt();
-  const navigate = useNavigate();
-  const [deleting, setDeleting] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
-  // (placeholder slot for upcoming group memberships)
-  const [editing, setEditing] = useState<null | "name" | "location" | "bio">(null);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(90);
   const [editingGoal, setEditingGoal] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [bioDraft, setBioDraft] = useState("");
   const [hostPlaces, setHostPlaces] = useState<Array<{ key: string; label: string | null; neighborhood: string | null; group_count: number; next_summary: string | null }>>([]);
   const [savedTrails, setSavedTrails] = useState<Array<{ id: string; name: string | null; kind: string | null }>>([]);
   const stats = useProfileStats(user?.id);
@@ -80,12 +77,14 @@ function ProfileTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => setP(data as Profile | null));
-    // upcoming-group block intentionally empty
+    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => {
+      const row = data as Profile | null;
+      setP(row);
+      setNameDraft(row?.display_name ?? "");
+      setBioDraft(row?.bio ?? "");
+    });
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
     listHostPlaces({ data: { user_id: user.id } })
       .then((r) => setHostPlaces(r.places.map(p => ({ key: p.key, label: p.label, neighborhood: p.neighborhood, group_count: p.group_count, next_summary: p.next_summary }))))
       .catch(() => {});
@@ -102,7 +101,6 @@ function ProfileTab() {
     if (!user || !p) return;
     const next = { ...p, ...patch };
     setP(next);
-    setEditing(null);
     await supabase.from("profiles").update(next).eq("id", user.id);
     toast.success("Saved.");
   };
@@ -138,13 +136,13 @@ function ProfileTab() {
   const since = user.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : null;
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5 pb-8">
       <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
-        <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-accent font-serif text-xl text-forest">{initials}</span>
+        <div className="flex items-start gap-4">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-accent font-serif text-xl text-forest">{initials}</span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-2xl truncate">{p.display_name || "Walker"}</h1>
+              <h1 className="truncate font-serif text-2xl">{p.display_name || "Walker"}</h1>
               {isPlus && (
                 <Link
                   to="/impact"
@@ -159,7 +157,16 @@ function ProfileTab() {
             {(p.location_label || p.city) && (
               <p className="text-sm text-muted-foreground">{p.location_label || p.city}</p>
             )}
+            {p.bio && <p className="mt-2 text-sm text-foreground/80">{p.bio}</p>}
           </div>
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+            aria-label="Edit profile"
+          >
+            <Pencil className="h-3 w-3" /> Edit
+          </button>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3 text-center">
           <div><div className="font-serif text-xl tabular-nums">{stats.totalWalks}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">walks</div></div>
@@ -202,38 +209,6 @@ function ProfileTab() {
       </section>
 
       <BillingCard />
-
-      <Link
-        to="/discover"
-        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
-      >
-        <span className="flex items-center gap-2 font-medium"><Compass className="h-4 w-4 text-forest" /> Discover</span>
-        <span className="text-xs text-muted-foreground">Walks, groups & places ›</span>
-      </Link>
-
-      <Link
-        to="/listen"
-        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
-      >
-        <span className="flex items-center gap-2 font-medium"><Headphones className="h-4 w-4 text-forest" /> Listen</span>
-        <span className="text-xs text-muted-foreground">Podcasts & playlists ›</span>
-      </Link>
-
-      <Link
-        to="/circles"
-        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
-      >
-        <span className="flex items-center gap-2 font-medium"><Users className="h-4 w-4 text-forest" /> Circles & friends</span>
-        <span className="text-xs text-muted-foreground">Manage ›</span>
-      </Link>
-
-      <Link
-        to="/shop"
-        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
-      >
-        <span className="flex items-center gap-2 font-medium"><ShoppingBag className="h-4 w-4 text-forest" /> Shop</span>
-        <span className="text-xs text-muted-foreground">Merch — half funds nonprofits ›</span>
-      </Link>
 
       {hostPlaces.length > 0 && (
         <section className="rounded-3xl border border-border bg-card p-4 shadow-soft">
@@ -294,116 +269,55 @@ function ProfileTab() {
         </section>
       )}
 
-
-
-
-
-
-
-      <button
-        onClick={() => setSettingsOpen(true)}
+      <Link
+        to="/settings"
         className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
       >
-        <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Settings & safety</span>
-        <span className="text-xs text-muted-foreground">›</span>
-      </button>
+        <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Settings</span>
+        <span className="text-xs text-muted-foreground">Account, billing, safety ›</span>
+      </Link>
 
-      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+      {since && <p className="text-center text-[11px] text-muted-foreground">Walker since {since}</p>}
+
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader><SheetTitle className="font-serif text-2xl">Settings</SheetTitle></SheetHeader>
-          <div className="space-y-5 pb-8 pt-4">
-            <section className="rounded-2xl border border-border bg-card">
-              <InlineRow label="Name" editing={editing === "name"} onEdit={() => setEditing("name")} onCancel={() => setEditing(null)} display={p.display_name || <span className="text-muted-foreground">Add your name</span>}>
-                <div className="flex gap-2">
-                  <Input autoFocus defaultValue={p.display_name ?? ""} onKeyDown={(e) => { if (e.key === "Enter") savePatch({ display_name: (e.target as HTMLInputElement).value }); }} id="name-input" />
-                  <Button size="sm" onClick={() => savePatch({ display_name: (document.getElementById("name-input") as HTMLInputElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
-                </div>
-              </InlineRow>
-              <InlineRow label="Location" editing={editing === "location"} onEdit={() => setEditing("location")} onCancel={() => setEditing(null)} display={p.location_label || <span className="text-muted-foreground">Add your city</span>}>
-                <LocationAutosuggest
-                  value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
-                  onChange={(v: LocationValue | null) => savePatch({ city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
-                />
-              </InlineRow>
-              <InlineRow label="Bio" editing={editing === "bio"} onEdit={() => setEditing("bio")} onCancel={() => setEditing(null)} display={p.bio || <span className="text-muted-foreground">A few words about you</span>} last>
-                <div className="space-y-2">
-                  <textarea autoFocus id="bio-input" rows={3} defaultValue={p.bio ?? ""} className="w-full rounded-xl border border-input bg-background p-3 text-sm" />
-                  <Button size="sm" onClick={() => savePatch({ bio: (document.getElementById("bio-input") as HTMLTextAreaElement).value })} className="rounded-full bg-forest text-primary-foreground">Save</Button>
-                </div>
-              </InlineRow>
-            </section>
-
-            <section className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="flex items-center gap-2 font-serif text-lg"><Shield className="h-4 w-4 text-forest" />Safety & support</h2>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
-                  <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger? Call your local emergency services.</div>
-                </div>
-                <div className="rounded-xl bg-secondary p-3">
-                  US mental health crisis: call or text <a href="tel:988" className="font-medium text-forest underline">988</a>.
-                </div>
+          <SheetHeader><SheetTitle className="font-serif text-2xl">Edit profile</SheetTitle></SheetHeader>
+          <div className="space-y-4 pb-8 pt-4">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Display name</Label>
+              <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onBlur={() => nameDraft !== p.display_name && savePatch({ display_name: nameDraft })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Location</Label>
+              <LocationAutosuggest
+                value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
+                onChange={(v: LocationValue | null) => savePatch({ city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Bio</Label>
+              <textarea
+                rows={3}
+                value={bioDraft}
+                onChange={(e) => setBioDraft(e.target.value)}
+                onBlur={() => bioDraft !== (p.bio ?? "") && savePatch({ bio: bioDraft })}
+                className="w-full rounded-xl border border-input bg-background p-3 text-sm"
+                placeholder="A few words about you"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Private profile</div>
+                <div className="text-[11px] text-muted-foreground">Hide your activity from public pages</div>
               </div>
-            </section>
-
-            {isAdmin && (
-              <Link to="/admin/podcasts" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft hover:bg-accent/40">
-                <span className="flex items-center gap-2 font-medium"><Settings className="h-4 w-4 text-forest" /> Admin · Podcasts</span>
-                <span className="text-xs text-muted-foreground">Manage</span>
-              </Link>
-            )}
-
-            <Button variant="outline" onClick={signOut} className="w-full rounded-full">
-              <LogOut className="mr-2 h-4 w-4" />Sign out
-            </Button>
-
-            <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
-              <h2 className="flex items-center gap-2 font-serif text-lg text-destructive"><Trash2 className="h-4 w-4" />Delete account</h2>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Permanently removes your profile, walks, journals, friend walks, RSVPs, and group memberships. This cannot be undone.
-              </p>
-              <Button
-                variant="destructive"
-                disabled={deleting}
-                onClick={async () => {
-                  if (!confirm("Permanently delete your account and all your data? This cannot be undone.")) return;
-                  if (!confirm("Last chance — really delete everything?")) return;
-                  setDeleting(true);
-                  try {
-                    await deleteMyAccount();
-                    await signOut();
-                    toast.success("Account deleted.");
-                    navigate({ to: "/" });
-                  } catch (e) {
-                    setDeleting(false);
-                    toast.error(e instanceof Error ? e.message : "Could not delete account.");
-                  }
-                }}
-                className="mt-3 w-full rounded-full"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Deleting…" : "Delete my account"}
-              </Button>
-            </section>
-
-            {since && <p className="text-center text-[11px] text-muted-foreground">Walker since {since}</p>}
+              <Switch checked={!!p.is_private} onCheckedChange={(v) => savePatch({ is_private: v })} />
+            </div>
+            <p className="text-center text-[11px] text-muted-foreground">
+              More settings live in <Link to="/settings" className="text-forest underline" onClick={() => setEditOpen(false)}>Settings</Link>.
+            </p>
           </div>
         </SheetContent>
       </Sheet>
-    </div>
-  );
-}
-
-function InlineRow({ label, display, editing, onEdit, onCancel, children, last }: { label: string; display: React.ReactNode; editing: boolean; onEdit: () => void; onCancel: () => void; children: React.ReactNode; last?: boolean }) {
-  return (
-    <div className={`flex flex-col gap-2 p-5 ${last ? "" : "border-b border-border"}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</span>
-        {editing ? (
-          <button onClick={onCancel} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
-        ) : (
-          <button onClick={onEdit} className="text-xs text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-        )}
-      </div>
-      {editing ? children : <div className="text-sm">{display}</div>}
     </div>
   );
 }
