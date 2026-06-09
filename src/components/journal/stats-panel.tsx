@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { Award, Link as LinkIcon } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useInView, useMotionValue, animate, useReducedMotion } from "motion/react";
 import type { JournalStats } from "@/lib/journal-entries.functions";
+import { formatDuration } from "@/lib/format-duration";
+import { BadgesCarousel } from "./badges-carousel";
 
 interface Props {
   stats: JournalStats;
@@ -44,7 +45,7 @@ export function StatsPanel({ stats }: Props) {
 
   const maxMins = Math.max(1, ...grid.flat().map((c) => c.mins));
 
-  // Mood arc — last 30 days, normalize 0..10
+  // Mood arc
   const arc = stats.moodArc30;
   const arcAvg = arc.length ? arc.reduce((s, p) => s + p.score, 0) / arc.length : null;
   const arcPath = useMemo(() => {
@@ -53,18 +54,19 @@ export function StatsPanel({ stats }: Props) {
     const h = 28;
     const xs = arc.map((_, i) => (i / (arc.length - 1)) * w);
     const ys = arc.map((p) => h - (Math.max(0, Math.min(10, p.score)) / 10) * h);
-    const d = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)},${ys[i].toFixed(2)}`).join(" ");
-    return d;
+    return xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)},${ys[i].toFixed(2)}`).join(" ");
   }, [arc]);
+
+  const minsFmt = formatDuration(stats.lifetime.minutes);
 
   return (
     <div className="space-y-5">
       {/* Lifetime numbers */}
       <div className="grid grid-cols-4 gap-3 text-center">
-        <Stat value={stats.lifetime.entries.toLocaleString()} label="entries" />
-        <Stat value={stats.lifetime.walks.toLocaleString()} label="walks" />
-        <Stat value={stats.lifetime.minutes.toLocaleString()} label="minutes" />
-        <Stat value={stats.lifetime.stepsLogged.toLocaleString()} label="steps logged" />
+        <CountStat to={stats.lifetime.entries} label="entries" />
+        <CountStat to={stats.lifetime.walks} label="walks" />
+        <StaticStat value={minsFmt.value} label={minsFmt.unit} />
+        <CountStat to={stats.lifetime.stepsLogged} label="steps logged" />
       </div>
 
       {/* Year heatmap */}
@@ -82,7 +84,13 @@ export function StatsPanel({ stats }: Props) {
           aria-label="Showing-up heatmap, last 52 weeks"
         >
           {Array.from({ length: 52 }).map((_, col) => (
-            <div key={col} className="grid grid-rows-7 gap-[2px]">
+            <motion.div
+              key={col}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: col * 0.008, duration: 0.2 }}
+              className="grid grid-rows-7 gap-[2px]"
+            >
               {grid.map((row, r) => {
                 const c = row[col];
                 const isToday = c.date.toDateString() === todayKey;
@@ -98,12 +106,12 @@ export function StatsPanel({ stats }: Props) {
                     title={`${c.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}${
                       c.active ? ` · ${c.mins} min` : ""
                     }`}
-                    className={`aspect-square rounded-[2px] ${isToday ? "ring-1 ring-forest" : ""}`}
+                    className={`aspect-square rounded-[2px] ${isToday ? "ring-1 ring-forest animate-pulse" : ""}`}
                     style={{ background: bg }}
                   />
                 );
               })}
-            </div>
+            </motion.div>
           ))}
         </div>
         <p className="mt-2 font-serif text-sm italic text-muted-foreground">
@@ -123,7 +131,7 @@ export function StatsPanel({ stats }: Props) {
             </div>
           </div>
           <svg viewBox="0 0 100 28" className="mt-2 h-16 w-full" preserveAspectRatio="none">
-            <path
+            <motion.path
               d={arcPath}
               fill="none"
               stroke="var(--clay)"
@@ -131,37 +139,53 @@ export function StatsPanel({ stats }: Props) {
               strokeLinecap="round"
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.9, ease: "easeOut" }}
             />
           </svg>
         </div>
       )}
 
-      {/* Latest badge */}
-      {stats.latestBadge && (
-        <Link
-          to="/profile"
-          className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-3 transition hover:border-forest/30"
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent">
-            <Award className="h-4 w-4 text-forest" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Latest badge
-            </span>
-            <span className="block truncate font-serif text-sm text-foreground">{stats.latestBadge.name}</span>
-          </span>
-          <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
-        </Link>
-      )}
+      {/* Badges */}
+      <BadgesCarousel badges={stats.badges} count={stats.badgesCount} />
     </div>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function StaticStat({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <div className="font-serif text-2xl tabular-nums leading-none">{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+export function CountStat({ to, label }: { to: number; label: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const mv = useMotionValue(0);
+  const [display, setDisplay] = useState("0");
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (!inView) return;
+    if (reduce) {
+      setDisplay(to.toLocaleString());
+      return;
+    }
+    const controls = animate(mv, to, {
+      duration: Math.min(1.2, 0.4 + Math.log10(Math.max(1, to)) * 0.25),
+      ease: "easeOut",
+      onUpdate: (v) => setDisplay(Math.round(v).toLocaleString()),
+    });
+    return () => controls.stop();
+  }, [inView, to, mv, reduce]);
+
+  return (
+    <div ref={ref}>
+      <div className="font-serif text-2xl tabular-nums leading-none">{display}</div>
       <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
   );
