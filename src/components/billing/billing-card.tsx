@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock } from "lucide-react";
+import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useMembership } from "@/hooks/use-membership";
 import { useAuthPrompt } from "@/lib/auth-prompt";
-import { createBillingPortalSession, resumePlusSubscription } from "@/lib/billing.functions";
+import {
+  createBillingPortalSession,
+  resumePlusSubscription,
+  switchPlusToYearly,
+} from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { trackBillingEvent } from "@/lib/billing-analytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { SwitchToYearlyDialog } from "@/components/billing/plan-picker";
 
 type Flow = "payment_method_update" | "subscription_cancel" | "subscription_update" | undefined;
 
