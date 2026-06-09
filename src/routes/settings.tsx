@@ -31,11 +31,9 @@ interface ProfileRow {
   is_private: boolean;
 }
 
-type ThemePref = "system" | "light" | "dark";
 type NotifPrefs = { walk_reminders: boolean; friend_rsvps: boolean; weekly_recap: boolean };
 
 const NOTIF_KEY = "mhwc:notif-prefs:v1";
-const THEME_KEY = "mhwc:theme:v1";
 
 function loadNotifs(): NotifPrefs {
   try {
@@ -43,9 +41,6 @@ function loadNotifs(): NotifPrefs {
     if (raw) return JSON.parse(raw) as NotifPrefs;
   } catch { /* empty */ }
   return { walk_reminders: true, friend_rsvps: true, weekly_recap: true };
-}
-function loadTheme(): ThemePref {
-  try { return (localStorage.getItem(THEME_KEY) as ThemePref) || "system"; } catch { return "system"; }
 }
 
 function SettingsPage() {
