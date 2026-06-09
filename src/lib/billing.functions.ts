@@ -267,6 +267,44 @@ export const resumePlusSubscription = createServerFn({ method: "POST" })
     return { ok: true, alreadyActive: false };
   });
 
+/** Swap an active monthly Plus subscription to the yearly price, pro-rating immediately. */
+export const switchPlusToYearly = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { environment: StripeEnv }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: sub, error } = await supabase
+      .from("subscriptions")
+      .select("stripe_subscription_id, price_id, status, cancel_at_period_end")
+      .eq("user_id", userId)
+      .eq("environment", data.environment)
+      .eq("subscription_kind", "plus")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !sub?.stripe_subscription_id) throw new Error("No active Plus subscription");
+    if (sub.price_id === "plus_yearly") return { ok: true, alreadyYearly: true };
+    if (!["trialing", "active", "past_due"].includes(sub.status as string)) {
+      throw new Error("Your Plus plan isn't active.");
+    }
+
+    const stripe = createStripeClient(data.environment);
+    const prices = await stripe.prices.list({ lookup_keys: ["plus_yearly"] });
+    if (!prices.data.length) throw new Error("Yearly price not configured");
+    const yearlyPrice = prices.data[0];
+
+    const current = await stripe.subscriptions.retrieve(sub.stripe_subscription_id as string);
+    const itemId = current.items.data[0]?.id;
+    if (!itemId) throw new Error("Subscription item missing");
+
+    await stripe.subscriptions.update(sub.stripe_subscription_id as string, {
+      cancel_at_period_end: false,
+      proration_behavior: "always_invoice",
+      items: [{ id: itemId, price: yearlyPrice.id }],
+    });
+    return { ok: true, alreadyYearly: false };
+  });
+
 /**
  * One-shot read used by use-membership: returns Plus + Patron state.
  * Wraps the user_membership Postgres helper so RLS is bypassed safely.
