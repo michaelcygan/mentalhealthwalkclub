@@ -24,6 +24,8 @@ import { CollectionsRail } from "@/components/listen/collections-rail";
 import { HitsRail } from "@/components/listen/hits-rail";
 import { SuggestContentDialog } from "@/components/listen/suggest-content-dialog";
 import { searchListen, type SearchHit } from "@/lib/listen-search.functions";
+import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
+import { UpsellSheet } from "@/components/membership/upsell-sheet";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
