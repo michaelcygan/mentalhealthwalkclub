@@ -47,7 +47,9 @@ export function ReadRail() {
       // revert
       const revert = new Set(saved);
       setSaved(revert);
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      const cap = parseCapError(e);
+      if (cap) setCapError(cap);
+      else toast.error(e instanceof Error ? e.message : "Could not save");
     }
   }
 
