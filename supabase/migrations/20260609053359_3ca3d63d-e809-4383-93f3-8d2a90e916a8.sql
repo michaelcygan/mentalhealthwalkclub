@@ -1,0 +1,2 @@
+alter table public.events add column if not exists is_featured boolean not null default false;
+create index if not exists idx_events_featured_upcoming on public.events (starts_at) where is_featured = true and status = 'published';

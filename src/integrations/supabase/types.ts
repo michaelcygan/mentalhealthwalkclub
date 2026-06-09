@@ -689,6 +689,7 @@ export type Database = {
           host_user_id: string | null
           id: string
           image_url: string | null
+          is_featured: boolean
           is_seed: boolean
           kid_friendly: boolean
           last_pod_rotation_at: string | null
@@ -740,6 +741,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           is_seed?: boolean
           kid_friendly?: boolean
           last_pod_rotation_at?: string | null
@@ -791,6 +793,7 @@ export type Database = {
           host_user_id?: string | null
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           is_seed?: boolean
           kid_friendly?: boolean
           last_pod_rotation_at?: string | null
