@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Footprints, Compass, BookHeart, User as UserIcon } from "lucide-react";
+import { Footprints, Compass, BookHeart, Menu } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { haptics } from "@/lib/device";
 
@@ -7,7 +7,7 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
   { to: "/", label: "Home", icon: Footprints, exact: true },
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/journal", label: "Journal", icon: BookHeart },
-  { to: "/profile", label: "Profile", icon: UserIcon },
+  { to: "/more", label: "More", icon: Menu },
 ];
 
 export function MobileTabBar() {

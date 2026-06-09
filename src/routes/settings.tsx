@@ -1,0 +1,295 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Shield, AlertTriangle, LogOut, Trash2, Settings as SettingsIcon, Bell, Sparkles, ChevronRight, FileText, ShieldCheck, Sun, Moon, Laptop } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
+import { BillingCard } from "@/components/billing/billing-card";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/settings")({
+  component: SettingsPage,
+  head: () => ({ meta: [{ title: "Settings — Mental Health Walk Club" }] }),
+});
+
+interface ProfileRow {
+  display_name: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  location_label: string | null;
+  lat: number | null;
+  lng: number | null;
+  bio: string | null;
+  is_private: boolean;
+}
+
+type ThemePref = "system" | "light" | "dark";
+type NotifPrefs = { walk_reminders: boolean; friend_rsvps: boolean; weekly_recap: boolean };
+
+const NOTIF_KEY = "mhwc:notif-prefs:v1";
+const THEME_KEY = "mhwc:theme:v1";
+
+function loadNotifs(): NotifPrefs {
+  try {
+    const raw = localStorage.getItem(NOTIF_KEY);
+    if (raw) return JSON.parse(raw) as NotifPrefs;
+  } catch { /* empty */ }
+  return { walk_reminders: true, friend_rsvps: true, weekly_recap: true };
+}
+function loadTheme(): ThemePref {
+  try { return (localStorage.getItem(THEME_KEY) as ThemePref) || "system"; } catch { return "system"; }
+}
+
+function SettingsPage() {
+  const { user, signOut } = useAuth();
+  const { openAuth } = useAuthPrompt();
+  const { isPlus } = useSubscription();
+  const navigate = useNavigate();
+  const [p, setP] = useState<ProfileRow | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [notifs, setNotifs] = useState<NotifPrefs>(() => (typeof window === "undefined" ? { walk_reminders: true, friend_rsvps: true, weekly_recap: true } : loadNotifs()));
+  const [theme, setTheme] = useState<ThemePref>(() => (typeof window === "undefined" ? "system" : loadTheme()));
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single()
+      .then(({ data }) => {
+        const row = data as ProfileRow | null;
+        setP(row);
+        setBioDraft(row?.bio ?? "");
+        setNameDraft(row?.display_name ?? "");
+      });
+    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
+
+  const savePatch = async (patch: Partial<ProfileRow>) => {
+    if (!user || !p) return;
+    const next = { ...p, ...patch };
+    setP(next);
+    await supabase.from("profiles").update(next).eq("id", user.id);
+    toast.success("Saved.");
+  };
+
+  const updateNotif = (key: keyof NotifPrefs, val: boolean) => {
+    const next = { ...notifs, [key]: val };
+    setNotifs(next);
+    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); } catch { /* empty */ }
+  };
+
+  const updateTheme = (next: ThemePref) => {
+    setTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* empty */ }
+  };
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-md space-y-5 py-12 text-center">
+        <h1 className="font-serif text-3xl">Settings</h1>
+        <p className="text-muted-foreground">Sign in to manage your account.</p>
+        <Button onClick={() => openAuth("signin")} className="rounded-full bg-forest text-primary-foreground hover:opacity-90">Sign in</Button>
+      </div>
+    );
+  }
+
+  if (!p) return <div className="py-20 text-center text-muted-foreground">…</div>;
+
+  const since = user.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : null;
+
+  return (
+    <div className="space-y-6 pb-8">
+      <header className="flex items-center gap-3">
+        <Link to="/more" className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground" aria-label="Back">
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <h1 className="font-serif text-3xl">Settings</h1>
+      </header>
+
+      <SectionCard title="Account" icon={SettingsIcon}>
+        <Field label="Display name">
+          <div className="flex gap-2">
+            <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onBlur={() => nameDraft !== p.display_name && savePatch({ display_name: nameDraft })} />
+          </div>
+        </Field>
+        <Field label="Location">
+          <LocationAutosuggest
+            value={p.location_label ? { city: p.city ?? "", region: p.region, country: p.country, location_label: p.location_label, lat: p.lat, lng: p.lng } : null}
+            onChange={(v: LocationValue | null) => savePatch({ city: v?.city ?? null, region: v?.region ?? null, country: v?.country ?? null, location_label: v?.location_label ?? null, lat: v?.lat ?? null, lng: v?.lng ?? null })}
+          />
+        </Field>
+        <Field label="Bio">
+          <textarea
+            rows={3}
+            value={bioDraft}
+            onChange={(e) => setBioDraft(e.target.value)}
+            onBlur={() => bioDraft !== (p.bio ?? "") && savePatch({ bio: bioDraft })}
+            className="w-full rounded-xl border border-input bg-background p-3 text-sm"
+            placeholder="A few words about you"
+          />
+        </Field>
+        <Field label="Email">
+          <Input value={user.email ?? ""} readOnly className="text-muted-foreground" />
+        </Field>
+        <ToggleRow
+          label="Private profile"
+          hint="Hide your activity from public pages"
+          checked={!!p.is_private}
+          onChange={(v) => savePatch({ is_private: v })}
+        />
+      </SectionCard>
+
+      <SectionCard title="Membership" icon={Sparkles}>
+        <div className="-m-1">
+          <BillingCard />
+        </div>
+        {isPlus && (
+          <Link to="/impact" className="mt-3 flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm hover:bg-accent/30">
+            <span>Your impact</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Notifications" icon={Bell}>
+        <ToggleRow label="Walk reminders" hint="Nudges before scheduled walks" checked={notifs.walk_reminders} onChange={(v) => updateNotif("walk_reminders", v)} />
+        <ToggleRow label="Friend RSVPs" hint="When friends join your walks" checked={notifs.friend_rsvps} onChange={(v) => updateNotif("friend_rsvps", v)} />
+        <ToggleRow label="Weekly recap" hint="A gentle Sunday summary" checked={notifs.weekly_recap} onChange={(v) => updateNotif("weekly_recap", v)} />
+        <p className="px-1 pt-1 text-[11px] text-muted-foreground">More channels coming soon. Your choices are saved on this device.</p>
+      </SectionCard>
+
+      <SectionCard title="Appearance" icon={Sun}>
+        <div className="flex gap-2">
+          <ThemeChip current={theme} value="system" label="System" Icon={Laptop} onSelect={updateTheme} />
+          <ThemeChip current={theme} value="light" label="Light" Icon={Sun} onSelect={updateTheme} />
+          <ThemeChip current={theme} value="dark" label="Dark" Icon={Moon} onSelect={updateTheme} />
+        </div>
+        <p className="px-1 pt-2 text-[11px] text-muted-foreground">Theme support is rolling out. Preference is saved.</p>
+      </SectionCard>
+
+      <SectionCard title="Privacy & data" icon={FileText}>
+        <LinkRow to="/privacy" label="Privacy policy" />
+        <LinkRow to="/terms" label="Terms" />
+      </SectionCard>
+
+      <section id="safety" className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+        <h2 className="flex items-center gap-2 font-serif text-lg"><Shield className="h-4 w-4 text-forest" />Safety & support</h2>
+        <div className="mt-3 space-y-2 text-sm">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+            <div className="flex items-center gap-2 font-medium text-destructive"><AlertTriangle className="h-4 w-4" />In immediate danger? Call your local emergency services.</div>
+          </div>
+          <div className="rounded-xl bg-secondary p-3">
+            US mental health crisis: call or text <a href="tel:988" className="font-medium text-forest underline">988</a>.
+          </div>
+        </div>
+      </section>
+
+      {isAdmin && (
+        <SectionCard title="Admin" icon={ShieldCheck}>
+          <LinkRow to="/admin" label="Admin home" />
+          <LinkRow to="/admin/podcasts" label="Podcasts" />
+          <LinkRow to="/admin/merch" label="Merch" />
+        </SectionCard>
+      )}
+
+      <Button variant="outline" onClick={signOut} className="w-full rounded-full">
+        <LogOut className="mr-2 h-4 w-4" />Sign out
+      </Button>
+
+      <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+        <h2 className="flex items-center gap-2 font-serif text-lg text-destructive"><Trash2 className="h-4 w-4" />Delete account</h2>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Permanently removes your profile, walks, journals, friend walks, RSVPs, and group memberships. This cannot be undone.
+        </p>
+        <Button
+          variant="destructive"
+          disabled={deleting}
+          onClick={async () => {
+            if (!confirm("Permanently delete your account and all your data? This cannot be undone.")) return;
+            if (!confirm("Last chance — really delete everything?")) return;
+            setDeleting(true);
+            try {
+              await deleteMyAccount();
+              await signOut();
+              toast.success("Account deleted.");
+              navigate({ to: "/" });
+            } catch (e) {
+              setDeleting(false);
+              toast.error(e instanceof Error ? e.message : "Could not delete account.");
+            }
+          }}
+          className="mt-3 w-full rounded-full"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Deleting…" : "Delete my account"}
+        </Button>
+      </section>
+
+      {since && <p className="text-center text-[11px] text-muted-foreground">Walker since {since}</p>}
+    </div>
+  );
+}
+
+function SectionCard({ title, icon: Icon, children }: { title: string; icon: typeof SettingsIcon; children: React.ReactNode }) {
+  return (
+    <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+      <h2 className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />{title}
+      </h2>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{label}</div>
+        {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function LinkRow({ to, label }: { to: string; label: string }) {
+  return (
+    <Link to={to as never} className="flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm hover:bg-accent/30">
+      <span>{label}</span>
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </Link>
+  );
+}
+
+function ThemeChip({ current, value, label, Icon, onSelect }: { current: ThemePref; value: ThemePref; label: string; Icon: typeof Sun; onSelect: (v: ThemePref) => void }) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(value)}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border p-2.5 text-sm transition ${active ? "border-forest bg-forest/10 text-forest" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
