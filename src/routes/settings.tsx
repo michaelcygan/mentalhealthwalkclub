@@ -54,7 +54,6 @@ function SettingsPage() {
   const [nameDraft, setNameDraft] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [notifs, setNotifs] = useState<NotifPrefs>(() => (typeof window === "undefined" ? { walk_reminders: true, friend_rsvps: true, weekly_recap: true } : loadNotifs()));
-  const [theme, setTheme] = useState<ThemePref>(() => (typeof window === "undefined" ? "system" : loadTheme()));
 
   useEffect(() => {
     if (!user) return;
@@ -83,10 +82,6 @@ function SettingsPage() {
     try { localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); } catch { /* empty */ }
   };
 
-  const updateTheme = (next: ThemePref) => {
-    setTheme(next);
-    try { localStorage.setItem(THEME_KEY, next); } catch { /* empty */ }
-  };
 
   if (!user) {
     return (
