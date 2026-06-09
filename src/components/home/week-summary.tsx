@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -65,39 +66,53 @@ export function WeekSummary() {
 
   const max = Math.max(15, ...bars.map((b) => b.minutes));
   const delta = deltaMin ?? 0;
-  const deltaLabel = deltaMin === null ? "" : delta === 0 ? "same as last week" : `${delta > 0 ? "↗ +" : "↘ "}${delta} min vs last week`;
+  const deltaChip =
+    deltaMin === null
+      ? null
+      : delta === 0
+        ? "± same"
+        : `${delta > 0 ? "+" : ""}${delta}m vs last`;
 
   return (
-    <Card className="rounded-2xl border-border bg-card/90 p-5 shadow-soft backdrop-blur-sm">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">This week</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-serif text-2xl tabular-nums">{totalMin}</span>
-            <span className="text-sm text-muted-foreground">min · {count} {count === 1 ? "walk" : "walks"} · {miles} mi</span>
-          </div>
-        </div>
-        {streak > 1 && (
-          <div className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-            🔥 {streak}-day
-          </div>
-        )}
-      </div>
-      <div className="mt-4 flex h-16 items-end gap-1.5">
-        {bars.map((b, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center gap-1">
-            <div className="flex h-12 w-full items-end">
-              <div
-                className={`w-full rounded-t-md transition-all ${b.isToday ? "bg-forest ring-2 ring-forest/30 ring-offset-1 ring-offset-card" : b.minutes > 0 ? "bg-forest/70" : "bg-muted"}`}
-                style={{ height: `${Math.max(b.minutes > 0 ? 12 : 4, Math.round((b.minutes / max) * 100))}%` }}
-                title={`${b.minutes} min`}
-              />
+    <Card className="rounded-2xl border-border bg-card/90 p-4 shadow-soft backdrop-blur-sm">
+      <Link to="/journal" className="block">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">This week</div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="font-serif text-2xl tabular-nums">{totalMin}</span>
+              <span className="text-sm text-muted-foreground">min · {count} {count === 1 ? "walk" : "walks"} · {miles} mi</span>
+              {deltaChip && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${delta > 0 ? "bg-forest/10 text-forest" : delta < 0 ? "bg-clay/10 text-clay" : "bg-secondary text-muted-foreground"}`}>
+                  {deltaChip}
+                </span>
+              )}
             </div>
-            <span className={`text-[10px] ${b.isToday ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{b.label}</span>
           </div>
-        ))}
-      </div>
-      {deltaLabel && <p className="mt-3 text-xs text-muted-foreground">{deltaLabel}. Rest is part of walking.</p>}
+          {streak > 1 && (
+            <div className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+              🔥 {streak}-day
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex h-12 items-end gap-1.5">
+          {bars.map((b, i) => (
+            <div key={i} className="flex flex-1 flex-col items-center gap-1">
+              <div className="flex h-9 w-full items-end">
+                <div
+                  className={`w-full rounded-t-md transition-all ${b.isToday ? "bg-forest ring-2 ring-forest/30 ring-offset-1 ring-offset-card" : b.minutes > 0 ? "bg-forest/70" : "bg-muted"}`}
+                  style={{ height: `${Math.max(b.minutes > 0 ? 12 : 4, Math.round((b.minutes / max) * 100))}%` }}
+                  title={`${b.minutes} min`}
+                />
+              </div>
+              <span className={`text-[10px] ${b.isToday ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{b.label}</span>
+            </div>
+          ))}
+        </div>
+        {count === 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">First walk of the week? A small loop counts.</p>
+        )}
+      </Link>
     </Card>
   );
 }
