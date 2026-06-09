@@ -5,18 +5,15 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Footprints, CalendarPlus, BookHeart, Flame } from "lucide-react";
-import { WeatherPill } from "@/components/weather-pill";
-import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
+import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
 import { AmbientBackdrop } from "@/components/home/ambient-backdrop";
-import { ReflectionRotator } from "@/components/home/reflection-rotator";
+import { TodayIsland } from "@/components/home/today-island";
+import { BestWindow } from "@/components/home/best-window";
+import { Reflect30s } from "@/components/home/reflect-30s";
 import { WeekSummary } from "@/components/home/week-summary";
 import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
-import { PodcastRail } from "@/components/home/podcast-rail";
-import { BlogRail } from "@/components/home/blog-rail";
-import { useProfileStats } from "@/hooks/use-profile-stats";
-
+import { ListenAndRead } from "@/components/home/listen-and-read";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
@@ -87,12 +84,11 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
 function HomeTab() {
   const { user } = useAuth();
   const [lastReflection, setLastReflection] = useState<string | null>(null);
-  const stats = useProfileStats(user?.id);
 
   useEffect(() => {
     if (!user) return;
     const since = new Date(); since.setDate(since.getDate() - 30); since.setHours(0, 0, 0, 0);
-    supabase
+    void supabase
       .from("walk_sessions")
       .select("reflection_note,started_at,status")
       .eq("user_id", user.id)
@@ -108,91 +104,19 @@ function HomeTab() {
 
   if (!user) return null;
 
-  const hour = new Date().getHours();
-  const greet = hour < 5 ? "A late night walk?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const name = (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] || "";
-
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{greet}{name ? "," : ""}</div>
-        <div className="mt-0.5 flex items-center gap-2">
-          <h1 className="font-serif text-3xl leading-tight">{name || "Welcome back"}</h1>
-          {stats.weekStreak > 0 && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-clay/30 bg-clay/10 px-2 py-0.5 text-[11px] font-medium text-clay"
-              title={`${stats.weekStreak} week${stats.weekStreak === 1 ? "" : "s"} in a row`}
-            >
-              <Flame className="h-3 w-3" />{stats.weekStreak}w
-            </span>
-          )}
-        </div>
-        <InlineWeatherChip />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Link
-          to="/walk"
-          className="group flex items-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
-        >
-          <Footprints className="h-4 w-4" />
-          Walk now
-        </Link>
-        <Link
-          to="/walk/new"
-          className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
-        >
-          <CalendarPlus className="h-4 w-4 text-forest" />
-          Plan a walk
-        </Link>
-      </div>
-
-
-      <ReflectionRotator />
-
+    <div className="space-y-4 pb-20">
+      <TodayIsland user={user} />
+      <BestWindow />
+      <Reflect30s lastReflection={lastReflection} />
       <WeekSummary />
-
-      <WeatherForecast />
-
       <FriendPulse />
-
-      <PodcastRail />
-
-      <BlogRail />
-
-      <Link
-        to="/discover"
-        className="block rounded-2xl border border-border bg-card/90 p-4 text-sm shadow-soft backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/40"
-      >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 font-medium"><CalendarPlus className="h-4 w-4 text-forest" /> Walks near you</span>
-          <span className="text-xs text-muted-foreground">Discover →</span>
-        </div>
-      </Link>
-
-      <Link
-        to="/journal"
-        className="block rounded-2xl border border-border bg-card/90 p-4 text-sm shadow-soft backdrop-blur-sm transition hover:-translate-y-px hover:border-forest/40"
-      >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 font-medium"><BookHeart className="h-4 w-4 text-forest" /> Journal</span>
-          <span className="text-xs text-muted-foreground">View →</span>
-        </div>
-        {lastReflection && (
-          <blockquote className="mt-2 font-serif text-sm italic text-muted-foreground line-clamp-2">"{lastReflection}"</blockquote>
-        )}
-      </Link>
-    </div>
-  );
-}
-
-function InlineWeatherChip() {
-  const { coords } = useGeolocation({ autoRequest: false, ipFallback: true });
-  const { data } = useCurrentWeather(coords);
-  if (!data) return null;
-  return (
-    <div className="mt-2 inline-block">
-      <WeatherPill tempF={data.tempF} label={data.label} tone={data.tone} isDay={data.isDay} />
+      <WeatherForecast />
+      <ListenAndRead />
+      <p className="pt-2 text-center font-serif text-xs italic text-muted-foreground">
+        Still here. Still walking.{" "}
+        <Link to="/journal" className="underline-offset-2 hover:underline">Journal</Link>
+      </p>
     </div>
   );
 }
