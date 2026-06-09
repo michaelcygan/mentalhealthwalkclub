@@ -24,14 +24,11 @@ function MorePage() {
   const { openAuth } = useAuthPrompt();
   const { isPlus } = useSubscription();
   const [p, setP] = useState<MiniProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name,city,location_label").eq("id", user.id).maybeSingle()
       .then(({ data }) => setP(data as MiniProfile | null));
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
   if (!user) {
