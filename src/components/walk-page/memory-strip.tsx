@@ -168,7 +168,7 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
         onClick={onPick}
         disabled={uploading}
         aria-label="Add a memory"
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-xl ring-4 ring-cream/50 transition hover:scale-105 active:scale-95 disabled:opacity-60"
+        className="fixed bottom-6 right-6 z-[1000] flex h-14 w-14 items-center justify-center rounded-full bg-forest text-primary-foreground shadow-xl ring-4 ring-cream/50 transition hover:scale-105 active:scale-95 disabled:opacity-60"
       >
         {uploading ? (
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
@@ -179,7 +179,7 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
 
       {lightbox ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/85 p-4"
           onClick={() => setLightbox(null)}
         >
           <button
