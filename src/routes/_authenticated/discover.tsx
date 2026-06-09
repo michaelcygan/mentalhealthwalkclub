@@ -53,6 +53,16 @@ type TrailRow = {
   miles?: number;
 };
 
+type Segment = "all" | "walks" | "groups" | "places" | "trails";
+
+const SEGMENTS: Array<{ id: Segment; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "walks", label: "Walks" },
+  { id: "groups", label: "Groups" },
+  { id: "places", label: "Places" },
+  { id: "trails", label: "Trails" },
+];
+
 function DiscoverPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoState, setGeoState] = useState<"asking" | "ok" | "denied">("asking");
@@ -62,6 +72,7 @@ function DiscoverPage() {
   const [places, setPlaces] = useState<PlaceRow[]>([]);
   const [trails, setTrails] = useState<TrailRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [segment, setSegment] = useState<Segment>("all");
 
   useEffect(() => {
     if (!("geolocation" in navigator)) {
@@ -83,35 +94,67 @@ function DiscoverPage() {
     setLoading(true);
     (async () => {
       const [w, lg, gg, pl] = await Promise.all([
-        discoverNearbyWalks({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, hours: 48, limit: 4 } }),
+        discoverNearbyWalks({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, hours: 48, limit: segment === "walks" ? 12 : 4 } }),
         discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
         discoverPublicGroups({ data: { lat: null, lng: null, scope: "global" } }),
         discoverPlaces({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
       ]);
       setWalks(w.walks as Walk[]);
-      setLocalGroups(lg.groups.slice(0, 3));
-      setGlobalGroups(gg.groups.slice(0, 3));
-      setPlaces(pl.places.slice(0, 4));
+      setLocalGroups(lg.groups.slice(0, segment === "groups" ? 8 : 3));
+      setGlobalGroups(gg.groups.slice(0, segment === "groups" ? 8 : 3));
+      setPlaces(pl.places.slice(0, segment === "places" ? 12 : 4));
       setLoading(false);
       if (coords) {
         try {
-          const t = await discoverTrails({ data: { lat: coords.lat, lng: coords.lng, limit: 4 } });
+          const t = await discoverTrails({ data: { lat: coords.lat, lng: coords.lng, limit: segment === "trails" ? 12 : 4 } });
           setTrails(t.trails as TrailRow[]);
         } catch {
           setTrails([]);
         }
       }
     })();
-  }, [coords, geoState]);
+  }, [coords, geoState, segment]);
+
+  const showWalks = segment === "all" || segment === "walks";
+  const showGroups = segment === "all" || segment === "groups";
+  const showPlaces = segment === "all" || segment === "places";
+  const showTrails = segment === "all" || segment === "trails";
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
-      <header className="mb-6">
+    <div className="mx-auto max-w-2xl pb-24">
+      <header className="mb-4">
         <h1 className="font-serif text-3xl">Discover</h1>
         <p className="mt-1 text-sm text-muted-foreground">Walks, groups, and quiet places to meet.</p>
       </header>
 
-      {geoState === "denied" && (
+      {/* Sticky segmented island */}
+      <div className="sticky top-[calc(env(safe-area-inset-top)+60px)] z-20 -mx-1 mb-5 px-1 md:top-0 md:mb-6">
+        <div
+          role="tablist"
+          aria-label="Filter discover"
+          className="flex items-center gap-1 overflow-x-auto rounded-full border border-border/60 bg-background/75 p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {SEGMENTS.map((s) => {
+            const active = segment === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSegment(s.id)}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition ${
+                  active ? "bg-forest text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {geoState === "denied" && segment === "all" && (
         <div className="mb-5 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-xs">
           <p className="font-medium">Turn on location for nearby picks.</p>
           <p className="mt-1 text-muted-foreground">
@@ -121,115 +164,125 @@ function DiscoverPage() {
       )}
 
       <div className="space-y-7">
-        <Rail
-          icon={<Footprints className="h-4 w-4" />}
-          title={coords ? "Tonight near you" : "Coming up"}
-          subtitle={coords ? "Within 25mi · next 48 hours" : "Next 48 hours"}
-          seeAllTo="/walk/new"
-          loading={loading}
-          empty="No walks scheduled yet. Be the first to host one."
-          items={walks}
-          render={(w) => (
-            <Link
-              to="/w/$code"
-              params={{ code: w.slug }}
-              className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-serif text-base">{w.title}</h3>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="h-3 w-3" />
-                      {formatWhen(w.starts_at)}
-                    </span>
-                    {(w.venue_name || w.city) && (
+        {showWalks && (
+          <Rail
+            icon={<Footprints className="h-4 w-4" />}
+            title={coords ? "Tonight near you" : "Coming up"}
+            subtitle={coords ? "Within 25mi · next 48 hours" : "Next 48 hours"}
+            seeAllTo="/walk/new"
+            loading={loading}
+            empty="No walks scheduled yet. Be the first to host one."
+            items={walks}
+            render={(w) => (
+              <Link
+                to="/w/$code"
+                params={{ code: w.slug }}
+                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-serif text-base">{w.title}</h3>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {w.venue_name ?? w.city}
+                        <CalendarDays className="h-3 w-3" />
+                        {formatWhen(w.starts_at)}
                       </span>
-                    )}
-                    {w.miles != null && <span>· {w.miles.toFixed(1)} mi</span>}
-                    {w.audience_mode === "group" && (
-                      <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-[10px] text-forest">group</span>
-                    )}
+                      {(w.venue_name || w.city) && (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {w.venue_name ?? w.city}
+                        </span>
+                      )}
+                      {w.miles != null && <span>· {w.miles.toFixed(1)} mi</span>}
+                      {w.audience_mode === "group" && (
+                        <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-[10px] text-forest">group</span>
+                      )}
+                    </div>
                   </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </Link>
-          )}
-        />
+              </Link>
+            )}
+          />
+        )}
 
-        <Rail
-          icon={<Users className="h-4 w-4" />}
-          title={coords ? "Groups near you" : "Recent public groups"}
-          subtitle={coords ? "Standing walks within 25mi" : "Discoverable groups"}
-          seeAllTo="/groups"
-          loading={loading}
-          empty="No groups near you yet. Start one?"
-          items={localGroups}
-          render={(g) => <GroupCard g={g} />}
-        />
+        {showGroups && (
+          <>
+            <Rail
+              icon={<Users className="h-4 w-4" />}
+              title={coords ? "Groups near you" : "Recent public groups"}
+              subtitle={coords ? "Standing walks within 25mi" : "Discoverable groups"}
+              seeAllTo="/groups"
+              loading={loading}
+              empty="No groups near you yet. Start one?"
+              items={localGroups}
+              render={(g) => <GroupCard g={g} />}
+            />
 
-        <Rail
-          icon={<Globe className="h-4 w-4" />}
-          title="Global identity groups"
-          subtitle="Postpartum walkers, sober strolls, grief & movement…"
-          seeAllTo="/groups"
-          loading={loading}
-          empty="No global groups yet."
-          items={globalGroups}
-          render={(g) => <GroupCard g={g} globe />}
-        />
+            <Rail
+              icon={<Globe className="h-4 w-4" />}
+              title="Global identity groups"
+              subtitle="Postpartum walkers, sober strolls, grief & movement…"
+              seeAllTo="/groups"
+              loading={loading}
+              empty="No global groups yet."
+              items={globalGroups}
+              render={(g) => <GroupCard g={g} globe />}
+            />
+          </>
+        )}
 
-        <Rail
-          icon={<MapPin className="h-4 w-4" />}
-          title="Places to meet"
-          subtitle="Parks and corners where standing walks happen"
-          seeAllTo="/places"
-          loading={loading}
-          empty="No meetup spots yet."
-          items={places}
-          render={(p) => (
-            <Link
-              to="/places/$key"
-              params={{ key: p.key }}
-              className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-            >
-              <h3 className="truncate font-serif text-base">{p.label ?? p.neighborhood ?? "Meetup spot"}</h3>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {p.group_count} group{p.group_count === 1 ? "" : "s"}
-                </span>
-                {p.miles != null && <span>· {p.miles.toFixed(1)} mi</span>}
-              </div>
-            </Link>
-          )}
-        />
+        {showPlaces && (
+          <Rail
+            icon={<MapPin className="h-4 w-4" />}
+            title="Places to meet"
+            subtitle="Parks and corners where standing walks happen"
+            seeAllTo="/places"
+            loading={loading}
+            empty="No meetup spots yet."
+            items={places}
+            render={(p) => (
+              <Link
+                to="/places/$key"
+                params={{ key: p.key }}
+                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+              >
+                <h3 className="truncate font-serif text-base">{p.label ?? p.neighborhood ?? "Meetup spot"}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {p.group_count} group{p.group_count === 1 ? "" : "s"}
+                  </span>
+                  {p.miles != null && <span>· {p.miles.toFixed(1)} mi</span>}
+                </div>
+              </Link>
+            )}
+          />
+        )}
 
-        <Rail
-          icon={<TreePine className="h-4 w-4" />}
-          title="Trails near you"
-          subtitle="Parks and footpaths from OpenStreetMap"
-          seeAllTo="/trails"
-          loading={loading}
-          empty={coords ? "No trails found nearby yet." : "Turn on location to see trails."}
-          items={trails}
-          render={(t) => (
-            <Link
-              to="/trails"
-              className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-            >
-              <h3 className="truncate font-serif text-base">{t.name ?? "Unnamed"}</h3>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{t.kind ?? "trail"}</span>
-                {t.miles != null && <span>· {t.miles.toFixed(1)} mi</span>}
-              </div>
-            </Link>
-          )}
-        />
+        {showTrails && (
+          <Rail
+            icon={<TreePine className="h-4 w-4" />}
+            title="Trails near you"
+            subtitle="Parks and footpaths from OpenStreetMap"
+            seeAllTo="/trails"
+            loading={loading}
+            empty={coords ? "No trails found nearby yet." : "Turn on location to see trails."}
+            items={trails}
+            render={(t) => (
+              <Link
+                to="/trails"
+                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+              >
+                <h3 className="truncate font-serif text-base">{t.name ?? "Unnamed"}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{t.kind ?? "trail"}</span>
+                  {t.miles != null && <span>· {t.miles.toFixed(1)} mi</span>}
+                </div>
+              </Link>
+            )}
+          />
+        )}
       </div>
     </div>
   );

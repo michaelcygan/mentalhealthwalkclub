@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Footprints, CalendarPlus, BookHeart } from "lucide-react";
+import { Footprints, CalendarPlus, BookHeart, Flame } from "lucide-react";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
 import { AmbientBackdrop } from "@/components/home/ambient-backdrop";
@@ -15,6 +15,7 @@ import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
 import { PodcastRail } from "@/components/home/podcast-rail";
 import { BlogRail } from "@/components/home/blog-rail";
+import { useProfileStats } from "@/hooks/use-profile-stats";
 
 
 export const Route = createFileRoute("/")({
@@ -86,6 +87,7 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
 function HomeTab() {
   const { user } = useAuth();
   const [lastReflection, setLastReflection] = useState<string | null>(null);
+  const stats = useProfileStats(user?.id);
 
   useEffect(() => {
     if (!user) return;
@@ -114,9 +116,37 @@ function HomeTab() {
     <div className="space-y-5">
       <div>
         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{greet}{name ? "," : ""}</div>
-        <h1 className="mt-1 font-serif text-3xl leading-tight">{name || "Welcome back"}</h1>
+        <div className="mt-1 flex items-center gap-2">
+          <h1 className="font-serif text-3xl leading-tight">{name || "Welcome back"}</h1>
+          {stats.weekStreak > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-clay/30 bg-clay/10 px-2 py-0.5 text-[11px] font-medium text-clay"
+              title={`${stats.weekStreak} week${stats.weekStreak === 1 ? "" : "s"} in a row`}
+            >
+              <Flame className="h-3 w-3" />{stats.weekStreak}w
+            </span>
+          )}
+        </div>
         <InlineWeatherChip />
       </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          to="/walk"
+          className="group flex items-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
+        >
+          <Footprints className="h-4 w-4" />
+          Walk now
+        </Link>
+        <Link
+          to="/walk/new"
+          className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
+        >
+          <CalendarPlus className="h-4 w-4 text-forest" />
+          Plan a walk
+        </Link>
+      </div>
+
 
       <ReflectionRotator />
 
