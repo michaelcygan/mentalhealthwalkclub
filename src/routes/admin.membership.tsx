@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +53,7 @@ function AdminMembershipPage() {
 
     // Tier breakdown via two parallel reads
     (async () => {
-      const env = (typeof window !== "undefined" ? (window as unknown as { __env?: string }).__env : null) ?? "live";
+      const env = getStripeEnvironment();
       const [{ data: subs }, { data: patronRows }] = await Promise.all([
         supabase
           .from("subscriptions" as never)

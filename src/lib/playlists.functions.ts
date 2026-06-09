@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireUnderCap } from "@/lib/plus-guard.server";
 
 const ItemKind = z.enum(["podcast_episode", "ambient_track", "guided_track"]);
 
@@ -39,6 +40,14 @@ export const createPlaylist = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { count } = await supabase
+      .from("playlists")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", userId);
+    await requireUnderCap(supabase, userId, {
+      surface: "playlists",
+      currentCount: count ?? 0,
+    });
     const { data: row, error } = await supabase
       .from("playlists")
       .insert({ owner_id: userId, name: data.name, mood: data.mood ?? null, is_public: data.is_public })

@@ -69,5 +69,7 @@ export async function requireUnderCap(
     playlists: `Free plan keeps up to ${cap} custom playlists`,
     collections_follow: `Free plan follows up to ${cap} collections`,
   };
-  throw new Error(`${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
+  // Structured prefix so the client can detect a cap-limit error and open the upsell sheet.
+  throw new Error(`CAP_LIMIT|${opts.surface}|${cap}|${labels[opts.surface]}. Upgrade to Plus for unlimited.`);
 }
+

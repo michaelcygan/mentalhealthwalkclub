@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock } from "lucide-react";
+import { Sparkles, ExternalLink, CreditCard, XCircle, RotateCcw, Settings2, AlertTriangle, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useMembership } from "@/hooks/use-membership";
 import { useAuthPrompt } from "@/lib/auth-prompt";
-import { createBillingPortalSession, resumePlusSubscription } from "@/lib/billing.functions";
+import {
+  createBillingPortalSession,
+  resumePlusSubscription,
+  switchPlusToYearly,
+} from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { trackBillingEvent } from "@/lib/billing-analytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { SwitchToYearlyDialog } from "@/components/billing/plan-picker";
 
 type Flow = "payment_method_update" | "subscription_cancel" | "subscription_update" | undefined;
 
@@ -21,10 +27,12 @@ interface BillingNotice {
 
 export function BillingCard() {
   const { loading, isPlus, isTrialing, cancelAtPeriodEnd, currentPeriodEnd, raw, refresh } = useSubscription();
+  const { plusInterval, refresh: refreshMembership } = useMembership();
   const { openPlusCheckout } = useAuthPrompt();
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<BillingNotice | null>(null);
+  const [switchOpen, setSwitchOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -90,6 +98,21 @@ export function BillingCard() {
       await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't resume plan");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const switchYearly = async () => {
+    setBusy("switch");
+    try {
+      const r = await switchPlusToYearly({ data: { environment: getStripeEnvironment() } });
+      void trackBillingEvent("plan_switch_yearly_completed");
+      toast.success(r.alreadyYearly ? "You're already on yearly." : "Switched to yearly. Thank you!");
+      setSwitchOpen(false);
+      await Promise.all([refresh(), refreshMembership()]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't switch plans");
     } finally {
       setBusy(null);
     }
@@ -164,6 +187,18 @@ export function BillingCard() {
           <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
           <div className="mt-4 grid gap-2">
+            {plusInterval === "monthly" && !endingSoon && status !== "past_due" && (
+              <Button
+                onClick={() => {
+                  void trackBillingEvent("plan_switch_yearly_clicked");
+                  setSwitchOpen(true);
+                }}
+                className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
+              >
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Switch to yearly — save $4.88
+              </Button>
+            )}
             {status === "past_due" && (
               <Button disabled={busy === "card"} onClick={() => openPortal("payment_method_update", "card")} className="justify-start rounded-full bg-clay text-primary-foreground hover:opacity-90">
                 <CreditCard className="mr-2 h-4 w-4" />
@@ -198,6 +233,12 @@ export function BillingCard() {
           </div>
         </div>
       </div>
+      <SwitchToYearlyDialog
+        open={switchOpen}
+        onOpenChange={setSwitchOpen}
+        onConfirm={switchYearly}
+        loading={busy === "switch"}
+      />
     </section>
   );
 }

@@ -24,6 +24,8 @@ import { CollectionsRail } from "@/components/listen/collections-rail";
 import { HitsRail } from "@/components/listen/hits-rail";
 import { SuggestContentDialog } from "@/components/listen/suggest-content-dialog";
 import { searchListen, type SearchHit } from "@/lib/listen-search.functions";
+import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
+import { UpsellSheet } from "@/components/membership/upsell-sheet";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
@@ -72,6 +74,7 @@ function ListenPage() {
   const [name, setName] = useState("");
   const [mood, setMood] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [capError, setCapError] = useState<CapError | null>(null);
 
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -114,7 +117,13 @@ function ListenPage() {
       setName(""); setMood(""); setIsPublic(false);
       navigate({ to: "/listen/$id", params: { id } });
     } catch (e) {
-      toast.error((e as Error).message);
+      const cap = parseCapError(e);
+      if (cap) {
+        setOpenCreate(false);
+        setCapError(cap);
+      } else {
+        toast.error((e as Error).message);
+      }
     }
   }
 
@@ -329,6 +338,17 @@ function ListenPage() {
       )}
 
       <SuggestContentDialog open={openSuggest} onOpenChange={setOpenSuggest} prefill={q} />
+
+      {capError && (
+        <UpsellSheet
+          open={!!capError}
+          onOpenChange={(o) => !o && setCapError(null)}
+          surface={capError.surface}
+          title={CAP_UPSELL_COPY[capError.surface].title}
+          body={CAP_UPSELL_COPY[capError.surface].body(capError.cap)}
+          cap={capError.cap}
+        />
+      )}
 
       <p className="mt-10 text-center font-serif text-xs italic text-muted-foreground">
         Editor's notes update weekly.
