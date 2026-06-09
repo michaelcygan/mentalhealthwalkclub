@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireUnderCap } from "@/lib/plus-guard.server";
 
 export interface SavedReadCard {
   id: string;
