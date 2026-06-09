@@ -24,14 +24,11 @@ function MorePage() {
   const { openAuth } = useAuthPrompt();
   const { isPlus } = useSubscription();
   const [p, setP] = useState<MiniProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("display_name,city,location_label").eq("id", user.id).maybeSingle()
       .then(({ data }) => setP(data as MiniProfile | null));
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
   if (!user) {
@@ -89,8 +86,7 @@ function MorePage() {
 
       <Section title="Account">
         <Row to="/settings" icon={Settings} label="Settings" hint="Account, notifications, billing" />
-        <Row to="/settings" icon={ShieldCheck} label="Help & safety" hint="Crisis support" hash="safety" />
-        {isAdmin && <Row to="/admin" icon={Settings} label="Admin" hint="Manage content" />}
+        <Row to="/support" icon={ShieldCheck} label="Help & safety" hint="Crisis support" />
       </Section>
 
       <Button variant="outline" onClick={signOut} className="w-full rounded-full">
