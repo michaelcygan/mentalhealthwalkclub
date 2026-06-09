@@ -59,7 +59,6 @@ export function BestWindow() {
   if (!best) return null;
 
   const d = new Date(best.h.iso);
-  const hr = d.getHours();
   const next = new Date(d.getTime() + 3600 * 1000);
   const fmt = (x: Date) => {
     const h12 = x.getHours() % 12 || 12;
@@ -80,8 +79,6 @@ export function BestWindow() {
           : best.h.tone === "clear"
             ? Sun
             : Sparkles;
-
-  void hr;
 
   return (
     <Link
