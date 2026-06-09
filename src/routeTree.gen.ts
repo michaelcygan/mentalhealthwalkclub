@@ -29,6 +29,7 @@ import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMerchRouteImport } from './routes/admin.merch'
+import { Route as AdminEventsRouteImport } from './routes/admin.events'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
@@ -148,6 +149,11 @@ const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
 const AdminMerchRoute = AdminMerchRouteImport.update({
   id: '/merch',
   path: '/merch',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEventsRoute = AdminEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
   getParentRoute: () => AdminRoute,
 } as any)
 const AuthenticatedTrailsRoute = AuthenticatedTrailsRouteImport.update({
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
+  '/admin/events': typeof AdminEventsRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
   '/events/$slug': typeof EventsSlugRoute
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
+    | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/listen'
     | '/places'
     | '/trails'
+    | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
+    | '/admin/events'
     | '/admin/merch'
     | '/admin/podcasts'
     | '/events/$slug'
@@ -683,6 +695,13 @@ declare module '@tanstack/react-router' {
       path: '/merch'
       fullPath: '/admin/merch'
       preLoaderRoute: typeof AdminMerchRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/events': {
+      id: '/admin/events'
+      path: '/events'
+      fullPath: '/admin/events'
+      preLoaderRoute: typeof AdminEventsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_authenticated/trails': {
@@ -917,11 +936,13 @@ const AdminPodcastsRouteWithChildren = AdminPodcastsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminEventsRoute: typeof AdminEventsRoute
   AdminMerchRoute: typeof AdminMerchRoute
   AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminEventsRoute: AdminEventsRoute,
   AdminMerchRoute: AdminMerchRoute,
   AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
 }
@@ -987,3 +1008,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

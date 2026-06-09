@@ -1,17 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, CalendarDays, Globe, MapPin, Users, Footprints, TreePine } from "lucide-react";
-import { discoverNearbyWalks } from "@/lib/discover.functions";
+import { motion } from "motion/react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Globe,
+  MapPin,
+  Users,
+  Footprints,
+  TreePine,
+  Sparkles,
+  CircleDot,
+  Image,
+  HeartHandshake,
+  ChevronRight,
+} from "lucide-react";
+import { discoverNearbyWalks, discoverFeaturedEvents, discoverFriendsGoing, discoverMyCircleSummary, discoverMemories } from "@/lib/discover.functions";
 import { discoverPublicGroups } from "@/lib/groups.functions";
 import { discoverPlaces } from "@/lib/places.functions";
 import { discoverTrails } from "@/lib/trails.functions";
+import { WalkCard } from "@/components/discover/walk-card";
+import { FriendsGoingRow } from "@/components/discover/friends-going-row";
+import { CircleRow } from "@/components/discover/circle-row";
+import { MemoriesStrip } from "@/components/discover/memories-strip";
+import { InviteCard } from "@/components/discover/invite-card";
+import type { FriendGoingEvent } from "@/lib/discover.functions";
 
 export const Route = createFileRoute("/_authenticated/discover")({
   component: DiscoverPage,
   head: () => ({
     meta: [
       { title: "Discover — Mental Health Walk Club" },
-      { name: "description", content: "Walks, groups, places and trails near you." },
+      { name: "description", content: "Walks, friends, circles, and quiet places to meet." },
     ],
   }),
 });
@@ -21,12 +41,18 @@ type Walk = {
   slug: string;
   title: string;
   starts_at: string;
+  timezone: string | null;
   venue_name: string | null;
   city: string | null;
-  image_url: string | null;
-  miles: number | null;
+  neighborhood: string | null;
+  lat: number | string | null;
+  lng: number | string | null;
   attendee_count: number;
+  image_url: string | null;
   audience_mode: string;
+  visibility: string;
+  host_user_id: string | null;
+  miles?: number | null;
 };
 
 type GroupRow = {
@@ -53,26 +79,61 @@ type TrailRow = {
   miles?: number;
 };
 
-type Segment = "all" | "walks" | "groups" | "places" | "trails";
+type CircleSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  color: string | null;
+  member_count: number;
+  avatars: Array<{ avatar_url: string | null; display_name: string | null }>;
+  active_walkers: number;
+  owned_by_me: boolean;
+};
+
+type Memory = {
+  id: string;
+  kind: "walk";
+  date: string;
+  duration_min: number | null;
+  event_id: string | null;
+};
+
+type Segment = "for-you" | "walks" | "friends" | "circles" | "more";
 
 const SEGMENTS: Array<{ id: Segment; label: string }> = [
-  { id: "all", label: "All" },
+  { id: "for-you", label: "For you" },
   { id: "walks", label: "Walks" },
-  { id: "groups", label: "Groups" },
-  { id: "places", label: "Places" },
-  { id: "trails", label: "Trails" },
+  { id: "friends", label: "Friends" },
+  { id: "circles", label: "Circles" },
+  { id: "more", label: "More" },
+];
+
+const CIRCLE_STARTERS = [
+  { name: "My Sunday crew", description: "A weekly reset with people you trust." },
+  { name: "Morning walkers", description: "Early walks before the day starts." },
+  { name: "Postpartum walkers", description: "Gentle walks for new parents." },
+  { name: "Grief & movement", description: "Walk and talk through hard seasons." },
+  { name: "Sober Sundays", description: "Weekend walks without the booze." },
+  { name: "Dog parents", description: "Walks that include the four-legged ones." },
 ];
 
 function DiscoverPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoState, setGeoState] = useState<"asking" | "ok" | "denied">("asking");
-  const [walks, setWalks] = useState<Walk[]>([]);
+  const [segment, setSegment] = useState<Segment>("for-you");
+
+  const [tonight, setTonight] = useState<Walk[]>([]);
+  const [thisWeek, setThisWeek] = useState<Walk[]>([]);
+  const [featured, setFeatured] = useState<Walk[]>([]);
+  const [friendsGoing, setFriendsGoing] = useState<FriendGoingEvent[]>([]);
+  const [circles, setCircles] = useState<CircleSummary[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const [localGroups, setLocalGroups] = useState<GroupRow[]>([]);
-  const [globalGroups, setGlobalGroups] = useState<GroupRow[]>([]);
   const [places, setPlaces] = useState<PlaceRow[]>([]);
   const [trails, setTrails] = useState<TrailRow[]>([]);
+
   const [loading, setLoading] = useState(true);
-  const [segment, setSegment] = useState<Segment>("all");
 
   useEffect(() => {
     if (!("geolocation" in navigator)) {
@@ -93,46 +154,70 @@ function DiscoverPage() {
     if (geoState === "asking") return;
     setLoading(true);
     (async () => {
-      const [w, lg, gg, pl] = await Promise.all([
-        discoverNearbyWalks({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, hours: 48, limit: segment === "walks" ? 12 : 4 } }),
+      const [
+        tonightRes,
+        weekRes,
+        featuredRes,
+        friendsRes,
+        circlesRes,
+        memoriesRes,
+        groupsRes,
+        placesRes,
+      ] = await Promise.all([
+        discoverNearbyWalks({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, hours: 18, limit: 8 } }),
+        discoverNearbyWalks({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, hours: 168, limit: 6 } }),
+        discoverFeaturedEvents({ data: { limit: 4 } }),
+        discoverFriendsGoing({ data: { limit: 6 } }),
+        discoverMyCircleSummary(),
+        discoverMemories({ data: { limit: 8 } }),
         discoverPublicGroups({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
-        discoverPublicGroups({ data: { lat: null, lng: null, scope: "global" } }),
         discoverPlaces({ data: { lat: coords?.lat ?? null, lng: coords?.lng ?? null, scope: "local" } }),
       ]);
-      setWalks(w.walks as Walk[]);
-      setLocalGroups(lg.groups.slice(0, segment === "groups" ? 8 : 3));
-      setGlobalGroups(gg.groups.slice(0, segment === "groups" ? 8 : 3));
-      setPlaces(pl.places.slice(0, segment === "places" ? 12 : 4));
-      setLoading(false);
+
+      setTonight(tonightRes.walks as Walk[]);
+      setThisWeek(weekRes.walks.filter((w) => !tonightRes.walks.some((t) => t.id === w.id)) as Walk[]);
+      setFeatured(featuredRes.walks as Walk[]);
+      setFriendsGoing(friendsRes.events);
+      setCircles(circlesRes.circles as CircleSummary[]);
+      setMemories(memoriesRes.memories as Memory[]);
+      setLocalGroups(groupsRes.groups.slice(0, 4) as GroupRow[]);
+      setPlaces(placesRes.places.slice(0, 4) as PlaceRow[]);
+
       if (coords) {
         try {
-          const t = await discoverTrails({ data: { lat: coords.lat, lng: coords.lng, limit: segment === "trails" ? 12 : 4 } });
+          const t = await discoverTrails({ data: { lat: coords.lat, lng: coords.lng, limit: 4 } });
           setTrails(t.trails as TrailRow[]);
         } catch {
           setTrails([]);
         }
       }
-    })();
-  }, [coords, geoState, segment]);
 
-  const showWalks = segment === "all" || segment === "walks";
-  const showGroups = segment === "all" || segment === "groups";
-  const showPlaces = segment === "all" || segment === "places";
-  const showTrails = segment === "all" || segment === "trails";
+      setLoading(false);
+    })();
+  }, [coords, geoState]);
+
+  const showTonight = segment === "for-you" || segment === "walks";
+  const showThisWeek = segment === "for-you" || segment === "walks";
+  const showFeatured = segment === "for-you";
+  const showFriends = segment === "for-you" || segment === "friends";
+  const showCircles = segment === "for-you" || segment === "circles";
+  const showMemories = segment === "for-you";
+  const showInvite = segment === "for-you";
+  const showMore = segment === "more";
 
   return (
     <div className="mx-auto max-w-2xl pb-24">
       <header className="mb-4">
         <h1 className="font-serif text-3xl">Discover</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Walks, groups, and quiet places to meet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Walks, friends, and your circles.</p>
       </header>
 
       {/* Sticky segmented island */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+60px)] z-20 -mx-1 mb-5 px-1 md:top-0 md:mb-6">
+      <div className="sticky top-[calc(env(safe-area-inset-top)+52px)] z-20 -mx-1 mb-5 px-1 md:top-0 md:mb-6">
         <div
           role="tablist"
           aria-label="Filter discover"
-          className="flex items-center gap-1 overflow-x-auto rounded-full border border-border/60 bg-background/75 p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="relative flex items-center gap-1 overflow-x-auto rounded-full border border-border/60 bg-background/75 p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {SEGMENTS.map((s) => {
             const active = segment === s.id;
@@ -143,71 +228,226 @@ function DiscoverPage() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setSegment(s.id)}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition ${
-                  active ? "bg-forest text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+                className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition ${
+                  active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s.label}
+                {active && (
+                  <motion.div
+                    layoutId="discover-segment-pill"
+                    className="absolute inset-0 rounded-full bg-forest shadow-soft"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{s.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {geoState === "denied" && segment === "all" && (
+      {geoState === "denied" && segment === "for-you" && (
         <div className="mb-5 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-xs">
           <p className="font-medium">Turn on location for nearby picks.</p>
           <p className="mt-1 text-muted-foreground">
-            We'll only use it to show what's within 25 miles. Showing global groups for now.
+            We'll only use it to show what's within 25 miles.
           </p>
         </div>
       )}
 
-      <div className="space-y-7">
-        {showWalks && (
-          <Rail
-            icon={<Footprints className="h-4 w-4" />}
-            title={coords ? "Tonight near you" : "Coming up"}
-            subtitle={coords ? "Within 25mi · next 48 hours" : "Next 48 hours"}
-            seeAllTo="/walk/new"
-            loading={loading}
-            empty="No walks scheduled yet. Be the first to host one."
-            items={walks}
-            render={(w) => (
-              <Link
-                to="/w/$code"
-                params={{ code: w.slug }}
-                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-serif text-base">{w.title}</h3>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        {formatWhen(w.starts_at)}
-                      </span>
-                      {(w.venue_name || w.city) && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {w.venue_name ?? w.city}
-                        </span>
-                      )}
-                      {w.miles != null && <span>· {w.miles.toFixed(1)} mi</span>}
-                      {w.audience_mode === "group" && (
-                        <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-[10px] text-forest">group</span>
-                      )}
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Link>
+      <div className="space-y-8">
+        {/* Tonight near you */}
+        {showTonight && (
+          <section>
+            <SectionHeader
+              icon={<Sparkles className="h-4 w-4" />}
+              title={coords ? "Tonight near you" : "Coming up"}
+              subtitle={coords ? "Within 25mi · next 18 hours" : "Next 18 hours"}
+              action={
+                <Link to="/walk/new" className="shrink-0 text-[11px] text-forest underline">
+                  Plan a walk
+                </Link>
+              }
+            />
+            {loading ? (
+              <div className="flex gap-3 overflow-hidden">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-52 w-[78vw] max-w-[320px] shrink-0 animate-pulse rounded-3xl bg-card" />
+                ))}
+              </div>
+            ) : tonight.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-border bg-card/60 p-5 text-center text-xs text-muted-foreground">
+                No walks posted yet. Plant the flag for tonight.
+              </div>
+            ) : (
+              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {tonight.map((w) => (
+                  <WalkCard key={w.id} walk={w} variant="cover" />
+                ))}
+              </div>
             )}
-          />
+          </section>
         )}
 
-        {showGroups && (
-          <>
+        {/* Friends are going */}
+        {showFriends && (
+          <section>
+            <SectionHeader
+              icon={<HeartHandshake className="h-4 w-4" />}
+              title="Friends are going"
+              subtitle="People you know are showing up"
+            />
+            {loading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-2xl bg-card" />
+                ))}
+              </div>
+            ) : friendsGoing.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-border bg-card/60 p-5 text-center text-xs text-muted-foreground">
+                No friend activity yet. Add friends to see when they're walking.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {friendsGoing.map((e) => (
+                  <FriendsGoingRow key={e.id} event={e} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Your circles */}
+        {showCircles && (
+          <section>
+            <SectionHeader
+              icon={<CircleDot className="h-4 w-4" />}
+              title="Your circles"
+              subtitle="Small groups for the walks that matter"
+              action={
+                <Link to="/circles" className="shrink-0 text-[11px] text-forest underline">
+                  Manage
+                </Link>
+              }
+            />
+            {loading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-2xl bg-card" />
+                ))}
+              </div>
+            ) : circles.length === 0 ? (
+              <div className="space-y-3">
+                <div className="rounded-3xl border border-dashed border-border bg-card/60 p-5 text-center text-xs text-muted-foreground">
+                  No circles yet. Start one for your closest walking people.
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Suggested starters</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {CIRCLE_STARTERS.map((c) => (
+                      <Link
+                        key={c.name}
+                        to="/circles"
+                        className="rounded-2xl border border-border bg-card p-3 shadow-soft transition hover:bg-accent/30"
+                      >
+                        <p className="text-sm font-medium">{c.name}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{c.description}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {circles.map((c) => (
+                  <CircleRow key={c.id} circle={c} />
+                ))}
+                <Link
+                  to="/circles"
+                  className="flex items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-card/40 p-3 text-[11px] text-muted-foreground transition hover:bg-accent/20"
+                >
+                  <CircleDot className="h-3 w-3" /> Create a new circle
+                </Link>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Featured this week */}
+        {showFeatured && (
+          <section>
+            <SectionHeader
+              icon={<Sparkles className="h-4 w-4" />}
+              title="Featured this week"
+              subtitle="Curated walks worth knowing about"
+              action={
+                featured.length > 0 ? (
+                  <span className="shrink-0 rounded-full bg-forest/10 px-2 py-0.5 text-[10px] text-forest">Featured</span>
+                ) : null
+              }
+            />
+            {loading ? (
+              <div className="flex gap-3 overflow-hidden">
+                {[0, 1].map((i) => (
+                  <div key={i} className="h-52 w-[78vw] max-w-[320px] shrink-0 animate-pulse rounded-3xl bg-card" />
+                ))}
+              </div>
+            ) : featured.length === 0 ? null : (
+              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {featured.map((w) => (
+                  <WalkCard key={w.id} walk={w} variant="cover" />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Memories */}
+        {showMemories && memories.length > 0 && (
+          <section>
+            <SectionHeader
+              icon={<Image className="h-4 w-4" />}
+              title="Memories"
+              subtitle="Recent walks you've taken"
+            />
+            <MemoriesStrip memories={memories} />
+          </section>
+        )}
+
+        {/* This week near you */}
+        {showThisWeek && (
+          <section>
+            <SectionHeader
+              icon={<CalendarDays className="h-4 w-4" />}
+              title="This week near you"
+              subtitle="Next 7 days"
+            />
+            {loading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-2xl bg-card" />
+                ))}
+              </div>
+            ) : thisWeek.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-border bg-card/60 p-5 text-center text-xs text-muted-foreground">
+                No walks this week yet.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {thisWeek.map((w) => (
+                  <WalkCard key={w.id} walk={w} variant="list" />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Walk together invite */}
+        {showInvite && <InviteCard />}
+
+        {/* More: Groups, Places, Trails */}
+        {showMore && (
+          <div className="space-y-7">
             <Rail
               icon={<Users className="h-4 w-4" />}
               title={coords ? "Groups near you" : "Recent public groups"}
@@ -216,103 +456,104 @@ function DiscoverPage() {
               loading={loading}
               empty="No groups near you yet. Start one?"
               items={localGroups}
-              render={(g) => <GroupCard g={g} />}
+              render={(g) => (
+                <Link
+                  to="/groups/$slug"
+                  params={{ slug: g.slug }}
+                  className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+                >
+                  <div>
+                    <h3 className="font-serif text-base">{g.name}</h3>
+                    {g.description && <p className="mt-0.5 text-xs text-muted-foreground">{g.description}</p>}
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {g.neighborhood && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{g.neighborhood}</span>}
+                      {g.miles != null && <span>· {g.miles.toFixed(1)} mi</span>}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              )}
             />
 
             <Rail
-              icon={<Globe className="h-4 w-4" />}
-              title="Global identity groups"
-              subtitle="Postpartum walkers, sober strolls, grief & movement…"
-              seeAllTo="/groups"
+              icon={<MapPin className="h-4 w-4" />}
+              title="Places to meet"
+              subtitle="Parks and corners where standing walks happen"
+              seeAllTo="/places"
               loading={loading}
-              empty="No global groups yet."
-              items={globalGroups}
-              render={(g) => <GroupCard g={g} globe />}
+              empty="No meetup spots yet."
+              items={places}
+              render={(p) => (
+                <Link
+                  to="/places/$key"
+                  params={{ key: p.key }}
+                  className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+                >
+                  <div>
+                    <h3 className="font-serif text-base">{p.label ?? p.neighborhood ?? "Meetup spot"}</h3>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{p.group_count} group{p.group_count === 1 ? "" : "s"}</span>
+                      {p.miles != null && <span>· {p.miles.toFixed(1)} mi</span>}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              )}
             />
-          </>
-        )}
 
-        {showPlaces && (
-          <Rail
-            icon={<MapPin className="h-4 w-4" />}
-            title="Places to meet"
-            subtitle="Parks and corners where standing walks happen"
-            seeAllTo="/places"
-            loading={loading}
-            empty="No meetup spots yet."
-            items={places}
-            render={(p) => (
-              <Link
-                to="/places/$key"
-                params={{ key: p.key }}
-                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-              >
-                <h3 className="truncate font-serif text-base">{p.label ?? p.neighborhood ?? "Meetup spot"}</h3>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {p.group_count} group{p.group_count === 1 ? "" : "s"}
-                  </span>
-                  {p.miles != null && <span>· {p.miles.toFixed(1)} mi</span>}
-                </div>
-              </Link>
-            )}
-          />
-        )}
-
-        {showTrails && (
-          <Rail
-            icon={<TreePine className="h-4 w-4" />}
-            title="Trails near you"
-            subtitle="Parks and footpaths from OpenStreetMap"
-            seeAllTo="/trails"
-            loading={loading}
-            empty={coords ? "No trails found nearby yet." : "Turn on location to see trails."}
-            items={trails}
-            render={(t) => (
-              <Link
-                to="/trails"
-                className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-              >
-                <h3 className="truncate font-serif text-base">{t.name ?? "Unnamed"}</h3>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{t.kind ?? "trail"}</span>
-                  {t.miles != null && <span>· {t.miles.toFixed(1)} mi</span>}
-                </div>
-              </Link>
-            )}
-          />
+            <Rail
+              icon={<TreePine className="h-4 w-4" />}
+              title="Trails near you"
+              subtitle="Parks and footpaths from OpenStreetMap"
+              seeAllTo="/trails"
+              loading={loading}
+              empty={coords ? "No trails found nearby yet." : "Turn on location to see trails."}
+              items={trails}
+              render={(t) => (
+                <Link
+                  to="/trails"
+                  className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
+                >
+                  <div>
+                    <h3 className="font-serif text-base">{t.name ?? "Unnamed"}</h3>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="rounded-full bg-forest/10 px-1.5 py-0.5 text-forest">{t.kind ?? "trail"}</span>
+                      {t.miles != null && <span>· {t.miles.toFixed(1)} mi</span>}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              )}
+            />
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function GroupCard({ g, globe }: { g: GroupRow; globe?: boolean }) {
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <Link
-      to="/groups/$slug"
-      params={{ slug: g.slug }}
-      className="block rounded-3xl border border-border bg-card p-4 shadow-soft transition hover:bg-accent/30"
-    >
-      <h3 className="truncate font-serif text-base">{g.name}</h3>
-      {g.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>}
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-        {g.neighborhood && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {g.neighborhood}
-          </span>
-        )}
-        {g.miles != null && <span>· {g.miles.toFixed(1)} mi</span>}
-        {globe && (
-          <span className="inline-flex items-center gap-1">
-            <Globe className="h-3 w-3" />
-            global
-          </span>
-        )}
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 font-serif text-lg">
+          <span className="text-forest">{icon}</span>
+          {title}
+        </h2>
+        <p className="text-[11px] text-muted-foreground">{subtitle}</p>
       </div>
-    </Link>
+      {action}
+    </div>
   );
 }
 
@@ -329,7 +570,7 @@ function Rail<T>({
   icon: React.ReactNode;
   title: string;
   subtitle: string;
-  seeAllTo: "/walk/new" | "/groups" | "/places" | "/trails";
+  seeAllTo: "/groups" | "/places" | "/trails";
   items: T[];
   loading: boolean;
   empty: string;
@@ -337,18 +578,7 @@ function Rail<T>({
 }) {
   return (
     <section>
-      <header className="mb-2 flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-2 font-serif text-lg">
-            <span className="text-forest">{icon}</span>
-            {title}
-          </h2>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-        </div>
-        <Link to={seeAllTo} className="shrink-0 text-[11px] text-forest underline">
-          See all
-        </Link>
-      </header>
+      <SectionHeader icon={icon} title={title} subtitle={subtitle} action={<Link to={seeAllTo} className="shrink-0 text-[11px] text-forest underline">See all</Link>} />
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -368,17 +598,4 @@ function Rail<T>({
       )}
     </section>
   );
-}
-
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  const isTomorrow = d.toDateString() === tomorrow.toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `Today · ${time}`;
-  if (isTomorrow) return `Tomorrow · ${time}`;
-  return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${time}`;
 }

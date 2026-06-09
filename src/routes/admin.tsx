@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Headphones, ShoppingBag } from "lucide-react";
+import { ChevronLeft, Headphones, ShoppingBag, CalendarDays } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -23,6 +23,13 @@ function AdminLayout() {
         <span className="w-12" />
       </div>
       <nav className="flex flex-wrap gap-2">
+        <Link
+          to="/admin/events"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <CalendarDays className="h-3.5 w-3.5" /> Events
+        </Link>
         <Link
           to="/admin/podcasts"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
