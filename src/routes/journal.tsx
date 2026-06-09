@@ -152,11 +152,18 @@ function JournalTab() {
 
       {segment === "stats" && (
         <div className="space-y-6">
+          <WeeklyGoalRing stats={stats} />
           <TrackingModule stats={stats} />
-          <InsightsStrip stats={stats} entries={entries} />
+          <MonthVsMonth stats={stats} entries={entries} />
+          <PersonalBestsStrip stats={stats} entries={entries} />
+          <TimeOfDayRhythm entries={entries} />
+          <MoodWeatherGrid entries={entries} />
+          <WalkTypeBar entries={entries} />
           <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
             <StatsPanel stats={stats} />
           </div>
+          <InsightsStrip stats={stats} entries={entries} />
+          <ShareMonthCard stats={stats} entries={entries} />
         </div>
       )}
 
