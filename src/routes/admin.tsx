@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Headphones, ShoppingBag, CalendarDays } from "lucide-react";
+import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
