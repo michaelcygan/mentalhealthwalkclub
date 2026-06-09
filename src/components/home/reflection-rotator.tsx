@@ -67,17 +67,17 @@ export function ReflectionRotator() {
           aria-label="Write a reflection"
         >
           {PROMPTS.map((prompt) => (
-            <p
+            <span
               key={`sizer-${prompt.id}`}
               aria-hidden="true"
-              className="invisible col-start-1 row-start-1 font-serif text-xl leading-snug"
+              className="invisible col-start-1 row-start-1 block font-serif text-xl leading-snug"
             >
               {prompt.text}
-            </p>
+            </span>
           ))}
-          <p key={current.id} className="wp-reflect-fade col-start-1 row-start-1 font-serif text-xl leading-snug text-foreground">
+          <span key={current.id} className="wp-reflect-fade col-start-1 row-start-1 block font-serif text-xl leading-snug text-foreground">
             {current.text}
-          </p>
+          </span>
         </button>
         <div className="mt-4 flex items-center justify-between">
           <div className="flex gap-1.5">
