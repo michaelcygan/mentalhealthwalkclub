@@ -142,7 +142,7 @@ function ImpactPage() {
           </ul>
         )}
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Receipts (PDFs of each transfer to our nonprofit partner) coming soon to this page.
+          Receipts (PDFs of each transfer to the 988 Suicide &amp; Crisis Lifeline) coming soon to this page.
         </p>
       </section>
 
