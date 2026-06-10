@@ -13,7 +13,9 @@ export interface SearchHit {
   link: string | null;
   duration_seconds: number | null;
   mood_tags: string[];
+  audio_url: string | null;
 }
+
 
 const SearchInput = z.object({
   q: z.string().trim().max(120).default(""),
@@ -45,7 +47,7 @@ export const searchListen = createServerFn({ method: "GET" })
     const podcastsQ = wantKind(kinds, "podcast")
       ? supabase
           .from("podcast_episodes")
-          .select("id,title,image_url,duration_seconds,episode_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
+          .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
           .eq("is_active", true)
           .eq("podcast_feeds.is_active", true)
           .order("published_at", { ascending: false, nullsFirst: false })
@@ -64,7 +66,7 @@ export const searchListen = createServerFn({ method: "GET" })
     const guidedQ = wantKind(kinds, "guided")
       ? supabase
           .from("guided_tracks")
-          .select("id,title,host,cover_url,duration_seconds,mood_tags,category")
+          .select("id,title,host,cover_url,duration_seconds,audio_url,mood_tags,category")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .limit(limit)
@@ -84,7 +86,7 @@ export const searchListen = createServerFn({ method: "GET" })
       q && wantKind(kinds, "podcast")
         ? supabase
             .from("podcast_episodes")
-            .select("id,title,image_url,duration_seconds,episode_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
+            .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
             .eq("is_active", true)
             .eq("podcast_feeds.is_active", true)
             .or(`title.ilike.${like},podcast_feeds.title.ilike.${like},podcast_feeds.publisher.ilike.${like}`)
@@ -101,7 +103,7 @@ export const searchListen = createServerFn({ method: "GET" })
       q && wantKind(kinds, "guided")
         ? supabase
             .from("guided_tracks")
-            .select("id,title,host,cover_url,duration_seconds,mood_tags,category")
+            .select("id,title,host,cover_url,duration_seconds,audio_url,mood_tags,category")
             .eq("is_active", true)
             .or(`title.ilike.${like},host.ilike.${like},category.ilike.${like}`)
             .limit(limit)
@@ -118,7 +120,7 @@ export const searchListen = createServerFn({ method: "GET" })
 
     const hits: SearchHit[] = [];
 
-    for (const row of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; episode_url: string | null; mood_tags: string[] | null; podcast_feeds: { title: string | null; publisher: string | null } }>) {
+    for (const row of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; episode_url: string | null; audio_url: string | null; mood_tags: string[] | null; podcast_feeds: { title: string | null; publisher: string | null } }>) {
       if (!moodOverlap(row.mood_tags, moods)) continue;
       hits.push({
         kind: "podcast",
@@ -129,6 +131,7 @@ export const searchListen = createServerFn({ method: "GET" })
         link: row.episode_url,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: row.audio_url ?? null,
       });
     }
     for (const row of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null; genre: string | null }>) {
@@ -142,9 +145,10 @@ export const searchListen = createServerFn({ method: "GET" })
         link: null,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: null,
       });
     }
-    for (const row of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; category: string | null }>) {
+    for (const row of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; audio_url: string | null; mood_tags: string[] | null; category: string | null }>) {
       if (!moodOverlap(row.mood_tags, moods)) continue;
       hits.push({
         kind: "guided",
@@ -155,6 +159,7 @@ export const searchListen = createServerFn({ method: "GET" })
         link: null,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: row.audio_url ?? null,
       });
     }
     for (const row of (bl.data ?? []) as Array<{ id: string; title: string; summary: string | null; link: string; image_url: string | null; blog_feeds: { publisher: string | null } }>) {
@@ -167,8 +172,10 @@ export const searchListen = createServerFn({ method: "GET" })
         link: row.link,
         duration_seconds: null,
         mood_tags: [],
+        audio_url: null,
       });
     }
+
 
     // Fire-and-forget search log (skip empty queries to keep it clean)
     if (q) {
@@ -245,31 +252,32 @@ export const trendingListen = createServerFn({ method: "GET" })
     for (const t of top) byKind[t.kind].push(t.id);
     const [pods, amb, gd, bl] = await Promise.all([
       byKind.podcast.length
-        ? supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url").in("id", byKind.podcast)
+        ? supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,audio_url").in("id", byKind.podcast)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.ambient.length
         ? supabase.from("ambient_tracks").select("id,title,artist,cover_path,duration_seconds,mood_tags").in("id", byKind.ambient)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.guided.length
-        ? supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags").in("id", byKind.guided)
+        ? supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,audio_url").in("id", byKind.guided)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.blog.length
         ? supabase.from("blog_posts").select("id,title,image_url,link,blog_feeds(publisher)").in("id", byKind.blog)
         : Promise.resolve({ data: [] as unknown[] }),
     ]);
     const map = new Map<string, SearchHit>();
-    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null }>) {
-      map.set(`podcast:${r.id}`, { kind: "podcast", id: r.id, title: r.title, subtitle: null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; audio_url: string | null }>) {
+      map.set(`podcast:${r.id}`, { kind: "podcast", id: r.id, title: r.title, subtitle: null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      map.set(`ambient:${r.id}`, { kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+      map.set(`ambient:${r.id}`, { kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: null });
     }
-    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      map.set(`guided:${r.id}`, { kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; audio_url: string | null }>) {
+      map.set(`guided:${r.id}`, { kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (bl.data ?? []) as Array<{ id: string; title: string; image_url: string | null; link: string; blog_feeds: { publisher: string | null } | null }>) {
-      map.set(`blog:${r.id}`, { kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [] });
+      map.set(`blog:${r.id}`, { kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [], audio_url: null });
     }
+
     return top.map((t) => map.get(`${t.kind}:${t.id}`)).filter(Boolean) as SearchHit[];
   });
 
@@ -280,23 +288,24 @@ export const recentlyAddedListen = createServerFn({ method: "GET" })
     const { supabase } = context;
     const since = new Date(Date.now() - data.days * 86400_000).toISOString();
     const [pods, amb, gd, bl] = await Promise.all([
-      supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,published_at").eq("is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
+      supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,audio_url,published_at").eq("is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
       supabase.from("ambient_tracks").select("id,title,artist,cover_path,duration_seconds,mood_tags,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
-      supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
+      supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,audio_url,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
       supabase.from("blog_posts").select("id,title,image_url,link,published_at,blog_feeds!inner(publisher,is_active)").eq("blog_feeds.is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
     ]);
     const out: SearchHit[] = [];
-    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; published_at: string | null }>) {
-      out.push({ kind: "podcast", id: r.id, title: r.title, subtitle: r.published_at ? new Date(r.published_at).toLocaleDateString() : null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; audio_url: string | null; published_at: string | null }>) {
+      out.push({ kind: "podcast", id: r.id, title: r.title, subtitle: r.published_at ? new Date(r.published_at).toLocaleDateString() : null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      out.push({ kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+      out.push({ kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: null });
     }
-    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      out.push({ kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; audio_url: string | null }>) {
+      out.push({ kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (bl.data ?? []) as Array<{ id: string; title: string; image_url: string | null; link: string; blog_feeds: { publisher: string | null } }>) {
-      out.push({ kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [] });
+      out.push({ kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [], audio_url: null });
     }
     return out.slice(0, data.limit);
   });
+

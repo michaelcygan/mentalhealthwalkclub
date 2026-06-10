@@ -10,7 +10,10 @@ import { NowPlayingDock } from "@/components/now-playing-dock";
 import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
+import { PlayerProvider } from "@/lib/player-context";
+import { ReflectionFab } from "@/components/reflection-fab";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
+
 
 function NotFoundComponent() {
   return (
@@ -204,15 +207,19 @@ function RootComponent() {
     <AuthProvider>
       <AuthPromptProvider>
         <AmbientPlayerProvider>
-          <PaymentTestModeBanner />
-          <AppFrame>
-            <Outlet />
-          </AppFrame>
-          <Toaster />
+          <PlayerProvider>
+            <PaymentTestModeBanner />
+            <AppFrame>
+              <Outlet />
+            </AppFrame>
+            <ReflectionFab />
+            <Toaster />
+          </PlayerProvider>
         </AmbientPlayerProvider>
       </AuthPromptProvider>
     </AuthProvider>
   );
 }
+
 
 // Reset md: padding-top via inline class (since style is mobile-tuned). On md+, the floating header is hidden.

@@ -65,6 +65,8 @@ export interface PodcastEpisodeCard {
   duration_seconds: number;
   publisher: string | null;
   published_at: string | null;
+  audio_url: string | null;
+  episode_url: string | null;
 }
 
 /** Public-safe: latest active podcast episodes across active feeds. */
@@ -75,7 +77,7 @@ export const recentPodcastEpisodes = createServerFn({ method: "GET" })
     // + Life Kit: Health publish identical episodes with different GUIDs).
     const { data: rows } = await supabaseAdmin
       .from("podcast_episodes")
-      .select("id,title,image_url,duration_seconds,published_at,is_active,podcast_feeds!inner(publisher,is_active)")
+      .select("id,title,image_url,duration_seconds,published_at,is_active,audio_url,episode_url,podcast_feeds!inner(publisher,is_active)")
       .eq("is_active", true)
       .eq("podcast_feeds.is_active", true)
       .order("published_at", { ascending: false, nullsFirst: false })
@@ -96,8 +98,11 @@ export const recentPodcastEpisodes = createServerFn({ method: "GET" })
         duration_seconds: (r.duration_seconds as number) ?? 0,
         publisher,
         published_at: (r.published_at as string | null) ?? null,
+        audio_url: (r.audio_url as string | null) ?? null,
+        episode_url: (r.episode_url as string | null) ?? null,
       });
       if (out.length >= data.limit) break;
     }
     return out;
   });
+
