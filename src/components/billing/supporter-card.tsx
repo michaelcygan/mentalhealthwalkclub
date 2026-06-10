@@ -12,17 +12,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
-export function PatronCard() {
-  const { loading, isPatron, patronCents, patronStatus } = useMembership();
-  const { openPatronFlow } = useAuthPrompt();
+export function SupporterCard() {
+  const { loading, isSupporter, supporterCents, supporterStatus } = useMembership();
+  const { openSupporterFlow } = useAuthPrompt();
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [displayOnWall, setDisplayOnWall] = useState<boolean | null>(null);
 
-  // Load wall preference lazily once we know we're a patron
-  if (isPatron && displayOnWall === null && user) {
+  // Load wall preference lazily once we know we're a supporter
+  if (isSupporter && displayOnWall === null && user) {
     supabase
-      .from("patron_profile" as never)
+      .from("supporter_profile" as never)
       .select("display_on_wall")
       .eq("user_id", user.id)
       .maybeSingle()
@@ -41,7 +41,7 @@ export function PatronCard() {
         data: {
           returnUrl: `${window.location.origin}/settings`,
           environment: getStripeEnvironment(),
-          kind: "patron",
+          kind: "supporter",
           ...(flow && { flow }),
         },
       });
@@ -57,7 +57,7 @@ export function PatronCard() {
     if (!user) return;
     setDisplayOnWall(next);
     const { error } = await supabase
-      .from("patron_profile" as never)
+      .from("supporter_profile" as never)
       .update({ display_on_wall: next } as never)
       .eq("user_id", user.id);
     if (error) {
@@ -66,7 +66,7 @@ export function PatronCard() {
     }
   };
 
-  if (!isPatron) {
+  if (!isSupporter) {
     return (
       <section className="rounded-3xl border border-rose-200 bg-rose-50/40 p-5 shadow-soft">
         <div className="flex items-start gap-3">
@@ -74,14 +74,14 @@ export function PatronCard() {
             <Heart className="h-4 w-4" />
           </span>
           <div className="flex-1">
-            <h3 className="font-serif text-lg leading-tight">Become a Patron</h3>
+            <h3 className="font-serif text-lg leading-tight">Become a Supporter</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Monthly donation. You choose the amount. 80% funds our nonprofit partner.
+              Monthly donation. You choose the amount. 100% of profits fund our nonprofit partner.
             </p>
             <Button
               onClick={() => {
-                void trackBillingEvent("patron_intent_selected", { source: "settings" });
-                openPatronFlow(500);
+                void trackBillingEvent("supporter_intent_selected", { source: "settings" });
+                openSupporterFlow(500);
               }}
               className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
             >
@@ -93,9 +93,9 @@ export function PatronCard() {
     );
   }
 
-  const amount = (patronCents / 100).toFixed(0);
+  const amount = (supporterCents / 100).toFixed(0);
   const statusLine =
-    patronStatus === "past_due"
+    supporterStatus === "past_due"
       ? "Payment failed — update your card"
       : `Giving $${amount}/month`;
 
@@ -106,16 +106,16 @@ export function PatronCard() {
           <Heart className="h-4 w-4" />
         </span>
         <div className="flex-1">
-          <h3 className="font-serif text-lg leading-tight">Patron</h3>
+          <h3 className="font-serif text-lg leading-tight">Supporter</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">{statusLine}</p>
 
           <div className="mt-3 flex items-center justify-between rounded-2xl border border-border bg-background p-3">
             <div className="text-sm">
-              <Label htmlFor="patron-wall" className="font-medium">List me on the Patron wall</Label>
+              <Label htmlFor="supporter-wall" className="font-medium">List me on the Supporter wall</Label>
               <p className="text-[11px] text-muted-foreground">Just your name on /impact. No amounts shown.</p>
             </div>
             <Switch
-              id="patron-wall"
+              id="supporter-wall"
               checked={!!displayOnWall}
               onCheckedChange={toggleWall}
             />
@@ -132,7 +132,7 @@ export function PatronCard() {
               {busy === "edit" ? "Opening…" : "Change amount or cancel"}
               <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
             </Button>
-            {patronStatus === "past_due" && (
+            {supporterStatus === "past_due" && (
               <Button
                 disabled={busy === "card"}
                 onClick={() => openPortal("payment_method_update", "card")}
