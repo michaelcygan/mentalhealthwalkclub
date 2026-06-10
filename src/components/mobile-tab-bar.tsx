@@ -4,6 +4,7 @@ import { Footprints, Compass, BookHeart, Menu, Plus, CalendarPlus } from "lucide
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 
 const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
   { to: "/", label: "Home", icon: Footprints, exact: true },
@@ -26,6 +27,7 @@ export function MobileTabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { openAuth } = useAuthPrompt();
   const reduceMotion = useReducedMotion();
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -40,7 +42,7 @@ export function MobileTabBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [composeOpen]);
 
-  const showCompose = !!user && composeAllowed(path);
+  const showCompose = composeAllowed(path);
   const go = (to: "/walk" | "/walk/new") => {
     setComposeOpen(false);
     haptics.tap();
@@ -98,7 +100,11 @@ export function MobileTabBar() {
           {showCompose && (
             <motion.button
               type="button"
-              onClick={() => { haptics.tap(); setComposeOpen((v) => !v); }}
+              onClick={() => {
+                haptics.tap();
+                if (!user) { openAuth("signup"); return; }
+                setComposeOpen((v) => !v);
+              }}
               whileTap={{ scale: 0.9 }}
               aria-expanded={composeOpen}
               aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
