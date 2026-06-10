@@ -11,6 +11,7 @@ import {
   deleteEventPhoto,
   type EventPhoto,
 } from "@/lib/walk-page.functions";
+import { compressImage } from "@/lib/image-compress";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
