@@ -76,7 +76,7 @@ export function SupporterCard() {
           <div className="flex-1">
             <h3 className="font-serif text-lg leading-tight">Become a Supporter</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Monthly donation. You choose the amount. 100% of profits fund our nonprofit partner.
+              Monthly donation, you pick the amount. 100% of profits go to the 988 Suicide &amp; Crisis Lifeline.
             </p>
             <Button
               onClick={() => {
