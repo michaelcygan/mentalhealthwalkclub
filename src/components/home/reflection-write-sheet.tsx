@@ -202,10 +202,15 @@ export function ReflectionWriteSheet({
               <Button
                 type="button"
                 onClick={save}
-                disabled={!body.trim() || saving}
+                disabled={!body.trim() || saving || membershipLoading}
                 className="rounded-full bg-forest text-primary-foreground hover:opacity-90"
               >
-                {saving ? "Saving…" : "Save to journal"}
+                {!isPlus && !membershipLoading ? (
+                  <>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Save with Plus
+                  </>
+                ) : saving ? "Saving…" : "Save to journal"}
               </Button>
             </div>
           </div>
