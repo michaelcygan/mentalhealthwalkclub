@@ -145,7 +145,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
               <h2 className="font-serif text-xl text-foreground">Walk Club Plus</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              50% of every Plus dollar funds our nonprofit partner. Cancel anytime.
+              Half of every Plus dollar goes to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             {plusOpen && !plusPlan && (
               <div className="mt-5">
@@ -189,7 +189,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
               <h2 className="font-serif text-xl text-foreground">Become a Supporter</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your monthly amount. 100% of profits go to our nonprofit partner.
+              Choose your monthly amount. 100% of profits go to the 988 Suicide &amp; Crisis Lifeline.
             </p>
             {supporterOpen && !supporterCheckoutStarted && (
               <div className="mt-5">

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/impact")({
       {
         name: "description",
         content:
-          "50% of every Walk Club Plus dollar funds our nonprofit partner. 100% of Supporter donations go straight to it. See the running total and methodology.",
+          "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too. See the running total and methodology.",
       },
       { property: "og:title", content: "Our Impact — Mental Health Walk Club" },
       {
@@ -86,7 +86,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          50% of every Walk Club Plus dollar goes to a mental health nonprofit. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
+          Half of every Walk Club Plus dollar goes to the 988 Suicide &amp; Crisis Lifeline. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
         </p>
       </header>
 
@@ -142,7 +142,7 @@ function ImpactPage() {
           </ul>
         )}
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Receipts (PDFs of each transfer to our nonprofit partner) coming soon to this page.
+          Receipts (PDFs of each transfer to the 988 Suicide &amp; Crisis Lifeline) coming soon to this page.
         </p>
       </section>
 
@@ -154,7 +154,7 @@ function ImpactPage() {
           <div className="flex-1">
             <h2 className="font-serif text-xl">Become a Supporter</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your own monthly amount. 100% of profits go straight to our nonprofit partner. Cancel anytime.
+              Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <Button
               onClick={() => openSupporterFlow(500)}
@@ -183,7 +183,7 @@ function ImpactPage() {
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
-          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to our current nonprofit partner. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
+          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to the 988 Suicide &amp; Crisis Lifeline. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
         </p>
         <p className="mt-3">
           <Link to="/terms" className="underline">

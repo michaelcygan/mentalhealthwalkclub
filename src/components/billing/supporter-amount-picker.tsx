@@ -99,7 +99,7 @@ export function SupporterAmountPicker({ value, onChange, onConfirm, confirmLabel
         {confirmLabel} · ${(value / 100).toFixed(0)}/mo
       </Button>
       <p className="text-[11px] text-muted-foreground">
-        100% of profits go to our nonprofit partner. Cancel or change anytime.
+        100% of profits go to the 988 Suicide &amp; Crisis Lifeline. Cancel or change anytime.
       </p>
     </div>
   );
