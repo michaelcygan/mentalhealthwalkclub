@@ -1,32 +1,62 @@
-## What changes
+# Plan: Plus repricing, journal paywall, and client-side media compression
 
-### 1. Settings membership buttons
-In `src/components/billing/billing-card.tsx` (the not-yet-Plus state), change the CTA from **"Become a supporter"** → **"Join now"**. The Supporter card's "Give monthly" stays as-is.
+## 1. Reprice Plus to $2.99/mo and ~$29/yr
 
-### 2. Rewrite Walk Club Plus copy (human, specific to the actual product)
-Replace the current generic line ("Unlimited circles, custom walk pages, and Plus playlists. 50% of every dollar funds our nonprofit partner.") with copy that reflects what Plus actually unlocks today and reads like a copywriter wrote it — not a feature list.
+**New prices** (scaled proportionally from $1.99 / $19):
+- Monthly: **$2.99** (299¢)
+- Yearly: **$29** (2900¢) — ~$5.88 savings vs 12× monthly, ≈ 2 months free, ~$2.42/mo effective
 
-Proposed (open to your edit):
+**Stripe (test → auto-synced to live on publish):**
+- Create new prices on the existing `plus` product with **new `lookup_key`s**: `plus_monthly_v2` and `plus_yearly_v2` (Stripe prices are immutable; reusing the old `lookup_key` requires deactivating the old price first, which we'll also do via the dashboard for cleanliness).
+- Switch the app's `lookup_keys` to the v2 IDs everywhere we resolve a price (`src/lib/billing.functions.ts`, `src/lib/stripe.ts`, `src/components/billing/plus-checkout.tsx`, `src/components/billing/plan-picker.tsx`, `src/routes/admin.membership.tsx`, webhook normalization in `src/routes/api/public/payments/webhook.ts`).
+- Existing subscribers stay on their grandfathered $1.99 / $19 price (Stripe doesn't change live subs when you add a new price). New checkouts and upgrades use v2.
+- Webhook normalization keeps mapping `plus_monthly*` / `plus_yearly*` → interval label, so admin tiles still aggregate correctly across old + new subs.
 
-> **Walk Club Plus**
-> Walk more, scroll less. Plus opens up unlimited circles for the people you actually want to walk with, a custom page for every walk you host, and the full Listen library — calming playlists, podcasts, and reads to take on the trail.
-> *$1.99/month. Half of every dollar goes straight to the 988 Suicide & Crisis Lifeline. Cancel anytime.*
+**Copy updates (every $1.99 / $19 mention):**
+- `src/components/billing/plan-picker.tsx` — MONTHLY_CENTS=299, YEARLY_CENTS=2900, switch-to-yearly dialog copy ("$29 charged today…").
+- `src/components/billing/billing-card.tsx` — main Plus card price line + "Switch to yearly — save $X" button.
+- `src/components/membership/upsell-sheet.tsx` — "Upgrade — $2.99".
+- `src/components/auth-form.tsx` (2 spots) and `src/routes/auth.tsx` — onboarding pitches.
+- `src/routes/terms.tsx` — pricing clause.
+- `src/lib/impact.functions.ts` — fee comment recalculated against $2.99.
 
-### 3. Name 988 as the beneficiary everywhere
-Replace "nonprofit partner" / "our nonprofit" wording with "the **988 Suicide & Crisis Lifeline**" (or "988" on second mention) across:
-- `src/components/billing/billing-card.tsx` (the new copy above)
-- `src/components/billing/supporter-card.tsx` ("100% of profits fund our nonprofit partner" → "100% of profits go to the 988 Suicide & Crisis Lifeline")
-- `src/components/billing/supporter-amount-picker.tsx`
-- `src/routes/impact.tsx` (page copy, default `organization_name` shown in UI)
-- `src/lib/auth-prompt.tsx`, `src/components/auth-form.tsx`, `src/routes/auth.tsx` — any inline Plus/Supporter pitch
-- `src/routes/terms.tsx`, `src/routes/privacy.tsx` — only the descriptive sentence, not legal terms
+## 2. Journal paywall
 
-I will **not** change the default `organization_name` value stored in past `impact_donations` rows or the admin default — only the user-facing strings. The admin recompute form will still let you pick the org name per period.
+Rule: **active journaling** (creating a journal entry yourself, and attaching photos to journal entries) is Plus. **Walk-derived** entries (auto-populated from a walk you completed/attended) remain free, including any photos uploaded during the walk flow.
 
-### Out of scope
-- No DB/migration changes.
-- No Stripe product changes.
-- Transparency / receipts page still deferred.
+**Server (`src/lib/journal-entries.functions.ts`):**
+- Add a Plus check (`has_active_subscription` / read from `subscriptions` table) inside the create-entry serverFn. Allow the insert only if (a) the user is Plus, OR (b) the entry is marked `source = 'walk'` (system-created from a walk completion).
+- For free users: block any entry where `photo_urls.length > 0` regardless of source = walk-source entries can still carry photos uploaded via the walk flow (those are inserted server-side from the walk completion path, not the journal write path).
+- Return a clear `{ error: "plus_required" }` so the client can show the upsell.
 
-### Files touched
-`src/components/billing/billing-card.tsx`, `supporter-card.tsx`, `supporter-amount-picker.tsx`, `src/routes/impact.tsx`, `src/lib/auth-prompt.tsx`, `src/components/auth-form.tsx`, `src/routes/auth.tsx`, `src/routes/terms.tsx`, `src/routes/privacy.tsx`.
+**Client:**
+- `src/components/home/reflection-write-sheet.tsx` and journal "new entry" entry points: if not Plus, swap the primary CTA for an upsell that opens `upsell-sheet` (Plus required to write a reflection).
+- Same sheet: hide / disable the photo attach button for free users with a small "Plus" lock pill; tooltip "Add photos to journal entries with Plus."
+- `src/routes/journal.tsx` / `entries-feed.tsx`: free users still see walk-sourced entries and their photos — no change to the read path.
+- `auth-prompt.tsx` already exists; add a `journalWrite` / `journalPhoto` reason variant with copy: "Journaling and photo memories are part of Plus."
+
+## 3. Client-side media compression before upload
+
+Goal: shrink every user-uploaded image before it touches storage. Target ~1600px longest edge, WebP, quality ~0.82. Strip EXIF.
+
+**New util: `src/lib/image-compress.ts`**
+- `compressImage(file: File, opts?): Promise<File>` — uses `createImageBitmap` + `OffscreenCanvas` (fallback to `<canvas>`), `canvas.toBlob('image/webp', 0.82)`.
+- Skips non-images and animated GIFs (passes through). Falls back to original if compression result is larger than original (rare for already-tiny images).
+- Defaults: maxEdge 1600, quality 0.82, format `image/webp`. Returns a new `File` with `.webp` extension and `type: 'image/webp'`.
+
+**Wire into upload call sites:**
+- `src/routes/_authenticated/walk.index.tsx` (line ~211, walk-photos bucket).
+- `src/components/walk-page/memory-strip.tsx` (line ~66, event-photos bucket).
+- Future journal photo upload (Plus only) — use the same util.
+
+**Bucket MIME:** confirm `walk-photos` and `event-photos` buckets allow `image/webp` (likely already permissive). If MIME is restricted, update via storage bucket settings.
+
+## Out of scope (call out)
+- No retroactive migration of existing user photos.
+- No video compression (not currently uploading video).
+- Existing $1.99 subscribers are grandfathered; no forced migration.
+
+## Technical notes
+- Stripe price creation will be done via the payments tool in build mode (`create_price` on existing `plus` product).
+- The `subscriptions` table already has `price_id` denormalized from `lookup_key`, so admin tiles and `useMembership` keep working when new price IDs land.
+- Compression util is pure browser code (no deps); WebP is supported in all evergreen browsers + iOS 14+.
