@@ -4,6 +4,7 @@ import { Footprints, Compass, BookHeart, Menu, Plus, CalendarPlus } from "lucide
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 
 const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: boolean }> = [
   { to: "/", label: "Home", icon: Footprints, exact: true },
