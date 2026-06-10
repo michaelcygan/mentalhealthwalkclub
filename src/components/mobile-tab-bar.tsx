@@ -100,7 +100,11 @@ export function MobileTabBar() {
           {showCompose && (
             <motion.button
               type="button"
-              onClick={() => { haptics.tap(); setComposeOpen((v) => !v); }}
+              onClick={() => {
+                haptics.tap();
+                if (!user) { openAuth("signup"); return; }
+                setComposeOpen((v) => !v);
+              }}
               whileTap={{ scale: 0.9 }}
               aria-expanded={composeOpen}
               aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
