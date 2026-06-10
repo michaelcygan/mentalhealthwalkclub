@@ -1421,31 +1421,31 @@ export type Database = {
         Row: {
           collections_follow_cap: number
           id: boolean
-          patron_min_cents: number
-          patron_signups_paused: boolean
-          patron_suggested_amounts: number[]
           playlists_cap: number
           saved_reads_cap: number
+          supporter_min_cents: number
+          supporter_signups_paused: boolean
+          supporter_suggested_amounts: number[]
           updated_at: string
         }
         Insert: {
           collections_follow_cap?: number
           id?: boolean
-          patron_min_cents?: number
-          patron_signups_paused?: boolean
-          patron_suggested_amounts?: number[]
           playlists_cap?: number
           saved_reads_cap?: number
+          supporter_min_cents?: number
+          supporter_signups_paused?: boolean
+          supporter_suggested_amounts?: number[]
           updated_at?: string
         }
         Update: {
           collections_follow_cap?: number
           id?: boolean
-          patron_min_cents?: number
-          patron_signups_paused?: boolean
-          patron_suggested_amounts?: number[]
           playlists_cap?: number
           saved_reads_cap?: number
+          supporter_min_cents?: number
+          supporter_signups_paused?: boolean
+          supporter_suggested_amounts?: number[]
           updated_at?: string
         }
         Relationships: []
@@ -1548,33 +1548,6 @@ export type Database = {
           slug?: string
           sort?: number
           updated_at?: string
-        }
-        Relationships: []
-      }
-      patron_profile: {
-        Row: {
-          display_on_wall: boolean
-          early_access: boolean
-          joined_at: string
-          monthly_amount_cents: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          display_on_wall?: boolean
-          early_access?: boolean
-          joined_at?: string
-          monthly_amount_cents?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          display_on_wall?: boolean
-          early_access?: boolean
-          joined_at?: string
-          monthly_amount_cents?: number
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -2041,6 +2014,33 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_kind?: string
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      supporter_profile: {
+        Row: {
+          display_on_wall: boolean
+          early_access: boolean
+          joined_at: string
+          monthly_amount_cents: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          display_on_wall?: boolean
+          early_access?: boolean
+          joined_at?: string
+          monthly_amount_cents?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          display_on_wall?: boolean
+          early_access?: boolean
+          joined_at?: string
+          monthly_amount_cents?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
