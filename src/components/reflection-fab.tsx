@@ -29,7 +29,7 @@ export function ReflectionFab() {
       >
         <PenLine className="h-5 w-5" />
       </button>
-      <ReflectionWriteSheet open={open} onOpenChange={setOpen} source="quick_fab" />
+      <ReflectionWriteSheet open={open} onOpenChange={setOpen} source="home_reflection" />
     </>
   );
 }
