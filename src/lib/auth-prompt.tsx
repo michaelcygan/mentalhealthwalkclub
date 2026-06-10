@@ -189,7 +189,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
               <h2 className="font-serif text-xl text-foreground">Become a Supporter</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your monthly amount. 100% of profits go to our nonprofit partner.
+              Choose your monthly amount. 100% of profits go to the 988 Suicide &amp; Crisis Lifeline.
             </p>
             {supporterOpen && !supporterCheckoutStarted && (
               <div className="mt-5">
