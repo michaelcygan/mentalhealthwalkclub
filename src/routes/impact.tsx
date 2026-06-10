@@ -154,7 +154,7 @@ function ImpactPage() {
           <div className="flex-1">
             <h2 className="font-serif text-xl">Become a Supporter</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your own monthly amount. 100% of profits go straight to our nonprofit partner. Cancel anytime.
+              Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <Button
               onClick={() => openSupporterFlow(500)}
