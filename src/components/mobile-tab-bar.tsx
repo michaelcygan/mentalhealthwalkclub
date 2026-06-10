@@ -27,6 +27,7 @@ export function MobileTabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { openAuth } = useAuthPrompt();
   const reduceMotion = useReducedMotion();
   const [composeOpen, setComposeOpen] = useState(false);
 
