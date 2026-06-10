@@ -252,31 +252,32 @@ export const trendingListen = createServerFn({ method: "GET" })
     for (const t of top) byKind[t.kind].push(t.id);
     const [pods, amb, gd, bl] = await Promise.all([
       byKind.podcast.length
-        ? supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url").in("id", byKind.podcast)
+        ? supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,audio_url").in("id", byKind.podcast)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.ambient.length
         ? supabase.from("ambient_tracks").select("id,title,artist,cover_path,duration_seconds,mood_tags").in("id", byKind.ambient)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.guided.length
-        ? supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags").in("id", byKind.guided)
+        ? supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,audio_url").in("id", byKind.guided)
         : Promise.resolve({ data: [] as unknown[] }),
       byKind.blog.length
         ? supabase.from("blog_posts").select("id,title,image_url,link,blog_feeds(publisher)").in("id", byKind.blog)
         : Promise.resolve({ data: [] as unknown[] }),
     ]);
     const map = new Map<string, SearchHit>();
-    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null }>) {
-      map.set(`podcast:${r.id}`, { kind: "podcast", id: r.id, title: r.title, subtitle: null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; audio_url: string | null }>) {
+      map.set(`podcast:${r.id}`, { kind: "podcast", id: r.id, title: r.title, subtitle: null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      map.set(`ambient:${r.id}`, { kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+      map.set(`ambient:${r.id}`, { kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: null });
     }
-    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      map.set(`guided:${r.id}`, { kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; audio_url: string | null }>) {
+      map.set(`guided:${r.id}`, { kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (bl.data ?? []) as Array<{ id: string; title: string; image_url: string | null; link: string; blog_feeds: { publisher: string | null } | null }>) {
-      map.set(`blog:${r.id}`, { kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [] });
+      map.set(`blog:${r.id}`, { kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [], audio_url: null });
     }
+
     return top.map((t) => map.get(`${t.kind}:${t.id}`)).filter(Boolean) as SearchHit[];
   });
 
