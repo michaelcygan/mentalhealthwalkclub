@@ -15,6 +15,7 @@ import { useGeolocation, useCurrentWeather } from "@/hooks/use-weather";
 import WalkWeather from "@/components/walk-page/walk-weather";
 import { listMyPlaylists, getPlaylist, listenCatalog } from "@/lib/playlists.functions";
 import { PROMPTS, moodToFamily, type ReflectionPrompt } from "@/lib/reflection-prompts";
+import { compressImage } from "@/lib/image-compress";
 
 export const Route = createFileRoute("/_authenticated/walk/")({
   component: SoloWalkPage,
@@ -204,11 +205,12 @@ function SoloWalkPage() {
     }
   }
 
-  async function onPhotoPicked(file: File) {
+  async function onPhotoPicked(rawFile: File) {
     if (!walkId || !user) return;
-    const ext = file.name.split(".").pop() || "jpg";
+    const file = await compressImage(rawFile);
+    const ext = file.name.split(".").pop() || "webp";
     const path = `${user.id}/${walkId}/${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("walk-photos").upload(path, file, { upsert: false });
+    const { error: upErr } = await supabase.storage.from("walk-photos").upload(path, file, { upsert: false, contentType: file.type });
     if (upErr) { toast.error(upErr.message); return; }
     const { error } = await supabase.from("walk_photos").insert({
       walk_session_id: walkId,

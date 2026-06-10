@@ -7,7 +7,7 @@ interface Props {
   plan?: PlusPlan;
 }
 
-export function PlusCheckout({ returnUrl, plan = "plus_monthly" }: Props) {
+export function PlusCheckout({ returnUrl, plan = "plus_monthly_v2" }: Props) {
   const fetchClientSecret = async (): Promise<string> => {
     const finalReturn =
       returnUrl ||

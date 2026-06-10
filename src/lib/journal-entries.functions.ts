@@ -21,11 +21,29 @@ export interface JournalEntry {
   updated_at: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requirePlus(supabase: any, userId: string) {
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("current_period_end,status")
+    .eq("user_id", userId)
+    .eq("subscription_kind", "plus")
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const endsAt = data?.current_period_end ? new Date(data.current_period_end).getTime() : Number.POSITIVE_INFINITY;
+  if (!data || endsAt < Date.now()) {
+    throw new Error("plus_required");
+  }
+}
+
 export const createJournalEntry = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CreateInput.parse(d))
   .handler(async ({ data, context }): Promise<JournalEntry> => {
     const { supabase, userId } = context;
+    await requirePlus(supabase as never, userId as string);
     const { data: row, error } = await supabase
       .from("journal_entries" as never)
       .insert({

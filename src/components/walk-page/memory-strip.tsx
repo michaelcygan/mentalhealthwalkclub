@@ -11,6 +11,7 @@ import {
   deleteEventPhoto,
   type EventPhoto,
 } from "@/lib/walk-page.functions";
+import { compressImage } from "@/lib/image-compress";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
@@ -47,24 +48,26 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
     requireAuth(() => inputRef.current?.click());
   };
 
-  const onFile = async (file: File) => {
+  const onFile = async (rawFile: File) => {
     if (!user) return;
-    if (!file.type.startsWith("image/")) {
+    if (!rawFile.type.startsWith("image/")) {
       toast.error("Pick an image file.");
       return;
     }
-    if (file.size > MAX_BYTES) {
+    if (rawFile.size > MAX_BYTES) {
       toast.error("Photo is too large (max 8 MB).");
       return;
     }
     setUploading(true);
     try {
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().slice(0, 5);
+      const file = await compressImage(rawFile);
+      const ext = (file.name.split(".").pop() || "webp").toLowerCase().slice(0, 5);
       const path = `${user.id}/${eventId}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("event-photos")
         .upload(path, file, { contentType: file.type, upsert: false });
       if (upErr) throw upErr;
+
 
       await addPhoto({
         data: {

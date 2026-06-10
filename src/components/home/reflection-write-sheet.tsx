@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Shuffle, X } from "lucide-react";
+import { Shuffle, X, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { createJournalEntry } from "@/lib/journal-entries.functions";
 import { PROMPTS, type ReflectionPrompt } from "@/lib/reflection-prompts";
+import { useMembership } from "@/hooks/use-membership";
+import { useAuthPrompt } from "@/lib/auth-prompt";
 
 interface Props {
   open: boolean;
@@ -32,6 +34,8 @@ export function ReflectionWriteSheet({
   allowPromptControls = true,
 }: Props) {
   const create = useServerFn(createJournalEntry);
+  const { isPlus, loading: membershipLoading } = useMembership();
+  const { openPlusCheckout } = useAuthPrompt();
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [activePrompt, setActivePrompt] = useState<{ id?: string; text?: string } | null>(prompt ?? null);
@@ -82,6 +86,11 @@ export function ReflectionWriteSheet({
   async function save() {
     const value = body.trim();
     if (!value || saving) return;
+    if (!isPlus) {
+      onOpenChange(false);
+      openPlusCheckout();
+      return;
+    }
     setSaving(true);
     try {
       await create({
@@ -100,7 +109,13 @@ export function ReflectionWriteSheet({
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't save");
+      const msg = e instanceof Error ? e.message : "Couldn't save";
+      if (msg.includes("plus_required")) {
+        onOpenChange(false);
+        openPlusCheckout();
+        return;
+      }
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -187,10 +202,15 @@ export function ReflectionWriteSheet({
               <Button
                 type="button"
                 onClick={save}
-                disabled={!body.trim() || saving}
+                disabled={!body.trim() || saving || membershipLoading}
                 className="rounded-full bg-forest text-primary-foreground hover:opacity-90"
               >
-                {saving ? "Saving…" : "Save to journal"}
+                {!isPlus && !membershipLoading ? (
+                  <>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Save with Plus
+                  </>
+                ) : saving ? "Saving…" : "Save to journal"}
               </Button>
             </div>
           </div>

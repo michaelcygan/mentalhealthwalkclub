@@ -65,8 +65,8 @@ function AdminMembershipPage() {
       ]);
       const rows = (subs as unknown as { price_id: string; monthly_amount_cents: number | null; subscription_kind: string; environment: string }[]) ?? [];
       const live = rows.filter((r) => r.environment === env);
-      const plusM = live.filter((r) => r.subscription_kind === "plus" && r.price_id === "plus_monthly").length;
-      const plusY = live.filter((r) => r.subscription_kind === "plus" && r.price_id === "plus_yearly").length;
+      const plusM = live.filter((r) => r.subscription_kind === "plus" && (r.price_id === "plus_monthly" || r.price_id === "plus_monthly_v2")).length;
+      const plusY = live.filter((r) => r.subscription_kind === "plus" && (r.price_id === "plus_yearly" || r.price_id === "plus_yearly_v2")).length;
       const supporterCount = live.filter((r) => r.subscription_kind === "supporter").length;
       const supporterMrr = live
         .filter((r) => r.subscription_kind === "supporter")

@@ -5,7 +5,7 @@ type StripeEnv = "sandbox" | "live";
 const clientToken = import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN as string | undefined;
 const environment: StripeEnv = clientToken?.startsWith("pk_test_") ? "sandbox" : "live";
 
-export const PLUS_PRICE_ID = "plus_monthly";
+export const PLUS_PRICE_ID = "plus_monthly_v2";
 export const PLUS_TRIAL_DAYS = 30;
 
 let stripePromise: Promise<Stripe | null> | null = null;
