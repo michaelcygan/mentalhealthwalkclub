@@ -288,23 +288,24 @@ export const recentlyAddedListen = createServerFn({ method: "GET" })
     const { supabase } = context;
     const since = new Date(Date.now() - data.days * 86400_000).toISOString();
     const [pods, amb, gd, bl] = await Promise.all([
-      supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,published_at").eq("is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
+      supabase.from("podcast_episodes").select("id,title,image_url,duration_seconds,mood_tags,episode_url,audio_url,published_at").eq("is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
       supabase.from("ambient_tracks").select("id,title,artist,cover_path,duration_seconds,mood_tags,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
-      supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
+      supabase.from("guided_tracks").select("id,title,host,cover_url,duration_seconds,mood_tags,audio_url,created_at").eq("is_active", true).gte("created_at", since).order("created_at", { ascending: false }).limit(data.limit),
       supabase.from("blog_posts").select("id,title,image_url,link,published_at,blog_feeds!inner(publisher,is_active)").eq("blog_feeds.is_active", true).gte("published_at", since).order("published_at", { ascending: false }).limit(data.limit),
     ]);
     const out: SearchHit[] = [];
-    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; published_at: string | null }>) {
-      out.push({ kind: "podcast", id: r.id, title: r.title, subtitle: r.published_at ? new Date(r.published_at).toLocaleDateString() : null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; episode_url: string | null; audio_url: string | null; published_at: string | null }>) {
+      out.push({ kind: "podcast", id: r.id, title: r.title, subtitle: r.published_at ? new Date(r.published_at).toLocaleDateString() : null, cover: r.image_url, link: r.episode_url, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      out.push({ kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+      out.push({ kind: "ambient", id: r.id, title: r.title, subtitle: r.artist, cover: r.cover_path, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: null });
     }
-    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null }>) {
-      out.push({ kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [] });
+    for (const r of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; audio_url: string | null }>) {
+      out.push({ kind: "guided", id: r.id, title: r.title, subtitle: r.host, cover: r.cover_url, link: null, duration_seconds: r.duration_seconds, mood_tags: r.mood_tags ?? [], audio_url: r.audio_url ?? null });
     }
     for (const r of (bl.data ?? []) as Array<{ id: string; title: string; image_url: string | null; link: string; blog_feeds: { publisher: string | null } }>) {
-      out.push({ kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [] });
+      out.push({ kind: "blog", id: r.id, title: r.title, subtitle: r.blog_feeds?.publisher ?? null, cover: r.image_url, link: r.link, duration_seconds: null, mood_tags: [], audio_url: null });
     }
     return out.slice(0, data.limit);
   });
+
