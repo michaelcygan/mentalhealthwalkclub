@@ -86,7 +86,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          50% of every Walk Club Plus dollar goes to a mental health nonprofit. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
+          Half of every Walk Club Plus dollar goes to the 988 Suicide &amp; Crisis Lifeline. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
         </p>
       </header>
 
