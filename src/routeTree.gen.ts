@@ -42,6 +42,7 @@ import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AuthenticatedWalkIndexRouteImport } from './routes/_authenticated/walk.index'
 import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
+import { Route as ApiPublicDev_list_pricesRouteImport } from './routes/api/public/_dev_list_prices'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
@@ -221,6 +222,12 @@ const WCodeRecapRoute = WCodeRecapRouteImport.update({
   path: '/recap',
   getParentRoute: () => WCodeRoute,
 } as any)
+const ApiPublicDev_list_pricesRoute =
+  ApiPublicDev_list_pricesRouteImport.update({
+    id: '/api/public/_dev_list_prices',
+    path: '/api/public',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
   path: '/$feedId',
@@ -333,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/api/public': typeof ApiPublicDev_list_pricesRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk/': typeof AuthenticatedWalkIndexRoute
   '/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -381,6 +389,7 @@ export interface FileRoutesByTo {
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/api/public': typeof ApiPublicDev_list_pricesRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk': typeof AuthenticatedWalkIndexRoute
   '/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -431,6 +440,7 @@ export interface FileRoutesById {
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/api/public/_dev_list_prices': typeof ApiPublicDev_list_pricesRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/_authenticated/walk/': typeof AuthenticatedWalkIndexRoute
   '/_authenticated/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/api/public'
     | '/w/$code/recap'
     | '/walk/'
     | '/listen/collection/$slug'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/api/public'
     | '/w/$code/recap'
     | '/walk'
     | '/listen/collection/$slug'
@@ -578,6 +590,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trails/$id'
     | '/_authenticated/walk/new'
     | '/admin/podcasts/$feedId'
+    | '/api/public/_dev_list_prices'
     | '/w/$code/recap'
     | '/_authenticated/walk/'
     | '/_authenticated/listen/collection/$slug'
@@ -607,6 +620,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
   WCodeRoute: typeof WCodeRouteWithChildren
+  ApiPublicDev_list_pricesRoute: typeof ApiPublicDev_list_pricesRoute
   ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -848,6 +862,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/w/$code/recap'
       preLoaderRoute: typeof WCodeRecapRouteImport
       parentRoute: typeof WCodeRoute
+    }
+    '/api/public/_dev_list_prices': {
+      id: '/api/public/_dev_list_prices'
+      path: '/api/public'
+      fullPath: '/api/public'
+      preLoaderRoute: typeof ApiPublicDev_list_pricesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/podcasts/$feedId': {
       id: '/admin/podcasts/$feedId'
@@ -1104,6 +1125,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
   WCodeRoute: WCodeRouteWithChildren,
+  ApiPublicDev_list_pricesRoute: ApiPublicDev_list_pricesRoute,
   ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
