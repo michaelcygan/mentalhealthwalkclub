@@ -39,13 +39,13 @@ async function resolveOrCreateCustomer(
   return created.id;
 }
 
-export type PlusPlan = "plus_monthly" | "plus_yearly";
+export type PlusPlan = "plus_monthly_v2" | "plus_yearly_v2";
 
 export const createPlusCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     (data: { returnUrl: string; environment: StripeEnv; plan?: PlusPlan }) => {
-      if (data.plan && data.plan !== "plus_monthly" && data.plan !== "plus_yearly") {
+      if (data.plan && data.plan !== "plus_monthly_v2" && data.plan !== "plus_yearly_v2") {
         throw new Error("Invalid plan");
       }
       return data;
@@ -53,7 +53,7 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const plan: PlusPlan = data.plan ?? "plus_monthly";
+    const plan: PlusPlan = data.plan ?? "plus_monthly_v2";
 
     // Don't double-subscribe (Plus only — Supporter is a separate row)
     const { data: existing } = await supabase
