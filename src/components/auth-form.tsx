@@ -171,7 +171,7 @@ export function AuthForm({
       <p className="mt-1 text-sm text-muted-foreground">
         {isSignup
           ? plan === "plus"
-            ? "30 days on us, then $1.99/mo. 50% of every Plus dollar funds our nonprofit partner. Cancel anytime — no charge until day 30."
+            ? "30 days on us, then $1.99/mo. Half of every Plus dollar goes to the 988 Suicide & Crisis Lifeline. Cancel anytime — no charge until day 30."
             : "Free forever. Unlimited Solo + Guided walks, 5 Walk & Talks a month."
           : "Lace up. Let's go."}
       </p>
