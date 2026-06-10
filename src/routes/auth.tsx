@@ -22,7 +22,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Join the Mental Health Walk Club. Solo, Guided, Walk & Talk, and in-person Local Walks. Free forever — Plus is $1.99/mo with a 30-day free trial, and half of every Plus dollar goes to the 988 Suicide & Crisis Lifeline.",
+          "Join the Mental Health Walk Club. Solo, Guided, Walk & Talk, and in-person Local Walks. Free forever — Plus is $2.99/mo with a 30-day free trial, and half of every Plus dollar goes to the 988 Suicide & Crisis Lifeline.",
       },
     ],
   }),

@@ -101,7 +101,11 @@ export function useMembership(): MembershipState {
     (!!supporterRow && supporterRow.status === "canceled" && !!supporterPeriodEnd && supporterPeriodEnd.getTime() > Date.now());
 
   const plusInterval: "monthly" | "yearly" | null =
-    plusRow?.price_id === "plus_yearly" ? "yearly" : plusRow?.price_id === "plus_monthly" ? "monthly" : null;
+    plusRow?.price_id === "plus_yearly" || plusRow?.price_id === "plus_yearly_v2"
+      ? "yearly"
+      : plusRow?.price_id === "plus_monthly" || plusRow?.price_id === "plus_monthly_v2"
+        ? "monthly"
+        : null;
 
   return {
     loading,

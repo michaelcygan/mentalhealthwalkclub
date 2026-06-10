@@ -19,7 +19,7 @@ export const listImpactDonations = createServerFn({ method: "GET" }).handler(asy
 });
 
 const DONATION_PERCENT = 100;
-// Rough Stripe fees on a $1.99 charge with managed_payments (+3.5%): ~2.9% + $0.30 + 3.5% = ~6.4% + $0.30.
+// Rough Stripe fees on a $2.99 charge with managed_payments (+3.5%): ~2.9% + $0.30 + 3.5% = ~6.4% + $0.30.
 // Net = gross * 0.936 - $0.30 per charge. We approximate per-row when summing.
 function estimateNetCents(grossCents: number, chargeCount: number): number {
   const fee = Math.round(grossCents * 0.064) + chargeCount * 30;

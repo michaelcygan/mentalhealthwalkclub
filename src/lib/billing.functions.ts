@@ -291,13 +291,13 @@ export const switchPlusToYearly = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
     if (error || !sub?.stripe_subscription_id) throw new Error("No active Plus subscription");
-    if (sub.price_id === "plus_yearly") return { ok: true, alreadyYearly: true };
+    if (sub.price_id === "plus_yearly" || sub.price_id === "plus_yearly_v2") return { ok: true, alreadyYearly: true };
     if (!["trialing", "active", "past_due"].includes(sub.status as string)) {
       throw new Error("Your Plus plan isn't active.");
     }
 
     const stripe = createStripeClient(data.environment);
-    const prices = await stripe.prices.list({ lookup_keys: ["plus_yearly"] });
+    const prices = await stripe.prices.list({ lookup_keys: ["plus_yearly_v2"] });
     if (!prices.data.length) throw new Error("Yearly price not configured");
     const yearlyPrice = prices.data[0];
 

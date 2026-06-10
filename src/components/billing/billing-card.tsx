@@ -130,7 +130,7 @@ export function BillingCard() {
             <p className="mt-0.5 text-sm text-muted-foreground">
               Unlimited circles to invite friends on mental health walks, a shareable page for every walk you host, and the full Listen library — calming playlists, podcasts, and reads. A journal to reflect in and access to events in your area.
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">$1.99/month, 30-day free trial. Half of every dollar goes straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">$2.99/month, 30-day free trial. Half of every dollar goes straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.</p>
             <Button
               onClick={() => openPlusCheckout()}
               className="mt-3 rounded-full bg-forest text-primary-foreground hover:opacity-90"
@@ -196,7 +196,7 @@ export function BillingCard() {
                 className="justify-start rounded-full bg-forest text-primary-foreground hover:opacity-90"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
-                Switch to yearly — save $4.88
+                Switch to yearly — save $6.88
               </Button>
             )}
             {status === "past_due" && (

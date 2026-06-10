@@ -61,7 +61,7 @@ export function UpsellSheet({ open, onOpenChange, surface, title, body, cap }: P
               openPlusCheckout();
             }}
           >
-            Upgrade — $1.99
+            Upgrade — $2.99
           </Button>
         </div>
       </DialogContent>
