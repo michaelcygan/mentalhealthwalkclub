@@ -13,7 +13,9 @@ export interface SearchHit {
   link: string | null;
   duration_seconds: number | null;
   mood_tags: string[];
+  audio_url: string | null;
 }
+
 
 const SearchInput = z.object({
   q: z.string().trim().max(120).default(""),
