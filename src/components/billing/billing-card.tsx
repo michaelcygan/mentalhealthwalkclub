@@ -128,7 +128,7 @@ export function BillingCard() {
           <div className="flex-1">
             <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Walk more, scroll less. Plus opens up unlimited circles to invite friends on a mental health walk, a shareable page for every walk you host, and the full Listen library — calming playlists, podcasts, and reads for the trail.
+              Unlimited circles to invite friends on mental health walks, a shareable page for every walk you host, and the full Listen library — calming playlists, podcasts, and reads. A journal to reflect in and access to events in your area.
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">$1.99/month, 30-day free trial. Half of every dollar goes straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.</p>
             <Button
