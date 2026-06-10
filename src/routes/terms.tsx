@@ -48,7 +48,7 @@ function TermsPage() {
 
       <h2>5. Subscriptions (Walk Club Plus)</h2>
       <ul>
-        <li>Plus is offered at $1.99/month, with a 30-day free trial for new subscribers. 50% of net Plus revenue is donated to our nonprofit partner each month.</li>
+        <li>Plus is offered at $1.99/month, with a 30-day free trial for new subscribers. 50% of net Plus revenue is donated to the 988 Suicide &amp; Crisis Lifeline each month.</li>
         <li>Trials and subscriptions auto-renew until you cancel.</li>
         <li>You can cancel anytime from your Profile (web) or in the App Store / Google Play settings (mobile).</li>
         <li>Refunds are handled by the platform that processed your payment (Stripe, Apple, or Google) under their refund policies.</li>
