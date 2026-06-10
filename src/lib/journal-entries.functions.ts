@@ -21,10 +21,11 @@ export interface JournalEntry {
   updated_at: string;
 }
 
-async function requirePlus(supabase: { from: (t: string) => { select: (s: string) => { eq: (c: string, v: string) => { in: (c: string, vs: string[]) => { order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => { maybeSingle: () => Promise<{ data: { current_period_end: string | null } | null }> } } } } } } }, userId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requirePlus(supabase: any, userId: string) {
   const { data } = await supabase
     .from("subscriptions")
-    .select("current_period_end")
+    .select("current_period_end,status")
     .eq("user_id", userId)
     .eq("subscription_kind", "plus")
     .in("status", ["active", "trialing", "past_due"])
