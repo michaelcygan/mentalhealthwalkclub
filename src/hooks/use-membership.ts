@@ -6,13 +6,13 @@ import { useAuth } from "@/lib/auth-context";
 export interface MembershipState {
   loading: boolean;
   isPlus: boolean;
-  isPatron: boolean;
-  patronCents: number;
+  isSupporter: boolean;
+  supporterCents: number;
   plusInterval: "monthly" | "yearly" | null;
   cancelAtPeriodEnd: boolean;
   plusStatus: string | null;
   plusCurrentPeriodEnd: Date | null;
-  patronStatus: string | null;
+  supporterStatus: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -30,19 +30,19 @@ const ACTIVE = new Set(["active", "trialing", "past_due"]);
 export function useMembership(): MembershipState {
   const { user } = useAuth();
   const [plusRow, setPlusRow] = useState<SubRow | null>(null);
-  const [patronRow, setPatronRow] = useState<SubRow | null>(null);
+  const [supporterRow, setSupporterRow] = useState<SubRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     if (!user) {
       setPlusRow(null);
-      setPatronRow(null);
+      setSupporterRow(null);
       setLoading(false);
       return;
     }
     const env = getStripeEnvironment();
     const baseSelect = "status,current_period_end,cancel_at_period_end,price_id,monthly_amount_cents,subscription_kind";
-    const [{ data: p }, { data: pat }] = await Promise.all([
+    const [{ data: p }, { data: sup }] = await Promise.all([
       supabase
         .from("subscriptions" as never)
         .select(baseSelect)
@@ -57,13 +57,13 @@ export function useMembership(): MembershipState {
         .select(baseSelect)
         .eq("user_id", user.id)
         .eq("environment", env)
-        .eq("subscription_kind", "patron")
+        .eq("subscription_kind", "supporter")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
     ]);
     setPlusRow((p as unknown as SubRow) ?? null);
-    setPatronRow((pat as unknown as SubRow) ?? null);
+    setSupporterRow((sup as unknown as SubRow) ?? null);
     setLoading(false);
   }, [user]);
 
@@ -94,11 +94,11 @@ export function useMembership(): MembershipState {
     (!!plusRow && ACTIVE.has(plusRow.status) && plusInPeriod) ||
     (!!plusRow && plusRow.status === "canceled" && !!plusPeriodEnd && plusPeriodEnd.getTime() > Date.now());
 
-  const patronPeriodEnd = patronRow?.current_period_end ? new Date(patronRow.current_period_end) : null;
-  const patronInPeriod = !patronPeriodEnd || patronPeriodEnd.getTime() > Date.now();
-  const isPatronActive =
-    (!!patronRow && ACTIVE.has(patronRow.status) && patronInPeriod) ||
-    (!!patronRow && patronRow.status === "canceled" && !!patronPeriodEnd && patronPeriodEnd.getTime() > Date.now());
+  const supporterPeriodEnd = supporterRow?.current_period_end ? new Date(supporterRow.current_period_end) : null;
+  const supporterInPeriod = !supporterPeriodEnd || supporterPeriodEnd.getTime() > Date.now();
+  const isSupporterActive =
+    (!!supporterRow && ACTIVE.has(supporterRow.status) && supporterInPeriod) ||
+    (!!supporterRow && supporterRow.status === "canceled" && !!supporterPeriodEnd && supporterPeriodEnd.getTime() > Date.now());
 
   const plusInterval: "monthly" | "yearly" | null =
     plusRow?.price_id === "plus_yearly" ? "yearly" : plusRow?.price_id === "plus_monthly" ? "monthly" : null;
@@ -106,13 +106,13 @@ export function useMembership(): MembershipState {
   return {
     loading,
     isPlus: isPlusActive,
-    isPatron: isPatronActive,
-    patronCents: isPatronActive ? (patronRow?.monthly_amount_cents ?? 0) : 0,
+    isSupporter: isSupporterActive,
+    supporterCents: isSupporterActive ? (supporterRow?.monthly_amount_cents ?? 0) : 0,
     plusInterval,
     cancelAtPeriodEnd: !!plusRow?.cancel_at_period_end,
     plusStatus: plusRow?.status ?? null,
     plusCurrentPeriodEnd: plusPeriodEnd,
-    patronStatus: patronRow?.status ?? null,
+    supporterStatus: supporterRow?.status ?? null,
     refresh,
   };
 }

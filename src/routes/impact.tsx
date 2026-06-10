@@ -15,12 +15,12 @@ export const Route = createFileRoute("/impact")({
       {
         name: "description",
         content:
-          "50% of every Walk Club Plus dollar funds our nonprofit partner. See the running total and methodology.",
+          "50% of every Walk Club Plus dollar funds our nonprofit partner. 100% of Supporter donations go straight to it. See the running total and methodology.",
       },
       { property: "og:title", content: "Our Impact — Mental Health Walk Club" },
       {
         property: "og:description",
-        content: "Half of every Plus dollar goes straight to mental health nonprofits.",
+        content: "Half of every Plus dollar — and 100% of Supporter donations — go straight to mental health nonprofits.",
       },
     ],
   }),
@@ -51,7 +51,7 @@ function ImpactPage() {
   }>>([]);
   const [total, setTotal] = useState(0);
   const [wall, setWall] = useState<{ user_id: string; display_name: string | null }[]>([]);
-  const { openPatronFlow } = useAuthPrompt();
+  const { openSupporterFlow } = useAuthPrompt();
 
   useEffect(() => {
     listImpactDonations()
@@ -61,14 +61,14 @@ function ImpactPage() {
       })
       .catch(() => {});
     (async () => {
-      const { data: pats } = await supabase
-        .from("patron_profile" as never)
+      const { data: sups } = await supabase
+        .from("supporter_profile" as never)
         .select("user_id, monthly_amount_cents")
         .eq("display_on_wall", true)
         .gt("monthly_amount_cents", 0)
         .order("joined_at", { ascending: false })
         .limit(30);
-      const rows = (pats as unknown as { user_id: string }[]) ?? [];
+      const rows = (sups as unknown as { user_id: string }[]) ?? [];
       if (rows.length === 0) return;
       const { data: profs } = await supabase
         .from("profiles")
@@ -86,7 +86,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          50% of every Walk Club Plus dollar goes to a mental health nonprofit. The other 50% keeps the lights on so we can keep building.
+          50% of every Walk Club Plus dollar goes to a mental health nonprofit. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
         </p>
       </header>
 
@@ -123,7 +123,7 @@ function ImpactPage() {
         <h2 className="text-lg font-semibold">By period</h2>
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            First donation report posts at the end of our first full revenue period. Subscribe to Plus and you'll show up here.
+            First donation report posts at the end of our first full revenue period. Subscribe to Plus or become a Supporter and you'll show up here.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -141,6 +141,9 @@ function ImpactPage() {
             ))}
           </ul>
         )}
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Receipts (PDFs of each transfer to our nonprofit partner) coming soon to this page.
+        </p>
       </section>
 
       <section className="mt-10 rounded-3xl border border-rose-200 bg-rose-50/40 p-6">
@@ -149,12 +152,12 @@ function ImpactPage() {
             <Heart className="h-5 w-5" />
           </span>
           <div className="flex-1">
-            <h2 className="font-serif text-xl">Become a Patron</h2>
+            <h2 className="font-serif text-xl">Become a Supporter</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your own monthly amount. 80% goes straight to our nonprofit partner. Cancel anytime.
+              Choose your own monthly amount. 100% of profits go straight to our nonprofit partner. Cancel anytime.
             </p>
             <Button
-              onClick={() => openPatronFlow(500)}
+              onClick={() => openSupporterFlow(500)}
               className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
             >
               Give monthly
@@ -163,12 +166,12 @@ function ImpactPage() {
         </div>
         {wall.length > 0 && (
           <div className="mt-6 border-t border-rose-200 pt-4">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Patron wall</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Supporter wall</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {wall.map((p) => (
                 <li key={p.user_id} className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-card px-3 py-1 text-xs">
                   <FoundingBadge size="xs" />
-                  <span>{p.display_name ?? "Patron"}</span>
+                  <span>{p.display_name ?? "Supporter"}</span>
                 </li>
               ))}
             </ul>
@@ -180,8 +183,7 @@ function ImpactPage() {
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
-          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the
-          remainder to our current nonprofit partner. We publish the numbers here so you can check our math.
+          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to our current nonprofit partner. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
         </p>
         <p className="mt-3">
           <Link to="/terms" className="underline">

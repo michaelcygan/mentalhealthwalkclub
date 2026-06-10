@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AuthForm, type AuthPlan, PLAN_INTENT_KEY } from "@/components/auth-form";
 import { PlusCheckout } from "@/components/billing/plus-checkout";
-import { PatronCheckout } from "@/components/billing/patron-checkout";
-import { PatronAmountPicker } from "@/components/billing/patron-amount-picker";
+import { SupporterCheckout } from "@/components/billing/supporter-checkout";
+import { SupporterAmountPicker } from "@/components/billing/supporter-amount-picker";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { useAuth } from "@/lib/auth-context";
@@ -14,14 +14,14 @@ import { Heart, Sparkles } from "lucide-react";
 interface Ctx {
   openAuth: (mode?: "signin" | "signup", plan?: AuthPlan) => void;
   openPlusCheckout: (plan?: PlusPlan) => void;
-  openPatronFlow: (initialCents?: number) => void;
+  openSupporterFlow: (initialCents?: number) => void;
   requireAuth: (action: () => void) => void;
 }
 
 const AuthPromptCtx = createContext<Ctx>({
   openAuth: () => {},
   openPlusCheckout: () => {},
-  openPatronFlow: () => {},
+  openSupporterFlow: () => {},
   requireAuth: () => {},
 });
 
@@ -35,10 +35,10 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [plusPlan, setPlusPlan] = useState<PlusPlan | null>(null);
 
-  // Patron flow — amount picker then embedded checkout
-  const [patronOpen, setPatronOpen] = useState(false);
-  const [patronAmount, setPatronAmount] = useState(500);
-  const [patronCheckoutStarted, setPatronCheckoutStarted] = useState(false);
+  // Supporter flow — amount picker then embedded checkout
+  const [supporterOpen, setSupporterOpen] = useState(false);
+  const [supporterAmount, setSupporterAmount] = useState(500);
+  const [supporterCheckoutStarted, setSupporterCheckoutStarted] = useState(false);
 
   useEffect(() => {
     if (user && typeof window !== "undefined") {
@@ -58,12 +58,13 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
       }, 350);
       return () => clearTimeout(t);
     }
-    if (intent === "patron") {
+    // Accept legacy "patron" key from any in-flight signups
+    if (intent === "supporter" || intent === "patron") {
       window.localStorage.removeItem(PLAN_INTENT_KEY);
       const t = setTimeout(() => {
-        setPatronCheckoutStarted(false);
-        setPatronOpen(true);
-        void trackBillingEvent("patron_intent_selected");
+        setSupporterCheckoutStarted(false);
+        setSupporterOpen(true);
+        void trackBillingEvent("supporter_intent_selected");
       }, 350);
       return () => clearTimeout(t);
     }
@@ -92,19 +93,19 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
     [user, openAuth],
   );
 
-  const openPatronFlow = useCallback(
+  const openSupporterFlow = useCallback(
     (initialCents = 500) => {
-      void trackBillingEvent("patron_intent_selected");
+      void trackBillingEvent("supporter_intent_selected");
       if (!user) {
         if (typeof window !== "undefined") {
-          window.localStorage.setItem(PLAN_INTENT_KEY, "patron");
+          window.localStorage.setItem(PLAN_INTENT_KEY, "supporter");
         }
         openAuth("signup", "free");
         return;
       }
-      setPatronAmount(initialCents);
-      setPatronCheckoutStarted(false);
-      setPatronOpen(true);
+      setSupporterAmount(initialCents);
+      setSupporterCheckoutStarted(false);
+      setSupporterOpen(true);
     },
     [user, openAuth],
   );
@@ -115,7 +116,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   }, [user, openAuth]);
 
   return (
-    <AuthPromptCtx.Provider value={{ openAuth, openPlusCheckout, openPatronFlow, requireAuth }}>
+    <AuthPromptCtx.Provider value={{ openAuth, openPlusCheckout, openSupporterFlow, requireAuth }}>
       {children}
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card p-7 sm:max-w-md">
@@ -167,14 +168,14 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
         </DialogContent>
       </Dialog>
 
-      {/* Patron dialog: amount picker → embedded checkout */}
+      {/* Supporter dialog: amount picker → embedded checkout */}
       <Dialog
-        open={patronOpen}
+        open={supporterOpen}
         onOpenChange={(open) => {
-          setPatronOpen(open);
+          setSupporterOpen(open);
           if (!open) {
-            void trackBillingEvent("patron_checkout_dismissed", { amount_cents: patronAmount });
-            setPatronCheckoutStarted(false);
+            void trackBillingEvent("supporter_checkout_dismissed", { amount_cents: supporterAmount });
+            setSupporterCheckoutStarted(false);
           }
         }}
       >
@@ -185,28 +186,28 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
               <span className="grid h-9 w-9 place-items-center rounded-full bg-rose-100 text-rose-600">
                 <Heart className="h-4 w-4" />
               </span>
-              <h2 className="font-serif text-xl text-foreground">Become a Patron</h2>
+              <h2 className="font-serif text-xl text-foreground">Become a Supporter</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your monthly amount. 80% goes to our nonprofit partner.
+              Choose your monthly amount. 100% of profits go to our nonprofit partner.
             </p>
-            {patronOpen && !patronCheckoutStarted && (
+            {supporterOpen && !supporterCheckoutStarted && (
               <div className="mt-5">
-                <PatronAmountPicker
-                  value={patronAmount}
-                  onChange={setPatronAmount}
+                <SupporterAmountPicker
+                  value={supporterAmount}
+                  onChange={setSupporterAmount}
                   onConfirm={() => {
-                    void trackBillingEvent("patron_amount_chosen", { amount_cents: patronAmount });
-                    void trackBillingEvent("patron_checkout_opened", { amount_cents: patronAmount });
-                    setPatronCheckoutStarted(true);
+                    void trackBillingEvent("supporter_amount_chosen", { amount_cents: supporterAmount });
+                    void trackBillingEvent("supporter_checkout_opened", { amount_cents: supporterAmount });
+                    setSupporterCheckoutStarted(true);
                   }}
                   confirmLabel="Continue"
                 />
               </div>
             )}
-            {patronOpen && patronCheckoutStarted && (
+            {supporterOpen && supporterCheckoutStarted && (
               <div className="mt-5">
-                <PatronCheckout amountCents={patronAmount} />
+                <SupporterCheckout amountCents={supporterAmount} />
               </div>
             )}
           </div>

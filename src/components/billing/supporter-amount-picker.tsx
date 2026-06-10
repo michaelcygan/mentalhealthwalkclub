@@ -12,7 +12,7 @@ interface Props {
 
 const FALLBACK_AMOUNTS = [300, 500, 1000, 2500];
 
-export function PatronAmountPicker({ value, onChange, onConfirm, confirmLabel = "Continue" }: Props) {
+export function SupporterAmountPicker({ value, onChange, onConfirm, confirmLabel = "Continue" }: Props) {
   const [amounts, setAmounts] = useState<number[]>(FALLBACK_AMOUNTS);
   const [minCents, setMinCents] = useState(300);
   const [custom, setCustom] = useState<string>("");
@@ -21,16 +21,16 @@ export function PatronAmountPicker({ value, onChange, onConfirm, confirmLabel = 
     let active = true;
     supabase
       .from("membership_settings" as never)
-      .select("patron_suggested_amounts, patron_min_cents")
+      .select("supporter_suggested_amounts, supporter_min_cents")
       .eq("id", true)
       .maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
-        const d = data as unknown as { patron_suggested_amounts?: number[]; patron_min_cents?: number };
-        if (Array.isArray(d.patron_suggested_amounts) && d.patron_suggested_amounts.length) {
-          setAmounts(d.patron_suggested_amounts);
+        const d = data as unknown as { supporter_suggested_amounts?: number[]; supporter_min_cents?: number };
+        if (Array.isArray(d.supporter_suggested_amounts) && d.supporter_suggested_amounts.length) {
+          setAmounts(d.supporter_suggested_amounts);
         }
-        if (typeof d.patron_min_cents === "number") setMinCents(d.patron_min_cents);
+        if (typeof d.supporter_min_cents === "number") setMinCents(d.supporter_min_cents);
       });
     return () => {
       active = false;
@@ -99,7 +99,7 @@ export function PatronAmountPicker({ value, onChange, onConfirm, confirmLabel = 
         {confirmLabel} · ${(value / 100).toFixed(0)}/mo
       </Button>
       <p className="text-[11px] text-muted-foreground">
-        80% of every Patron dollar funds our nonprofit partner. Cancel or change the amount anytime.
+        100% of profits go to our nonprofit partner. Cancel or change anytime.
       </p>
     </div>
   );
