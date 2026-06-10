@@ -2544,10 +2544,10 @@ export type Database = {
       user_membership: {
         Args: { _env?: string; _user: string }
         Returns: {
-          is_patron: boolean
           is_plus: boolean
-          patron_cents: number
+          is_supporter: boolean
           plus_interval: string
+          supporter_cents: number
         }[]
       }
     }

@@ -1,39 +1,92 @@
 ## Goal
 
-Surface scheduled walks on the Home page so a user who has RSVP'd (or is hosting) sees them immediately, alongside a small dose of friend activity for walks worth joining.
+1. Rename "Patron" → "Supporter" everywhere (UI + code + DB).
+2. Change the policy from "80% funds our nonprofit partner" → "100% of profits go to our nonprofit partner" (real, not just copy).
+3. Make each Supporter donation easy to see as a distinct line item in Stripe so you can reconcile donations vs. Plus subscription revenue at any cadence.
+4. Note a future Transparency page with linked receipt PDFs (no code this turn).
 
-## What lands on Home
+---
 
-A new `UpcomingRail` block, placed directly under `TodayIsland` (top of the feed, above `BestWindow`):
+## 1. UI / copy rename (Patron → Supporter)
 
-1. **Your next walks** — events where you are host or have RSVP'd `going`, `starts_at >= now()`, ordered soonest first, up to 3.
-   - Card shows: cover, title, "Today 5:00 PM" / "Thu, Jun 11", venue, "You're going" or "You're hosting" pill, plus `going_count` if > 1.
-   - Tap → `/w/{slug}`.
-2. **Friends going this week** — up to 3 upcoming public/link_only events where ≥1 mutual-follow friend RSVP'd `going`, within next 7 days, excluding events you're already on. Shows friend avatar stack + "Maya + 2 going".
-   - Tap → `/w/{slug}`. Single "I'm in" quick-RSVP via existing `quickRsvpEvent`.
-3. **Empty state** — if no personal RSVPs and no friend activity, the whole rail hides (no clutter on Home). If only friend activity exists, render just that subsection.
+Update all user-facing strings in:
 
-Headline: "Upcoming" with subcopy "Walks you're on + friends going this week".
+- `src/components/billing/patron-card.tsx` — "Become a Patron" → "Become a Supporter"; "Giving $X/month"; tagline → **"Monthly donation. You choose the amount. 100% of profits fund our nonprofit partner."**
+- `src/components/billing/patron-amount-picker.tsx` — footer line → "100% of profits go to our nonprofit partner. Cancel or change anytime."
+- `src/lib/auth-prompt.tsx` — sheet titles, intent labels.
+- `src/routes/impact.tsx` — wall heading "Patron wall" → "Supporter wall"; copy mentioning 80%.
+- `src/routes/settings.tsx` — section labels.
+- `src/routes/admin.membership.tsx` — tiles ("Patrons" → "Supporters", "Patron MRR" → "Supporter MRR"), labels, settings draft labels.
+- `src/components/membership/founding-badge.tsx` — title "Founding Patron" → "Founding Supporter".
 
-## Technical Details
+Also rename component files to keep the codebase tidy:
+- `patron-card.tsx` → `supporter-card.tsx`
+- `patron-amount-picker.tsx` → `supporter-amount-picker.tsx`
+- `patron-checkout.tsx` → `supporter-checkout.tsx`
 
-- **New server fn** `getHomeUpcoming` in `src/lib/discover.functions.ts` (auth-protected). Returns `{ mine: UpcomingMine[]; friends: FriendsGoingEvent[] }`.
-  - `mine`: query `events` joined with `event_rsvps` filtered by `user_id = auth.uid() AND status='going'` UNION events where `host_user_id = auth.uid()`, `starts_at >= now()`, `status='published'`, limit 3.
-  - `friends`: reuse the logic in `discoverFriendsGoing` but narrow the window to next 7 days and exclude events already in `mine`. Cap at 3.
-- **New component** `src/components/home/upcoming-rail.tsx` — renders both subsections with existing card styling tokens (cream card, forest accents). Reuses `RsvpPill` for quick "I'm in".
-- **Home wiring** in `src/routes/index.tsx`: insert `<UpcomingRail />` between `<TodayIsland />` and `<BestWindow />`. Component self-hides when both lists are empty (returns `null`), so the layout stays clean for new users.
-- **Data fetching**: `useQuery` against the new server fn with a 60s `staleTime`; invalidate on `quickRsvpEvent` success so the rail updates after RSVP.
+(Update all imports.)
 
-## Out of Scope
+## 2. Code identifier rename
 
-- No changes to `/discover` (the "This week near you" section there stays).
-- No notifications, push, or calendar export from this rail.
-- No new RSVP states or copy overhaul.
-- No design-token or layout changes outside the new component.
+- `useMembership` hook: rename `isPatron` → `isSupporter`, `patronCents` → `supporterCents`, `patronStatus` → `supporterStatus`. Update consumers (`patron-card`, `auth-prompt`, etc.).
+- `auth-prompt.tsx`: `patronOpen` → `supporterOpen`, `openPatronFlow` → `openSupporterFlow`, localStorage `PLAN_INTENT_KEY` value `"patron"` → `"supporter"` (with one-time read of old `"patron"` value for backward compat).
+- `billing-analytics.ts`: event names `patron_*` → `supporter_*` (also accept legacy patron_* server-side for already-emitted events; we just add new names going forward).
+- `billing.functions.ts`: comments/labels.
 
-## Verify
+## 3. Database rename (migration)
 
-- As a user with a future RSVP: rail shows it first with correct time/venue.
-- As a user with no RSVPs but a friend RSVP'd this week: rail shows only the friends subsection.
-- As a brand-new user with neither: rail does not render and Home looks identical to today.
-- Quick-RSVP from the friends subsection moves the event into `mine` on next refetch.
+Single migration:
+- Add new enum/text value `'supporter'` to `subscription_kind` usage. Since the column is `text` (not enum), just `UPDATE subscriptions SET subscription_kind='supporter' WHERE subscription_kind='patron'`.
+- Update `normalizedPriceId` references: `'patron_custom'` → `'supporter_custom'` via `UPDATE subscriptions SET price_id='supporter_custom' WHERE price_id='patron_custom'`.
+- Rename table `patron_profile` → `supporter_profile`. Update RLS policies + GRANTs to reapply on new name (ALTER TABLE … RENAME preserves them, but verify).
+- Rename `membership_settings` columns: `patron_min_cents` → `supporter_min_cents`, `patron_suggested_amounts` → `supporter_suggested_amounts`, `patron_signups_paused` → `supporter_signups_paused`.
+- Update `public.user_membership()` SQL function: return columns `is_supporter`, `supporter_cents`; filter `subscription_kind='supporter'`.
+
+Update all server code that referenced the old names (`billing.functions.ts`, `impact.tsx`, `admin.membership.tsx`, `webhook.ts`, `patron-card.tsx`).
+
+## 4. Real 100%-of-profits policy
+
+In `src/lib/impact.functions.ts`:
+- Change `const DONATION_PERCENT = 50;` → `100`. (Note: existing code already labels the field `donation_percent`; bumping to 100 means we donate 100% of estimated **net profit** for the period — gross minus Stripe fees, the same formula already used in `estimateNetCents`.) Recompute logic remains the same shape; just the percent changes.
+- Admin recompute UI in `admin.insights.tsx` / `admin.membership.tsx` (if it shows 80%/50%) updated to show 100%.
+
+## 5. Stripe distinguishability for Supporter donations
+
+Goal: at a glance in the Stripe dashboard (or via Search API), you can see Supporter donations separately from Plus subscriptions.
+
+Currently the Supporter checkout uses `price_data` with `product: "patron"` (a Stripe Product id) and stamps `metadata.kind=patron` on session + subscription. Improvements:
+
+- Create a Stripe Product `supporter` via the payments tool (`payments--create_product`) named **"Supporter Donation"** with description "Monthly donation — 100% of profits routed to nonprofit partner." Use the human-readable id `supporter`.
+- Update `createSupporterCheckoutSession` in `billing.functions.ts`:
+  - `price_data.product: "supporter"` (replaces `"patron"`).
+  - Add `subscription_data.description: "Supporter Donation"` so the Subscription object in Stripe shows a clear label (Stripe doesn't propagate this to renewal charges, but the Subscription list view will read cleanly).
+  - Keep `metadata.kind="supporter"` on Session + Subscription + Customer for Search API queries (`subscriptions.search query="metadata['kind']:'supporter'"`).
+  - Set `subscription_data.metadata.donation: "true"` for an even simpler filter.
+
+After this, in Stripe you can:
+- Filter the Subscriptions list by product = "Supporter Donation".
+- Run `stripe.subscriptions.search({ query: "metadata['kind']:'supporter' AND status:'active'" })` to sum monthly donations programmatically.
+
+(Old `kind=patron` subscriptions stay searchable too; we'll backfill them via Stripe's `subscriptions.update` to set `metadata.kind='supporter'` in a one-off admin script — call out separately if needed.)
+
+## 6. Transparency page (future)
+
+Not built this turn. Recorded for later:
+- Extend `/impact` with a "Receipts" section.
+- Add `receipt_pdf_url text` column to `impact_donations`.
+- Admin uploads PDF to a new public Storage bucket `donation-receipts`; URL saved on the row.
+- Render a "View receipt" link next to each published donation row.
+
+---
+
+## Files touched this turn
+
+- DB migration: rename `patron_profile`, rename `membership_settings` columns, update `user_membership()`, data update on `subscriptions`.
+- Renamed files: `src/components/billing/supporter-card.tsx`, `supporter-amount-picker.tsx`, `supporter-checkout.tsx`.
+- Edited: `src/hooks/use-membership.ts`, `src/lib/auth-prompt.tsx`, `src/lib/billing.functions.ts`, `src/lib/billing-analytics.ts`, `src/lib/impact.functions.ts`, `src/routes/api/public/payments/webhook.ts`, `src/routes/settings.tsx`, `src/routes/impact.tsx`, `src/routes/admin.membership.tsx`, `src/components/membership/founding-badge.tsx`.
+- Stripe: `payments--create_product` for the new `supporter` product.
+
+## Out of scope
+
+- Migrating already-active "patron" Stripe Subscriptions to the new product (Stripe doesn't allow product swap mid-subscription cleanly). They keep working under the old product; metadata-based reads still resolve them.
+- Building the receipts/transparency page.
