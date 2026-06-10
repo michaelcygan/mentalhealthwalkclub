@@ -47,7 +47,7 @@ export const searchListen = createServerFn({ method: "GET" })
     const podcastsQ = wantKind(kinds, "podcast")
       ? supabase
           .from("podcast_episodes")
-          .select("id,title,image_url,duration_seconds,episode_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
+          .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
           .eq("is_active", true)
           .eq("podcast_feeds.is_active", true)
           .order("published_at", { ascending: false, nullsFirst: false })
@@ -66,7 +66,7 @@ export const searchListen = createServerFn({ method: "GET" })
     const guidedQ = wantKind(kinds, "guided")
       ? supabase
           .from("guided_tracks")
-          .select("id,title,host,cover_url,duration_seconds,mood_tags,category")
+          .select("id,title,host,cover_url,duration_seconds,audio_url,mood_tags,category")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .limit(limit)
@@ -86,7 +86,7 @@ export const searchListen = createServerFn({ method: "GET" })
       q && wantKind(kinds, "podcast")
         ? supabase
             .from("podcast_episodes")
-            .select("id,title,image_url,duration_seconds,episode_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
+            .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
             .eq("is_active", true)
             .eq("podcast_feeds.is_active", true)
             .or(`title.ilike.${like},podcast_feeds.title.ilike.${like},podcast_feeds.publisher.ilike.${like}`)
@@ -103,7 +103,7 @@ export const searchListen = createServerFn({ method: "GET" })
       q && wantKind(kinds, "guided")
         ? supabase
             .from("guided_tracks")
-            .select("id,title,host,cover_url,duration_seconds,mood_tags,category")
+            .select("id,title,host,cover_url,duration_seconds,audio_url,mood_tags,category")
             .eq("is_active", true)
             .or(`title.ilike.${like},host.ilike.${like},category.ilike.${like}`)
             .limit(limit)
@@ -120,7 +120,7 @@ export const searchListen = createServerFn({ method: "GET" })
 
     const hits: SearchHit[] = [];
 
-    for (const row of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; episode_url: string | null; mood_tags: string[] | null; podcast_feeds: { title: string | null; publisher: string | null } }>) {
+    for (const row of (pods.data ?? []) as Array<{ id: string; title: string; image_url: string | null; duration_seconds: number | null; episode_url: string | null; audio_url: string | null; mood_tags: string[] | null; podcast_feeds: { title: string | null; publisher: string | null } }>) {
       if (!moodOverlap(row.mood_tags, moods)) continue;
       hits.push({
         kind: "podcast",
@@ -131,6 +131,7 @@ export const searchListen = createServerFn({ method: "GET" })
         link: row.episode_url,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: row.audio_url ?? null,
       });
     }
     for (const row of (amb.data ?? []) as Array<{ id: string; title: string; artist: string | null; cover_path: string | null; duration_seconds: number | null; mood_tags: string[] | null; genre: string | null }>) {
@@ -144,9 +145,10 @@ export const searchListen = createServerFn({ method: "GET" })
         link: null,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: null,
       });
     }
-    for (const row of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; mood_tags: string[] | null; category: string | null }>) {
+    for (const row of (gd.data ?? []) as Array<{ id: string; title: string; host: string | null; cover_url: string | null; duration_seconds: number | null; audio_url: string | null; mood_tags: string[] | null; category: string | null }>) {
       if (!moodOverlap(row.mood_tags, moods)) continue;
       hits.push({
         kind: "guided",
@@ -157,6 +159,7 @@ export const searchListen = createServerFn({ method: "GET" })
         link: null,
         duration_seconds: row.duration_seconds,
         mood_tags: row.mood_tags ?? [],
+        audio_url: row.audio_url ?? null,
       });
     }
     for (const row of (bl.data ?? []) as Array<{ id: string; title: string; summary: string | null; link: string; image_url: string | null; blog_feeds: { publisher: string | null } }>) {
@@ -169,8 +172,10 @@ export const searchListen = createServerFn({ method: "GET" })
         link: row.link,
         duration_seconds: null,
         mood_tags: [],
+        audio_url: null,
       });
     }
+
 
     // Fire-and-forget search log (skip empty queries to keep it clean)
     if (q) {
