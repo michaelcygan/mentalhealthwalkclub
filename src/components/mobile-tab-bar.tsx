@@ -42,7 +42,7 @@ export function MobileTabBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [composeOpen]);
 
-  const showCompose = !!user && composeAllowed(path);
+  const showCompose = composeAllowed(path);
   const go = (to: "/walk" | "/walk/new") => {
     setComposeOpen(false);
     haptics.tap();
