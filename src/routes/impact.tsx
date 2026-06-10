@@ -15,7 +15,7 @@ export const Route = createFileRoute("/impact")({
       {
         name: "description",
         content:
-          "50% of every Walk Club Plus dollar funds our nonprofit partner. 100% of Supporter donations go straight to it. See the running total and methodology.",
+          "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too. See the running total and methodology.",
       },
       { property: "og:title", content: "Our Impact — Mental Health Walk Club" },
       {
