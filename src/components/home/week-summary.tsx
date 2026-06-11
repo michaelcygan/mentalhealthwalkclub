@@ -1,70 +1,80 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 
 interface DayBar { label: string; minutes: number; isToday: boolean }
+interface Summary { bars: DayBar[]; totalMin: number; count: number; miles: number; deltaMin: number | null; streak: number }
 
 export function WeekSummary() {
   const { user } = useAuth();
-  const [bars, setBars] = useState<DayBar[]>([]);
-  const [totalMin, setTotalMin] = useState(0);
-  const [count, setCount] = useState(0);
-  const [miles, setMiles] = useState(0);
-  const [deltaMin, setDeltaMin] = useState<number | null>(null);
-  const [streak, setStreak] = useState(0);
 
-  useEffect(() => {
-    if (!user) return;
-    const start14 = new Date(); start14.setDate(start14.getDate() - 13); start14.setHours(0, 0, 0, 0);
-    supabase
-      .from("walk_sessions")
-      .select("id,started_at,duration_seconds,distance_meters,status")
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .gte("started_at", start14.toISOString())
-      .then(({ data }) => {
-        const rows = data ?? [];
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 6);
-        const prev7Start = new Date(today); prev7Start.setDate(today.getDate() - 13);
-        const prev7End = new Date(today); prev7End.setDate(today.getDate() - 7);
+  const { data } = useQuery<Summary>({
+    queryKey: ["home", "week-summary", user?.id],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const start14 = new Date(); start14.setDate(start14.getDate() - 13); start14.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from("walk_sessions")
+        .select("id,started_at,duration_seconds,distance_meters,status")
+        .eq("user_id", user!.id)
+        .eq("status", "completed")
+        .gte("started_at", start14.toISOString());
+      const rows = data ?? [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 6);
+      const prev7Start = new Date(today); prev7Start.setDate(today.getDate() - 13);
+      const prev7End = new Date(today); prev7End.setDate(today.getDate() - 7);
 
-        const dayMins = new Array(7).fill(0);
-        const dayHas = new Array(7).fill(false);
-        let prevMin = 0; let curMin = 0; let curMiles = 0; let curCount = 0;
+      const dayMins = new Array(7).fill(0);
+      const dayHas = new Array(7).fill(false);
+      let prevMin = 0; let curMin = 0; let curMiles = 0; let curCount = 0;
 
-        for (const r of rows) {
-          const t = new Date(r.started_at as string);
-          const m = Math.round(((r.duration_seconds as number) ?? 0) / 60);
-          const d = ((r.distance_meters as number | null) ?? 0) / 1609.344;
-          if (t >= sevenAgo && t <= new Date(today.getTime() + 86400000)) {
-            const idx = Math.min(6, Math.max(0, Math.floor((t.getTime() - sevenAgo.getTime()) / 86400000)));
-            dayMins[idx] += m;
-            dayHas[idx] = true;
-            curMin += m; curMiles += d; curCount += 1;
-          } else if (t >= prev7Start && t < prev7End) {
-            prevMin += m;
-          }
+      for (const r of rows) {
+        const t = new Date(r.started_at as string);
+        const m = Math.round(((r.duration_seconds as number) ?? 0) / 60);
+        const d = ((r.distance_meters as number | null) ?? 0) / 1609.344;
+        if (t >= sevenAgo && t <= new Date(today.getTime() + 86400000)) {
+          const idx = Math.min(6, Math.max(0, Math.floor((t.getTime() - sevenAgo.getTime()) / 86400000)));
+          dayMins[idx] += m;
+          dayHas[idx] = true;
+          curMin += m; curMiles += d; curCount += 1;
+        } else if (t >= prev7Start && t < prev7End) {
+          prevMin += m;
         }
-        const wkdays = ["S","M","T","W","T","F","S"];
-        const out: DayBar[] = [];
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(sevenAgo); d.setDate(sevenAgo.getDate() + i);
-          out.push({ label: wkdays[d.getDay()], minutes: dayMins[i], isToday: d.getTime() === today.getTime() });
-        }
-        setBars(out);
-        setTotalMin(curMin); setCount(curCount); setMiles(Math.round(curMiles * 10) / 10);
-        setDeltaMin(curMin - prevMin);
-        // streak: consecutive days walked ending today (or yesterday)
-        let s = 0;
-        for (let i = 6; i >= 0; i--) { if (dayHas[i]) s++; else break; }
-        setStreak(s);
-      });
-  }, [user]);
+      }
+      const wkdays = ["S","M","T","W","T","F","S"];
+      const out: DayBar[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(sevenAgo); d.setDate(sevenAgo.getDate() + i);
+        out.push({ label: wkdays[d.getDay()], minutes: dayMins[i], isToday: d.getTime() === today.getTime() });
+      }
+      let s = 0;
+      for (let i = 6; i >= 0; i--) { if (dayHas[i]) s++; else break; }
+      return {
+        bars: out,
+        totalMin: curMin,
+        count: curCount,
+        miles: Math.round(curMiles * 10) / 10,
+        deltaMin: curMin - prevMin,
+        streak: s,
+      };
+    },
+  });
 
-  const max = Math.max(15, ...bars.map((b) => b.minutes));
+  const bars = data?.bars ?? [];
+  const totalMin = data?.totalMin ?? 0;
+  const count = data?.count ?? 0;
+  const miles = data?.miles ?? 0;
+  const deltaMin = data?.deltaMin ?? null;
+  const streak = data?.streak ?? 0;
+
+  const max = useMemo(() => Math.max(15, ...bars.map((b) => b.minutes)), [bars]);
   const delta = deltaMin ?? 0;
   const deltaChip =
     deltaMin === null
