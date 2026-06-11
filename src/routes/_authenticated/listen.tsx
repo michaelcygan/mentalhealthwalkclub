@@ -28,6 +28,7 @@ import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
 import { UpsellSheet } from "@/components/membership/upsell-sheet";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
