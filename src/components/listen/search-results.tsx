@@ -1,6 +1,8 @@
 import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import type { SearchHit, SearchKind } from "@/lib/listen-search.functions";
 import { CoverThumb } from "@/components/listen/cover-thumb";
+import { Shimmer } from "@/components/ui/shimmer";
+import { EmptyNote } from "@/components/ui/empty-note";
 import { usePlayOrOpen } from "@/lib/play-helpers";
 import { TileActionsMenu } from "@/components/listen/tile-actions";
 
@@ -29,24 +31,27 @@ export function SearchResults({
     return (
       <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-2xl bg-card" />
+          <Shimmer key={i} className="h-16 w-full" />
         ))}
       </div>
     );
   }
   if (hits.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-border bg-card/60 p-6 text-center">
-        <p className="font-serif text-base">Nothing matched “{q}”.</p>
-        <p className="mt-1 text-xs text-muted-foreground">Try fewer words or a different spelling.</p>
-        <button
-          type="button"
-          onClick={onSuggest}
-          className="mt-3 inline-flex items-center gap-1 rounded-full bg-forest px-3 py-1.5 text-xs text-primary-foreground"
-        >
-          Suggest content
-        </button>
-      </div>
+      <EmptyNote
+        icon={<BookOpen className="h-5 w-5" />}
+        title={`Nothing matched “${q}”.`}
+        hint="Try fewer words or a different spelling."
+        action={
+          <button
+            type="button"
+            onClick={onSuggest}
+            className="inline-flex items-center gap-1 rounded-full bg-forest px-4 py-1.5 text-xs font-medium text-primary-foreground transition active:scale-95"
+          >
+            Suggest content
+          </button>
+        }
+      />
     );
   }
   const grouped: Record<SearchKind, SearchHit[]> = { podcast: [], ambient: [], guided: [], blog: [] };
