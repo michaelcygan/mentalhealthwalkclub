@@ -424,36 +424,66 @@ export const getHomeUpcoming = createServerFn({ method: "GET" })
     const nowIso = now.toISOString();
     const weekIso = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Hosted
-    const { data: hosted } = await supabase
-      .from("events")
-      .select("id,slug,title,starts_at,timezone,venue_name,city,image_url,attendee_count")
-      .eq("host_user_id", userId)
-      .eq("status", "published")
-      .gte("starts_at", nowIso)
-      .order("starts_at", { ascending: true })
-      .limit(5);
-
-    // RSVP'd going
-    const { data: rsvps } = await supabase
-      .from("event_rsvps")
-      .select("event_id")
-      .eq("user_id", userId)
-      .eq("status", "going");
-    const rsvpIds = (rsvps ?? []).map((r) => r.event_id);
-
-    let going: typeof hosted = [];
-    if (rsvpIds.length) {
-      const { data } = await supabase
+    // Group 1 — independent reads in parallel.
+    const [hostedRes, rsvpsRes, friendRowsRes, myCirclesRes] = await Promise.all([
+      supabase
         .from("events")
         .select("id,slug,title,starts_at,timezone,venue_name,city,image_url,attendee_count")
-        .in("id", rsvpIds)
+        .eq("host_user_id", userId)
         .eq("status", "published")
         .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true })
-        .limit(5);
-      going = data ?? [];
-    }
+        .limit(5),
+      supabase
+        .from("event_rsvps")
+        .select("event_id")
+        .eq("user_id", userId)
+        .eq("status", "going"),
+      supabase
+        .from("friendships")
+        .select("user_low,user_high")
+        .eq("status", "accepted")
+        .or(`user_low.eq.${userId},user_high.eq.${userId}`),
+      supabase
+        .from("circle_members")
+        .select("circle_id")
+        .eq("user_id", userId)
+        .eq("status", "active"),
+    ]);
+    const hosted = hostedRes.data;
+    const rsvps = rsvpsRes.data;
+    const friendRows = friendRowsRes.data;
+    const myCircles = myCirclesRes.data;
+    const rsvpIds = (rsvps ?? []).map((r) => r.event_id);
+    const friendIds = Array.from(
+      new Set((friendRows ?? []).map((r) => (r.user_low === userId ? r.user_high : r.user_low))),
+    );
+    const circleIds = (myCircles ?? []).map((r) => r.circle_id);
+
+    // Group 2 — going events + circle-mates, again in parallel.
+    const [goingRes, mateRowsRes] = await Promise.all([
+      rsvpIds.length
+        ? supabase
+            .from("events")
+            .select("id,slug,title,starts_at,timezone,venue_name,city,image_url,attendee_count")
+            .in("id", rsvpIds)
+            .eq("status", "published")
+            .gte("starts_at", nowIso)
+            .order("starts_at", { ascending: true })
+            .limit(5)
+        : Promise.resolve({ data: [] as typeof hosted }),
+      circleIds.length
+        ? supabase
+            .from("circle_members")
+            .select("user_id")
+            .in("circle_id", circleIds)
+            .eq("status", "active")
+        : Promise.resolve({ data: [] as Array<{ user_id: string }> }),
+    ]);
+    const going = goingRes.data ?? [];
+    const mateIds = Array.from(
+      new Set((mateRowsRes.data ?? []).map((r) => r.user_id).filter((id) => id !== userId)),
+    );
 
     const seen = new Set<string>();
     const mine: HomeUpcomingMine[] = [];
@@ -470,34 +500,6 @@ export const getHomeUpcoming = createServerFn({ method: "GET" })
     mine.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
     const mineTop = mine.slice(0, 3);
     const mineIds = new Set(mineTop.map((m) => m.id));
-
-    // Friends going this week (reuse logic, narrow window, exclude mine)
-    const { data: friendRows } = await supabase
-      .from("friendships")
-      .select("user_low,user_high")
-      .eq("status", "accepted")
-      .or(`user_low.eq.${userId},user_high.eq.${userId}`);
-    const friendIds = Array.from(
-      new Set((friendRows ?? []).map((r) => (r.user_low === userId ? r.user_high : r.user_low))),
-    );
-
-    const { data: myCircles } = await supabase
-      .from("circle_members")
-      .select("circle_id")
-      .eq("user_id", userId)
-      .eq("status", "active");
-    const circleIds = (myCircles ?? []).map((r) => r.circle_id);
-    let mateIds: string[] = [];
-    if (circleIds.length) {
-      const { data: mateRows } = await supabase
-        .from("circle_members")
-        .select("user_id")
-        .in("circle_id", circleIds)
-        .eq("status", "active");
-      mateIds = Array.from(
-        new Set((mateRows ?? []).map((r) => r.user_id).filter((id) => id !== userId)),
-      );
-    }
     const connectedIds = Array.from(new Set([...friendIds, ...mateIds]));
 
     let friends: FriendGoingEvent[] = [];
