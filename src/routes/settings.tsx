@@ -30,18 +30,10 @@ interface ProfileRow {
   lng: number | null;
   bio: string | null;
   is_private: boolean;
-}
-
-type NotifPrefs = { walk_reminders: boolean; friend_rsvps: boolean; weekly_recap: boolean };
-
-const NOTIF_KEY = "mhwc:notif-prefs:v1";
-
-function loadNotifs(): NotifPrefs {
-  try {
-    const raw = localStorage.getItem(NOTIF_KEY);
-    if (raw) return JSON.parse(raw) as NotifPrefs;
-  } catch { /* empty */ }
-  return { walk_reminders: true, friend_rsvps: true, weekly_recap: true };
+  notify_friend_requests: boolean;
+  notify_high_fives: boolean;
+  notify_rsvps: boolean;
+  notify_broadcasts: boolean;
 }
 
 function SettingsPage() {
