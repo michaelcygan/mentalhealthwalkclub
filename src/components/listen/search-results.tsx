@@ -1,5 +1,7 @@
-import { Headphones, Waves, Music, BookOpen, ExternalLink } from "lucide-react";
+import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import type { SearchHit, SearchKind } from "@/lib/listen-search.functions";
+import { CoverThumb } from "@/components/listen/cover-thumb";
+import { usePlayOrOpen } from "@/lib/play-helpers";
 
 const KIND_META: Record<SearchKind, { label: string; Icon: typeof Headphones }> = {
   podcast: { label: "Podcasts", Icon: Headphones },
@@ -21,6 +23,7 @@ export function SearchResults({
   q: string;
   onSuggest: () => void;
 }) {
+  const playOrOpen = usePlayOrOpen();
   if (loading) {
     return (
       <div className="space-y-2">
@@ -62,27 +65,23 @@ export function SearchResults({
             </h3>
             <ul className="space-y-2">
               {items.map((h) => (
-                <li key={`${h.kind}-${h.id}`} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-forest/10">
-                    {h.cover ? <img src={h.cover} alt="" className="h-full w-full object-cover" /> : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 font-serif text-sm leading-tight">{h.title}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {h.subtitle ?? ""}{h.duration_seconds ? ` · ${fmtMins(h.duration_seconds)}` : ""}
-                    </p>
-                  </div>
-                  {h.link && (
-                    <a
-                      href={h.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full p-2 text-muted-foreground hover:text-foreground"
-                      aria-label="Open"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  )}
+                <li key={`${h.kind}-${h.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => playOrOpen(h)}
+                    aria-label={h.kind === "blog" ? `Read ${h.title}` : `Play ${h.title}`}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-soft transition active:scale-[0.99] hover:-translate-y-0.5"
+                  >
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+                      <CoverThumb src={h.cover} title={h.title} kind={h.kind} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 font-serif text-sm leading-tight">{h.title}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {h.subtitle ?? ""}{h.duration_seconds ? ` · ${fmtMins(h.duration_seconds)}` : ""}
+                      </p>
+                    </div>
+                  </button>
                 </li>
               ))}
             </ul>

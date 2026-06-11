@@ -26,6 +26,8 @@ import { SuggestContentDialog } from "@/components/listen/suggest-content-dialog
 import { searchListen, type SearchHit } from "@/lib/listen-search.functions";
 import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
 import { UpsellSheet } from "@/components/membership/upsell-sheet";
+import { CoverThumb } from "@/components/listen/cover-thumb";
+import { usePlayOrOpen } from "@/lib/play-helpers";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
@@ -137,6 +139,7 @@ function ListenPage() {
     navigate({ to: "/listen", search: (prev: z.infer<typeof SearchSchema>) => ({ ...prev, ...patch }), replace: true });
 
   const setTab = (t: "listen" | "read" | "yours") => updateSearch({ tab: t });
+  const playOrOpen = usePlayOrOpen();
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
@@ -253,7 +256,19 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.podcasts ?? []).map((e) => (
-                      <Tile key={e.id} title={e.title} sub={fmtMins(e.duration_seconds)} cover={e.image_url ?? null} featured={!!e.is_featured} />
+                      <Tile
+                        key={e.id}
+                        title={e.title}
+                        sub={fmtMins(e.duration_seconds)}
+                        cover={e.image_url ?? null}
+                        kind="podcast"
+                        featured={!!e.is_featured}
+                        onClick={() => playOrOpen({
+                          kind: "podcast", id: e.id, title: e.title,
+                          cover: e.image_url, audio_url: e.audio_url ?? null,
+                          link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
+                        })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
@@ -263,7 +278,15 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.ambient ?? []).map((t) => (
-                      <Tile key={t.id} title={t.title} sub={t.artist ?? fmtMins(t.duration_seconds)} cover={null} featured={!!t.is_featured} />
+                      <Tile
+                        key={t.id}
+                        title={t.title}
+                        sub={t.artist ?? fmtMins(t.duration_seconds)}
+                        cover={t.cover_path ?? null}
+                        kind="ambient"
+                        featured={!!t.is_featured}
+                        onClick={() => playOrOpen({ kind: "ambient", id: t.id, title: t.title, subtitle: t.artist })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
@@ -273,11 +296,24 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.guided ?? []).map((g) => (
-                      <Tile key={g.id} title={g.title} sub={g.host ?? fmtMins(g.duration_seconds)} cover={g.cover_url ?? null} featured={!!g.is_featured} />
+                      <Tile
+                        key={g.id}
+                        title={g.title}
+                        sub={g.host ?? fmtMins(g.duration_seconds)}
+                        cover={g.cover_url ?? null}
+                        kind="guided"
+                        featured={!!g.is_featured}
+                        onClick={() => playOrOpen({
+                          kind: "guided", id: g.id, title: g.title, subtitle: g.host,
+                          cover: g.cover_url, audio_url: g.audio_url ?? null,
+                          duration_seconds: g.duration_seconds,
+                        })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
               </Section>
+
 
               <div className="mt-2 text-center">
                 <button
@@ -400,11 +436,17 @@ function HorizontalRail({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Tile({ title, sub, cover, featured }: { title: string; sub: string; cover: string | null; featured?: boolean }) {
-  return (
-    <div className="relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 shadow-soft">
-      <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-forest/10">
-        {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : null}
+function Tile({
+  title, sub, cover, featured, onClick, kind = "podcast",
+}: {
+  title: string; sub: string; cover: string | null; featured?: boolean;
+  onClick?: () => void;
+  kind?: "podcast" | "ambient" | "guided" | "blog";
+}) {
+  const inner = (
+    <>
+      <div className="mb-2 aspect-square overflow-hidden rounded-xl">
+        <CoverThumb src={cover} title={title} kind={kind} />
       </div>
       {featured && (
         <span className="absolute right-3 top-3 rounded-full bg-forest/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary-foreground">
@@ -413,6 +455,15 @@ function Tile({ title, sub, cover, featured }: { title: string; sub: string; cov
       )}
       <p className="truncate font-serif text-sm">{title}</p>
       <p className="truncate text-[11px] text-muted-foreground">{sub}</p>
-    </div>
+    </>
   );
+  const cls = "relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5";
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={`Play ${title}`} className={cls}>
+        {inner}
+      </button>
+    );
+  }
+  return <div className={cls}>{inner}</div>;
 }

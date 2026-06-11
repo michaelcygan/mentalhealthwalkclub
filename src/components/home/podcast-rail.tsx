@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { useServerFn } from "@tanstack/react-start";
 import { recentPodcastEpisodes, type PodcastEpisodeCard } from "@/lib/podcasts.functions";
 import { Headphones } from "lucide-react";
+import { CoverThumb } from "@/components/listen/cover-thumb";
+import { usePlayOrOpen } from "@/lib/play-helpers";
 
 function formatDuration(s: number): string {
   if (!s) return "";
@@ -15,6 +17,7 @@ function formatDuration(s: number): string {
 export function PodcastRail() {
   const fetcher = useServerFn(recentPodcastEpisodes);
   const [items, setItems] = useState<PodcastEpisodeCard[] | null>(null);
+  const playOrOpen = usePlayOrOpen();
 
   useEffect(() => {
     fetcher({ data: { limit: 8 } }).then(setItems).catch(() => setItems([]));
@@ -33,19 +36,20 @@ export function PodcastRail() {
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((ep) => (
-          <Link
+          <button
             key={ep.id}
-            to="/listen/$id"
-            params={{ id: ep.id }}
-            className="block w-44 shrink-0"
+            type="button"
+            onClick={() => playOrOpen({
+              kind: "podcast", id: ep.id, title: ep.title, subtitle: ep.publisher,
+              cover: ep.image_url, audio_url: ep.audio_url, link: ep.episode_url,
+              duration_seconds: ep.duration_seconds,
+            })}
+            aria-label={`Play ${ep.title}`}
+            className="block w-44 shrink-0 text-left"
           >
-            <Card className="overflow-hidden rounded-2xl border-border bg-card/90 shadow-soft backdrop-blur-sm transition hover:-translate-y-0.5">
-              <div className="aspect-square w-full bg-muted">
-                {ep.image_url ? (
-                  <img src={ep.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground"><Headphones className="h-8 w-8" /></div>
-                )}
+            <Card className="overflow-hidden rounded-2xl border-border bg-card/90 shadow-soft backdrop-blur-sm transition active:scale-[0.98] hover:-translate-y-0.5">
+              <div className="aspect-square w-full">
+                <CoverThumb src={ep.image_url} title={ep.title} kind="podcast" />
               </div>
               <div className="p-3">
                 <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{ep.title}</p>
@@ -54,7 +58,7 @@ export function PodcastRail() {
                 </p>
               </div>
             </Card>
-          </Link>
+          </button>
         ))}
       </div>
     </section>
