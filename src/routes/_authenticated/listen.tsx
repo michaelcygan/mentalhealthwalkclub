@@ -300,21 +300,25 @@ function ListenPage() {
               <Section title="Guided walks" icon={<Music className="h-4 w-4 text-forest" />}>
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
-                    {(catalog?.guided ?? []).map((g) => (
-                      <Tile
-                        key={g.id}
-                        title={g.title}
-                        sub={g.host ?? fmtMins(g.duration_seconds)}
-                        cover={g.cover_url ?? null}
-                        kind="guided"
-                        featured={!!g.is_featured}
-                        onClick={() => playOrOpen({
-                          kind: "guided", id: g.id, title: g.title, subtitle: g.host,
-                          cover: g.cover_url, audio_url: g.audio_url ?? null,
-                          duration_seconds: g.duration_seconds,
-                        })}
-                      />
-                    ))}
+                    {(catalog?.guided ?? []).map((g) => {
+                      const item = {
+                        kind: "guided" as const, id: g.id, title: g.title, subtitle: g.host,
+                        cover: g.cover_url, audio_url: g.audio_url ?? null,
+                        duration_seconds: g.duration_seconds,
+                      };
+                      return (
+                        <Tile
+                          key={g.id}
+                          title={g.title}
+                          sub={g.host ?? fmtMins(g.duration_seconds)}
+                          cover={g.cover_url ?? null}
+                          kind="guided"
+                          featured={!!g.is_featured}
+                          onClick={() => playOrOpen(item)}
+                          actionItem={item}
+                        />
+                      );
+                    })}
                   </HorizontalRail>
                 )}
               </Section>
