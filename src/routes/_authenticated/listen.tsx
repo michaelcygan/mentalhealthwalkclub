@@ -256,21 +256,25 @@ function ListenPage() {
               <Section title="Podcasts for walking" icon={<Mic2 className="h-4 w-4 text-forest" />}>
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
-                    {(catalog?.podcasts ?? []).map((e) => (
-                      <Tile
-                        key={e.id}
-                        title={e.title}
-                        sub={fmtMins(e.duration_seconds)}
-                        cover={e.image_url ?? null}
-                        kind="podcast"
-                        featured={!!e.is_featured}
-                        onClick={() => playOrOpen({
-                          kind: "podcast", id: e.id, title: e.title,
-                          cover: e.image_url, audio_url: e.audio_url ?? null,
-                          link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
-                        })}
-                      />
-                    ))}
+                    {(catalog?.podcasts ?? []).map((e) => {
+                      const item = {
+                        kind: "podcast" as const, id: e.id, title: e.title,
+                        cover: e.image_url, audio_url: e.audio_url ?? null,
+                        link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
+                      };
+                      return (
+                        <Tile
+                          key={e.id}
+                          title={e.title}
+                          sub={fmtMins(e.duration_seconds)}
+                          cover={e.image_url ?? null}
+                          kind="podcast"
+                          featured={!!e.is_featured}
+                          onClick={() => playOrOpen(item)}
+                          actionItem={item}
+                        />
+                      );
+                    })}
                   </HorizontalRail>
                 )}
               </Section>
