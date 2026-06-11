@@ -225,11 +225,12 @@ export const sendBroadcast = createServerFn({ method: "POST" })
 const ListBroadcastsInput = z.object({ eventId: z.string().uuid() });
 
 export const listBroadcasts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d) => ListBroadcastsInput.parse(d))
-  .handler(async ({ data }) => {
-    // user-scoped: RLS on event_broadcasts already restricts to visible events
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows } = await supabaseAdmin
+  .handler(async ({ data, context }) => {
+    // user-scoped: RLS on event_broadcasts restricts to events the caller can see
+    const { supabase } = context;
+    const { data: rows } = await supabase
       .from("event_broadcasts")
       .select("id,body,created_at,author_id")
       .eq("event_id", data.eventId)
@@ -237,13 +238,13 @@ export const listBroadcasts = createServerFn({ method: "GET" })
       .limit(30);
     const ids = Array.from(new Set((rows ?? []).map((r) => r.author_id)));
     const { data: profs } = ids.length
-      ? await supabaseAdmin.from("profiles").select("id,display_name,avatar_url").in("id", ids)
+      ? await supabase.from("profiles").select("id,display_name,avatar_url").in("id", ids)
       : { data: [] as Array<{ id: string; display_name: string | null; avatar_url: string | null }> };
     const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
 
     const broadcastIds = (rows ?? []).map((r) => r.id);
     const { data: reactions } = broadcastIds.length
-      ? await supabaseAdmin
+      ? await supabase
           .from("event_broadcast_reactions")
           .select("broadcast_id,emoji,user_id")
           .in("broadcast_id", broadcastIds)
