@@ -18,15 +18,15 @@ Status legend: ✅ shipped · 🟡 partial · ⬜ pending
 
 ## Tier 2 — High-impact moments
 
-8. ⬜ **Walk completion screen** — new `walk.recap.tsx` with softlanding flow.
-9. ⬜ **Today Island upgrades** — time-of-day color shift on `AmbientBackdrop` + 7-dot streak chip.
+8. ✅ **Walk recap softlanding** — `w.$code.recap.tsx` now opens with a staggered fade, a single serif-italic sentence keyed to the walk's most meaningful stat, h-display title, shadow-rest CTA. Honors reduced motion.
+9. ✅ **Today Island time-of-day shift** — `AmbientBackdrop` carries a phase wash (dawn warm / day neutral / dusk amber+lavender / night cool), 1.2s eased transition between phases. 7-dot streak already shipped.
 10. 🟡 **Now Playing sheet refinements**
-    - ✅ **Sleep timer** — Moon pill cycles Off → 15 → 30 → 60 → Off. Player context handles fade-out + auto-stop. Live countdown in pill.
+    - ✅ **Sleep timer** — Moon pill cycles Off → 15 → 30 → 60 → Off with fade-out auto-stop.
     - ⬜ Inner glow on cover (color extraction)
     - ⬜ Thinner scrubber, larger thumb on press
-11. ✅ **Page transitions** — `RoutedOutlet` with `AnimatePresence`, 4px slide + fade, ~180ms, respects `prefers-reduced-motion`.
-12. ⬜ **Pull-to-refresh** — wire existing `use-pull-to-refresh` on home & journal with rotating leaf indicator.
-13. ⬜ **Share cards (OG)** — audit `walk.$code.og.ts` for typography parity.
+11. ✅ **Page transitions** — `RoutedOutlet` cross-fade, ~180ms, respects `prefers-reduced-motion`.
+12. ⬜ **Pull-to-refresh** — home & journal (post-launch nice-to-have).
+13. ✅ **Share cards (OG)** — Fraunces serif title with -1 letterspacing, warmer gradient, soft sun glow, grain overlay, italic tagline footer. Matches in-app voice.
 
 ---
 
@@ -36,7 +36,7 @@ Status legend: ✅ shipped · 🟡 partial · ⬜ pending
 15. ⬜ Long-press preview on listen tiles
 16. ⬜ Quiet mode toggle
 17. ⬜ Breathing logo loading screen
-18. 🟡 **404 / error rewrites** — 404 now uses h-display, italic serif tone, shadow-rest CTA. Error boundary still default.
+18. ✅ **404 / error rewrites** — both 404 and `defaultErrorComponent` use h-display + serif-italic voice ("A small stumble", "Take a breath").
 
 ---
 
