@@ -59,7 +59,9 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
     return;
   }
 
-  await getSupabase()
+  // The subscriptions upsert and the supporter_profile mirror touch
+  // different tables and don't depend on each other — run in parallel.
+  const subUpsert = getSupabase()
     .from("subscriptions")
     .upsert(
       {
@@ -85,11 +87,11 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
       { onConflict: "stripe_subscription_id" },
     );
 
-  // Mirror supporter state into supporter_profile so the wall + admin can read it.
+  let supporterMirror: Promise<unknown> = Promise.resolve();
   if (kind === "supporter") {
     const active = ["active", "trialing", "past_due"].includes(subscription.status);
     if (active) {
-      await getSupabase()
+      supporterMirror = getSupabase()
         .from("supporter_profile")
         .upsert(
           {
@@ -100,12 +102,14 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
           { onConflict: "user_id" },
         );
     } else {
-      await getSupabase()
+      supporterMirror = getSupabase()
         .from("supporter_profile")
         .update({ monthly_amount_cents: 0, updated_at: new Date().toISOString() })
         .eq("user_id", userId);
     }
   }
+
+  await Promise.all([subUpsert, supporterMirror]);
 }
 
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, eventCreated: number) {

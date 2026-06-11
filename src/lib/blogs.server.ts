@@ -221,9 +221,16 @@ export async function syncAllActiveBlogFeeds() {
     .from("blog_feeds")
     .select("id")
     .eq("is_active", true);
+  const list = feeds ?? [];
+  // Concurrency cap: 5 feeds in flight. Serial loops hold worker open for
+  // N * (fetch + parse + upsert) and risk timeout; full Promise.all can
+  // spike DB writes. allSettled + cap balances throughput and back-pressure.
+  const CONCURRENCY = 5;
   let ok = 0, failed = 0;
-  for (const f of feeds ?? []) {
-    try { await syncBlogFeedById(f.id); ok++; } catch { failed++; }
+  for (let i = 0; i < list.length; i += CONCURRENCY) {
+    const batch = list.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(batch.map((f) => syncBlogFeedById(f.id)));
+    for (const r of results) r.status === "fulfilled" ? ok++ : failed++;
   }
-  return { scanned: feeds?.length ?? 0, ok, failed };
+  return { scanned: list.length, ok, failed };
 }
