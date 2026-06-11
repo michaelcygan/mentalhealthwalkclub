@@ -155,9 +155,15 @@ function TabBar() {
         </ul>
 
         {user && (
+          <div className="mt-1">
+            <NotificationsBell variant="sidebar" />
+          </div>
+        )}
+
+        {user && (
           <Link
             to="/support"
-            className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent/60"
+            className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent/60"
           >
             <LifeBuoy className="h-4.5 w-4.5" />
             Get support
