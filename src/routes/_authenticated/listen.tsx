@@ -26,6 +26,8 @@ import { SuggestContentDialog } from "@/components/listen/suggest-content-dialog
 import { searchListen, type SearchHit } from "@/lib/listen-search.functions";
 import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
 import { UpsellSheet } from "@/components/membership/upsell-sheet";
+import { CoverThumb } from "@/components/listen/cover-thumb";
+import { usePlayOrOpen } from "@/lib/play-helpers";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
