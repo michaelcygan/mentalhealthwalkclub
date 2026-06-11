@@ -1551,6 +1551,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          entity_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       places: {
         Row: {
           address: string | null
@@ -1803,6 +1842,10 @@ export type Database = {
           is_host_account: boolean
           is_private: boolean
           location_label: string | null
+          notify_broadcasts: boolean
+          notify_friend_requests: boolean
+          notify_high_fives: boolean
+          notify_rsvps: boolean
           onboarded_at: string | null
           region: string | null
           state: string | null
@@ -1824,6 +1867,10 @@ export type Database = {
           is_host_account?: boolean
           is_private?: boolean
           location_label?: string | null
+          notify_broadcasts?: boolean
+          notify_friend_requests?: boolean
+          notify_high_fives?: boolean
+          notify_rsvps?: boolean
           onboarded_at?: string | null
           region?: string | null
           state?: string | null
@@ -1845,6 +1892,10 @@ export type Database = {
           is_host_account?: boolean
           is_private?: boolean
           location_label?: string | null
+          notify_broadcasts?: boolean
+          notify_friend_requests?: boolean
+          notify_high_fives?: boolean
+          notify_rsvps?: boolean
           onboarded_at?: string | null
           region?: string | null
           state?: string | null
@@ -2510,6 +2561,18 @@ export type Database = {
         Returns: boolean
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      create_notification: {
+        Args: {
+          _actor_id: string
+          _body: string
+          _entity_id: string
+          _kind: Database["public"]["Enums"]["notification_kind"]
+          _link: string
+          _title: string
+          _user_id: string
+        }
+        Returns: string
+      }
       evaluate_badges: {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
@@ -2568,6 +2631,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "member" | "facilitator"
+      notification_kind:
+        | "friend_request"
+        | "friend_accepted"
+        | "high_five"
+        | "walk_rsvp"
+        | "walk_broadcast"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2696,6 +2765,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "member", "facilitator"],
+      notification_kind: [
+        "friend_request",
+        "friend_accepted",
+        "high_five",
+        "walk_rsvp",
+        "walk_broadcast",
+      ],
     },
   },
 } as const

@@ -12,6 +12,8 @@ import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
 import { Share2, CalendarPlus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AttendeeStack } from "@/components/walk-page/attendee-stack";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyHostOfRsvp } from "@/lib/notifications.functions";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
@@ -289,6 +291,7 @@ function RsvpRow({
     return () => { cancel = true; };
   }, [eventId, user]);
 
+  const notifyHost = useServerFn(notifyHostOfRsvp);
   const setLoggedIn = async (next: RsvpStatus) => {
     if (!user || busy) return;
     setBusy(true);
@@ -305,6 +308,9 @@ function RsvpRow({
       setMy(prev);
       toast.error(error.message);
       return;
+    }
+    if (prev !== "going" && next === "going") {
+      void notifyHost({ data: { eventId } }).catch(() => {});
     }
     toast.success(
       next === "going" ? "You're in. See you out there." :

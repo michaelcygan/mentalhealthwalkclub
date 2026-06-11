@@ -282,6 +282,18 @@ export const sendFriendRequest = createServerFn({ method: "POST" })
         { onConflict: "user_low,user_high", ignoreDuplicates: true },
       );
     if (error) throw new Error(error.message);
+    // Notify recipient
+    const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+    const who = me?.display_name ?? me?.username ?? "Someone";
+    const { emitNotification } = await import("./notifications.server");
+    await emitNotification({
+      userId: prof.id,
+      actorId: userId,
+      kind: "friend_request",
+      title: `${who} wants to walk with you`,
+      link: "/circles",
+      entityId: prof.id,
+    });
     return { ok: true, other: prof };
   });
 
@@ -308,6 +320,19 @@ export const respondFriendRequest = createServerFn({ method: "POST" })
       .update({ status: data.action === "accept" ? "accepted" : "declined" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (data.action === "accept") {
+      const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+      const who = me?.display_name ?? me?.username ?? "Someone";
+      const { emitNotification } = await import("./notifications.server");
+      await emitNotification({
+        userId: row.requested_by,
+        actorId: userId,
+        kind: "friend_accepted",
+        title: `${who} accepted your walk request`,
+        link: "/circles",
+        entityId: data.id,
+      });
+    }
     return { ok: true };
   });
 
@@ -605,5 +630,18 @@ export const sendHighFive = createServerFn({ method: "POST" })
       .from("high_fives")
       .insert({ from_user_id: userId, to_user_id: walk.user_id, walk_session_id: data.walkSessionId });
     if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+    if (!error) {
+      const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+      const who = me?.display_name ?? me?.username ?? "Someone";
+      const { emitNotification } = await import("./notifications.server");
+      await emitNotification({
+        userId: walk.user_id,
+        actorId: userId,
+        kind: "high_five",
+        title: `${who} high-fived your walk`,
+        link: "/journal",
+        entityId: data.walkSessionId,
+      });
+    }
     return { ok: true };
   });
