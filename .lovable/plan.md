@@ -1,84 +1,110 @@
-## Goal
+# Final UI/UX Pass — Lofi 2027 Polish
 
-Let the pill player expand into a full now-playing sheet, then collapse back to the pill. Add the small set of utility controls that earn their place: scrub, skip ±15s, queue, mute/volume, link out.
+After auditing the home, journal, listen, walk, and chrome (tab bar, dock, FAB, root layout), the bones are good. The work below is about **consistency, restraint, and "moments"** — bringing the whole app to one breath instead of many. Nothing here changes business logic or backend. All upgrades are visual / interaction / a11y.
 
-## Interaction
+I've split it into three tiers so you can stop after Tier 1 and still ship a noticeably better app.
 
-- Tap the pill anywhere outside the play/close buttons → expand.
-- Expanded view slides up from the pill as a bottom sheet (≈85% viewport height, rounded top, drag handle).
-- Collapse via: drag handle pull-down, chevron-down button, tap on scrim, or swipe down.
-- Pill stays a single tap target (play/pause + close still work); chevron-up affordance hints at expand.
-- Honors `prefers-reduced-motion` (fade instead of slide).
-- Hidden on the same routes as today (`/auth`, `/welcome`, `/w/*`).
+---
 
-## Expanded layout (top → bottom)
+## Tier 1 — Must-do before launch (the cohesion pass)
 
-```text
-┌─────────────────────────────┐
-│         ── drag ──          │
-│  ⌄  Now playing       ⋯     │  ← collapse + overflow (link out)
-│                             │
-│      ┌──────────────┐       │
-│      │  cover art   │       │  ← big square, CoverThumb fallback
-│      └──────────────┘       │
-│                             │
-│  Episode title (serif)      │
-│  Publisher · 32 min         │
-│                             │
-│  ──────●───────────────     │  ← scrubber, draggable
-│  1:24                 31:08 │
-│                             │
-│   ⟲15    ▶/⏸ (64px)   ⟳15  │
-│                             │
-│  🔊 ──●──────              │  ← volume (desktop) / mute toggle (mobile)
-│                             │
-│  Up next                    │
-│  ┌──┐ Track title           │
-│  │  │ Publisher · 24 min  ✕ │
-│  └──┘                       │
-│  …                          │
-└─────────────────────────────┘
-```
+These remove the "different hands built each screen" feeling.
 
-## Utility features (only what earns its keep)
+### 1. Unified motion grammar
+One easing curve, three durations, one spring. Today the app mixes ad-hoc transitions across the dock, sheet, tab bar, FAB, and rails. Result: motion feels inconsistent.
+- Add `src/lib/motion.ts` exporting `easeOut`, `spring.soft`, `spring.snap`, and `dur.{fast,base,slow}` constants.
+- Sweep `motion.div` usages in `now-playing-dock`, `now-playing-sheet`, `mobile-tab-bar`, `reflection-fab`, `today-island`, walk rails to use these. No new animations — just replace the magic numbers.
 
-1. **Scrubber** — draggable progress bar with current/remaining time. Already have `position` / `duration` / `seek` in `PlayerProvider`.
-2. **Skip ±15s** — standard podcast affordance.
-3. **Play/pause** — large primary control.
-4. **Queue ("Up next")** — list of upcoming tracks with reorder-by-remove and a clear-all. Tap a queued item to jump to it.
-5. **Mute / volume** — toggle mute; show a slider on desktop only (mobile uses system volume).
-6. **Open source** — overflow menu with "Open episode page" (uses existing `link`) and "Stop playback".
+### 2. Surface & elevation system
+Currently 5+ different shadow recipes are inlined (`shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)]` shows up four times verbatim). Define a 3-tier elevation system in `styles.css` and replace inline shadows.
+- `--shadow-rest` (cards), `--shadow-hover`, `--shadow-floating` (dock, FAB, sheet).
+- Add `--surface-1/2/3` background tokens for layered context (page → card → popover) so the dock and FAB stop fighting the page background.
 
-Deliberately **not** adding (avoid bloat): playback speed, sleep timer, AirPlay/Cast picker, sharing, lyrics/transcript, favoriting. We can revisit if users ask.
+### 3. Lofi grain + warmth (the signature look)
+A subtle paper-grain overlay (~3% opacity, fixed) on `<body>` gives the cream background tactile character without losing minimalism. Pair with a barely-there warm vignette on full-screen routes (`/walk`, `/journal`, `/w/$code`). This is the single change most associated with "premium lofi" feel.
+- New `<GrainOverlay />` mounted once in `__root.tsx`; CSS-only, no JS cost.
 
-## Queue model
+### 4. Typography rhythm
+Right now serif/sans hierarchy is inconsistent across screens — some titles use `text-base font-serif`, others `text-2xl`. Define semantic classes in `styles.css`:
+- `.h-display` (Fraunces, fluid clamp), `.h-title`, `.h-section`, `.t-body`, `.t-caption`, `.t-hand` (Caveat for the journal/quote moments).
+- Adopt across home / journal / listen / walk headings. No layout shifts; just consistent scale.
 
-Extend `PlayerProvider` with a small queue API — keeps state in one place so the dock, the expanded sheet, and tile click handlers all read/write the same thing.
+### 5. Skeletons that breathe
+Replace `animate-pulse bg-muted/50` blocks (home loading, today island, podcast rail) with a single `<Shimmer />` component using a soft horizontal sweep. Restrained, not flashy.
 
-- `queue: PlayableTrack[]` — upcoming tracks (does not include `current`).
-- `enqueue(track)` — appends; toast "Added to queue".
-- `playNext(track)` — inserts at index 0.
-- `removeFromQueue(id)` / `clearQueue()`.
-- `skipNext()` — advances to `queue[0]`, shifts the queue.
-- Auto-advance on `ended`: if queue has items, `skipNext()`; otherwise stop.
+### 6. Empty states with voice
+A few flows render empty arrays as blank space (journal feed before first entry, listen search no-results, friend pulse with no friends). Add a tiny `<EmptyNote />` primitive with a hand-drawn-style icon slot + serif italic copy. Five locations.
 
-Wire `enqueue` / `playNext` into a small "⋯" menu on every Tile (long-press or kebab) so users can build a queue from `/listen`. **In scope for this turn:** the menu on `HitsRail` cards, `/listen` Tiles, search results, and the home `PodcastRail`. Ambient and blog items skip the queue menu (ambient uses its own loop; blog opens externally).
+### 7. Accessibility & focus pass
+- Add visible `:focus-visible` ring (sage outline, 2px offset) globally — currently many icon-only buttons have none.
+- Confirm 44×44 tap targets on dock close/play buttons and tab bar (close is 36px today).
+- Add `aria-live="polite"` on now-playing pill title swap so VoiceOver announces track changes.
 
-## Files
+---
 
-- `src/lib/player-context.tsx` — add `queue`, `enqueue`, `playNext`, `removeFromQueue`, `clearQueue`, `skipNext`; wire `ended` → auto-advance.
-- `src/components/now-playing-dock.tsx` — pill becomes a button that toggles the expanded sheet; keep play/close as nested buttons with `stopPropagation`; add chevron-up affordance.
-- `src/components/now-playing-sheet.tsx` *(new)* — expanded sheet built on shadcn `Sheet` (side="bottom") with drag handle, cover, title, scrubber, transport, volume, queue list, overflow menu.
-- `src/components/listen/tile-actions.tsx` *(new, small)* — kebab menu (`DropdownMenu`) with "Play now / Play next / Add to queue / Open source".
-- Touch points to add the kebab: `src/routes/_authenticated/listen.tsx` (Tile), `src/components/listen/hits-rail.tsx`, `src/components/listen/search-results.tsx`, `src/components/home/podcast-rail.tsx`.
+## Tier 2 — High-impact moments (recommended)
 
-## Technical notes
+The "wow" pass. Pick any combination.
 
-- The scrubber uses shadcn `Slider`; on drag-end call `seek(value)`. Throttle position updates while dragging so the thumb doesn't fight `timeupdate`.
-- Sheet uses `Sheet` from `@/components/ui/sheet` with `side="bottom"`, custom max-height, and a visible grab handle. On mobile, anchored above the tab bar via the existing safe-area inset math.
-- Queue persists in memory only (matches current player scope — no resume-position work yet, per earlier out-of-scope call).
-- `MediaSession` already wired for play/pause; extend to `previoustrack` (skip −15s) and `nexttrack` (skipNext).
+### 8. Walk completion: a real moment
+After ending a walk, today the user lands back on a tab. Instead: a one-screen "softlanding" — fade in distance / duration / one weather word, a single serif sentence ("That's 23 minutes of you, today."), Reflect prompt below, then a quiet "Save" or "Add a photo." This is the most-shared moment in the app; it should feel earned.
+- New `src/routes/_authenticated/walk.recap.tsx` (replaces or wraps current end-flow). Reuses existing reflection sheet + memory strip.
 
-## Out of scope
+### 9. Home "Today Island" upgrade
+The greeting + weather + streak block is the home page's first impression. Two small upgrades:
+- Time-of-day color shift on the gradient (warmer dawn, cooler dusk) driven by local hour. Already have `AmbientBackdrop` — extend with 4 phase tokens.
+- Streak chip shows last 7 days as 7 tiny dots (filled / hollow) instead of just the number. More motivating, still lofi.
 
-- Resume position per episode, cross-device queue sync, sleep timer, playback speed, sharing, AirPlay/Cast.
+### 10. Now Playing sheet: small refinements
+- Cover art: large rounded-3xl with subtle inner glow tinted by an extracted color (use `canvas` getImageData on load, one-shot, fallback to sage).
+- Scrubber: thinner track, larger thumb on press (drag affordance).
+- Add a "Sleep timer" pill (15/30/60 min) — single dropdown, calls `setTimeout` on `stop()`. Useful and on-brand for an evening walk app.
+
+### 11. Page transitions
+Wrap `<Outlet />` with a 180ms cross-fade + 4px slide for route changes. Honors `prefers-reduced-motion`. Single file change in `__root.tsx`.
+
+### 12. Pull-to-refresh on Home & Journal
+You already have `use-pull-to-refresh`. Wire it on home and journal with a custom indicator (a single sage leaf that rotates as you pull). Native-app feel, costs ~20 lines.
+
+### 13. Share cards (OG)
+`walk.$code.og.ts` already exists. Audit the design — make it match the in-app typography (Fraunces title, sage card, distance line). Big leverage: every shared walk is an ad.
+
+---
+
+## Tier 3 — Optional craft (post-launch is fine)
+
+### 14. Haptics map
+You have `haptics.tap()` but only the tab bar uses it. Add `haptics.success()` after RSVP/save, `haptics.soft()` on long-press queue actions. iOS-only, no-op elsewhere.
+
+### 15. Long-press preview
+On listen tiles, long-press → mini preview (cover + 8-second audio scrub) instead of opening. Power-user feel.
+
+### 16. "Quiet mode" toggle
+Settings option that dims chrome, hides counts/streaks, keeps only walks + reflections. For users in heavier weeks. One-line guard in TodayIsland + tab bar.
+
+### 17. Loading screen
+Replace the current `LoadingScreen` with the logo stamp gently breathing (scale 0.97↔1, 2s ease-in-out). Today it's a generic spinner.
+
+### 18. 404 / error page rewrites
+Currently 404 says "This path doesn't exist yet." Lovely line, but no illustration. Add a small wandering footprints SVG (already have foot iconography). Same treatment for `defaultErrorComponent`.
+
+---
+
+## Implementation notes (technical)
+
+- **No new dependencies.** Motion, Tailwind, shadcn, and existing tokens cover everything above.
+- **Token-only color edits.** Every color change goes through `styles.css` `:root` — components never get hex values.
+- **One PR-equivalent batch per tier** so we can preview, react, and adjust. Tier 1 first, then ask before Tier 2.
+- **Out of scope** (call out explicitly): database changes, new server functions, copy rewrites, illustration commissions, sign-in flow redesign, billing UI, admin pages.
+
+---
+
+## Suggested order if you approve
+
+1. Tier 1 items 1–4 (motion, surfaces, grain, typography) — single pass, foundation for everything else.
+2. Tier 1 items 5–7 (skeletons, empty states, a11y) — quick wins layered on top.
+3. Pause, you preview, we adjust.
+4. Tier 2 picked à la carte.
+5. Tier 3 deferred unless you flag something specific.
+
+Want me to start with all of Tier 1, or trim it first?
