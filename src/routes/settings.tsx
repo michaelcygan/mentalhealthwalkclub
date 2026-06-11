@@ -52,7 +52,7 @@ function SettingsPage() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private,notify_friend_requests,notify_high_fives,notify_rsvps,notify_broadcasts").eq("id", user.id).single(),
+      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private,notify_friend_requests,notify_high_fives,notify_rsvps,notify_broadcasts,notify_walk_reminders,notify_weekly_recap").eq("id", user.id).single(),
       (supabase.from("user_locations" as never) as never as { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lat: number | null; lng: number | null } | null }> } } })
         .select("lat,lng").eq("user_id", user.id).maybeSingle(),
     ]).then(([profRes, locRes]) => {
