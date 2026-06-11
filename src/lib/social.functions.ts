@@ -282,6 +282,18 @@ export const sendFriendRequest = createServerFn({ method: "POST" })
         { onConflict: "user_low,user_high", ignoreDuplicates: true },
       );
     if (error) throw new Error(error.message);
+    // Notify recipient
+    const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+    const who = me?.display_name ?? me?.username ?? "Someone";
+    const { emitNotification } = await import("./notifications.server");
+    await emitNotification({
+      userId: prof.id,
+      actorId: userId,
+      kind: "friend_request",
+      title: `${who} wants to walk with you`,
+      link: "/circles",
+      entityId: prof.id,
+    });
     return { ok: true, other: prof };
   });
 
