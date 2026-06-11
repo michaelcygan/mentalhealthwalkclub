@@ -32,6 +32,9 @@ interface PlayerCtx {
   clearQueue: () => void;
   skipNext: () => void;
   skipBy: (deltaSec: number) => void;
+  sleepTimerEndsAt: number | null;
+  sleepTimerRemainingMs: number | null;
+  setSleepTimer: (minutes: number | null) => void;
 }
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -46,6 +49,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<PlayableTrack[]>([]);
   const queueRef = useRef<PlayableTrack[]>([]);
   useEffect(() => { queueRef.current = queue; }, [queue]);
+
+  // Sleep timer — fades out and stops playback after N minutes.
+  const [sleepTimerEndsAt, setSleepTimerEndsAt] = useState<number | null>(null);
+  const [sleepTimerRemainingMs, setSleepTimerRemainingMs] = useState<number | null>(null);
+  const sleepTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sleepTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Pause ambient music when foreground audio takes over
   const ambient = useAmbient();
@@ -197,12 +206,59 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => {
     audioRef.current?.pause();
     audioRef.current = null;
+    if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
+    if (sleepTickRef.current) clearInterval(sleepTickRef.current);
   }, []);
+
+  const clearSleepInternals = useCallback(() => {
+    if (sleepTimeoutRef.current) { clearTimeout(sleepTimeoutRef.current); sleepTimeoutRef.current = null; }
+    if (sleepTickRef.current) { clearInterval(sleepTickRef.current); sleepTickRef.current = null; }
+    setSleepTimerEndsAt(null);
+    setSleepTimerRemainingMs(null);
+  }, []);
+
+  const setSleepTimer = useCallback((minutes: number | null) => {
+    clearSleepInternals();
+    if (!minutes || minutes <= 0) {
+      toast("Sleep timer off");
+      return;
+    }
+    const ms = minutes * 60_000;
+    const endsAt = Date.now() + ms;
+    setSleepTimerEndsAt(endsAt);
+    setSleepTimerRemainingMs(ms);
+    sleepTickRef.current = setInterval(() => {
+      const remaining = endsAt - Date.now();
+      setSleepTimerRemainingMs(Math.max(0, remaining));
+    }, 1000);
+    sleepTimeoutRef.current = setTimeout(() => {
+      // Gentle fade-out before stopping.
+      const el = audioRef.current;
+      if (el) {
+        const startVol = el.volume;
+        const steps = 12;
+        let i = 0;
+        const fade = setInterval(() => {
+          i += 1;
+          el.volume = Math.max(0, startVol * (1 - i / steps));
+          if (i >= steps) {
+            clearInterval(fade);
+            el.pause();
+            el.volume = startVol;
+          }
+        }, 120);
+      }
+      clearSleepInternals();
+      toast("Good night. Sleep timer ended.");
+    }, ms);
+    toast.success(`Sleep timer set for ${minutes} min`);
+  }, [clearSleepInternals]);
 
   const value = useMemo<PlayerCtx>(() => ({
     current, playing, loading, position, duration, queue,
     play, toggle, stop, seek, enqueue, playNext, removeFromQueue, clearQueue, skipNext, skipBy,
-  }), [current, playing, loading, position, duration, queue, play, toggle, stop, seek, enqueue, playNext, removeFromQueue, clearQueue, skipNext, skipBy]);
+    sleepTimerEndsAt, sleepTimerRemainingMs, setSleepTimer,
+  }), [current, playing, loading, position, duration, queue, play, toggle, stop, seek, enqueue, playNext, removeFromQueue, clearQueue, skipNext, skipBy, sleepTimerEndsAt, sleepTimerRemainingMs, setSleepTimer]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
