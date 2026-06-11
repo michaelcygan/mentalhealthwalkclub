@@ -63,6 +63,17 @@
   --shadow-soft: 0 1px 2px oklch(0.2 0.02 100 / 0.04), 0 8px 24px -8px oklch(0.2 0.02 100 / 0.08);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 100 / 0.05), 0 24px 48px -16px oklch(0.2 0.02 100 / 0.18);
   --shadow-pressed: inset 0 1px 2px oklch(0.2 0.02 100 / 0.10);
+
+  /* Tier-1 unified elevation system. */
+  --shadow-rest: 0 1px 2px oklch(0.2 0.02 100 / 0.04), 0 6px 18px -10px oklch(0.2 0.02 100 / 0.10);
+  --shadow-hover: 0 2px 4px oklch(0.2 0.02 100 / 0.05), 0 14px 30px -14px oklch(0.2 0.02 100 / 0.18);
+  --shadow-floating: 0 4px 10px oklch(0.2 0.02 100 / 0.06), 0 18px 42px -16px oklch(0.2 0.02 100 / 0.22);
+
+  /* Layered surface tokens (page → card → popover/floating). */
+  --surface-1: var(--background);
+  --surface-2: color-mix(in oklab, var(--card) 92%, var(--background) 8%);
+  --surface-3: color-mix(in oklab, var(--card) 80%, transparent);
+
   --blur-glass: saturate(140%) blur(14px);
 }
 
@@ -233,6 +244,12 @@
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .shadow-pressed { box-shadow: var(--shadow-pressed); }
+  .shadow-rest { box-shadow: var(--shadow-rest); }
+  .shadow-hover { box-shadow: var(--shadow-hover); }
+  .shadow-floating { box-shadow: var(--shadow-floating); }
+  .bg-surface-1 { background-color: var(--surface-1); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
   .glass {
     background-color: color-mix(in oklab, var(--card) 78%, transparent);
     -webkit-backdrop-filter: var(--blur-glass);
@@ -252,6 +269,81 @@
   .no-scrollbar { scrollbar-width: none; }
   .text-balance { text-wrap: balance; }
   .text-pretty { text-wrap: pretty; }
+
+  /* Tier-1 typography rhythm. Fluid serif/sans scale used across surfaces. */
+  .h-display {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.018em;
+  }
+  .h-title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: clamp(1.25rem, 1rem + 1.1vw, 1.5rem);
+    line-height: 1.18;
+    letter-spacing: -0.012em;
+  }
+  .h-section {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 1.0625rem;
+    line-height: 1.25;
+    letter-spacing: -0.008em;
+  }
+  .t-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .t-caption {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--muted-foreground);
+  }
+  .t-hand {
+    font-family: var(--font-hand);
+    color: var(--clay);
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Calm, sweeping shimmer for loading surfaces. */
+  .shimmer-sweep {
+    background-image: linear-gradient(
+      100deg,
+      transparent 0%,
+      color-mix(in oklab, var(--card) 70%, transparent) 38%,
+      color-mix(in oklab, var(--card) 88%, transparent) 50%,
+      color-mix(in oklab, var(--card) 70%, transparent) 62%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: no-repeat;
+    animation: shimmer-sweep 1.6s ease-in-out infinite;
+  }
+  @keyframes shimmer-sweep {
+    0%   { background-position: 180% 0; }
+    100% { background-position: -80% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer-sweep { animation: none; background: var(--muted); opacity: 0.5; }
+  }
+}
+
+/* Tier-1 a11y: a single, visible focus ring across the app. */
+@layer base {
+  :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--ring) 80%, transparent);
+    outline-offset: 2px;
+    border-radius: 9999px;
+  }
 }
 
 @keyframes breathe {
