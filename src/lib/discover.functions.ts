@@ -148,6 +148,7 @@ export const discoverFriendsGoing = createServerFn({ method: "GET" })
       .in("id", eventIds)
       .eq("status", "published")
       .gte("starts_at", now)
+      .lte("starts_at", horizon)
       .order("starts_at", { ascending: true })
       .limit(data.limit);
 
