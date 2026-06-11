@@ -4,6 +4,7 @@ import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import { trendingListen, recentlyAddedListen, type SearchHit, type SearchKind } from "@/lib/listen-search.functions";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const KIND_ICON: Record<SearchKind, typeof Headphones> = {
   podcast: Headphones, ambient: Waves, guided: Music, blog: BookOpen,
