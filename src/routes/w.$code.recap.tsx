@@ -1,7 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "motion/react";
 import { getWalkRecap } from "@/lib/walk-page.functions";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { dur, easeOut } from "@/lib/motion";
 
 export const Route = createFileRoute("/w/$code/recap")({
   loader: async ({ params }) => {
@@ -36,6 +38,7 @@ export const Route = createFileRoute("/w/$code/recap")({
 function RecapPage() {
   const { code } = Route.useParams();
   const { event, attendees, guests, host } = Route.useLoaderData();
+  const reduce = useReducedMotion();
   if (!event) return null;
 
   const total = attendees.length + guests;
@@ -59,33 +62,68 @@ function RecapPage() {
     }
   };
 
+  // A single softlanding sentence tied to the most meaningful number.
+  const softline = (() => {
+    if (minutes && minutes > 0) return `That's ${minutes} minute${minutes === 1 ? "" : "s"} of you, together.`;
+    if (total > 1) return `${total} of you walked, side by side.`;
+    return "One quiet loop. It still counts.";
+  })();
+
+  const stagger = (i: number) => ({
+    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 8 },
+    animate: reduce ? { opacity: 1 } : { opacity: 1, y: 0 },
+    transition: { duration: dur.slow, ease: easeOut, delay: i * 0.1 },
+  });
+
   return (
-    <main className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-24 pt-6">
-      <Link to="/w/$code" params={{ code }} className="text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">
+    <main className="mx-auto min-h-dvh w-full max-w-2xl px-4 pb-24 pt-6">
+      <Link
+        to="/w/$code"
+        params={{ code }}
+        className="t-eyebrow inline-block hover:text-foreground"
+      >
         ← Back to walk
       </Link>
 
-      <div className="mt-4 overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-cream via-clay/20 to-forest/20 p-6 shadow-soft">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recap</div>
-        <h1 className="mt-2 font-serif text-3xl leading-tight">{event.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <motion.div
+        {...stagger(0)}
+        className="mt-5 overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-cream via-clay/15 to-forest/15 p-6 shadow-rest sm:p-8"
+      >
+        <motion.div {...stagger(1)} className="t-eyebrow">Recap</motion.div>
+        <motion.h1 {...stagger(2)} className="mt-2 h-display text-foreground">
+          {event.title}
+        </motion.h1>
+        <motion.p {...stagger(3)} className="mt-1 text-sm text-muted-foreground">
           {new Date(event.starts_at).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
           {event.city ? ` · ${event.city}` : ""}
-        </p>
+        </motion.p>
+
+        <motion.p
+          {...stagger(4)}
+          className="mt-5 font-serif text-lg italic leading-snug text-foreground/85"
+        >
+          {softline}
+        </motion.p>
 
         {event.image_url ? (
-          <img src={event.image_url} alt="" className="mt-5 h-44 w-full rounded-2xl object-cover sm:h-56" loading="lazy" />
+          <motion.img
+            {...stagger(5)}
+            src={event.image_url}
+            alt=""
+            className="mt-6 h-44 w-full rounded-2xl object-cover shadow-rest sm:h-56"
+            loading="lazy"
+          />
         ) : null}
 
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <motion.div {...stagger(6)} className="mt-6 grid grid-cols-3 gap-3">
           <Stat label="walked together" value={String(total)} />
           {minutes != null ? <Stat label="minutes" value={String(minutes)} /> : <Stat label="vibe" value={event.vibe ?? "quiet"} />}
           {miles ? <Stat label="miles" value={miles} /> : <Stat label="hosted by" value={host?.display_name ?? "—"} />}
-        </div>
+        </motion.div>
 
         {attendees.length > 0 ? (
-          <div className="mt-6">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Walkers</p>
+          <motion.div {...stagger(7)} className="mt-6">
+            <p className="t-eyebrow">Walkers</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {attendees.slice(0, 24).map((a: { id: string; display_name: string | null; avatar_url: string | null }) => (
                 <div key={a.id} className="flex items-center gap-2 rounded-full border border-border bg-card/70 px-2.5 py-1 text-xs">
@@ -105,24 +143,27 @@ function RecapPage() {
                 </span>
               ) : null}
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
-        <button
+        <motion.button
+          {...stagger(8)}
           onClick={share}
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-forest px-5 py-2.5 text-sm text-primary-foreground hover:opacity-90"
+          className="mt-7 inline-flex items-center gap-2 rounded-full bg-forest px-5 py-2.5 text-sm text-primary-foreground shadow-rest transition hover:opacity-90 active:scale-[0.98]"
         >
           <Share2 className="h-4 w-4" /> Share recap
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      <Link
-        to="/walk/new"
-        search={{ from: code }}
-        className="mt-6 block rounded-3xl border border-dashed border-border bg-card/40 p-5 text-center text-sm hover:bg-card/70"
-      >
-        Plan the next walk →
-      </Link>
+      <motion.div {...stagger(9)}>
+        <Link
+          to="/walk/new"
+          search={{ from: code }}
+          className="mt-6 block rounded-3xl border border-dashed border-border bg-card/40 p-5 text-center font-serif text-sm italic text-muted-foreground transition hover:bg-card/70 hover:text-foreground"
+        >
+          Plan the next walk →
+        </Link>
+      </motion.div>
     </main>
   );
 }
@@ -131,7 +172,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-card/70 p-3 text-center">
       <div className="font-serif text-2xl text-foreground">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="t-eyebrow mt-1">{label}</div>
     </div>
   );
 }
