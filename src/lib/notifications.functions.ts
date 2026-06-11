@@ -133,8 +133,8 @@ export const notifyHostOfRsvp = createServerFn({ method: "POST" })
       _actor_id: userId,
       _kind: "walk_rsvp",
       _title: title,
-      _body: null,
-      _link: link,
+      _body: "",
+      _link: link ?? "",
       _entity_id: data.eventId,
     });
     return { ok: true };
