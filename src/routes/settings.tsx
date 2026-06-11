@@ -158,6 +158,8 @@ function SettingsPage() {
         <ToggleRow label="RSVPs to your walks" hint="When someone joins a walk you're hosting" checked={!!p.notify_rsvps} onChange={(v) => savePatch({ notify_rsvps: v })} />
         <ToggleRow label="High-fives" hint="When friends cheer your walks" checked={!!p.notify_high_fives} onChange={(v) => savePatch({ notify_high_fives: v })} />
         <ToggleRow label="Walk broadcasts" hint="Updates from hosts of walks you're on" checked={!!p.notify_broadcasts} onChange={(v) => savePatch({ notify_broadcasts: v })} />
+        <ToggleRow label="Walk reminders" hint="A nudge the day before walks you've joined" checked={!!p.notify_walk_reminders} onChange={(v) => savePatch({ notify_walk_reminders: v })} />
+        <ToggleRow label="Weekly recap" hint="A gentle Sunday summary of your week" checked={!!p.notify_weekly_recap} onChange={(v) => savePatch({ notify_weekly_recap: v })} />
         <p className="px-1 pt-1 text-[11px] text-muted-foreground">In-app only for now — email & push coming soon.</p>
       </SectionCard>
 
