@@ -28,6 +28,7 @@ import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
 import { UpsellSheet } from "@/components/membership/upsell-sheet";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const SearchSchema = z.object({
   tab: z.enum(["listen", "read", "yours"]).catch("listen"),
@@ -255,21 +256,25 @@ function ListenPage() {
               <Section title="Podcasts for walking" icon={<Mic2 className="h-4 w-4 text-forest" />}>
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
-                    {(catalog?.podcasts ?? []).map((e) => (
-                      <Tile
-                        key={e.id}
-                        title={e.title}
-                        sub={fmtMins(e.duration_seconds)}
-                        cover={e.image_url ?? null}
-                        kind="podcast"
-                        featured={!!e.is_featured}
-                        onClick={() => playOrOpen({
-                          kind: "podcast", id: e.id, title: e.title,
-                          cover: e.image_url, audio_url: e.audio_url ?? null,
-                          link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
-                        })}
-                      />
-                    ))}
+                    {(catalog?.podcasts ?? []).map((e) => {
+                      const item = {
+                        kind: "podcast" as const, id: e.id, title: e.title,
+                        cover: e.image_url, audio_url: e.audio_url ?? null,
+                        link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
+                      };
+                      return (
+                        <Tile
+                          key={e.id}
+                          title={e.title}
+                          sub={fmtMins(e.duration_seconds)}
+                          cover={e.image_url ?? null}
+                          kind="podcast"
+                          featured={!!e.is_featured}
+                          onClick={() => playOrOpen(item)}
+                          actionItem={item}
+                        />
+                      );
+                    })}
                   </HorizontalRail>
                 )}
               </Section>
@@ -295,21 +300,25 @@ function ListenPage() {
               <Section title="Guided walks" icon={<Music className="h-4 w-4 text-forest" />}>
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
-                    {(catalog?.guided ?? []).map((g) => (
-                      <Tile
-                        key={g.id}
-                        title={g.title}
-                        sub={g.host ?? fmtMins(g.duration_seconds)}
-                        cover={g.cover_url ?? null}
-                        kind="guided"
-                        featured={!!g.is_featured}
-                        onClick={() => playOrOpen({
-                          kind: "guided", id: g.id, title: g.title, subtitle: g.host,
-                          cover: g.cover_url, audio_url: g.audio_url ?? null,
-                          duration_seconds: g.duration_seconds,
-                        })}
-                      />
-                    ))}
+                    {(catalog?.guided ?? []).map((g) => {
+                      const item = {
+                        kind: "guided" as const, id: g.id, title: g.title, subtitle: g.host,
+                        cover: g.cover_url, audio_url: g.audio_url ?? null,
+                        duration_seconds: g.duration_seconds,
+                      };
+                      return (
+                        <Tile
+                          key={g.id}
+                          title={g.title}
+                          sub={g.host ?? fmtMins(g.duration_seconds)}
+                          cover={g.cover_url ?? null}
+                          kind="guided"
+                          featured={!!g.is_featured}
+                          onClick={() => playOrOpen(item)}
+                          actionItem={item}
+                        />
+                      );
+                    })}
                   </HorizontalRail>
                 )}
               </Section>
@@ -437,33 +446,43 @@ function HorizontalRail({ children }: { children: React.ReactNode }) {
 }
 
 function Tile({
-  title, sub, cover, featured, onClick, kind = "podcast",
+  title, sub, cover, featured, onClick, kind = "podcast", actionItem,
 }: {
   title: string; sub: string; cover: string | null; featured?: boolean;
   onClick?: () => void;
   kind?: "podcast" | "ambient" | "guided" | "blog";
+  actionItem?: import("@/lib/play-helpers").PlayableItem;
 }) {
-  const inner = (
-    <>
+  const cls = "group relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5";
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (!onClick) return;
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+  };
+  return (
+    <div
+      className={cls}
+      onClick={onClick}
+      onKeyDown={handleKey}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `Play ${title}` : undefined}
+    >
       <div className="mb-2 aspect-square overflow-hidden rounded-xl">
         <CoverThumb src={cover} title={title} kind={kind} />
       </div>
       {featured && (
-        <span className="absolute right-3 top-3 rounded-full bg-forest/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary-foreground">
+        <span className="absolute left-3 top-3 rounded-full bg-forest/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary-foreground">
           Pick
         </span>
       )}
+      {actionItem && (
+        <div className="absolute right-3 top-3">
+          <TileActionsMenu item={actionItem} />
+        </div>
+      )}
       <p className="truncate font-serif text-sm">{title}</p>
       <p className="truncate text-[11px] text-muted-foreground">{sub}</p>
-    </>
+    </div>
   );
-  const cls = "relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5";
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} aria-label={`Play ${title}`} className={cls}>
-        {inner}
-      </button>
-    );
-  }
-  return <div className={cls}>{inner}</div>;
 }
+

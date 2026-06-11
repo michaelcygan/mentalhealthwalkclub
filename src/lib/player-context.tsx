@@ -21,10 +21,17 @@ interface PlayerCtx {
   loading: boolean;
   position: number;
   duration: number;
+  queue: PlayableTrack[];
   play: (t: PlayableTrack) => void;
   toggle: () => void;
   stop: () => void;
   seek: (sec: number) => void;
+  enqueue: (t: PlayableTrack) => void;
+  playNext: (t: PlayableTrack) => void;
+  removeFromQueue: (id: string) => void;
+  clearQueue: () => void;
+  skipNext: () => void;
+  skipBy: (deltaSec: number) => void;
 }
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -36,11 +43,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [queue, setQueue] = useState<PlayableTrack[]>([]);
+  const queueRef = useRef<PlayableTrack[]>([]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
 
   // Pause ambient music when foreground audio takes over
   const ambient = useAmbient();
   const ambientRef = useRef(ambient);
   useEffect(() => { ambientRef.current = ambient; }, [ambient]);
+
+  const playInternalRef = useRef<((t: PlayableTrack) => void) | null>(null);
 
   const ensureAudio = useCallback(() => {
     if (audioRef.current) return audioRef.current;
@@ -52,7 +64,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     el.addEventListener("pause", () => setPlaying(false));
     el.addEventListener("waiting", () => setLoading(true));
     el.addEventListener("canplay", () => setLoading(false));
-    el.addEventListener("ended", () => { setPlaying(false); setPosition(0); });
+    el.addEventListener("ended", () => {
+      // Auto-advance from queue if anything is waiting.
+      const next = queueRef.current[0];
+      if (next && playInternalRef.current) {
+        setQueue((q) => q.slice(1));
+        playInternalRef.current(next);
+      } else {
+        setPlaying(false);
+        setPosition(0);
+      }
+    });
     el.addEventListener("error", () => {
       setLoading(false);
       setPlaying(false);
@@ -95,9 +117,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         });
         navigator.mediaSession.setActionHandler("play", () => el.play().catch(() => {}));
         navigator.mediaSession.setActionHandler("pause", () => el.pause());
+        navigator.mediaSession.setActionHandler("seekbackward", () => {
+          el.currentTime = Math.max(0, (el.currentTime || 0) - 15);
+        });
+        navigator.mediaSession.setActionHandler("seekforward", () => {
+          el.currentTime = Math.min(el.duration || el.currentTime, (el.currentTime || 0) + 15);
+        });
       } catch { /* noop */ }
     }
   }, [current, ensureAudio]);
+  useEffect(() => { playInternalRef.current = play; }, [play]);
 
   const toggle = useCallback(() => {
     const el = audioRef.current;
@@ -114,6 +143,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setLoading(false);
     setPosition(0);
     setDuration(0);
+    setQueue([]);
   }, []);
 
   const seek = useCallback((sec: number) => {
@@ -122,15 +152,57 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     el.currentTime = Math.max(0, Math.min(sec, el.duration || sec));
   }, []);
 
+  const skipBy = useCallback((deltaSec: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Math.min((el.duration || el.currentTime) , (el.currentTime || 0) + deltaSec));
+  }, []);
+
+  const enqueue = useCallback((t: PlayableTrack) => {
+    if (!current) {
+      // Nothing playing → start immediately.
+      play(t);
+      return;
+    }
+    if (current.id === t.id) {
+      toast("Already playing this");
+      return;
+    }
+    setQueue((q) => {
+      if (q.some((x) => x.id === t.id)) return q;
+      return [...q, t];
+    });
+    toast.success("Added to queue");
+  }, [current, play]);
+
+  const playNext = useCallback((t: PlayableTrack) => {
+    if (!current) { play(t); return; }
+    setQueue((q) => [t, ...q.filter((x) => x.id !== t.id)]);
+    toast.success("Playing next");
+  }, [current, play]);
+
+  const removeFromQueue = useCallback((id: string) => {
+    setQueue((q) => q.filter((x) => x.id !== id));
+  }, []);
+
+  const clearQueue = useCallback(() => setQueue([]), []);
+
+  const skipNext = useCallback(() => {
+    const next = queueRef.current[0];
+    if (!next) return;
+    setQueue((q) => q.slice(1));
+    play(next);
+  }, [play]);
+
   useEffect(() => () => {
     audioRef.current?.pause();
     audioRef.current = null;
   }, []);
 
   const value = useMemo<PlayerCtx>(() => ({
-    current, playing, loading, position, duration,
-    play, toggle, stop, seek,
-  }), [current, playing, loading, position, duration, play, toggle, stop, seek]);
+    current, playing, loading, position, duration, queue,
+    play, toggle, stop, seek, enqueue, playNext, removeFromQueue, clearQueue, skipNext, skipBy,
+  }), [current, playing, loading, position, duration, queue, play, toggle, stop, seek, enqueue, playNext, removeFromQueue, clearQueue, skipNext, skipBy]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

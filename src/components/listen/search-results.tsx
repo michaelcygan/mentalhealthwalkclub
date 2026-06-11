@@ -2,6 +2,7 @@ import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import type { SearchHit, SearchKind } from "@/lib/listen-search.functions";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const KIND_META: Record<SearchKind, { label: string; Icon: typeof Headphones }> = {
   podcast: { label: "Podcasts", Icon: Headphones },
@@ -66,9 +67,11 @@ export function SearchResults({
             <ul className="space-y-2">
               {items.map((h) => (
                 <li key={`${h.kind}-${h.id}`}>
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => playOrOpen(h)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playOrOpen(h); } }}
                     aria-label={h.kind === "blog" ? `Read ${h.title}` : `Play ${h.title}`}
                     className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-soft transition active:scale-[0.99] hover:-translate-y-0.5"
                   >
@@ -81,7 +84,8 @@ export function SearchResults({
                         {h.subtitle ?? ""}{h.duration_seconds ? ` · ${fmtMins(h.duration_seconds)}` : ""}
                       </p>
                     </div>
-                  </button>
+                    {h.kind !== "ambient" && <TileActionsMenu item={h} />}
+                  </div>
                 </li>
               ))}
             </ul>

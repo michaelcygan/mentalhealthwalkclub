@@ -4,6 +4,7 @@ import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import { trendingListen, recentlyAddedListen, type SearchHit, type SearchKind } from "@/lib/listen-search.functions";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const KIND_ICON: Record<SearchKind, typeof Headphones> = {
   podcast: Headphones, ambient: Waves, guided: Music, blog: BookOpen,
@@ -44,22 +45,29 @@ export function HitsRail({ mode }: { mode: "trending" | "recent" }) {
       {items.map((h) => {
         const Icon = KIND_ICON[h.kind];
         return (
-          <button
-            type="button"
+          <div
             key={`${h.kind}-${h.id}`}
+            role="button"
+            tabIndex={0}
             onClick={() => playOrOpen(h)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playOrOpen(h); } }}
             aria-label={`Play ${h.title}`}
-            className="w-36 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5"
+            className="group relative w-36 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5"
           >
             <div className="mb-2 aspect-square overflow-hidden rounded-xl">
               <CoverThumb src={h.cover} title={h.title} kind={h.kind} />
             </div>
+            {h.kind !== "ambient" && (
+              <div className="absolute right-3 top-3">
+                <TileActionsMenu item={h} />
+              </div>
+            )}
             <p className="line-clamp-2 font-serif text-xs leading-tight">{h.title}</p>
             <p className="truncate text-[10px] text-muted-foreground">
               <Icon className="mr-1 inline h-2.5 w-2.5" />
               {h.subtitle ?? ""}{h.duration_seconds ? ` · ${fmt(h.duration_seconds)}` : ""}
             </p>
-          </button>
+          </div>
         );
       })}
     </div>

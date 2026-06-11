@@ -6,6 +6,7 @@ import { recentPodcastEpisodes, type PodcastEpisodeCard } from "@/lib/podcasts.f
 import { Headphones } from "lucide-react";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 function formatDuration(s: number): string {
   if (!s) return "";
@@ -35,31 +36,39 @@ export function PodcastRail() {
         <Link to="/listen" className="text-xs text-muted-foreground hover:text-foreground">All →</Link>
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((ep) => (
-          <button
-            key={ep.id}
-            type="button"
-            onClick={() => playOrOpen({
-              kind: "podcast", id: ep.id, title: ep.title, subtitle: ep.publisher,
-              cover: ep.image_url, audio_url: ep.audio_url, link: ep.episode_url,
-              duration_seconds: ep.duration_seconds,
-            })}
-            aria-label={`Play ${ep.title}`}
-            className="block w-44 shrink-0 text-left"
-          >
-            <Card className="overflow-hidden rounded-2xl border-border bg-card/90 shadow-soft backdrop-blur-sm transition active:scale-[0.98] hover:-translate-y-0.5">
-              <div className="aspect-square w-full">
-                <CoverThumb src={ep.image_url} title={ep.title} kind="podcast" />
+        {items.map((ep) => {
+          const item = {
+            kind: "podcast" as const, id: ep.id, title: ep.title, subtitle: ep.publisher,
+            cover: ep.image_url, audio_url: ep.audio_url, link: ep.episode_url,
+            duration_seconds: ep.duration_seconds,
+          };
+          return (
+            <div
+              key={ep.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => playOrOpen(item)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playOrOpen(item); } }}
+              aria-label={`Play ${ep.title}`}
+              className="relative block w-44 shrink-0 text-left"
+            >
+              <Card className="overflow-hidden rounded-2xl border-border bg-card/90 shadow-soft backdrop-blur-sm transition active:scale-[0.98] hover:-translate-y-0.5">
+                <div className="aspect-square w-full">
+                  <CoverThumb src={ep.image_url} title={ep.title} kind="podcast" />
+                </div>
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{ep.title}</p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                    {ep.publisher ?? "Podcast"}{ep.duration_seconds ? ` · ${formatDuration(ep.duration_seconds)}` : ""}
+                  </p>
+                </div>
+              </Card>
+              <div className="absolute right-2 top-2">
+                <TileActionsMenu item={item} />
               </div>
-              <div className="p-3">
-                <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{ep.title}</p>
-                <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                  {ep.publisher ?? "Podcast"}{ep.duration_seconds ? ` · ${formatDuration(ep.duration_seconds)}` : ""}
-                </p>
-              </div>
-            </Card>
-          </button>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
