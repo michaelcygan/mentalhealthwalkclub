@@ -139,6 +139,7 @@ function ListenPage() {
     navigate({ to: "/listen", search: (prev: z.infer<typeof SearchSchema>) => ({ ...prev, ...patch }), replace: true });
 
   const setTab = (t: "listen" | "read" | "yours") => updateSearch({ tab: t });
+  const playOrOpen = usePlayOrOpen();
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
