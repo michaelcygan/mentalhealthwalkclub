@@ -39,9 +39,9 @@ export function CollectionsRail() {
           params={{ slug: c.slug }}
           className="relative flex h-32 w-56 shrink-0 snap-start flex-col justify-end overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-forest/20 via-card to-card p-3 shadow-soft"
         >
-          {c.cover_url ? (
-            <img src={c.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
-          ) : null}
+          <div className="absolute inset-0 opacity-70">
+            <CoverThumb src={c.cover_url} title={c.name} kind="collection" />
+          </div>
           <div className="relative">
             <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-forest backdrop-blur">
               <Sparkles className="h-2.5 w-2.5" /> Collection
