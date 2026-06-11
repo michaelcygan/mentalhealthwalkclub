@@ -16,11 +16,11 @@ export async function emitNotification(args: {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.rpc("create_notification", {
       _user_id: args.userId,
-      _actor_id: args.actorId ?? args.userId, // dedup guard handles self-skip
+      _actor_id: (args.actorId ?? null) as unknown as string,
       _kind: args.kind,
       _title: args.title.slice(0, 200),
-      _body: (args.body ?? "").slice(0, 500),
-      _link: args.link ?? "",
+      _body: (args.body ?? "") as string,
+      _link: (args.link ?? "") as string,
       _entity_id: args.entityId,
     });
   } catch (err) {
