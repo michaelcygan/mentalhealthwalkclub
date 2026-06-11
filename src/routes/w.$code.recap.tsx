@@ -1,7 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "motion/react";
 import { getWalkRecap } from "@/lib/walk-page.functions";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { dur, easeOut } from "@/lib/motion";
 
 export const Route = createFileRoute("/w/$code/recap")({
   loader: async ({ params }) => {
