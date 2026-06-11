@@ -36,6 +36,7 @@ export function NowPlayingDock() {
         className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4 md:hidden"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 76px)" }}
         aria-live="polite"
+        aria-atomic="true"
       >
         <AnimatePresence>
           <motion.div
@@ -44,7 +45,7 @@ export function NowPlayingDock() {
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
             transition={{ type: "spring", stiffness: 360, damping: 30 }}
-            className="pointer-events-auto flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-2 rounded-full border border-border/60 bg-background/75 py-1.5 pl-2 pr-1 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55"
+            className="pointer-events-auto flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-1 rounded-full border border-border/60 bg-background/75 py-1.5 pl-2 pr-1.5 shadow-floating backdrop-blur-xl supports-[backdrop-filter]:bg-background/55"
           >
             <button
               type="button"
@@ -70,7 +71,7 @@ export function NowPlayingDock() {
               type="button"
               onClick={(e) => { e.stopPropagation(); onToggle(); }}
               aria-label={isPaused ? "Play" : "Pause"}
-              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
+              className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
             >
               {showAudio && audioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> :
                 isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
@@ -79,7 +80,7 @@ export function NowPlayingDock() {
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               aria-label="Close"
-              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
+              className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
