@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Permanently delete the calling user's account and all owned data.
+ * Per-table deletes run in parallel; failures are surfaced rather than swallowed.
  */
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -22,18 +23,24 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
       "billing_events",
       "subscriptions",
       "user_roles",
-      "profiles",
     ] as const;
 
-    for (const t of tables) {
-      try {
+    const results = await Promise.allSettled(
+      tables.map((t) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabaseAdmin.from(t as never) as any).delete().eq("user_id", userId);
-      } catch { /* ignore */ }
+        (supabaseAdmin.from(t as never) as any).delete().eq("user_id", userId),
+      ),
+    );
+    const failures = results
+      .map((r, i) => ({ r, t: tables[i] }))
+      .filter(({ r }) => r.status === "rejected" || (r.status === "fulfilled" && (r.value as { error?: unknown })?.error));
+    if (failures.length) {
+      console.error("deleteMyAccount table failures", failures.map((f) => f.t));
     }
-    try {
-      await supabaseAdmin.from("profiles").delete().eq("id", userId);
-    } catch { /* ignore */ }
+
+    // Profile uses `id` not `user_id`.
+    const { error: profErr } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
+    if (profErr) console.error("deleteMyAccount profiles failed", profErr.message);
 
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (error) throw new Error(error.message);

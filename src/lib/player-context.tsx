@@ -63,12 +63,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const playInternalRef = useRef<((t: PlayableTrack) => void) | null>(null);
 
+  const positionTickRef = useRef(0);
   const ensureAudio = useCallback(() => {
     if (audioRef.current) return audioRef.current;
     const el = new Audio();
     el.preload = "metadata";
     el.addEventListener("loadedmetadata", () => setDuration(el.duration || 0));
-    el.addEventListener("timeupdate", () => setPosition(el.currentTime || 0));
+    el.addEventListener("timeupdate", () => {
+      // Native timeupdate fires ~4 Hz; throttle to ~1 Hz so the whole
+      // consumer tree doesn't re-render that often.
+      const now = Date.now();
+      if (now - positionTickRef.current < 950) return;
+      positionTickRef.current = now;
+      setPosition(el.currentTime || 0);
+    });
     el.addEventListener("playing", () => { setPlaying(true); setLoading(false); });
     el.addEventListener("pause", () => setPlaying(false));
     el.addEventListener("waiting", () => setLoading(true));

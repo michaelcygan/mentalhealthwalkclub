@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Footprints, CalendarPlus, Flame, Play } from "lucide-react";
 import { motion } from "motion/react";
 import type { User } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { WeatherPill } from "@/components/weather-pill";
 import { useCurrentWeather, useGeolocation } from "@/hooks/use-weather";
@@ -32,30 +33,33 @@ export function TodayIsland({ user }: Props) {
   const stats = useProfileStats(user.id);
   const { coords } = useGeolocation({ autoRequest: false, ipFallback: true });
   const { data: weather } = useCurrentWeather(coords);
-  const [walkDays, setWalkDays] = useState<Set<string>>(new Set());
-  const [activeWalkId, setActiveWalkId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    const start = new Date();
-    start.setDate(start.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-    void supabase
-      .from("walk_sessions")
-      .select("started_at,status")
-      .eq("user_id", user.id)
-      .gte("started_at", start.toISOString())
-      .then(({ data }) => {
-        const days = new Set<string>();
-        let active: string | null = null;
-        for (const r of (data ?? []) as { started_at: string; status: string }[]) {
-          if (r.status === "completed") days.add(isoDay(new Date(r.started_at)));
-          if (r.status === "active" && !active) active = r.started_at;
-        }
-        setWalkDays(days);
-        if (active) setActiveWalkId(active);
-      });
-  }, [user]);
+  const { data: recent } = useQuery({
+    queryKey: ["home", "today-island", user.id],
+    enabled: !!user.id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from("walk_sessions")
+        .select("started_at,status")
+        .eq("user_id", user.id)
+        .gte("started_at", start.toISOString());
+      const days = new Set<string>();
+      let active: string | null = null;
+      for (const r of (data ?? []) as { started_at: string; status: string }[]) {
+        if (r.status === "completed") days.add(isoDay(new Date(r.started_at)));
+        if (r.status === "active" && !active) active = r.started_at;
+      }
+      return { walkDays: days, activeWalkId: active };
+    },
+  });
+  const walkDays = recent?.walkDays ?? new Set<string>();
+  const activeWalkId = recent?.activeWalkId ?? null;
 
   const name = useMemo(() => {
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
