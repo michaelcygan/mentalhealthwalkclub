@@ -162,9 +162,14 @@ export async function syncAllActiveFeeds() {
     .from("podcast_feeds")
     .select("id")
     .eq("is_active", true);
+  const list = feeds ?? [];
+  // Concurrency cap: 5 feeds in flight. See syncAllActiveBlogFeeds for rationale.
+  const CONCURRENCY = 5;
   let ok = 0, failed = 0;
-  for (const f of feeds ?? []) {
-    try { await syncFeedById(f.id); ok++; } catch { failed++; }
+  for (let i = 0; i < list.length; i += CONCURRENCY) {
+    const batch = list.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(batch.map((f) => syncFeedById(f.id)));
+    for (const r of results) r.status === "fulfilled" ? ok++ : failed++;
   }
-  return { scanned: feeds?.length ?? 0, ok, failed };
+  return { scanned: list.length, ok, failed };
 }

@@ -273,7 +273,7 @@ export const discoverMyCircleSummary = createServerFn({ method: "GET" })
       }
     }
 
-    // active walkers this week per circle (count unique members who completed a walk in last 7d)
+    // active walkers this week per circle (unique members who completed a walk in last 7d)
     const activeWalkers = new Map<string, number>();
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     if (ids.length) {
@@ -282,20 +282,31 @@ export const discoverMyCircleSummary = createServerFn({ method: "GET" })
         .select("circle_id,user_id")
         .in("circle_id", ids)
         .eq("status", "active");
-      const circleUserMap = new Map<string, string[]>();
+      const memberToCircles = new Map<string, string[]>();
+      const allMemberIds = new Set<string>();
       for (const r of cm ?? []) {
-        const list = circleUserMap.get(r.circle_id) ?? [];
-        list.push(r.user_id);
-        circleUserMap.set(r.circle_id, list);
+        allMemberIds.add(r.user_id);
+        const list = memberToCircles.get(r.user_id) ?? [];
+        list.push(r.circle_id);
+        memberToCircles.set(r.user_id, list);
       }
-      for (const [cid, uids] of circleUserMap.entries()) {
-        const { count } = await supabase
+      if (allMemberIds.size) {
+        // Single query: pull all recently-active member IDs, then fan out in JS.
+        // Replaces per-circle .select(count) loop (N+1 → 1 round-trip).
+        const { data: recent } = await supabase
           .from("walk_sessions")
-          .select("id", { count: "exact", head: true })
-          .in("user_id", uids)
+          .select("user_id")
+          .in("user_id", Array.from(allMemberIds))
           .eq("status", "completed")
           .gte("ended_at", weekAgo);
-        activeWalkers.set(cid, count ?? 0);
+        const activeUserIds = new Set((recent ?? []).map((r) => r.user_id));
+        // Count, per circle, members who appear in activeUserIds.
+        for (const [uid, cids] of memberToCircles.entries()) {
+          if (!activeUserIds.has(uid)) continue;
+          for (const cid of cids) {
+            activeWalkers.set(cid, (activeWalkers.get(cid) ?? 0) + 1);
+          }
+        }
       }
     }
 

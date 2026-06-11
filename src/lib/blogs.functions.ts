@@ -38,8 +38,6 @@ export const recentBlogPosts = createServerFn({ method: "GET" })
     });
   });
 
-export const syncBlogFeedsNow = createServerFn({ method: "POST" })
-  .handler(async () => {
-    const { syncAllActiveBlogFeeds } = await import("./blogs.server");
-    return syncAllActiveBlogFeeds();
-  });
+// `syncBlogFeedsNow` removed — orphan endpoint with no auth. Admin path lives in
+// `blog-feeds.functions.ts` (`syncBlogFeedsAdmin`); cron path lives in
+// `routes/api/public/hooks/sync-blog-feeds.ts` with apikey-header auth.
