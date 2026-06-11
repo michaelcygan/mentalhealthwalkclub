@@ -152,10 +152,11 @@ function SettingsPage() {
       </SectionCard>
 
       <SectionCard title="Notifications" icon={Bell}>
-        <ToggleRow label="Walk reminders" hint="Nudges before scheduled walks" checked={notifs.walk_reminders} onChange={(v) => updateNotif("walk_reminders", v)} />
-        <ToggleRow label="Friend RSVPs" hint="When friends join your walks" checked={notifs.friend_rsvps} onChange={(v) => updateNotif("friend_rsvps", v)} />
-        <ToggleRow label="Weekly recap" hint="A gentle Sunday summary" checked={notifs.weekly_recap} onChange={(v) => updateNotif("weekly_recap", v)} />
-        <p className="px-1 pt-1 text-[11px] text-muted-foreground">We'll honor these the moment notifications turn on.</p>
+        <ToggleRow label="Friend requests" hint="New requests and acceptances" checked={!!p.notify_friend_requests} onChange={(v) => savePatch({ notify_friend_requests: v })} />
+        <ToggleRow label="RSVPs to your walks" hint="When someone joins a walk you're hosting" checked={!!p.notify_rsvps} onChange={(v) => savePatch({ notify_rsvps: v })} />
+        <ToggleRow label="High-fives" hint="When friends cheer your walks" checked={!!p.notify_high_fives} onChange={(v) => savePatch({ notify_high_fives: v })} />
+        <ToggleRow label="Walk broadcasts" hint="Updates from hosts of walks you're on" checked={!!p.notify_broadcasts} onChange={(v) => savePatch({ notify_broadcasts: v })} />
+        <p className="px-1 pt-1 text-[11px] text-muted-foreground">In-app only for now — email & push coming soon.</p>
       </SectionCard>
 
       <SectionCard title="Privacy & data" icon={FileText}>
