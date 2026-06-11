@@ -12,6 +12,8 @@ import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
 import { Share2, CalendarPlus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AttendeeStack } from "@/components/walk-page/attendee-stack";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyHostOfRsvp } from "@/lib/notifications.functions";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
