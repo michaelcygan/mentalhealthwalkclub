@@ -34,6 +34,8 @@ interface ProfileRow {
   notify_high_fives: boolean;
   notify_rsvps: boolean;
   notify_broadcasts: boolean;
+  notify_walk_reminders: boolean;
+  notify_weekly_recap: boolean;
 }
 
 function SettingsPage() {
