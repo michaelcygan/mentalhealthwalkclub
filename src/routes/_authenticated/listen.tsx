@@ -467,5 +467,3 @@ function Tile({
   }
   return <div className={cls}>{inner}</div>;
 }
-
-}
