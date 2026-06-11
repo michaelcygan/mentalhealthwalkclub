@@ -400,7 +400,8 @@ const AllowlistMutate = z.object({
 });
 
 async function assertEventHost(
-  supabase: { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { host_user_id: string | null } | null }> } } } },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   eventId: string,
   userId: string,
 ) {
