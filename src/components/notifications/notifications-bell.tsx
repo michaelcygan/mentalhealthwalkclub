@@ -99,19 +99,37 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button
-          type="button"
-          aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
-          title="Notifications"
-          className="relative grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
-        >
-          <Bell className="h-4 w-4" />
-          {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
-              {unread > 9 ? "9+" : unread}
+        {variant === "sidebar" ? (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent/60"
+          >
+            <span className="relative inline-flex">
+              <Bell className="h-4.5 w-4.5" />
+              {unread > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </span>
-          )}
-        </button>
+            Notifications
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            title="Notifications"
+            className="relative grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
+          >
+            <Bell className="h-4 w-4" />
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </button>
+        )}
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0">
         <SheetHeader className="flex flex-row items-center justify-between border-b border-border px-4 py-3">
