@@ -24,7 +24,7 @@ export function ReflectionFab() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Write a reflection"
-        className="fixed right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)] ring-1 ring-black/5 transition active:scale-95 hover:opacity-90 md:hidden"
+        className="fixed right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-forest text-primary-foreground shadow-floating ring-1 ring-black/5 transition active:scale-95 hover:opacity-90 md:hidden"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 140px)" }}
       >
         <PenLine className="h-5 w-5" />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
+import { Shimmer } from "@/components/ui/shimmer";
 import { useServerFn } from "@tanstack/react-start";
 import { recentPodcastEpisodes, type PodcastEpisodeCard } from "@/lib/podcasts.functions";
 import { Headphones } from "lucide-react";
@@ -24,7 +25,13 @@ export function PodcastRail() {
     fetcher({ data: { limit: 8 } }).then(setItems).catch(() => setItems([]));
   }, [fetcher]);
 
-  if (items === null) return <div className="h-44 animate-pulse rounded-2xl bg-muted/40" />;
+  if (items === null) return (
+    <div className="-mx-1 flex gap-3 overflow-hidden px-1 pb-2">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Shimmer key={i} className="h-44 w-44 shrink-0" />
+      ))}
+    </div>
+  );
   if (!items.length) return null;
 
   return (

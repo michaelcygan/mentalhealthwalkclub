@@ -169,7 +169,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                       type="button"
                       onClick={toggle}
                       aria-label={playing ? "Pause" : "Play"}
-                      className="grid h-16 w-16 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition active:scale-95"
+                      className="grid h-16 w-16 place-items-center rounded-full bg-forest text-primary-foreground shadow-floating transition active:scale-95"
                     >
                       {loading ? (
                         <Loader2 className="h-7 w-7 animate-spin" />
