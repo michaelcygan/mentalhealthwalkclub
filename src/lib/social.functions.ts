@@ -630,5 +630,18 @@ export const sendHighFive = createServerFn({ method: "POST" })
       .from("high_fives")
       .insert({ from_user_id: userId, to_user_id: walk.user_id, walk_session_id: data.walkSessionId });
     if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+    if (!error) {
+      const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+      const who = me?.display_name ?? me?.username ?? "Someone";
+      const { emitNotification } = await import("./notifications.server");
+      await emitNotification({
+        userId: walk.user_id,
+        actorId: userId,
+        kind: "high_five",
+        title: `${who} high-fived your walk`,
+        link: "/journal",
+        entityId: data.walkSessionId,
+      });
+    }
     return { ok: true };
   });
