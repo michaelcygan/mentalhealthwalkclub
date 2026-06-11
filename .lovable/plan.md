@@ -1,102 +1,66 @@
+# Security Audit — Pre-Launch
 
-# Launch-Readiness Audit — 100k DAU / ~10k concurrent target
+Combined results from the DB linter (32 findings), the deep security scanner (40 findings), and a code read of the flagged server functions. Triaged by exploit impact, not raw count.
 
-Scope: efficiency, integrity, build. **No new features.** Read-only — nothing has been changed.
+## Sev 0 — Block launch (real, exploitable bugs)
 
-Signals used: DB linter (34 findings), `pg_stat_statements` slow-query view, security scanner (38 findings), and a full code sweep of routes, server fns, hooks, and components.
+1. **Storage policy bypass on `walk-snapshots`** *(scanner: error)*
+   Two PERMISSIVE INSERT policies exist: `walk_snapshots_insert_own` checks only `bucket_id`; `walk_snapshots_own_insert` enforces `auth.uid()` as the first path segment. Because both are PERMISSIVE, the weaker one wins → any signed-in user can upload (and overwrite) any other user's GPS snapshot.
+   Fix: drop `walk_snapshots_insert_own`.
 
-**Verdict:** **not blocking launch, but 7 Sev1 items should ship first.** The architecture is sound (TanStack Start + RLS + server fns). The risks are concentrated in three places: a few unauthenticated public endpoints, the home route's data-fetch fan-out, and the podcast/blog sync jobs running serially.
+2. **Realtime channel auth missing** *(scanner: error)*
+   No RLS policies on `realtime.messages`. Any authenticated user can subscribe to any channel topic by name — including private walk-session / broadcast channels keyed by user or session ID.
+   Fix: add RLS on `realtime.messages` restricting topic subscriptions to authorized users (host, RSVP'd attendee, or self).
 
----
+3. **`addAllowlistCircle` / `removeAllowlistCircle` / `addBlocklistUser` / `removeBlocklistUser`** in `src/lib/social.functions.ts` *(scanner: error)*
+   No host-ownership check. Any signed-in user can tamper with any event's audience controls.
+   Fix: mirror the `setEventAudience` guard — fetch `events.host_user_id`, assert `=== userId`.
 
-## SEV 1 — Fix before launch (security + correctness)
+4. **`respondFriendRequest`** in `src/lib/social.functions.ts` *(scanner: error)*
+   Only `.eq('id', data.id)`. The requester can call it with their own pending row and auto-accept, gaining `friends` visibility without consent.
+   Fix: assert `requested_by !== userId` and that caller is a party to the row.
 
-These are the only items that meaningfully change risk at 10k concurrent.
+5. **`getEventPhotos`** in `src/lib/walk-page.functions.ts` *(scanner: warn, but real leak)*
+   No `requireSupabaseAuth`, uses `supabaseAdmin`, returns signed URLs for any event UUID — including group-only and link-only events. Anonymous photo exfiltration with a UUID guess/leak.
+   Fix: add `requireSupabaseAuth`, then check `events.visibility` + group membership / RSVP / host before signing.
 
-| # | What | Where | Why it matters | Fix |
-|---|------|-------|----------------|-----|
-| 1 | **Unauthenticated cron endpoints** | `routes/api/public/hooks/sync-blog-feeds.ts`, `sync-podcast-feeds.ts` | Anyone on the internet can trigger full RSS re-sync; burns DB CPU + external quota; comment promises auth that isn't enforced | Verify `Authorization: Bearer $CRON_SECRET` header; 401 otherwise |
-| 2 | **`listBroadcasts` uses `supabaseAdmin` with no auth middleware** | `lib/walks.functions.ts:227` | Bypasses RLS on `event_broadcasts` for any caller | Add `.middleware([requireSupabaseAuth])`, use `context.supabase` |
-| 3 | **`syncBlogFeedsNow` is callable by anyone signed-in** | `lib/blogs.functions.ts:41` | Triggers full RSS sync; no admin check | Add `requireSupabaseAuth` + `assertAdmin` (pattern already exists in `syncBlogFeedsAdmin`) |
-| 4 | **Sync jobs run feeds serially** | `lib/blogs.server.ts:221`, `lib/podcasts.server.ts:166` | `for (const f of feeds) await syncFeedById(f.id)` — 20+ feeds = N × (fetch + parse + upsert) held open in one worker. Worker timeout risk and the #1 slow query (podcast_episodes upsert, 30s total, 825 calls) is amplified by this | `Promise.allSettled` with concurrency cap (5 in flight) |
-| 5 | **`discoverMyCircleSummary` N+1 on circles** | `lib/social.functions.ts` (activeWalkers block) | One `walk_sessions` query per circle, serial. User in 10 circles = 10 round-trips every home load | Collect all member ids first, single `.in("user_id", allMateIds)`, group in JS |
-| 6 | **Stripe webhook upserts run serial across tables** | `routes/api/public/payments/webhook.ts:80` | Subscription upsert + supporter_profile upsert hit different tables and could be parallel; matters during dunning retries and bulk renewals | `Promise.all` the two upserts after the out-of-order guard |
-| 7 | **DB: 2 functions have mutable `search_path`** | linter WARN 2-3 | Search-path injection vector on SECURITY DEFINER fns | Add `SET search_path = public` to the 2 flagged fns |
+6. **`profiles.lat` / `profiles.lng` exposed to all authenticated users** *(scanner: warn — sensitive for this app)*
+   `profiles_select_all_authenticated` policy is `USING (true)`. For a mental health walking app, precise coordinates likely reveal home/frequent locations. Already noted in security memory.
+   Fix: move `lat`/`lng` out of the broad SELECT path — either drop the columns into a separate owner-only table, or replace the policy with a view that omits them and deny direct SELECT on the base table for non-owners.
 
-The other 32 DB linter findings are mostly "SECURITY DEFINER function executable by signed-in users" — these are intentional (`has_role`, `user_membership`, etc., all called from RLS policies and server fns). Worth a one-time audit to revoke `EXECUTE` from `anon`/`authenticated` on any that should only be called from triggers or other DEFINER fns, but **not launch-blocking** if the function bodies themselves are safe. Two are worth checking: any SECURITY DEFINER fn callable by `anon` that does an `INSERT` or `UPDATE`.
+7. **`event_photos_public_select` allows anonymous reads** *(scanner: warn)*
+   Public can read `storage_path`, `user_id`, captions, timestamps for every event photo — leaks user activity metadata even though the bucket itself is private.
+   Fix: scope policy to `authenticated` only (consistent with sibling event tables).
 
----
+## Sev 1 — Fix before launch (ownership gaps)
 
-## SEV 2 — Fix in the first week of load (perf + cost)
+8. **`deleteStandingWalk`** in `src/lib/standing-walks.functions.ts` — no group-owner check. Any group member who learns a standing walk's UUID can wipe a group's recurring schedule. Mirror the `createStandingWalk` guard.
 
-These won't crash launch, but each one multiplies per active user.
+## Sev 2 — Configuration / hygiene
 
-| # | What | Where | Impact |
-|---|------|-------|--------|
-| 8 | Home route fires 8+ independent `useEffect → serverFn` calls per mount, no `staleTime`, no cache | `routes/index.tsx` HomeTab | 10k concurrent ≈ 80k server-fn calls per render burst |
-| 9 | `TodayIsland` + `WeekSummary` use bare `supabase` in `useEffect`, refetch on every tab focus | `components/home/today-island.tsx:38`, `week-summary.tsx:19` | Wrap in `useQuery({ staleTime: 5*60_000 })` |
-| 10 | `getHomeUpcoming` runs 5 sequential awaits | `lib/discover.functions.ts:418` | Two `Promise.all` groups cut latency ~60% |
-| 11 | `listFriends` has no `.limit()` | `lib/social.functions.ts:224` | A 500-friend account fetches 500 rows + 500 profile joins |
-| 12 | `discoverFriendsGoing` RSVP scan has no `.limit()` or date filter | `lib/discover.functions.ts:119` | Scales with social-graph size |
-| 13 | `useMinutelyRain` opens a duplicate poll loop per mount | `hooks/use-weather.ts:131` | `BestWindow` + `WeatherForecast` mounted together = 2 poll loops; lift to context or `useQuery` |
-| 14 | `select("*")` on `places` (3 sites) | `lib/walk-places.functions.ts:148,233,240` | Ships blurb/attribution/static-map URL to every walk-creation form load |
-| 15 | Player context re-renders all consumers on every `timeupdate` (~4 Hz) | `lib/player-context.tsx` | Split into `PlayerControlsCtx` + `PlayerPositionCtx`; the dock doesn't need position |
-| 16 | `deleteMyAccount` does 11 serial deletes, silently swallows errors | `lib/account.functions.ts:24` | `Promise.allSettled` + surface failures |
-| 17 | No `errorComponent` on authenticated routes | `routes/_authenticated/route.tsx` | A thrown server fn = blank screen. Add one shared boundary at the layout |
-| 18 | `FriendPulse` has unstable dep array (`fetchActivity` ref changes every render) | `components/home/friend-pulse.tsx:33` | Effectively refetches on every parent re-render — quietly expensive |
+9. **Public bucket allows listing** (`ambient-covers`) — broad SELECT on `storage.objects` lets clients enumerate all files. Restrict the policy to only the paths your app needs, or move covers behind signed URLs.
 
----
+10. **Extension installed in `public` schema** — move to a dedicated `extensions` schema (cosmetic, low risk, but flagged by the linter).
 
-## SEV 3 — Polish (post-launch)
+11. **SECURITY DEFINER functions executable by `anon` / `authenticated`** — 29 functions flagged. Most are intentional helpers (`has_role`, `is_event_host`, `are_friends`, `age_band_meets`, etc.) used inside RLS. Action: audit the list and `REVOKE EXECUTE ... FROM anon` on any that should not be callable from the client (e.g. `recompute_walker_metrics`, `evaluate_badges` if they exist as definers — these mutate state and should not be client-callable). Keep grants only on the pure read helpers used by RLS.
 
-Bundle weight + small leaks. Each is ~1-3 kB or ~1 request — none move the needle alone.
+12. **RLS Enabled No Policy** (info) — one table has RLS on but no policies, so it is effectively locked. Confirm intentional; otherwise add a deny-all comment or a real policy.
 
-19. `motion/react` imported eagerly in 15+ components → lazy-load on `journal` and `listen` routes.
-20. `recharts` pulled into the initial chunk via `components/ui/chart.tsx` barrel → dynamic-import at callsites.
-21. `<img>` without explicit `width`/`height` (CLS) — `attendee-stack.tsx:115`, `w.$code.recap.tsx:131`, `admin.merch.tsx:207`.
-22. `ambient-backdrop` 10-min `setInterval` → replace with `useMemo` on hour bucket.
-23. `createSlug` does up to 50 sequential uniqueness probes → UUID suffix + DB unique constraint + single retry.
-24. Guest RSVP rate-limit does a `select count` per submission → in-memory LRU first, DB fallback.
-25. `listWalkAttendees` uses `supabaseAdmin` for a public-page read → anon client (RLS already covers it).
-26. `useSubscription` opens a duplicate realtime channel if both `BillingCard` and a badge mount → singleton via auth context.
-27. `useProfileStats` likely missing `staleTime` → confirm + add.
-28. `NowPlayingDock` cover art has no `width`/`height` and no Supabase image transform → 48×48 px slot can load a 1400×1400 iTunes cover.
-29. `getHomeUpcoming` and `discoverFriendsGoing` duplicate friend+circle fan-out → extract shared `getFriendAndMateIds`.
-30. Raw Stripe error messages forwarded to client in some billing fns → route through existing `lib/cap-error.ts`.
+## Sev 3 — Defense in depth (post-launch, do soon)
 
----
+- **Leaked-password protection (HIBP)**: enable via `configure_auth` with `password_hibp_enabled: true`.
+- **Rate limiting on public routes**: `/api/public/hooks/sync-*`, `/api/public/walk.$code.og`, `/api/public/payments/webhook`. The cron hooks now check `apikey` (good); add per-IP throttling to the OG endpoint to avoid abuse-driven Worker spend.
+- **Stripe webhook**: confirm signature verification uses `timingSafeEqual` (constant-time) and is wrapped in try/catch returning 400 on bad signature.
+- **CORS on `/api/public/*`**: keep responses same-origin unless explicitly needed; do not add `Access-Control-Allow-Origin: *`.
+- **Input validation**: add Zod schemas (length + regex caps) to every server-route POST body — at minimum the webhook and OG endpoints. Server functions already validate via `inputValidator`; spot-check that all of them use strict Zod, not `(x) => x`.
+- **PII surface review**: `safety_reports`, `user_dob`, `subscriptions`, `billing_events` — confirm policies are owner-only and that no server fn returns these via `supabaseAdmin` without an explicit authorization check.
+- **Service role usage**: every remaining `supabaseAdmin` call in `.functions.ts` files should (a) authenticate the caller first, (b) project only safe columns, (c) apply explicit WHERE filters. Worth a final grep.
+- **Update security memory** after Sev 0/1 are shipped so future scans don't re-flag the now-fixed items.
 
-## DB / infra notes (separate from the code list)
+## Out of scope for this pass
+New features, schema refactors beyond the lat/lng split, and the optional `extensions` schema move (cosmetic).
 
-From `pg_stat_statements`:
-- **#1 hot query:** `podcast_episodes` upsert (30s total / 825 calls / 36ms mean). This is the cron sync job — fixing item #4 (parallel feed sync) won't speed individual upserts but will free workers faster. If episode insert volume grows, consider `COPY ... FROM` or batching upserts.
-- **#2:** `podcast_episodes` join with `podcast_feeds` (max 550ms!) — needs `EXPLAIN ANALYZE` to confirm, almost certainly missing an index on `podcast_episodes.feed_id` or `(is_active, published_at DESC)`.
-- **#5-6:** Two `events` queries running ~46k and ~23k times for the audio-room cron logic. Fast individually (0.06ms) but consider whether this many calls are needed.
+## Recommendation
+Ship **Sev 0 (items 1–7) and Sev 1 (item 8) before launch** — these are the actual exploitable issues (~2–3 hours of work, mostly SQL + small server-fn guards). Sev 2 in the first week, Sev 3 as ongoing hygiene.
 
-Storage: `ambient-covers` bucket is public with listing allowed (linter WARN 5). Lock down the `LIST` policy unless you actually want third parties enumerating cover art.
-
----
-
-## My recommendation
-
-**Ship Sev1 (items 1-7) before launch. Ship Sev2 in the first week or two as load reveals priorities. Sev3 is post-launch hygiene.**
-
-The Sev1 list is ~2-3 hours of focused work and meaningfully changes the security posture. Sev2 is where the cost-per-user math lives — worth doing, but you'll see signals in your DB metrics that tell you which one to do first once real traffic hits.
-
-Want me to switch to build mode and ship Sev1?
-
----
-
-## Shipped — Sev 2 (this pass)
-
-- **8/9** Home data fetches wrapped in `useQuery` with 5-min staleTime + no focus refetch (`routes/index.tsx`, `today-island.tsx`, `week-summary.tsx`).
-- **10** `getHomeUpcoming` — 5 serial awaits → 2 `Promise.all` groups.
-- **11** `listFriends` capped at 500 rows.
-- **12** `discoverFriendsGoing` — added 60-day horizon + 2k rsvp cap.
-- **14** `walk-places` no longer `select("*")`.
-- **15** Player position state throttled to ~1 Hz (was ~4 Hz native).
-- **16** `deleteMyAccount` parallel `Promise.allSettled` + logs failures.
-- **17** `_authenticated` layout now has `errorComponent` w/ retry.
-- **18** `FriendPulse` effect dep cleaned (was refetching every render).
-
-Sev 3 still queued for post-launch polish.
+Approve and I'll switch to build mode and ship Sev 0 + 1 in one pass.
