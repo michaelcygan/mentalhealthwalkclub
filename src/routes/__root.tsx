@@ -1,4 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
@@ -13,22 +14,42 @@ import { AmbientPlayerProvider } from "@/lib/ambient-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { ReflectionFab } from "@/components/reflection-fab";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
+import { dur, easeOut } from "@/lib/motion";
 
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="font-serif text-7xl text-foreground">404</h1>
-        <h2 className="mt-4 text-xl text-foreground">This path doesn't exist yet.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Let's get you back on the trail.</p>
-        <div className="mt-6">
-          <Link to="/" className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90">
+        <p className="t-eyebrow">404</p>
+        <h1 className="mt-3 h-display text-foreground">This path drifted off the trail.</h1>
+        <p className="mt-3 font-serif text-sm italic text-muted-foreground">Let's get you back to somewhere familiar.</p>
+        <div className="mt-7">
+          <Link to="/" className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-rest transition hover:opacity-90 active:scale-[0.98]">
             Go home
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Wraps <Outlet /> with a short cross-fade keyed by pathname. Honors reduced motion. */
+function RoutedOutlet() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const reduce = useReducedMotion();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={path}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        exit={reduce ? { opacity: 0 } : { opacity: 0, y: -2 }}
+        transition={{ duration: dur.fast, ease: easeOut }}
+      >
+        <Outlet />
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -210,7 +231,7 @@ function RootComponent() {
           <PlayerProvider>
             <PaymentTestModeBanner />
             <AppFrame>
-              <Outlet />
+              <RoutedOutlet />
             </AppFrame>
             <ReflectionFab />
             <Toaster />
