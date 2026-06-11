@@ -291,6 +291,7 @@ function RsvpRow({
     return () => { cancel = true; };
   }, [eventId, user]);
 
+  const notifyHost = useServerFn(notifyHostOfRsvp);
   const setLoggedIn = async (next: RsvpStatus) => {
     if (!user || busy) return;
     setBusy(true);
@@ -307,6 +308,9 @@ function RsvpRow({
       setMy(prev);
       toast.error(error.message);
       return;
+    }
+    if (prev !== "going" && next === "going") {
+      void notifyHost({ data: { eventId } }).catch(() => {});
     }
     toast.success(
       next === "going" ? "You're in. See you out there." :
