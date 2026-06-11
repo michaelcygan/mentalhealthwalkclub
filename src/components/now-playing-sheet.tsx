@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { ChevronDown, Pause, Play, Loader2, Rewind, FastForward, SkipForward, Volume2, VolumeX, ListMusic, X, ExternalLink, Square, Trash2 } from "lucide-react";
+import { ChevronDown, Pause, Play, Loader2, Rewind, FastForward, SkipForward, Volume2, VolumeX, ListMusic, X, ExternalLink, Square, Trash2, Moon } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { usePlayer, type PlayableTrack } from "@/lib/player-context";
 import { useAmbient } from "@/lib/ambient-context";
@@ -25,6 +25,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
     current, playing, loading, position, duration, queue,
     toggle, seek, skipBy, skipNext, stop,
     play, removeFromQueue, clearQueue,
+    sleepTimerRemainingMs, setSleepTimer,
   } = usePlayer();
   const { muted, toggleMute, volume, setVolume } = useAmbient();
   const reduceMotion = useReducedMotion();
@@ -201,6 +202,29 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground transition hover:text-foreground"
                     >
                       <FastForward className="h-3.5 w-3.5" /> +15s
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Cycle: off → 15 → 30 → 60 → off
+                        const current = sleepTimerRemainingMs ? Math.ceil(sleepTimerRemainingMs / 60_000) : 0;
+                        const nextMap: Record<number, number | null> = { 0: 15, 15: 30, 30: 60, 60: null };
+                        // Map by nearest preset
+                        const nearest = current >= 60 ? 60 : current >= 30 ? 30 : current >= 15 ? 15 : 0;
+                        setSleepTimer(nextMap[nearest] ?? null);
+                      }}
+                      aria-label="Sleep timer"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] transition",
+                        sleepTimerRemainingMs
+                          ? "border-forest/40 bg-forest/10 text-forest"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Moon className="h-3.5 w-3.5" />
+                      {sleepTimerRemainingMs
+                        ? `${Math.ceil(sleepTimerRemainingMs / 60_000)}m`
+                        : "Sleep"}
                     </button>
                     <div className="flex flex-1 items-center gap-2 pl-3">
                       <button
