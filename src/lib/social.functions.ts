@@ -225,7 +225,8 @@ export const listFriends = createServerFn({ method: "GET" })
       .from("friendships")
       .select("id,user_low,user_high,requested_by,status,created_at")
       .or(`user_low.eq.${userId},user_high.eq.${userId}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
 
     const otherIds = Array.from(
       new Set((rows ?? []).map((r) => (r.user_low === userId ? r.user_high : r.user_low))),
