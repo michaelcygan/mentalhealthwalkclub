@@ -84,7 +84,7 @@ export function MobileTabBar() {
           )}
         </AnimatePresence>
 
-        <div className="pointer-events-auto relative flex w-full max-w-sm items-center rounded-full border border-border/60 bg-background/70 px-2 py-1.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
+        <div className="pointer-events-auto relative flex w-full max-w-sm items-center rounded-full border border-border/60 bg-background/70 px-2 py-1.5 shadow-floating backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
           <ul className="flex flex-1 items-center justify-around gap-1 pr-7">
             {left.map((t) => (
               <TabItem key={t.to} {...t} side="left" active={isActive(t.to, t.exact)} reduceMotion={!!reduceMotion} />
@@ -190,7 +190,7 @@ function ComposeAction({ label, icon, onClick }: { label: string; icon: React.Re
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-2.5 text-sm font-medium shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 hover:bg-accent/50"
+      className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-2.5 text-sm font-medium shadow-floating backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 hover:bg-accent/50"
     >
       <span className="text-forest">{icon}</span>
       {label}
