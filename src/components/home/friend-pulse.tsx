@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
+import { Shimmer } from "@/components/ui/shimmer";
 import { useServerFn } from "@tanstack/react-start";
 import { getCircleActivity, sendHighFive, type CircleActivityItem } from "@/lib/social.functions";
 import { Hand, ArrowRight } from "lucide-react";
@@ -34,7 +35,7 @@ export function FriendPulse() {
   }, [fetchActivity]);
 
   if (items === null) {
-    return <div className="h-24 animate-pulse rounded-2xl bg-muted/40" />;
+    return <Shimmer className="h-24 w-full" />;
   }
   if (!items.length) return null;
 

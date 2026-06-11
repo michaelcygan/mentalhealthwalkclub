@@ -15,6 +15,7 @@ import { WeekSummary } from "@/components/home/week-summary";
 import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
 import { ListenAndRead } from "@/components/home/listen-and-read";
+import { Shimmer } from "@/components/ui/shimmer";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
@@ -28,8 +29,8 @@ function HomeRoute() {
   if (loading) {
     return (
       <div className="space-y-4" aria-busy="true">
-        <div className="h-48 w-full animate-pulse rounded-3xl bg-muted/50" />
-        <div className="h-32 w-full animate-pulse rounded-2xl bg-muted/40" />
+        <Shimmer className="h-48 w-full" rounded="rounded-3xl" />
+        <Shimmer className="h-32 w-full" />
       </div>
     );
   }
