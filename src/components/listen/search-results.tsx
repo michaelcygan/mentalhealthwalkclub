@@ -2,6 +2,7 @@ import { Headphones, Waves, Music, BookOpen } from "lucide-react";
 import type { SearchHit, SearchKind } from "@/lib/listen-search.functions";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { usePlayOrOpen } from "@/lib/play-helpers";
+import { TileActionsMenu } from "@/components/listen/tile-actions";
 
 const KIND_META: Record<SearchKind, { label: string; Icon: typeof Headphones }> = {
   podcast: { label: "Podcasts", Icon: Headphones },
