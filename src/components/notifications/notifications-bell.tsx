@@ -30,7 +30,7 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-export function NotificationsBell() {
+export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" } = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
