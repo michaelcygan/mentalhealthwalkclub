@@ -1,75 +1,84 @@
-# Listen & Read — Launch Audit
+## Goal
 
-## What I found
+Let the pill player expand into a full now-playing sheet, then collapse back to the pill. Add the small set of utility controls that earn their place: scrub, skip ±15s, queue, mute/volume, link out.
 
-**1. No actual podcast/audio player exists.**
-`NowPlayingDock` only handles *ambient* loops (via `useAmbient`). Podcast episodes and guided walks have no playback path at all — tapping a card does nothing useful.
+## Interaction
 
-**2. Tiles aren't clickable on `/listen`.**
-The "Podcasts for walking", "Ambient mixes", "Guided walks", "Trending", and "Recently added" rails render `<Tile>` as a plain `<div>`. No `onClick`, no `<Link>`. Same for `SearchResults` rows (only the external-link icon is tappable; the row itself isn't).
+- Tap the pill anywhere outside the play/close buttons → expand.
+- Expanded view slides up from the pill as a bottom sheet (≈85% viewport height, rounded top, drag handle).
+- Collapse via: drag handle pull-down, chevron-down button, tap on scrim, or swipe down.
+- Pill stays a single tap target (play/pause + close still work); chevron-up affordance hints at expand.
+- Honors `prefers-reduced-motion` (fade instead of slide).
+- Hidden on the same routes as today (`/auth`, `/welcome`, `/w/*`).
 
-**3. The home `PodcastRail` link is wrong.**
-It uses `to="/listen/$id" params={{ id: ep.id }}` — that route is the **playlist detail** page, so it tries to load a playlist with the episode's UUID and silently fails.
+## Expanded layout (top → bottom)
 
-**4. "Backyard" cover not loading.**
-"Backyard" is a row in `listen_collections` whose `cover_url` is broken/empty. `CollectionsRail` renders the image with no fallback, so it's an empty box.
+```text
+┌─────────────────────────────┐
+│         ── drag ──          │
+│  ⌄  Now playing       ⋯     │  ← collapse + overflow (link out)
+│                             │
+│      ┌──────────────┐       │
+│      │  cover art   │       │  ← big square, CoverThumb fallback
+│      └──────────────┘       │
+│                             │
+│  Episode title (serif)      │
+│  Publisher · 32 min         │
+│                             │
+│  ──────●───────────────     │  ← scrubber, draggable
+│  1:24                 31:08 │
+│                             │
+│   ⟲15    ▶/⏸ (64px)   ⟳15  │
+│                             │
+│  🔊 ──●──────              │  ← volume (desktop) / mute toggle (mobile)
+│                             │
+│  Up next                    │
+│  ┌──┐ Track title           │
+│  │  │ Publisher · 24 min  ✕ │
+│  └──┘                       │
+│  …                          │
+└─────────────────────────────┘
+```
 
-**5. Composer (journal FAB) hidden on `/listen`.**
-The reflection composer FAB only mounts on `/` and `/journal`. It should remain available app-wide (subject to the Plus paywall for photo journaling we already shipped).
+## Utility features (only what earns its keep)
 
-**6. Cross-platform behavior is inconsistent.**
-Tiles in `home/podcast-rail`, `listen/collections-rail`, `listen/hits-rail`, `listen/search-results`, and the `/listen` `Tile` component each handle (or don't handle) clicks differently. There's no single "play this" affordance.
+1. **Scrubber** — draggable progress bar with current/remaining time. Already have `position` / `duration` / `seek` in `PlayerProvider`.
+2. **Skip ±15s** — standard podcast affordance.
+3. **Play/pause** — large primary control.
+4. **Queue ("Up next")** — list of upcoming tracks with reorder-by-remove and a clear-all. Tap a queued item to jump to it.
+5. **Mute / volume** — toggle mute; show a slider on desktop only (mobile uses system volume).
+6. **Open source** — overflow menu with "Open episode page" (uses existing `link`) and "Stop playback".
 
----
+Deliberately **not** adding (avoid bloat): playback speed, sleep timer, AirPlay/Cast picker, sharing, lyrics/transcript, favoriting. We can revisit if users ask.
 
-## Plan
+## Queue model
 
-### A. Build a real audio player (global, persistent)
-- Add `PlayerProvider` (`src/lib/player-context.tsx`) with a single `HTMLAudioElement` ref, `play(track)`, `pause`, `toggle`, `seek`, plus state `{ current, playing, loading, position, duration }`. Tracks are `{ id, kind: 'podcast'|'guided'|'ambient', title, subtitle, cover, audio_url, link? }`.
-- Mount once in `__root.tsx`.
-- Extend `NowPlayingDock` to render the **audio** track when one is loaded (title, cover, play/pause, close). Ambient remains separately handled (mute/stop). When both exist, audio takes priority in the dock; ambient ducks/pauses while audio plays.
-- Cleanup on unmount; `canplay` → loading false; `error` → toast + clear.
+Extend `PlayerProvider` with a small queue API — keeps state in one place so the dock, the expanded sheet, and tile click handlers all read/write the same thing.
 
-### B. Make every content card clickable
-For each surface, the **tile itself** is the tap target:
-- **Podcast** → `player.play({ kind:'podcast', audio_url, ... })`. If no `audio_url`, open the external `link` in a new tab as fallback.
-- **Guided walk** → same as podcast.
-- **Ambient mix** → `ambient.play(track)` (existing).
-- **Article (blog)** → open `link` in new tab.
-- **Collection** → navigate to `/listen/collection/$slug`.
+- `queue: PlayableTrack[]` — upcoming tracks (does not include `current`).
+- `enqueue(track)` — appends; toast "Added to queue".
+- `playNext(track)` — inserts at index 0.
+- `removeFromQueue(id)` / `clearQueue()`.
+- `skipNext()` — advances to `queue[0]`, shifts the queue.
+- Auto-advance on `ended`: if queue has items, `skipNext()`; otherwise stop.
 
-Files touched:
-- `src/routes/_authenticated/listen.tsx` — `Tile` becomes a button/link with a `kind` + payload.
-- `src/components/listen/hits-rail.tsx`, `collections-rail.tsx`, `search-results.tsx`, `today-pick.tsx` — wire each row through the same dispatcher.
-- `src/components/home/podcast-rail.tsx` — fix wrong `Link` target; use the player instead.
-- `src/components/listen/read-rail.tsx` — confirm article cards open `link`.
+Wire `enqueue` / `playNext` into a small "⋯" menu on every Tile (long-press or kebab) so users can build a queue from `/listen`. **In scope for this turn:** the menu on `HitsRail` cards, `/listen` Tiles, search results, and the home `PodcastRail`. Ambient and blog items skip the queue menu (ambient uses its own loop; blog opens externally).
 
-### C. Fix "Backyard" cover
-- `CollectionsRail` and `Tile` get a graceful image fallback: emoji/gradient block with the collection name initials, plus `onError` to hide broken `<img>`. This makes any missing/broken `cover_url` look intentional instead of empty.
-- (Optional) flag missing covers in the admin Collections view so you can fill them in.
+## Files
 
-### D. Keep the composer available on Listen & Read
-- Lift the reflection composer FAB to a shared mount (e.g. inside `_authenticated/route.tsx`) so it appears on `/listen`, `/discover`, `/journal`, `/` — anywhere inside the authenticated shell except routes that already own the bottom-right corner (walk flow, auth, welcome). Existing Plus paywall on photo journaling stays intact.
-
-### E. Sweep for consistency
-- Single helper `playOrOpen(item)` used by every rail so behavior is identical everywhere.
-- Add `aria-label`s and keyboard focus styles to the new tile buttons.
-- Skip tiles whose backing row has no `audio_url` AND no `link` (don't render dead cards).
-
----
+- `src/lib/player-context.tsx` — add `queue`, `enqueue`, `playNext`, `removeFromQueue`, `clearQueue`, `skipNext`; wire `ended` → auto-advance.
+- `src/components/now-playing-dock.tsx` — pill becomes a button that toggles the expanded sheet; keep play/close as nested buttons with `stopPropagation`; add chevron-up affordance.
+- `src/components/now-playing-sheet.tsx` *(new)* — expanded sheet built on shadcn `Sheet` (side="bottom") with drag handle, cover, title, scrubber, transport, volume, queue list, overflow menu.
+- `src/components/listen/tile-actions.tsx` *(new, small)* — kebab menu (`DropdownMenu`) with "Play now / Play next / Add to queue / Open source".
+- Touch points to add the kebab: `src/routes/_authenticated/listen.tsx` (Tile), `src/components/listen/hits-rail.tsx`, `src/components/listen/search-results.tsx`, `src/components/home/podcast-rail.tsx`.
 
 ## Technical notes
 
-- `PlayerProvider` uses one `<audio>` element to avoid overlapping playback (matches the pattern in the stack-overflow note).
-- The dock stays mobile-only (`md:hidden`) for now; a desktop mini-player can come later.
-- No DB or RLS changes. No new server functions. All client-side.
-- Podcast `audio_url` already exists on `podcast_episodes`; if any rows are missing it, the tile falls back to the external `link`.
+- The scrubber uses shadcn `Slider`; on drag-end call `seek(value)`. Throttle position updates while dragging so the thumb doesn't fight `timeupdate`.
+- Sheet uses `Sheet` from `@/components/ui/sheet` with `side="bottom"`, custom max-height, and a visible grab handle. On mobile, anchored above the tab bar via the existing safe-area inset math.
+- Queue persists in memory only (matches current player scope — no resume-position work yet, per earlier out-of-scope call).
+- `MediaSession` already wired for play/pause; extend to `previoustrack` (skip −15s) and `nexttrack` (skipNext).
 
----
+## Out of scope
 
-## Out of scope (call out if you want it next)
-- Background/lock-screen playback metadata (MediaSession API) — easy follow-up.
-- Resume position per episode (needs a small `listening_progress` table).
-- Queue/up-next from playlists driving the player.
-
-Ready to implement on approval.
+- Resume position per episode, cross-device queue sync, sleep timer, playback speed, sharing, AirPlay/Cast.
