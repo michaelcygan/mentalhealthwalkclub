@@ -58,6 +58,24 @@ export function NotificationsBell() {
   });
   const items: NotificationRow[] = listData?.items ?? [];
 
+  // Realtime: push fresh count + list into the bell when a new notification lands.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user, qc]);
+
   if (!user) return null;
 
   const onItem = async (n: NotificationRow) => {
