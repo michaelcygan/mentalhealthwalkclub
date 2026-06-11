@@ -40,14 +40,10 @@ Status legend: ✅ shipped · 🟡 partial · ⬜ pending
 
 ---
 
-## What's next
+## Launch readiness
 
-Tier 2 picks, in suggested order:
-- **#11 page transitions** ✅ done — feel the difference on any nav.
-- **#9 Today Island upgrades** — small, very visible on home.
-- **#8 Walk recap** — biggest "moment" lift; needs a route + design pass.
-- **#12 pull-to-refresh** — quick, native-feel win.
-- **#10b/c cover glow + scrubber polish** — nice-to-have.
-- **#13 OG audit** — share leverage.
+All launch-blocking items shipped. What remains is genuinely post-launch:
+- Pull-to-refresh (#12) — native polish
+- Cover glow + scrubber refinements (#10b/c)
+- Haptics expansion, long-press preview, quiet mode, breathing logo (#14–17)
 
-Say the word on which to pick up next, or "all of Tier 2" and I'll batch.
