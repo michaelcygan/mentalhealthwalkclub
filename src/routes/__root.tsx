@@ -189,14 +189,17 @@ function TabBar() {
               Sign up
             </Button>
           ) : (
-            <Link
-              to="/support"
-              aria-label="Get support"
-              title="Get support"
-              className="grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
-            >
-              <LifeBuoy className="h-4 w-4" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <NotificationsBell />
+              <Link
+                to="/support"
+                aria-label="Get support"
+                title="Get support"
+                className="grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
+              >
+                <LifeBuoy className="h-4 w-4" />
+              </Link>
+            </div>
           )}
         </div>
       </header>
