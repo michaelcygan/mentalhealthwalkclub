@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -12,6 +12,7 @@ import {
   type NotificationRow,
 } from "@/lib/notifications.functions";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
