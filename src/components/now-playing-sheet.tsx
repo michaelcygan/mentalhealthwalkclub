@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { ChevronDown, Pause, Play, Loader2, Rewind, FastForward, SkipForward, Volume2, VolumeX, ListMusic, X, ExternalLink, Square, Trash2 } from "lucide-react";
+import { ChevronDown, Pause, Play, Loader2, Rewind, FastForward, SkipForward, Volume2, VolumeX, ListMusic, X, ExternalLink, Square, Trash2, Moon } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { usePlayer, type PlayableTrack } from "@/lib/player-context";
 import { useAmbient } from "@/lib/ambient-context";
@@ -25,6 +25,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
     current, playing, loading, position, duration, queue,
     toggle, seek, skipBy, skipNext, stop,
     play, removeFromQueue, clearQueue,
+    sleepTimerRemainingMs, setSleepTimer,
   } = usePlayer();
   const { muted, toggleMute, volume, setVolume } = useAmbient();
   const reduceMotion = useReducedMotion();
