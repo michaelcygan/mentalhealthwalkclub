@@ -76,11 +76,17 @@ function ProfileTab() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single().then(({ data }) => {
-      const row = data as Profile | null;
+    Promise.all([
+      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private").eq("id", user.id).single(),
+      (supabase.from("user_locations" as never) as never as { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lat: number | null; lng: number | null } | null }> } } })
+        .select("lat,lng").eq("user_id", user.id).maybeSingle(),
+    ]).then(([profRes, locRes]) => {
+      const base = profRes.data as Omit<Profile, "lat" | "lng"> | null;
+      if (!base) return;
+      const row: Profile = { ...base, lat: locRes.data?.lat ?? null, lng: locRes.data?.lng ?? null };
       setP(row);
-      setNameDraft(row?.display_name ?? "");
-      setBioDraft(row?.bio ?? "");
+      setNameDraft(row.display_name ?? "");
+      setBioDraft(row.bio ?? "");
     });
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
@@ -100,7 +106,14 @@ function ProfileTab() {
     if (!user || !p) return;
     const next = { ...p, ...patch };
     setP(next);
-    await supabase.from("profiles").update(next).eq("id", user.id);
+    const { lat, lng, ...profilePatch } = patch;
+    if (Object.keys(profilePatch).length > 0) {
+      await supabase.from("profiles").update(profilePatch).eq("id", user.id);
+    }
+    if ("lat" in patch || "lng" in patch) {
+      await (supabase.from("user_locations" as never) as never as { upsert: (row: object, opts: object) => Promise<unknown> })
+        .upsert({ user_id: user.id, lat: lat ?? null, lng: lng ?? null }, { onConflict: "user_id" });
+    }
     toast.success("Saved.");
   };
 

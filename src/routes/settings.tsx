@@ -58,13 +58,18 @@ function SettingsPage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("display_name,city,region,country,location_label,lat,lng,bio,is_private").eq("id", user.id).single()
-      .then(({ data }) => {
-        const row = data as ProfileRow | null;
-        setP(row);
-        setBioDraft(row?.bio ?? "");
-        setNameDraft(row?.display_name ?? "");
-      });
+    Promise.all([
+      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private").eq("id", user.id).single(),
+      (supabase.from("user_locations" as never) as never as { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lat: number | null; lng: number | null } | null }> } } })
+        .select("lat,lng").eq("user_id", user.id).maybeSingle(),
+    ]).then(([profRes, locRes]) => {
+      const base = profRes.data as Omit<ProfileRow, "lat" | "lng"> | null;
+      if (!base) return;
+      const row: ProfileRow = { ...base, lat: locRes.data?.lat ?? null, lng: locRes.data?.lng ?? null };
+      setP(row);
+      setBioDraft(row.bio ?? "");
+      setNameDraft(row.display_name ?? "");
+    });
     supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
       .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
@@ -73,7 +78,14 @@ function SettingsPage() {
     if (!user || !p) return;
     const next = { ...p, ...patch };
     setP(next);
-    await supabase.from("profiles").update(next).eq("id", user.id);
+    const { lat, lng, ...profilePatch } = patch;
+    if (Object.keys(profilePatch).length > 0) {
+      await supabase.from("profiles").update(profilePatch).eq("id", user.id);
+    }
+    if ("lat" in patch || "lng" in patch) {
+      await (supabase.from("user_locations" as never) as never as { upsert: (row: object, opts: object) => Promise<unknown> })
+        .upsert({ user_id: user.id, lat: lat ?? null, lng: lng ?? null }, { onConflict: "user_id" });
+    }
     toast.success("Saved.");
   };
 

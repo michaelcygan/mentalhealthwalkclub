@@ -1802,8 +1802,6 @@ export type Database = {
           id: string
           is_host_account: boolean
           is_private: boolean
-          lat: number | null
-          lng: number | null
           location_label: string | null
           onboarded_at: string | null
           region: string | null
@@ -1825,8 +1823,6 @@ export type Database = {
           id: string
           is_host_account?: boolean
           is_private?: boolean
-          lat?: number | null
-          lng?: number | null
           location_label?: string | null
           onboarded_at?: string | null
           region?: string | null
@@ -1848,8 +1844,6 @@ export type Database = {
           id?: string
           is_host_account?: boolean
           is_private?: boolean
-          lat?: number | null
-          lng?: number | null
           location_label?: string | null
           onboarded_at?: string | null
           region?: string | null
@@ -2213,6 +2207,27 @@ export type Database = {
           id?: string
           kind?: string
           target?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_locations: {
+        Row: {
+          lat: number | null
+          lng: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          lat?: number | null
+          lng?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          lat?: number | null
+          lng?: number | null
           updated_at?: string
           user_id?: string
         }

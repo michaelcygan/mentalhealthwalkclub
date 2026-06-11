@@ -293,7 +293,16 @@ export const respondFriendRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => RespondInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("friendships")
+      .select("user_low,user_high,requested_by,status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Friend request not found.");
+    if (row.requested_by === userId) throw new Error("You can't respond to your own request.");
+    if (row.user_low !== userId && row.user_high !== userId) throw new Error("Not allowed.");
+    if (row.status !== "pending") throw new Error("Request already handled.");
     const { error } = await supabase
       .from("friendships")
       .update({ status: data.action === "accept" ? "accepted" : "declined" })
@@ -389,10 +398,22 @@ const AllowlistMutate = z.object({
   eventId: z.string().uuid(),
   circleId: z.string().uuid(),
 });
+
+async function assertEventHost(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  eventId: string,
+  userId: string,
+) {
+  const { data: ev } = await supabase.from("events").select("host_user_id").eq("id", eventId).maybeSingle();
+  if (!ev || ev.host_user_id !== userId) throw new Error("Not allowed.");
+}
+
 export const addAllowlistCircle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => AllowlistMutate.parse(d))
   .handler(async ({ data, context }) => {
+    await assertEventHost(context.supabase, data.eventId, context.userId);
     const { error } = await context.supabase
       .from("event_circle_allowlist")
       .insert({ event_id: data.eventId, circle_id: data.circleId });
@@ -404,6 +425,7 @@ export const removeAllowlistCircle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => AllowlistMutate.parse(d))
   .handler(async ({ data, context }) => {
+    await assertEventHost(context.supabase, data.eventId, context.userId);
     const { error } = await context.supabase
       .from("event_circle_allowlist")
       .delete()
@@ -422,6 +444,7 @@ export const addBlocklistUser = createServerFn({ method: "POST" })
   .inputValidator((d) => BlocklistAdd.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    await assertEventHost(supabase, data.eventId, context.userId);
     const uname = data.username.replace(/^@/, "");
     const { data: prof } = await supabase
       .from("profiles")
@@ -444,6 +467,7 @@ export const removeBlocklistUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => BlocklistRemove.parse(d))
   .handler(async ({ data, context }) => {
+    await assertEventHost(context.supabase, data.eventId, context.userId);
     const { error } = await context.supabase
       .from("event_blocklist")
       .delete()

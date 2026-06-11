@@ -82,10 +82,46 @@ export type EventPhoto = {
 };
 
 export const getEventPhotos = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d) => EventIdInput.parse(d))
-  .handler(async ({ data }): Promise<{ photos: EventPhoto[] }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(async ({ data, context }): Promise<{ photos: EventPhoto[] }> => {
+    const { supabase, userId } = context;
 
+    // Verify caller can see this event before signing photo URLs.
+    const { data: ev } = await supabase
+      .from("events")
+      .select("id,visibility,host_user_id,group_id")
+      .eq("id", data.eventId)
+      .maybeSingle();
+    if (!ev) return { photos: [] };
+
+    let allowed = ev.visibility === "public" || ev.visibility === "link_only" || ev.host_user_id === userId;
+    if (!allowed) {
+      // Group-scoped: caller must be an active member
+      if (ev.group_id) {
+        const { data: m } = await supabase
+          .from("group_memberships")
+          .select("user_id")
+          .eq("group_id", ev.group_id)
+          .eq("user_id", userId)
+          .eq("status", "active")
+          .maybeSingle();
+        if (m) allowed = true;
+      }
+      if (!allowed) {
+        // Otherwise caller must have RSVP'd
+        const { data: r } = await supabase
+          .from("event_rsvps")
+          .select("user_id")
+          .eq("event_id", ev.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (r) allowed = true;
+      }
+    }
+    if (!allowed) return { photos: [] };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("event_photos")
       .select("id,storage_path,caption,user_id,created_at")

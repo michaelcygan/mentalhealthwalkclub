@@ -118,7 +118,15 @@ export const deleteStandingWalk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabase, userId } = context;
+    const { data: sw } = await supabase
+      .from("group_standing_walks")
+      .select("group_id, groups!inner(owner_id)")
+      .eq("id", data.id)
+      .maybeSingle();
+    const owner = (sw as { groups?: { owner_id?: string } } | null)?.groups?.owner_id;
+    if (!sw || owner !== userId) throw new Error("Only the group owner can remove standing walks.");
+    const { error } = await supabase
       .from("group_standing_walks")
       .delete()
       .eq("id", data.id);
