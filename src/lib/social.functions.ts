@@ -320,6 +320,19 @@ export const respondFriendRequest = createServerFn({ method: "POST" })
       .update({ status: data.action === "accept" ? "accepted" : "declined" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (data.action === "accept") {
+      const { data: me } = await supabase.from("profiles").select("display_name,username").eq("id", userId).maybeSingle();
+      const who = me?.display_name ?? me?.username ?? "Someone";
+      const { emitNotification } = await import("./notifications.server");
+      await emitNotification({
+        userId: row.requested_by,
+        actorId: userId,
+        kind: "friend_accepted",
+        title: `${who} accepted your walk request`,
+        link: "/circles",
+        entityId: data.id,
+      });
+    }
     return { ok: true };
   });
 
