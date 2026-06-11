@@ -436,11 +436,17 @@ function HorizontalRail({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Tile({ title, sub, cover, featured }: { title: string; sub: string; cover: string | null; featured?: boolean }) {
-  return (
-    <div className="relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 shadow-soft">
-      <div className="mb-2 aspect-square overflow-hidden rounded-xl bg-forest/10">
-        {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : null}
+function Tile({
+  title, sub, cover, featured, onClick, kind = "podcast",
+}: {
+  title: string; sub: string; cover: string | null; featured?: boolean;
+  onClick?: () => void;
+  kind?: "podcast" | "ambient" | "guided" | "blog";
+}) {
+  const inner = (
+    <>
+      <div className="mb-2 aspect-square overflow-hidden rounded-xl">
+        <CoverThumb src={cover} title={title} kind={kind} />
       </div>
       {featured && (
         <span className="absolute right-3 top-3 rounded-full bg-forest/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary-foreground">
@@ -449,6 +455,17 @@ function Tile({ title, sub, cover, featured }: { title: string; sub: string; cov
       )}
       <p className="truncate font-serif text-sm">{title}</p>
       <p className="truncate text-[11px] text-muted-foreground">{sub}</p>
-    </div>
+    </>
   );
+  const cls = "relative w-40 shrink-0 snap-start rounded-2xl border border-border bg-card p-2 text-left shadow-soft transition active:scale-[0.98] hover:-translate-y-0.5";
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={`Play ${title}`} className={cls}>
+        {inner}
+      </button>
+    );
+  }
+  return <div className={cls}>{inner}</div>;
+}
+
 }
