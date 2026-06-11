@@ -46,12 +46,11 @@ function SettingsPage() {
   const [bioDraft, setBioDraft] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [notifs, setNotifs] = useState<NotifPrefs>(() => (typeof window === "undefined" ? { walk_reminders: true, friend_rsvps: true, weekly_recap: true } : loadNotifs()));
 
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private").eq("id", user.id).single(),
+      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private,notify_friend_requests,notify_high_fives,notify_rsvps,notify_broadcasts").eq("id", user.id).single(),
       (supabase.from("user_locations" as never) as never as { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lat: number | null; lng: number | null } | null }> } } })
         .select("lat,lng").eq("user_id", user.id).maybeSingle(),
     ]).then(([profRes, locRes]) => {
@@ -81,11 +80,6 @@ function SettingsPage() {
     toast.success("Saved.");
   };
 
-  const updateNotif = (key: keyof NotifPrefs, val: boolean) => {
-    const next = { ...notifs, [key]: val };
-    setNotifs(next);
-    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); } catch { /* empty */ }
-  };
 
 
   if (!user) {
