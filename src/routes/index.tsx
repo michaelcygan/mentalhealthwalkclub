@@ -85,24 +85,26 @@ function ValueCard({ icon: Icon, title, body }: { icon: typeof Footprints; title
 
 function HomeTab() {
   const { user } = useAuth();
-  const [lastReflection, setLastReflection] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    const since = new Date(); since.setDate(since.getDate() - 30); since.setHours(0, 0, 0, 0);
-    void supabase
-      .from("walk_sessions")
-      .select("reflection_note,started_at,status")
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .not("reflection_note", "is", null)
-      .gte("started_at", since.toISOString())
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (data?.[0]?.reflection_note) setLastReflection(data[0].reflection_note as string);
-      });
-  }, [user]);
+  const { data: lastReflection } = useQuery({
+    queryKey: ["home", "last-reflection", user?.id],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const since = new Date(); since.setDate(since.getDate() - 30); since.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from("walk_sessions")
+        .select("reflection_note,started_at,status")
+        .eq("user_id", user!.id)
+        .eq("status", "completed")
+        .not("reflection_note", "is", null)
+        .gte("started_at", since.toISOString())
+        .order("started_at", { ascending: false })
+        .limit(1);
+      return (data?.[0]?.reflection_note as string | undefined) ?? null;
+    },
+  });
 
   if (!user) return null;
 
