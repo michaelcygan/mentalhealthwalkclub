@@ -22,7 +22,7 @@ export function TileActionsMenu({ item, size = "sm" }: Props) {
   if (item.kind === "ambient") return null;
 
   const toTrack = (): PlayableTrack | null => {
-    if (item.kind === "blog") return null;
+    if (item.kind !== "podcast" && item.kind !== "guided") return null;
     if (!item.audio_url) return null;
     return {
       id: item.id,
