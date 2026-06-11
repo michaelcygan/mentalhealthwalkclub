@@ -127,15 +127,14 @@ export const notifyHostOfRsvp = createServerFn({ method: "POST" })
     const title = `${who} is coming to "${ev.title ?? "your walk"}"`;
     const link = ev.slug ? `/w/${ev.slug}` : null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.rpc("create_notification", {
-      _user_id: ev.host_user_id,
-      _actor_id: userId,
-      _kind: "walk_rsvp",
-      _title: title,
-      _body: "",
-      _link: link ?? "",
-      _entity_id: data.eventId,
+    const { emitNotification } = await import("./notifications.server");
+    await emitNotification({
+      userId: ev.host_user_id,
+      actorId: userId,
+      kind: "walk_rsvp",
+      title,
+      link: link ?? undefined,
+      entityId: data.eventId,
     });
     return { ok: true };
   });
