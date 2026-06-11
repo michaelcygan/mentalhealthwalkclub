@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles } from "lucide-react";
 import { listCollections, type CollectionCard } from "@/lib/collections.functions";
+import { CoverThumb } from "@/components/listen/cover-thumb";
 
 export function CollectionsRail() {
   const [items, setItems] = useState<CollectionCard[] | null>(null);
