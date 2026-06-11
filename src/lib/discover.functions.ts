@@ -129,11 +129,13 @@ export const discoverFriendsGoing = createServerFn({ method: "GET" })
     if (!connectedIds.length) return { events: [] as FriendGoingEvent[] };
 
     const now = new Date().toISOString();
+    const horizon = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
     const { data: rsvpRows } = await supabase
       .from("event_rsvps")
       .select("event_id,user_id")
       .in("user_id", connectedIds)
-      .eq("status", "going");
+      .eq("status", "going")
+      .limit(2000);
 
     const eventIds = Array.from(new Set((rsvpRows ?? []).map((r) => r.event_id)));
     if (!eventIds.length) return { events: [] as FriendGoingEvent[] };
