@@ -1,66 +1,123 @@
-# Security Audit — Pre-Launch
+# Notifications bell + flow audit
 
-Combined results from the DB linter (32 findings), the deep security scanner (40 findings), and a code read of the flagged server functions. Triaged by exploit impact, not raw count.
+## Audit: what exists today
 
-## Sev 0 — Block launch (real, exploitable bugs)
+- **No notifications table, no server fns, no UI.** Nothing is delivered anywhere — not in‑app, not email, not push.
+- `settings.tsx` has three toggles (`walk_reminders`, `friend_rsvps`, `weekly_recap`) but they only write to `localStorage`. They are decorative.
+- Plenty of *notification‑worthy* events already fire in the app with no listener:
+  - Friend request sent / accepted (`social.functions.ts`)
+  - High‑five sent (`social.functions.ts`)
+  - RSVP to a walk you host (`walk-page.functions.ts`)
+  - Walk broadcast posted to attendees (`walk-broadcasts.tsx`)
+  - Standing walk reminders, weekly recap (scheduled — not built)
+- The circled icon in the screenshot is the **Get support** lifebuoy in `__root.tsx` (mobile header). The user wants a **bell** added in that same header slot.
 
-1. **Storage policy bypass on `walk-snapshots`** *(scanner: error)*
-   Two PERMISSIVE INSERT policies exist: `walk_snapshots_insert_own` checks only `bucket_id`; `walk_snapshots_own_insert` enforces `auth.uid()` as the first path segment. Because both are PERMISSIVE, the weaker one wins → any signed-in user can upload (and overwrite) any other user's GPS snapshot.
-   Fix: drop `walk_snapshots_insert_own`.
+## What this plan ships
 
-2. **Realtime channel auth missing** *(scanner: error)*
-   No RLS policies on `realtime.messages`. Any authenticated user can subscribe to any channel topic by name — including private walk-session / broadcast channels keyed by user or session ID.
-   Fix: add RLS on `realtime.messages` restricting topic subscriptions to authorized users (host, RSVP'd attendee, or self).
+In‑app notifications only (no email/push yet — flagged as post‑launch). Mobile + desktop header bell with unread count, dropdown/sheet panel, mark‑as‑read, deep links. Triggers wired into the five existing events above. Prefs toggles in Settings become real (control which categories generate rows).
 
-3. **`addAllowlistCircle` / `removeAllowlistCircle` / `addBlocklistUser` / `removeBlocklistUser`** in `src/lib/social.functions.ts` *(scanner: error)*
-   No host-ownership check. Any signed-in user can tamper with any event's audience controls.
-   Fix: mirror the `setEventAudience` guard — fetch `events.host_user_id`, assert `=== userId`.
+### 1. Database (one migration)
 
-4. **`respondFriendRequest`** in `src/lib/social.functions.ts` *(scanner: error)*
-   Only `.eq('id', data.id)`. The requester can call it with their own pending row and auto-accept, gaining `friends` visibility without consent.
-   Fix: assert `requested_by !== userId` and that caller is a party to the row.
+```sql
+create type public.notification_kind as enum (
+  'friend_request', 'friend_accepted', 'high_five',
+  'walk_rsvp', 'walk_broadcast'
+);
 
-5. **`getEventPhotos`** in `src/lib/walk-page.functions.ts` *(scanner: warn, but real leak)*
-   No `requireSupabaseAuth`, uses `supabaseAdmin`, returns signed URLs for any event UUID — including group-only and link-only events. Anonymous photo exfiltration with a UUID guess/leak.
-   Fix: add `requireSupabaseAuth`, then check `events.visibility` + group membership / RSVP / host before signing.
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  actor_id uuid references auth.users(id) on delete set null,
+  kind notification_kind not null,
+  title text not null,
+  body text,
+  link text,                       -- e.g. /w/<code>, /circles, /profile/<id>
+  entity_id uuid,                  -- walk_session_id / event_id / request_id
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index on public.notifications (user_id, created_at desc);
+create index on public.notifications (user_id, read_at) where read_at is null;
 
-6. **`profiles.lat` / `profiles.lng` exposed to all authenticated users** *(scanner: warn — sensitive for this app)*
-   `profiles_select_all_authenticated` policy is `USING (true)`. For a mental health walking app, precise coordinates likely reveal home/frequent locations. Already noted in security memory.
-   Fix: move `lat`/`lng` out of the broad SELECT path — either drop the columns into a separate owner-only table, or replace the policy with a view that omits them and deny direct SELECT on the base table for non-owners.
+grant select, update, delete on public.notifications to authenticated;
+grant all on public.notifications to service_role;
 
-7. **`event_photos_public_select` allows anonymous reads** *(scanner: warn)*
-   Public can read `storage_path`, `user_id`, captions, timestamps for every event photo — leaks user activity metadata even though the bucket itself is private.
-   Fix: scope policy to `authenticated` only (consistent with sibling event tables).
+alter table public.notifications enable row level security;
+create policy "own_notifications_select" on public.notifications
+  for select to authenticated using (user_id = auth.uid());
+create policy "own_notifications_update" on public.notifications
+  for update to authenticated using (user_id = auth.uid());
+create policy "own_notifications_delete" on public.notifications
+  for delete to authenticated using (user_id = auth.uid());
+-- No INSERT policy: only server-side (service_role / SECURITY DEFINER fn) writes.
 
-## Sev 1 — Fix before launch (ownership gaps)
+create or replace function public.create_notification(
+  _user_id uuid, _actor_id uuid, _kind notification_kind,
+  _title text, _body text, _link text, _entity_id uuid
+) returns uuid language plpgsql security definer set search_path = public as $$
+declare nid uuid;
+begin
+  if _user_id = _actor_id then return null; end if; -- never notify self
+  insert into public.notifications(user_id, actor_id, kind, title, body, link, entity_id)
+  values (_user_id, _actor_id, _kind, _title, _body, _link, _entity_id)
+  returning id into nid;
+  return nid;
+end $$;
+revoke execute on function public.create_notification(uuid,uuid,notification_kind,text,text,text,uuid) from public, anon, authenticated;
+```
 
-8. **`deleteStandingWalk`** in `src/lib/standing-walks.functions.ts` — no group-owner check. Any group member who learns a standing walk's UUID can wipe a group's recurring schedule. Mirror the `createStandingWalk` guard.
+### 2. Server functions (`src/lib/notifications.functions.ts`)
 
-## Sev 2 — Configuration / hygiene
+- `listNotifications({ limit })` — paginated, newest first.
+- `getUnreadCount()` — `count exact head` where `read_at is null`.
+- `markRead({ ids? })` — single, many, or all.
+- `deleteNotification({ id })`.
 
-9. **Public bucket allows listing** (`ambient-covers`) — broad SELECT on `storage.objects` lets clients enumerate all files. Restrict the policy to only the paths your app needs, or move covers behind signed URLs.
+All protected with `requireSupabaseAuth`.
 
-10. **Extension installed in `public` schema** — move to a dedicated `extensions` schema (cosmetic, low risk, but flagged by the linter).
+### 3. Trigger wiring (no new endpoints — call from existing fns)
 
-11. **SECURITY DEFINER functions executable by `anon` / `authenticated`** — 29 functions flagged. Most are intentional helpers (`has_role`, `is_event_host`, `are_friends`, `age_band_meets`, etc.) used inside RLS. Action: audit the list and `REVOKE EXECUTE ... FROM anon` on any that should not be callable from the client (e.g. `recompute_walker_metrics`, `evaluate_badges` if they exist as definers — these mutate state and should not be client-callable). Keep grants only on the pure read helpers used by RLS.
+Inside the already‑authed server fns, after the primary write succeeds, call `supabaseAdmin.rpc('create_notification', { ... })` (loaded inside handler):
 
-12. **RLS Enabled No Policy** (info) — one table has RLS on but no policies, so it is effectively locked. Confirm intentional; otherwise add a deny-all comment or a real policy.
+| Event | File | Notification |
+|---|---|---|
+| `sendFriendRequest` | `social.functions.ts` | recipient: "X wants to walk with you" → `/circles` |
+| `respondFriendRequest` (accepted) | `social.functions.ts` | requester: "X accepted your request" → `/profile/<id>` |
+| `sendHighFive` | `social.functions.ts` | recipient: "X high‑fived your walk" → `/journal` |
+| RSVP insert (host notify) | `walk-page.functions.ts` | host: "X is coming to <walk>" → `/w/<code>` |
+| Broadcast post | `walk-broadcasts` server fn | each attendee: "<host>: <preview>" → `/w/<code>` |
 
-## Sev 3 — Defense in depth (post-launch, do soon)
+Failures are best‑effort (`Promise.allSettled` / try/catch) — never block the primary action.
 
-- **Leaked-password protection (HIBP)**: enable via `configure_auth` with `password_hibp_enabled: true`.
-- **Rate limiting on public routes**: `/api/public/hooks/sync-*`, `/api/public/walk.$code.og`, `/api/public/payments/webhook`. The cron hooks now check `apikey` (good); add per-IP throttling to the OG endpoint to avoid abuse-driven Worker spend.
-- **Stripe webhook**: confirm signature verification uses `timingSafeEqual` (constant-time) and is wrapped in try/catch returning 400 on bad signature.
-- **CORS on `/api/public/*`**: keep responses same-origin unless explicitly needed; do not add `Access-Control-Allow-Origin: *`.
-- **Input validation**: add Zod schemas (length + regex caps) to every server-route POST body — at minimum the webhook and OG endpoints. Server functions already validate via `inputValidator`; spot-check that all of them use strict Zod, not `(x) => x`.
-- **PII surface review**: `safety_reports`, `user_dob`, `subscriptions`, `billing_events` — confirm policies are owner-only and that no server fn returns these via `supabaseAdmin` without an explicit authorization check.
-- **Service role usage**: every remaining `supabaseAdmin` call in `.functions.ts` files should (a) authenticate the caller first, (b) project only safe columns, (c) apply explicit WHERE filters. Worth a final grep.
-- **Update security memory** after Sev 0/1 are shipped so future scans don't re-flag the now-fixed items.
+### 4. UI
 
-## Out of scope for this pass
-New features, schema refactors beyond the lat/lng split, and the optional `extensions` schema move (cosmetic).
+**`src/components/notifications/notifications-bell.tsx`** — Bell with red dot when unread > 0. Uses `useQuery(['notifications','unread'])` with `staleTime: 60s` + 60s `refetchInterval` (cheap `head:true` count). On click opens a Sheet (mobile) / Popover (desktop) listing the latest 20. Each row: actor avatar, title, relative time, click → `markRead([id])` then `navigate(link)`. "Mark all read" button.
 
-## Recommendation
-Ship **Sev 0 (items 1–7) and Sev 1 (item 8) before launch** — these are the actual exploitable issues (~2–3 hours of work, mostly SQL + small server-fn guards). Sev 2 in the first week, Sev 3 as ongoing hygiene.
+**`__root.tsx` mobile header** — add the bell to the **left** of the existing lifebuoy (keep support, don't replace it):
 
-Approve and I'll switch to build mode and ship Sev 0 + 1 in one pass.
+```text
+[ logo ] ............................. [ 🔔 ] [ 🛟 ]
+```
+
+Desktop sidebar: add a "Notifications" entry with the same unread badge.
+
+**Settings** — replace the localStorage toggles with real prefs stored on `profiles` (`notify_friend_requests`, `notify_high_fives`, `notify_rsvps`, `notify_broadcasts`, default true). `create_notification` callers check the recipient's pref before writing.
+
+### 5. Out of scope (post‑launch, called out)
+
+- Email delivery (Resend) and Web Push / APNs — schema is ready; add a worker that drains unread rows to channels.
+- Scheduled `walk_reminders` and Sunday `weekly_recap` — need a cron job; flagged but not built here.
+- Realtime push into the bell (Supabase Realtime subscription) — 60s polling is fine for launch; can layer realtime later without schema changes.
+
+## Files touched
+
+- new: `supabase/migrations/<ts>_notifications.sql`
+- new: `src/lib/notifications.functions.ts`
+- new: `src/components/notifications/notifications-bell.tsx`
+- new: `src/components/notifications/notifications-panel.tsx`
+- edit: `src/routes/__root.tsx` (header slot, desktop nav badge)
+- edit: `src/lib/social.functions.ts` (3 triggers)
+- edit: `src/lib/walk-page.functions.ts` (RSVP trigger)
+- edit: `src/components/walk-page/walk-broadcasts.tsx` server fn (broadcast trigger)
+- edit: `src/routes/settings.tsx` (real prefs on `profiles`)
+- edit: migration adds the `notify_*` boolean columns to `profiles`
