@@ -2637,6 +2637,8 @@ export type Database = {
         | "high_five"
         | "walk_rsvp"
         | "walk_broadcast"
+        | "walk_reminder"
+        | "weekly_recap"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2771,6 +2773,8 @@ export const Constants = {
         "high_five",
         "walk_rsvp",
         "walk_broadcast",
+        "walk_reminder",
+        "weekly_recap",
       ],
     },
   },
