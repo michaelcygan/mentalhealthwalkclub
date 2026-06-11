@@ -1846,6 +1846,8 @@ export type Database = {
           notify_friend_requests: boolean
           notify_high_fives: boolean
           notify_rsvps: boolean
+          notify_walk_reminders: boolean
+          notify_weekly_recap: boolean
           onboarded_at: string | null
           region: string | null
           state: string | null
@@ -1871,6 +1873,8 @@ export type Database = {
           notify_friend_requests?: boolean
           notify_high_fives?: boolean
           notify_rsvps?: boolean
+          notify_walk_reminders?: boolean
+          notify_weekly_recap?: boolean
           onboarded_at?: string | null
           region?: string | null
           state?: string | null
@@ -1896,6 +1900,8 @@ export type Database = {
           notify_friend_requests?: boolean
           notify_high_fives?: boolean
           notify_rsvps?: boolean
+          notify_walk_reminders?: boolean
+          notify_weekly_recap?: boolean
           onboarded_at?: string | null
           region?: string | null
           state?: string | null
@@ -2573,6 +2579,8 @@ export type Database = {
         }
         Returns: string
       }
+      emit_walk_reminders: { Args: never; Returns: number }
+      emit_weekly_recap: { Args: never; Returns: number }
       evaluate_badges: {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
@@ -2637,6 +2645,8 @@ export type Database = {
         | "high_five"
         | "walk_rsvp"
         | "walk_broadcast"
+        | "walk_reminder"
+        | "weekly_recap"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2771,6 +2781,8 @@ export const Constants = {
         "high_five",
         "walk_rsvp",
         "walk_broadcast",
+        "walk_reminder",
+        "weekly_recap",
       ],
     },
   },

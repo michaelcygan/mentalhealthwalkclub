@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -12,6 +12,7 @@ import {
   type NotificationRow,
 } from "@/lib/notifications.functions";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -29,7 +30,7 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-export function NotificationsBell() {
+export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" } = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
@@ -57,6 +58,24 @@ export function NotificationsBell() {
   });
   const items: NotificationRow[] = listData?.items ?? [];
 
+  // Realtime: push fresh count + list into the bell when a new notification lands.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user, qc]);
+
   if (!user) return null;
 
   const onItem = async (n: NotificationRow) => {
@@ -80,19 +99,37 @@ export function NotificationsBell() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button
-          type="button"
-          aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
-          title="Notifications"
-          className="relative grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
-        >
-          <Bell className="h-4 w-4" />
-          {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
-              {unread > 9 ? "9+" : unread}
+        {variant === "sidebar" ? (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent/60"
+          >
+            <span className="relative inline-flex">
+              <Bell className="h-4.5 w-4.5" />
+              {unread > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </span>
-          )}
-        </button>
+            Notifications
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            title="Notifications"
+            className="relative grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-forest transition active:scale-95 hover:bg-accent"
+          >
+            <Bell className="h-4 w-4" />
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-destructive-foreground">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </button>
+        )}
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0">
         <SheetHeader className="flex flex-row items-center justify-between border-b border-border px-4 py-3">

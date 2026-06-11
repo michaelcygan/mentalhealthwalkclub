@@ -34,6 +34,8 @@ interface ProfileRow {
   notify_high_fives: boolean;
   notify_rsvps: boolean;
   notify_broadcasts: boolean;
+  notify_walk_reminders: boolean;
+  notify_weekly_recap: boolean;
 }
 
 function SettingsPage() {
@@ -50,7 +52,7 @@ function SettingsPage() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private,notify_friend_requests,notify_high_fives,notify_rsvps,notify_broadcasts").eq("id", user.id).single(),
+      supabase.from("profiles").select("display_name,city,region,country,location_label,bio,is_private,notify_friend_requests,notify_high_fives,notify_rsvps,notify_broadcasts,notify_walk_reminders,notify_weekly_recap").eq("id", user.id).single(),
       (supabase.from("user_locations" as never) as never as { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lat: number | null; lng: number | null } | null }> } } })
         .select("lat,lng").eq("user_id", user.id).maybeSingle(),
     ]).then(([profRes, locRes]) => {
@@ -156,6 +158,8 @@ function SettingsPage() {
         <ToggleRow label="RSVPs to your walks" hint="When someone joins a walk you're hosting" checked={!!p.notify_rsvps} onChange={(v) => savePatch({ notify_rsvps: v })} />
         <ToggleRow label="High-fives" hint="When friends cheer your walks" checked={!!p.notify_high_fives} onChange={(v) => savePatch({ notify_high_fives: v })} />
         <ToggleRow label="Walk broadcasts" hint="Updates from hosts of walks you're on" checked={!!p.notify_broadcasts} onChange={(v) => savePatch({ notify_broadcasts: v })} />
+        <ToggleRow label="Walk reminders" hint="A nudge the day before walks you've joined" checked={!!p.notify_walk_reminders} onChange={(v) => savePatch({ notify_walk_reminders: v })} />
+        <ToggleRow label="Weekly recap" hint="A gentle Sunday summary of your week" checked={!!p.notify_weekly_recap} onChange={(v) => savePatch({ notify_weekly_recap: v })} />
         <p className="px-1 pt-1 text-[11px] text-muted-foreground">In-app only for now — email & push coming soon.</p>
       </SectionCard>
 
