@@ -32,7 +32,9 @@ export function FriendPulse() {
 
   useEffect(() => {
     fetchActivity({}).then(setItems).catch(() => setItems([]));
-  }, [fetchActivity]);
+    // fetchActivity is a fresh ref each render — intentionally omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (items === null) {
     return <Shimmer className="h-24 w-full" />;
