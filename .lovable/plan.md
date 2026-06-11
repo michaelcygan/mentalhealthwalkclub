@@ -84,3 +84,19 @@ Storage: `ambient-covers` bucket is public with listing allowed (linter WARN 5).
 The Sev1 list is ~2-3 hours of focused work and meaningfully changes the security posture. Sev2 is where the cost-per-user math lives — worth doing, but you'll see signals in your DB metrics that tell you which one to do first once real traffic hits.
 
 Want me to switch to build mode and ship Sev1?
+
+---
+
+## Shipped — Sev 2 (this pass)
+
+- **8/9** Home data fetches wrapped in `useQuery` with 5-min staleTime + no focus refetch (`routes/index.tsx`, `today-island.tsx`, `week-summary.tsx`).
+- **10** `getHomeUpcoming` — 5 serial awaits → 2 `Promise.all` groups.
+- **11** `listFriends` capped at 500 rows.
+- **12** `discoverFriendsGoing` — added 60-day horizon + 2k rsvp cap.
+- **14** `walk-places` no longer `select("*")`.
+- **15** Player position state throttled to ~1 Hz (was ~4 Hz native).
+- **16** `deleteMyAccount` parallel `Promise.allSettled` + logs failures.
+- **17** `_authenticated` layout now has `errorComponent` w/ retry.
+- **18** `FriendPulse` effect dep cleaned (was refetching every render).
+
+Sev 3 still queued for post-launch polish.
