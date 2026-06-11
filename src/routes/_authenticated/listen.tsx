@@ -256,7 +256,19 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.podcasts ?? []).map((e) => (
-                      <Tile key={e.id} title={e.title} sub={fmtMins(e.duration_seconds)} cover={e.image_url ?? null} featured={!!e.is_featured} />
+                      <Tile
+                        key={e.id}
+                        title={e.title}
+                        sub={fmtMins(e.duration_seconds)}
+                        cover={e.image_url ?? null}
+                        kind="podcast"
+                        featured={!!e.is_featured}
+                        onClick={() => playOrOpen({
+                          kind: "podcast", id: e.id, title: e.title,
+                          cover: e.image_url, audio_url: e.audio_url ?? null,
+                          link: e.episode_url ?? null, duration_seconds: e.duration_seconds,
+                        })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
@@ -266,7 +278,15 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.ambient ?? []).map((t) => (
-                      <Tile key={t.id} title={t.title} sub={t.artist ?? fmtMins(t.duration_seconds)} cover={null} featured={!!t.is_featured} />
+                      <Tile
+                        key={t.id}
+                        title={t.title}
+                        sub={t.artist ?? fmtMins(t.duration_seconds)}
+                        cover={t.cover_path ?? null}
+                        kind="ambient"
+                        featured={!!t.is_featured}
+                        onClick={() => playOrOpen({ kind: "ambient", id: t.id, title: t.title, subtitle: t.artist })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
@@ -276,11 +296,24 @@ function ListenPage() {
                 {loading ? <RailSkeleton /> : (
                   <HorizontalRail>
                     {(catalog?.guided ?? []).map((g) => (
-                      <Tile key={g.id} title={g.title} sub={g.host ?? fmtMins(g.duration_seconds)} cover={g.cover_url ?? null} featured={!!g.is_featured} />
+                      <Tile
+                        key={g.id}
+                        title={g.title}
+                        sub={g.host ?? fmtMins(g.duration_seconds)}
+                        cover={g.cover_url ?? null}
+                        kind="guided"
+                        featured={!!g.is_featured}
+                        onClick={() => playOrOpen({
+                          kind: "guided", id: g.id, title: g.title, subtitle: g.host,
+                          cover: g.cover_url, audio_url: g.audio_url ?? null,
+                          duration_seconds: g.duration_seconds,
+                        })}
+                      />
                     ))}
                   </HorizontalRail>
                 )}
               </Section>
+
 
               <div className="mt-2 text-center">
                 <button
