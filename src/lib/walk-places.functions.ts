@@ -145,7 +145,7 @@ export const getOrCreateWalkPlace = createServerFn({ method: "POST" })
     // 1. cache hit?
     const { data: cached } = await supabaseAdmin
       .from("places")
-      .select("*")
+      .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
       .eq("google_place_id", data.google_place_id)
       .maybeSingle();
     if (cached) return { place: cached };
@@ -230,14 +230,14 @@ export const getOrCreateWalkPlace = createServerFn({ method: "POST" })
         blurb_source,
         osm_static_url,
       })
-      .select("*")
+      .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
       .single();
 
     if (error) {
       // race: another insert won. fetch existing.
       const { data: again } = await supabaseAdmin
         .from("places")
-        .select("*")
+        .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
         .eq("google_place_id", data.google_place_id)
         .maybeSingle();
       if (again) return { place: again };
