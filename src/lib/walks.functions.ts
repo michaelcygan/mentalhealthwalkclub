@@ -219,6 +219,36 @@ export const sendBroadcast = createServerFn({ method: "POST" })
       .select("id,created_at")
       .single();
     if (error) throw new Error(error.message);
+
+    // Fan-out: notify attendees (best-effort, never blocks)
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const [{ data: ev }, { data: rsvps }, { data: me }] = await Promise.all([
+        supabaseAdmin.from("events").select("title,slug").eq("id", data.eventId).maybeSingle(),
+        supabaseAdmin.from("event_rsvps").select("user_id").eq("event_id", data.eventId).eq("status", "going"),
+        supabaseAdmin.from("profiles").select("display_name,username").eq("id", userId).maybeSingle(),
+      ]);
+      const who = me?.display_name ?? me?.username ?? "The host";
+      const preview = data.body.length > 120 ? data.body.slice(0, 117) + "…" : data.body;
+      const link = ev?.slug ? `/w/${ev.slug}` : "";
+      const recipients = (rsvps ?? []).map((r) => r.user_id).filter((id) => id && id !== userId);
+      const { emitNotification } = await import("./notifications.server");
+      await Promise.allSettled(
+        recipients.map((uid) =>
+          emitNotification({
+            userId: uid,
+            actorId: userId,
+            kind: "walk_broadcast",
+            title: `${who}: ${preview}`,
+            link,
+            entityId: data.eventId,
+          }),
+        ),
+      );
+    } catch (e) {
+      console.error("[broadcast] fan-out failed", e);
+    }
+
     return { id: row.id, created_at: row.created_at };
   });
 
