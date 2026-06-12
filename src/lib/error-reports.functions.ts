@@ -33,12 +33,12 @@ export const submitErrorReport = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => SubmitSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Best-effort user id from bearer (optional).
+    // Best-effort user id from bearer (optional; anon allowed).
     let userId: string | null = null;
     try {
-      // Pull from request header to identify caller without requiring auth.
-      const { getRequestHeader } = await import("@tanstack/react-start/server");
-      const auth = getRequestHeader("authorization") ?? "";
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const req = getRequest();
+      const auth = req.headers.get("authorization") ?? "";
       const token = auth.replace(/^Bearer\s+/i, "");
       if (token) {
         const { data: u } = await supabaseAdmin.auth.getUser(token);
