@@ -240,21 +240,24 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
   return (
-    <AuthProvider>
-      <AuthPromptProvider>
-        <AmbientPlayerProvider>
-          <PlayerProvider>
-            <PaymentTestModeBanner />
-            <AppFrame>
-              <RoutedOutlet />
-            </AppFrame>
-            <ReflectionFab />
-            <Toaster />
-          </PlayerProvider>
-        </AmbientPlayerProvider>
-      </AuthPromptProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthPromptProvider>
+          <AmbientPlayerProvider>
+            <PlayerProvider>
+              <PaymentTestModeBanner />
+              <AppFrame>
+                <RoutedOutlet />
+              </AppFrame>
+              <ReflectionFab />
+              <Toaster />
+            </PlayerProvider>
+          </AmbientPlayerProvider>
+        </AuthPromptProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
