@@ -1,4 +1,5 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
@@ -58,7 +59,7 @@ function RoutedOutlet() {
   );
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -239,21 +240,24 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
   return (
-    <AuthProvider>
-      <AuthPromptProvider>
-        <AmbientPlayerProvider>
-          <PlayerProvider>
-            <PaymentTestModeBanner />
-            <AppFrame>
-              <RoutedOutlet />
-            </AppFrame>
-            <ReflectionFab />
-            <Toaster />
-          </PlayerProvider>
-        </AmbientPlayerProvider>
-      </AuthPromptProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthPromptProvider>
+          <AmbientPlayerProvider>
+            <PlayerProvider>
+              <PaymentTestModeBanner />
+              <AppFrame>
+                <RoutedOutlet />
+              </AppFrame>
+              <ReflectionFab />
+              <Toaster />
+            </PlayerProvider>
+          </AmbientPlayerProvider>
+        </AuthPromptProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
