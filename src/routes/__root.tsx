@@ -15,7 +15,11 @@ import { PlayerProvider } from "@/lib/player-context";
 import { ReflectionFab } from "@/components/reflection-fab";
 import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
+import { ReportIssueDialog } from "@/components/report-issue-dialog";
+import { installConsoleCapture } from "@/lib/console-capture";
 import { dur, easeOut } from "@/lib/motion";
+
+if (typeof window !== "undefined") installConsoleCapture();
 
 
 function NotFoundComponent() {
@@ -177,6 +181,7 @@ function TabBar() {
           <div className="flex gap-3 text-[10px] text-muted-foreground/70">
             <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
             <Link to="/terms" className="hover:text-foreground">Terms</Link>
+            <ReportIssueDialog trigger={<button className="hover:text-foreground">Report a problem</button>} />
           </div>
         </div>
       </aside>
