@@ -60,9 +60,10 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
 
   // Realtime: push fresh count + list into the bell when a new notification lands.
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+    const nonce = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString();
     const channel = supabase
-      .channel(`notifications:${user.id}`)
+      .channel(`notifications:${user.id}:${nonce}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
@@ -74,7 +75,7 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user, qc]);
+  }, [user?.id, qc]);
 
   if (!user) return null;
 
