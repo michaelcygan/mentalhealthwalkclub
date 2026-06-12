@@ -80,13 +80,6 @@ function AdminLayout() {
           <Sparkles className="h-3.5 w-3.5" /> Collections
         </Link>
         <Link
-          to="/admin/insights"
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
-          activeProps={{ className: "active" }}
-        >
-          <BarChart3 className="h-3.5 w-3.5" /> Insights
-        </Link>
-        <Link
           to="/admin/membership"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
           activeProps={{ className: "active" }}
