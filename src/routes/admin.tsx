@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart } from "lucide-react";
+import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart, Shield, Inbox, Users as UsersIcon } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -22,7 +22,35 @@ function AdminLayout() {
         <h1 className="font-serif text-2xl">Admin</h1>
         <span className="w-12" />
       </div>
-      <nav className="flex flex-wrap gap-2">
+      <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 flex-nowrap md:flex-wrap md:overflow-visible">
+        <Link
+          to="/admin/analytics"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <BarChart3 className="h-3.5 w-3.5" /> Analytics
+        </Link>
+        <Link
+          to="/admin/users"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <UsersIcon className="h-3.5 w-3.5" /> Users
+        </Link>
+        <Link
+          to="/admin/safety"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <Shield className="h-3.5 w-3.5" /> Safety
+        </Link>
+        <Link
+          to="/admin/requests"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <Inbox className="h-3.5 w-3.5" /> Requests
+        </Link>
         <Link
           to="/admin/events"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
@@ -50,13 +78,6 @@ function AdminLayout() {
           activeProps={{ className: "active" }}
         >
           <Sparkles className="h-3.5 w-3.5" /> Collections
-        </Link>
-        <Link
-          to="/admin/insights"
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
-          activeProps={{ className: "active" }}
-        >
-          <BarChart3 className="h-3.5 w-3.5" /> Insights
         </Link>
         <Link
           to="/admin/membership"

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, Headphones, Users, CalendarDays, ShoppingBag, Heart, Settings, ShieldCheck, LogOut, User as UserIcon, Sparkles } from "lucide-react";
+import { ChevronRight, Headphones, Users, CalendarDays, ShoppingBag, Heart, Settings, ShieldCheck, LogOut, User as UserIcon, Sparkles, LifeBuoy } from "lucide-react";
+import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
@@ -87,6 +88,13 @@ function MorePage() {
       <Section title="Account">
         <Row to="/settings" icon={Settings} label="Settings" hint="Account, notifications, billing" />
         <Row to="/support" icon={ShieldCheck} label="Help & safety" hint="Crisis support" />
+        <ReportIssueDialog trigger={
+          <button className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40">
+            <LifeBuoy className="h-4 w-4 shrink-0 text-forest" />
+            <span className="font-medium">Report a problem</span>
+            <span className="ml-auto text-xs text-muted-foreground">Send to team</span>
+          </button>
+        } />
       </Section>
 
       <Button variant="outline" onClick={signOut} className="w-full rounded-full">

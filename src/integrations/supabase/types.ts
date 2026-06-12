@@ -417,6 +417,45 @@ export type Database = {
         }
         Relationships: []
       }
+      error_reports: {
+        Row: {
+          app_version: string | null
+          console_tail: Json | null
+          created_at: string
+          id: string
+          message: string
+          status: string
+          updated_at: string
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          console_tail?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          console_tail?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       event_blocklist: {
         Row: {
           created_at: string

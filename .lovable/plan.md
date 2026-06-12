@@ -1,123 +1,78 @@
-# Notifications bell + flow audit
+## Goal
 
-## Audit: what exists today
+Bring the admin area in line with where the app is today and add the two missing operator/user flows: deep analytics and lite error reporting.
 
-- **No notifications table, no server fns, no UI.** Nothing is delivered anywhere — not in‑app, not email, not push.
-- `settings.tsx` has three toggles (`walk_reminders`, `friend_rsvps`, `weekly_recap`) but they only write to `localStorage`. They are decorative.
-- Plenty of *notification‑worthy* events already fire in the app with no listener:
-  - Friend request sent / accepted (`social.functions.ts`)
-  - High‑five sent (`social.functions.ts`)
-  - RSVP to a walk you host (`walk-page.functions.ts`)
-  - Walk broadcast posted to attendees (`walk-broadcasts.tsx`)
-  - Standing walk reminders, weekly recap (scheduled — not built)
-- The circled icon in the screenshot is the **Get support** lifebuoy in `__root.tsx` (mobile header). The user wants a **bell** added in that same header slot.
+## What changes in Admin
 
-## What this plan ships
+Add three new tabs and beef up one existing tab. Nothing is removed — every current tab (Events, Podcasts, Blogs, Collections, Membership, Merch) still maps to a live feature.
 
-In‑app notifications only (no email/push yet — flagged as post‑launch). Mobile + desktop header bell with unread count, dropdown/sheet panel, mark‑as‑read, deep links. Triggers wired into the five existing events above. Prefs toggles in Settings become real (control which categories generate rows).
+### 1. Insights → full Analytics dashboard (`/admin/insights`)
 
-### 1. Database (one migration)
+Replace the current Listen-only insights with a comprehensive operator dashboard. Time-range selector (7d / 30d / 90d / all). Sections:
 
-```sql
-create type public.notification_kind as enum (
-  'friend_request', 'friend_accepted', 'high_five',
-  'walk_rsvp', 'walk_broadcast'
-);
+- **Growth**: total users, new signups (line chart by day), DAU / WAU / MAU, retention (Week 1 / Week 4 cohort table).
+- **Geography**: top cities/regions/countries by user count and by walk count (table + simple bar). Pulled from `profiles.city/region/country` and `events.city/region/country`.
+- **Walks**: walks created, walks completed, RSVPs (going), avg attendees per walk, host count, top hosts.
+- **Engagement**: high-fives sent, friend connections made, journal entries written, notifications delivered (by kind).
+- **Listen/Read** (keep existing): top search terms, zero-result terms, action breakdown.
+- **Monetization**: active Plus subs (monthly / yearly split), supporter count, MRR estimate, trial conversions.
 
-create table public.notifications (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  actor_id uuid references auth.users(id) on delete set null,
-  kind notification_kind not null,
-  title text not null,
-  body text,
-  link text,                       -- e.g. /w/<code>, /circles, /profile/<id>
-  entity_id uuid,                  -- walk_session_id / event_id / request_id
-  read_at timestamptz,
-  created_at timestamptz not null default now()
-);
-create index on public.notifications (user_id, created_at desc);
-create index on public.notifications (user_id, read_at) where read_at is null;
+All metrics computed in a single `adminAnalyticsOverview` server fn (admin-gated, `supabaseAdmin`) so the page loads in one round-trip. Heavy time-series come from a small set of SQL aggregates over `profiles`, `walk_sessions`, `events`, `event_rsvps`, `high_fives`, `friendships`, `journal_entries`, `notifications`, `subscriptions`, `listen_search_log`, `listen_events`.
 
-grant select, update, delete on public.notifications to authenticated;
-grant all on public.notifications to service_role;
+### 2. New tab: Safety (`/admin/safety`)
 
-alter table public.notifications enable row level security;
-create policy "own_notifications_select" on public.notifications
-  for select to authenticated using (user_id = auth.uid());
-create policy "own_notifications_update" on public.notifications
-  for update to authenticated using (user_id = auth.uid());
-create policy "own_notifications_delete" on public.notifications
-  for delete to authenticated using (user_id = auth.uid());
--- No INSERT policy: only server-side (service_role / SECURITY DEFINER fn) writes.
+Triage UI over the existing `safety_reports` table. List open reports → reporter, reported user, reason, context link, created_at. Actions: mark resolved, mark dismissed, open reported user's profile. New admin server fns `adminListSafetyReports` / `adminResolveSafetyReport`.
 
-create or replace function public.create_notification(
-  _user_id uuid, _actor_id uuid, _kind notification_kind,
-  _title text, _body text, _link text, _entity_id uuid
-) returns uuid language plpgsql security definer set search_path = public as $$
-declare nid uuid;
-begin
-  if _user_id = _actor_id then return null; end if; -- never notify self
-  insert into public.notifications(user_id, actor_id, kind, title, body, link, entity_id)
-  values (_user_id, _actor_id, _kind, _title, _body, _link, _entity_id)
-  returning id into nid;
-  return nid;
-end $$;
-revoke execute on function public.create_notification(uuid,uuid,notification_kind,text,text,text,uuid) from public, anon, authenticated;
-```
+### 3. New tab: Requests (`/admin/requests`)
 
-### 2. Server functions (`src/lib/notifications.functions.ts`)
+Wire `adminListContentRequests` / `adminUpdateContentRequest` (already exist, no UI today) to a simple inbox: title, url, kind, notes, status pills (open / in_review / approved / declined). Also surface the new error reports inbox here as a second list — or split into its own tab if cleaner; I'll keep it one tab with two segments ("Content suggestions" / "Bug reports") to keep the navbar tight.
 
-- `listNotifications({ limit })` — paginated, newest first.
-- `getUnreadCount()` — `count exact head` where `read_at is null`.
-- `markRead({ ids? })` — single, many, or all.
-- `deleteNotification({ id })`.
+### 4. New tab: Users (`/admin/users`)
 
-All protected with `requireSupabaseAuth`.
+Search by email or username (server fn calling auth.admin.listUsers + profiles join). Row click opens a detail sheet with: profile, membership status, walks hosted/attended, recent reports against them, role chips. Actions: grant/revoke `admin` role (writes to `user_roles`), copy user id, deep-link to their profile.
 
-### 3. Trigger wiring (no new endpoints — call from existing fns)
+### 5. Cleanup
 
-Inside the already‑authed server fns, after the primary write succeeds, call `supabaseAdmin.rpc('create_notification', { ... })` (loaded inside handler):
+- Remove the "Active users" stat from the old insights card (now lives in Analytics).
+- Admin nav becomes scrollable on mobile (already wraps; just verify it doesn't blow the layout with the new tabs).
 
-| Event | File | Notification |
-|---|---|---|
-| `sendFriendRequest` | `social.functions.ts` | recipient: "X wants to walk with you" → `/circles` |
-| `respondFriendRequest` (accepted) | `social.functions.ts` | requester: "X accepted your request" → `/profile/<id>` |
-| `sendHighFive` | `social.functions.ts` | recipient: "X high‑fived your walk" → `/journal` |
-| RSVP insert (host notify) | `walk-page.functions.ts` | host: "X is coming to <walk>" → `/w/<code>` |
-| Broadcast post | `walk-broadcasts` server fn | each attendee: "<host>: <preview>" → `/w/<code>` |
+## User-facing: "Report an issue" (Lite)
 
-Failures are best‑effort (`Promise.allSettled` / try/catch) — never block the primary action.
+- New table `public.error_reports`: `id`, `user_id` (nullable for guests), `message`, `url`, `user_agent`, `app_version`, `console_tail` (jsonb, last ~20 console messages), `status` (`open` / `triaged` / `closed`), `created_at`. RLS: users can insert their own; only admins can read.
+- Small util `src/lib/console-capture.ts` that subscribes to `console.error` / `console.warn` at root mount and keeps a 20-entry ring buffer.
+- New server fn `submitErrorReport` (authed-or-anon insert with rate-limit by user_id / IP-less by simple last-60s check on user_id).
+- UI:
+  - `src/components/report-issue-dialog.tsx` — textarea + "include diagnostics" toggle (on by default, shows what we capture).
+  - Entry points: Settings → "Report a problem" row, mobile More menu, footer link on public pages.
+- Admin surfacing: shows up in `/admin/requests` under "Bug reports" with the diagnostic payload viewable.
 
-### 4. UI
+## Technical Details
 
-**`src/components/notifications/notifications-bell.tsx`** — Bell with red dot when unread > 0. Uses `useQuery(['notifications','unread'])` with `staleTime: 60s` + 60s `refetchInterval` (cheap `head:true` count). On click opens a Sheet (mobile) / Popover (desktop) listing the latest 20. Each row: actor avatar, title, relative time, click → `markRead([id])` then `navigate(link)`. "Mark all read" button.
+**New files**
+- `src/lib/analytics-admin.functions.ts` — `adminAnalyticsOverview({ range })` returning everything for the dashboard.
+- `src/lib/safety-admin.functions.ts` — list/resolve.
+- `src/lib/users-admin.functions.ts` — search, detail, role grant/revoke.
+- `src/lib/error-reports.functions.ts` — `submitErrorReport`, admin list/update.
+- `src/lib/console-capture.ts` — ring buffer.
+- `src/components/report-issue-dialog.tsx`.
+- `src/routes/admin.analytics.tsx` (rename current `admin.insights.tsx` → `admin.analytics.tsx`, redirect old path).
+- `src/routes/admin.safety.tsx`, `src/routes/admin.requests.tsx`, `src/routes/admin.users.tsx`.
 
-**`__root.tsx` mobile header** — add the bell to the **left** of the existing lifebuoy (keep support, don't replace it):
+**Edited**
+- `src/routes/admin.tsx` — new nav entries (Analytics, Users, Safety, Requests).
+- `src/routes/__root.tsx` — mount console capture once.
+- `src/routes/settings.tsx` and `src/routes/more.tsx` — add "Report a problem".
 
-```text
-[ logo ] ............................. [ 🔔 ] [ 🛟 ]
-```
+**Migration**
+- Create `error_reports` (table + GRANTs + RLS: insert self, admin select/update).
+- Add a couple of supporting indexes for analytics: `walk_sessions(user_id, status, started_at)`, `event_rsvps(event_id, status)`, `notifications(user_id, kind, created_at)` if missing.
 
-Desktop sidebar: add a "Notifications" entry with the same unread badge.
+**Security**
+- All admin server fns gated by the existing `assertAdmin(userId)` pattern.
+- `submitErrorReport` validates message length (1–2000), strips obvious secrets-looking strings, caps `console_tail` size.
 
-**Settings** — replace the localStorage toggles with real prefs stored on `profiles` (`notify_friend_requests`, `notify_high_fives`, `notify_rsvps`, `notify_broadcasts`, default true). `create_notification` callers check the recipient's pref before writing.
+## Out of scope (post-launch)
 
-### 5. Out of scope (post‑launch, called out)
-
-- Email delivery (Resend) and Web Push / APNs — schema is ready; add a worker that drains unread rows to channels.
-- Scheduled `walk_reminders` and Sunday `weekly_recap` — need a cron job; flagged but not built here.
-- Realtime push into the bell (Supabase Realtime subscription) — 60s polling is fine for launch; can layer realtime later without schema changes.
-
-## Files touched
-
-- new: `supabase/migrations/<ts>_notifications.sql`
-- new: `src/lib/notifications.functions.ts`
-- new: `src/components/notifications/notifications-bell.tsx`
-- new: `src/components/notifications/notifications-panel.tsx`
-- edit: `src/routes/__root.tsx` (header slot, desktop nav badge)
-- edit: `src/lib/social.functions.ts` (3 triggers)
-- edit: `src/lib/walk-page.functions.ts` (RSVP trigger)
-- edit: `src/components/walk-page/walk-broadcasts.tsx` server fn (broadcast trigger)
-- edit: `src/routes/settings.tsx` (real prefs on `profiles`)
-- edit: migration adds the `notify_*` boolean columns to `profiles`
+- Real-time analytics streaming, custom date-range picker beyond presets, CSV export, charts library beyond simple inline bars/sparklines.
+- Screenshot attachments on error reports.
+- Suspend/ban user actions (only role grant for now).
