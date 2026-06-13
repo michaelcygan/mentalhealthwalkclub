@@ -13,7 +13,6 @@ import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
 import { PlayerProvider } from "@/lib/player-context";
-import { ReflectionFab } from "@/components/reflection-fab";
 import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
@@ -251,7 +250,6 @@ function RootComponent() {
               <AppFrame>
                 <RoutedOutlet />
               </AppFrame>
-              <ReflectionFab />
               <Toaster />
             </PlayerProvider>
           </AmbientPlayerProvider>
