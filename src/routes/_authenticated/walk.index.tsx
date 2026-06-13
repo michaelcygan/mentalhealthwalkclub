@@ -59,6 +59,7 @@ function SoloWalkPage() {
   const [note, setNote] = useState("");
   const [source, setSource] = useState<AudioSource>({ kind: "silence" });
   const [journalOpen, setJournalOpen] = useState(false);
+  const [journalPrompt, setJournalPrompt] = useState<string | null>(null);
   const [promptOffset, setPromptOffset] = useState(0);
   const [photoCount, setPhotoCount] = useState(0);
   const reduceMotion = useReducedMotion();
@@ -78,7 +79,7 @@ function SoloWalkPage() {
     const saved = window.localStorage.getItem(WALK_STATE_KEY);
     if (!saved) return;
     try {
-      const state = JSON.parse(saved) as { walkId: string; startedAt: number; pausedAccum: number; pausedAt?: number | null; paused?: boolean; moodBefore: string | null; intention: string; source: AudioSource };
+      const state = JSON.parse(saved) as { walkId: string; startedAt: number; pausedAccum: number; pausedAt?: number | null; paused?: boolean; moodBefore: string | null; intention: string; source: AudioSource; journalPrompt?: string | null };
       if (!state.walkId || !state.startedAt) return;
       setWalkId(state.walkId);
       setStartedAt(state.startedAt);
@@ -88,6 +89,7 @@ function SoloWalkPage() {
       setMoodBefore(state.moodBefore);
       setIntention(state.intention || "");
       setSource(state.source || { kind: "silence" });
+      setJournalPrompt(state.journalPrompt ?? null);
       setNote(window.localStorage.getItem(WALK_NOTE_KEY) || "");
       setStage("active");
     } catch { window.localStorage.removeItem(WALK_STATE_KEY); }
@@ -95,8 +97,8 @@ function SoloWalkPage() {
 
   useEffect(() => {
     if (stage !== "active" || !walkId || startedAt == null) return;
-    window.localStorage.setItem(WALK_STATE_KEY, JSON.stringify({ walkId, startedAt, pausedAccum: pausedAccum.current, pausedAt: pausedAt.current, paused, moodBefore, intention, source }));
-  }, [stage, walkId, startedAt, paused, moodBefore, intention, source]);
+    window.localStorage.setItem(WALK_STATE_KEY, JSON.stringify({ walkId, startedAt, pausedAccum: pausedAccum.current, pausedAt: pausedAt.current, paused, moodBefore, intention, source, journalPrompt }));
+  }, [stage, walkId, startedAt, paused, moodBefore, intention, source, journalPrompt]);
 
   useEffect(() => {
     if (stage === "active") window.localStorage.setItem(WALK_NOTE_KEY, note);
@@ -223,6 +225,7 @@ function SoloWalkPage() {
           steps: stepCounter.steps || null,
           mood_after: moodAfter ?? null,
           reflection_note: note.trim() || null,
+          reflection_prompt: note.trim() ? journalPrompt : null,
           weather_at_end: weather ? { tempF: weather.tempF, label: weather.label, code: weather.code } : null,
         })
         .eq("id", walkId);
@@ -248,6 +251,7 @@ function SoloWalkPage() {
     setStartedAt(null);
     setElapsed(0);
     setNote("");
+    setJournalPrompt(null);
   }
 
   async function onPhotoPicked(rawFile: File) {
@@ -378,7 +382,7 @@ function SoloWalkPage() {
               <motion.button
                 key={activePrompt.id}
                 type="button"
-                onClick={() => setJournalOpen(true)}
+                onClick={() => { setJournalPrompt(activePrompt.text); setJournalOpen(true); }}
                 initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -5 }}
@@ -398,7 +402,7 @@ function SoloWalkPage() {
             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${journalOpen ? "rotate-90" : ""}`} />
           </button>
           <AnimatePresence initial={false}>
-            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea id="walk-journal-note" autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
+            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea id="walk-journal-note" autoFocus value={note} onChange={(e) => { if (!journalPrompt && activePrompt) setJournalPrompt(activePrompt.text); setNote(e.target.value); }} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
           </AnimatePresence>
         </div>
 
