@@ -102,6 +102,16 @@ function SoloWalkPage() {
     if (stage === "active") window.localStorage.setItem(WALK_NOTE_KEY, note);
   }, [stage, note]);
 
+  useEffect(() => {
+    const openJournal = () => {
+      if (stage !== "active") return;
+      setJournalOpen(true);
+      window.setTimeout(() => document.getElementById("walk-journal-note")?.focus(), 180);
+    };
+    window.addEventListener("mhwc:open-walk-journal", openJournal);
+    return () => window.removeEventListener("mhwc:open-walk-journal", openJournal);
+  }, [stage]);
+
   // Load picker options
   useEffect(() => {
     listMyPlaylists().then((r) => setPlaylists(r.playlists.map((p) => ({ id: p.id, name: p.name }))));
@@ -388,11 +398,11 @@ function SoloWalkPage() {
             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${journalOpen ? "rotate-90" : ""}`} />
           </button>
           <AnimatePresence initial={false}>
-            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
+            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea id="walk-journal-note" autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
           </AnimatePresence>
         </div>
 
-        <label aria-label="Add a photo from this walk" className="fixed bottom-36 right-5 z-40 flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-forest px-4 text-sm font-medium text-primary-foreground shadow-floating">
+        <label aria-label="Add a photo from this walk" className="mt-3 flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card/75 px-4 text-sm font-medium text-forest shadow-soft transition active:scale-[0.99]">
           {photoCount > 0 ? <Check className="h-5 w-5" /> : <ImagePlus className="h-5 w-5" />}
           <span>{photoCount > 0 ? `${photoCount} saved` : "Add photo"}</span>
           <input
