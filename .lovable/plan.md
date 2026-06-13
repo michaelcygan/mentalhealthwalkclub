@@ -1,80 +1,105 @@
-# Discover: zero-to-dense-city plan
+# Lean V1 launch plan
 
-## Product principle
-Use one responsive page system, but let its hierarchy change with available activity. The visual language stays consistent; the content mode adapts:
+## V1 objective
+
+Make this simple loop reliable:
 
 ```text
-Zero nearby activity → Build the first connection
-Some activity        → Balance personal network + nearby walks
-Dense city            → Rank, filter, and reduce noise
+Create walk → Share link/story → Guest RSVP → Keep RSVP state
+→ Optional account creation → Return to the walk → Share or plan again
 ```
 
-A static layout would not serve all three states well. The same components can, provided they are conditionally prioritized rather than leaving repeated empty boxes in place.
+No email sending, physical attendance tracking, full chat, automated circle enrollment, or growth analytics in V1.
 
-## 1. Replace stacked empty states with one activation surface
-- Detect the true cold-start state from nearby walks, friend activity, circles, and the user’s own recent activity.
-- Replace the current sequence of dashed empty boxes with a single purposeful opening module.
-- Give two equally weighted actions:
-  - **Invite someone** — opens a compact share sheet with **Text**, **Share**, and **Copy link**.
-  - **Plan a walk** — opens the existing walk composer.
-- Explain the choice plainly: invite someone into the club generally, or create a specific plan and invite them to that.
-- Keep secondary discovery below this surface so the page still has value in a new territory.
+## 1. Fix launch-critical correctness and privacy
 
-## 2. Make invitations a coherent flow
-- Upgrade the existing invite card into a reusable invite/share component rather than a late-page promotional card.
-- Support phone-number intent through the device’s SMS composer without collecting or storing contacts.
-- Preserve native sharing and copy-link fallback.
-- Use concise copy and clearly distinguish:
-  - **Club invite**: bring a friend into the app.
-  - **Walk invite**: share a concrete walk with date, time, and place.
-- Give completion feedback and retain the invite controls so users can send more than one invitation.
+- Count both member and guest “going” RSVPs in the walk total and social share count.
+- Keep guest names visible only to the host; public visitors see member profiles plus an aggregate guest count.
+- Replace predictable walk-link generation with secure random codes.
+- Require an explicit server-side encryption secret for guest emails; remove the public/fallback-key behavior.
+- Sanitize username searches before backend filtering.
+- Add an explicit host check before posting walk broadcasts.
+- Align broadcast reaction options between the UI and database.
+- Address the highest-risk existing access findings: billing acknowledgement fields, private profile preferences, realtime topic scope, and unnecessary privileged-function access.
 
-## 3. Close the loop after posting a walk
-- Keep the existing walk composer focused on place, time, and audience.
-- After creation, make sharing the primary host action on the walk page instead of a small utility chip.
-- Present **Text invite**, **Share**, and **Copy link** immediately, with language tied to that specific walk.
-- Keep calendar and story-card actions secondary.
-- Ensure link-only walks remain useful for users who have no in-app friends yet.
+## 2. Make guest RSVP feel complete without email
 
-## 4. Adapt Discover by network density
-### Cold start
-- Lead with the equal-choice activation surface.
-- Show a compact “nothing nearby yet” explanation once, not once per section.
-- Offer useful territory-independent content below it: featured walks, trails/places, and public activity from a wider radius where available.
-- Hide empty Friends and Circles rails; replace them with contextual next steps inside the activation surface.
+After a guest RSVPs, keep a compact receipt directly on the walk page:
 
-### Emerging network
-- Lead with the user’s next hosted/RSVP walk or friend activity.
-- Follow with nearby walks, then circles and invitations.
-- Show lightweight progress cues such as pending invitations or the first active circle only when real data exists.
+- “You’re going” status
+- Add to calendar
+- Copy/share the walk
+- Change RSVP
+- “Create an account to keep this walk” as a secondary action
 
-### Dense metro
-- Lead with ranked nearby and friend-relevant walks.
-- Keep horizontal rails bounded and add meaningful filters such as timing, distance, and social relevance rather than rendering an unbounded feed.
-- De-emphasize generic invite education while keeping invite/share available as a compact action.
-- Preserve the same cards, typography, and interaction model used in cold start so users do not have to relearn the page.
+Store only a non-sensitive guest RSVP receipt ID locally—not their email. The public walk link remains their durable destination, and the calendar entry provides an additional reminder without adding email infrastructure.
 
-## 5. Refresh the visual treatment toward 2027
-- Move away from repeated dashed containers and grids of speculative circle templates.
-- Use a calmer editorial hierarchy: one decisive activation block, compact live-data rows, fewer borders, and stronger spacing transitions.
-- Treat empty space as guidance, not absence: short state copy, visible actions, and subtle progressive disclosure.
-- Keep the app’s cream/forest identity and serif voice; modernize composition rather than introducing a trend-driven new palette.
-- Maintain thumb-friendly actions and a clean mobile-first layout, then let wider screens expand rails without changing the information order.
+## 3. Preserve the walk through account creation
 
-## 6. Simplify Friends and Circles entry points
-- Route the cold-start invite action directly into the new share sheet instead of asking for an existing username first.
-- Retain username-based friend requests for people already on the app.
-- In Circles, make “create a circle” useful after at least one invite/friend path is visible; remove the impression that users must choose from prewritten identity groups before they know anyone.
-- Allow a newly created circle to flow naturally into planning a circle-scoped walk.
+- When signup starts from a walk, preserve the current walk URL and return there after authentication instead of sending the person to Home.
+- Once signed in, securely match the new member’s verified account email to the guest RSVP’s existing email hash.
+- Mark that guest RSVP as claimed and create/update the member RSVP, so the walk immediately appears as theirs.
+- Remove the local guest receipt after a successful claim.
 
-## 7. Validation
-- Test explicit fixtures for: zero local activity, nearby walks without friends, friends without circles, one active circle, and dense metro data.
-- Verify club invites via SMS/native share/copy, walk-specific sharing, walk creation handoff, location denied, and fallback behavior where native sharing is unavailable.
-- Check mobile composition at the current 390px viewport and a desktop width, with special attention to bottom navigation clearance and action visibility.
+This uses the existing `claimed_user_id` field and auth flow; it does not introduce a new invitation or identity system.
 
-## Technical scope
-- Refactor `src/routes/_authenticated/discover.tsx` around a derived density/activation state and adaptive section ordering.
-- Turn `src/components/discover/invite-card.tsx` into a reusable invite/share surface used by Discover and the post-walk flow.
-- Update `src/routes/w.$code.tsx` so hosts get a prominent walk-specific invitation block.
-- Make targeted adjustments to `src/routes/_authenticated/walk.new.tsx` and `src/routes/_authenticated/circles.tsx` for clean handoffs and contextual empty states.
-- Reuse existing server functions and shareable links; no new contact storage or database migration is planned unless implementation reveals a missing persisted invitation requirement.
+## 4. Make sharing the natural completion of walk creation
+
+After “Create walk,” show a lightweight success sheet using the existing share actions:
+
+- Share
+- Text
+- Copy link
+- Story card
+- Add to calendar
+- View walk
+
+The user still lands on the same public walk page; this is presentation and sequencing, not a new workflow.
+
+For V1, retain the existing generated Story card but make its action clearer: download/open the story image rather than implying direct posting to Instagram. Raster social images can remain a later compatibility improvement unless real-device testing shows broken previews.
+
+## 5. Support neighborhood momentum with existing circles
+
+Avoid building chat or automatic group creation. Instead:
+
+- On a past walk/recap, show two clear next steps: “Plan this walk again” and “Keep walking together.”
+- “Keep walking together” opens Circles with concise context and the existing invite/share surface.
+- Keep circle membership opt-in and username-based for V1.
+- From an existing circle, continue preselecting that circle when planning the next walk.
+
+This gives neighborhood groups a path to persist without creating moderation, messaging, or invite-token infrastructure.
+
+## 6. Finish the existing composer and interaction polish
+
+- Keep the central composer; it is real and useful.
+- Fix the silent no-op when its walk-note action is tapped before a walk is active.
+- Correct its accessibility state and focus behavior.
+- Share one tab configuration between mobile and desktop.
+- Remove the unused legacy reflection FAB.
+- Associate guest RSVP labels with their fields and make host controls work on touch, not hover only.
+- Replace destructive browser confirmations only where they occur in the walk/circle launch path.
+
+## 7. Validate the V1 launch scenario
+
+Test this exact path on mobile and desktop:
+
+1. New member creates a link-only and a public walk.
+2. Host shares through native share, SMS, copy, and Story card.
+3. Logged-out guest opens the link and RSVPs.
+4. The page remembers and displays the guest’s RSVP without storing their email locally.
+5. The guest adds the walk to their calendar and shares it onward.
+6. The guest creates an account and returns to the same walk with the RSVP retained.
+7. The host sees the private guest roster; other visitors do not.
+8. Combined counts remain correct through RSVP changes and removals.
+9. The recap leads cleanly to another walk or Circles.
+10. A seeded 100-RSVP walk renders and updates without degraded interaction.
+
+## Deferred to V1.5–2
+
+- Confirmation and reminder emails
+- Physical attendance/check-in and no-show metrics
+- Full group chat or direct messaging
+- Automatic attendee-to-circle enrollment
+- Referral dashboards and funnel analytics
+- Automated Instagram posting
+- Advanced host tooling for very large events
