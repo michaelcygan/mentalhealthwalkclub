@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Footprints, Play, Square, Camera, Pause, ArrowLeft, Sparkles, Activity, X,
+  Footprints, Play, Square, Pause, ArrowLeft, Sparkles, Activity, X,
   ChevronRight, PenLine, ImagePlus, Check, Music2,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -62,6 +62,7 @@ function SoloWalkPage() {
   const [promptOffset, setPromptOffset] = useState(0);
   const [photoCount, setPhotoCount] = useState(0);
   const reduceMotion = useReducedMotion();
+  const audioStartedFor = useRef<string | null>(null);
 
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
   const [podcasts, setPodcasts] = useState<{ id: string; title: string }[]>([]);
@@ -116,6 +117,9 @@ function SoloWalkPage() {
 
   useEffect(() => {
     if (stage !== "active") return;
+    const sourceKey = source.kind === "podcast_episode" ? `podcast:${source.track_id}` : source.kind === "playlist" ? `playlist:${source.playlist_id}` : source.kind;
+    if (audioStartedFor.current === sourceKey) return;
+    audioStartedFor.current = sourceKey;
     let cancelled = false;
     (async () => {
       if (source.kind === "podcast_episode") {
@@ -169,6 +173,7 @@ function SoloWalkPage() {
       pausedAccum.current = 0;
       pausedAt.current = null;
       setElapsed(0);
+      audioStartedFor.current = null;
       setStage("active");
       if (source.kind === "ambient") { player.stop(); await ambient.start(); }
     } catch (e) {
@@ -217,6 +222,20 @@ function SoloWalkPage() {
     } catch (e) {
       toast.error((e as Error).message);
     }
+  }
+
+  async function startOver() {
+    if (walkId) {
+      const { error } = await supabase.from("walk_sessions").update({ status: "abandoned", ended_at: new Date().toISOString(), duration_seconds: elapsed }).eq("id", walkId);
+      if (error) { toast.error(error.message); return; }
+    }
+    window.localStorage.removeItem(WALK_STATE_KEY);
+    window.localStorage.removeItem(WALK_NOTE_KEY);
+    setStage("pre");
+    setWalkId(null);
+    setStartedAt(null);
+    setElapsed(0);
+    setNote("");
   }
 
   async function onPhotoPicked(rawFile: File) {
@@ -411,18 +430,20 @@ function SoloWalkPage() {
 
       <Section title="Journal (optional)">
         <Textarea
+           autoFocus
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="What's worth keeping from this walk?"
+           placeholder={reflectionPrompt ? "What did this bring up for you?" : "What's worth keeping from this walk?"}
           rows={5}
           maxLength={2000}
           className="rounded-2xl"
         />
+         {note.length > 1600 && <p className="mt-1 text-right text-xs text-muted-foreground">{2000 - note.length} characters left</p>}
       </Section>
 
       <div className="flex gap-2">
-        <Button onClick={() => { setStage("pre"); setWalkId(null); }} variant="outline" className="flex-1 rounded-full">
-          <X className="mr-1 h-4 w-4" /> Discard
+         <Button onClick={startOver} variant="outline" className="flex-1 rounded-full">
+           <X className="mr-1 h-4 w-4" /> Start over
         </Button>
         <Button onClick={savePost} className="flex-[2] rounded-full" size="lg">
           Save walk
