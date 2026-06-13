@@ -148,6 +148,7 @@ export interface FeedEntry {
   mood_before_score?: number | null;
   mood_after_score?: number | null;
   reflection_note?: string | null;
+  reflection_prompt?: string | null;
   walk_type?: string | null;
   intention?: string | null;
   weather_at_end?: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
@@ -165,6 +166,7 @@ interface WalkRow {
   mood_before_score: number | null;
   mood_after_score: number | null;
   reflection_note: string | null;
+  reflection_prompt: string | null;
   walk_type: string;
   intention: string | null;
   weather_at_end: { tempF?: number; label?: string; tone?: string; isDay?: boolean } | null;
@@ -182,7 +184,7 @@ export const listJournalFeed = createServerFn({ method: "GET" })
       supabase
         .from("walk_sessions")
         .select(
-          "id,started_at,duration_seconds,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,walk_type,intention,weather_at_end",
+          "id,started_at,duration_seconds,steps,mood_before,mood_after,mood_before_score,mood_after_score,reflection_note,reflection_prompt,walk_type,intention,weather_at_end",
         )
         .eq("user_id", userId)
         .eq("status", "completed")
@@ -245,6 +247,7 @@ export const listJournalFeed = createServerFn({ method: "GET" })
         mood_before_score: w.mood_before_score,
         mood_after_score: w.mood_after_score,
         reflection_note: w.reflection_note,
+        reflection_prompt: w.reflection_prompt,
         walk_type: w.walk_type,
         intention: w.intention,
         weather_at_end: w.weather_at_end,
