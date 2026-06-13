@@ -402,7 +402,15 @@ function SoloWalkPage() {
             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${journalOpen ? "rotate-90" : ""}`} />
           </button>
           <AnimatePresence initial={false}>
-            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea id="walk-journal-note" autoFocus value={note} onChange={(e) => { if (!journalPrompt && activePrompt) setJournalPrompt(activePrompt.text); setNote(e.target.value); }} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
+            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden">
+              {(journalPrompt || activePrompt) && (
+                <div className="mx-2 mt-2 border-l-2 border-forest/35 pl-3">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Responding to</p>
+                  <p className="mt-0.5 font-serif text-sm italic text-foreground/75">{journalPrompt || activePrompt?.text}</p>
+                </div>
+              )}
+              <Textarea id="walk-journal-note" autoFocus value={note} onChange={(e) => { if (!journalPrompt && activePrompt) setJournalPrompt(activePrompt.text); setNote(e.target.value); }} placeholder="Add a note…" rows={4} maxLength={2000} className="mt-3 rounded-2xl" />
+            </motion.div>}
           </AnimatePresence>
         </div>
 
