@@ -294,13 +294,13 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                             >
                               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
                                 <CoverThumb src={t.cover ?? null} title={t.title} kind={t.kind} />
-                   </div>}
+                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-1 font-serif text-xs leading-tight">{t.title}</p>
                                 {t.subtitle && (
                                   <p className="truncate text-[10px] text-muted-foreground">{t.subtitle}</p>
                                 )}
-                              </div>
+                   </div>}
                             </button>
                             <button
                               type="button"
