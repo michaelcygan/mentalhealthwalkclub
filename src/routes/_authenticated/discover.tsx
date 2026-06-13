@@ -198,7 +198,7 @@ function DiscoverPage() {
   const showMore = segment === "more";
   const nearbyCount = tonight.length + thisWeek.length;
   const socialCount = friendsGoing.length + circles.length;
-  const isColdStart = !loading && nearbyCount === 0 && socialCount === 0 && memories.length === 0;
+  const isColdStart = !loading && nearbyCount === 0 && socialCount === 0;
   const isDense = !loading && (nearbyCount >= 8 || friendsGoing.length >= 4 || circles.length >= 4);
 
   return (
