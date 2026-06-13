@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ReflectionWriteSheet } from "@/components/home/reflection-write-sheet";
 
 // Routes that own the bottom-right corner or otherwise hide the FAB.
-const HIDDEN_EXACT = new Set(["/auth", "/welcome", "/journal", "/more"]);
+const HIDDEN_EXACT = new Set(["/auth", "/welcome", "/journal", "/more", "/walk"]);
 const HIDDEN_PREFIX = ["/w/", "/walk/", "/auth"];
 
 /** Global "quick reflection" composer button. */

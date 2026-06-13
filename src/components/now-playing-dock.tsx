@@ -5,6 +5,7 @@ import { Pause, Play, X, Music2, Loader2, ChevronUp } from "lucide-react";
 import { useAmbient } from "@/lib/ambient-context";
 import { usePlayer } from "@/lib/player-context";
 import { NowPlayingSheet } from "@/components/now-playing-sheet";
+import { ambientCover } from "@/lib/ambient-cover";
 
 const HIDDEN_EXACT = new Set(["/auth", "/welcome"]);
 const HIDDEN_PREFIX = ["/w/"];
@@ -29,6 +30,7 @@ export function NowPlayingDock() {
   const onClose = showAudio ? audioStop : () => ambientStop();
   const isPaused = showAudio ? !audioPlaying : (muted || !ambientPlaying);
   const canExpand = true;
+  const cover = showAudio ? audioTrack?.cover ?? null : ambientCover(ambientTrack);
 
   return (
     <>
@@ -55,8 +57,8 @@ export function NowPlayingDock() {
               className="flex min-w-0 flex-1 items-center gap-2 rounded-full py-0.5 pl-0.5 pr-1 text-left transition active:scale-[0.99] disabled:cursor-default"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-forest">
-                {showAudio && audioTrack!.cover ? (
-                  <img src={audioTrack!.cover} alt="" className="h-full w-full object-cover" />
+                {cover ? (
+                  <img src={cover} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Music2 className="h-3.5 w-3.5" />
                 )}

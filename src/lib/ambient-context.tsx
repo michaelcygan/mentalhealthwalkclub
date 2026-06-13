@@ -1,12 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { ambientCover } from "@/lib/ambient-cover";
 
 export interface AmbientTrack {
   id: string;
   title: string;
   artist: string | null;
   audio_path: string;
+  cover_path: string | null;
   duration_seconds: number;
 }
 
@@ -65,7 +67,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     if (!user) { setLibrary([]); return; }
     supabase
       .from("ambient_tracks")
-      .select("id,title,artist,audio_path,duration_seconds")
+      .select("id,title,artist,audio_path,cover_path,duration_seconds")
       .eq("is_active", true)
       .then(({ data }) => setLibrary((data ?? []) as AmbientTrack[]));
   }, [user]);
@@ -133,10 +135,12 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
       try { await nextEl.play(); } catch { /* gesture needed */ }
     }
     if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      const cover = ambientCover(track);
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
         artist: track.artist ?? "Mental Health Walk Club",
         album: "Walk ambience",
+        artwork: cover ? [{ src: cover }] : undefined,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
