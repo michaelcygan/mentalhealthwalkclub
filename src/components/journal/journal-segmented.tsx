@@ -4,9 +4,9 @@ export type JournalSegment = "for-you" | "reflect" | "stats" | "entries" | "memo
 
 const SEGMENTS: Array<{ id: JournalSegment; label: string }> = [
   { id: "for-you", label: "For you" },
+  { id: "entries", label: "Entries" },
   { id: "reflect", label: "Reflect" },
   { id: "stats", label: "Stats" },
-  { id: "entries", label: "Entries" },
   { id: "memories", label: "Memories" },
 ];
 
