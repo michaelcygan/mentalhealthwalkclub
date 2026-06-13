@@ -207,9 +207,14 @@ function WalkRow({ entry, active, onToggle, onChanged }: Props) {
             </div>
           )}
           {entry.reflection_note && (
-            <p className={`font-serif italic leading-snug text-foreground/85 ${active ? "" : "line-clamp-2"}`}>
-              "{entry.reflection_note}"
-            </p>
+            <div>
+              {entry.reflection_prompt && (
+                <p className="mb-1 text-xs text-muted-foreground">Prompt: {entry.reflection_prompt}</p>
+              )}
+              <p className={`font-serif italic leading-snug text-foreground/85 ${active ? "" : "line-clamp-2"}`}>
+                "{entry.reflection_note}"
+              </p>
+            </div>
           )}
           {entry.intention && active && (
             <p className="text-xs text-muted-foreground">Intention: {entry.intention}</p>
