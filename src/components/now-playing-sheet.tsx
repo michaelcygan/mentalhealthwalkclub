@@ -157,11 +157,11 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                       onValueCommit={onScrubCommit}
                       aria-label="Scrub"
                     />
-                    <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+                     <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-muted-foreground">
                       <span>{formatTime(live)}</span>
                       <span>-{formatTime(Math.max(0, total - live))}</span>
+                     </div>
                    </div>}
-                  </div>
 
                   {/* Transport */}
                   <div className="mt-5 flex items-center justify-center gap-7">
@@ -255,7 +255,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                     </div>
                   </div>
 
-                  {/* Queue */}
+                   {/* Queue */}
                    {!isAmbient && <div className="mt-7">
                     <div className="mb-2 flex items-center justify-between">
                       <h3 className="flex items-center gap-1.5 font-serif text-sm text-foreground">
@@ -273,7 +273,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                           <Trash2 className="h-3 w-3" /> Clear
                         </button>
                       )}
-                   </div>}
+                     </div>
                     {queue.length === 0 ? (
                       <p className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-[11px] text-muted-foreground">
                         Nothing queued. Tap "Add to queue" on any episode to line it up.
@@ -294,7 +294,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                             >
                               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
                                 <CoverThumb src={t.cover ?? null} title={t.title} kind={t.kind} />
-                              </div>
+                   </div>}
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-1 font-serif text-xs leading-tight">{t.title}</p>
                                 {t.subtitle && (
