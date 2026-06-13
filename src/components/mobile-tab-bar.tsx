@@ -13,7 +13,7 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
   { to: "/more", label: "More", icon: Menu },
 ];
 
-const COMPOSE_HIDDEN_EXACT = new Set(["/walk", "/auth", "/welcome", "/privacy", "/terms", "/shop/return"]);
+const COMPOSE_HIDDEN_EXACT = new Set(["/auth", "/welcome", "/privacy", "/terms", "/shop/return"]);
 const COMPOSE_HIDDEN_PREFIX = ["/admin", "/w/", "/listen/", "/events/"];
 
 function composeAllowed(path: string) {
@@ -43,6 +43,7 @@ export function MobileTabBar() {
   }, [composeOpen]);
 
   const showCompose = composeAllowed(path);
+  const isWalk = path === "/walk";
   const go = (to: "/walk" | "/walk/new" | "/journal") => {
     setComposeOpen(false);
     haptics.tap();
@@ -105,21 +106,25 @@ export function MobileTabBar() {
               onClick={() => {
                 haptics.tap();
                 if (!user) { openAuth("signup"); return; }
+                if (isWalk) {
+                  window.dispatchEvent(new CustomEvent("mhwc:open-walk-journal"));
+                  return;
+                }
                 setComposeOpen((v) => !v);
               }}
               whileTap={{ scale: 0.9 }}
               aria-expanded={composeOpen}
                aria-haspopup="menu"
-              aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
+              aria-label={isWalk ? "Write a walk note" : composeOpen ? "Close compose menu" : "Create"}
               className="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_10px_24px_-8px_color-mix(in_oklab,var(--forest)_70%,transparent)] ring-4 ring-background/70 transition active:scale-95"
               style={{ marginTop: "-4px" }}
             >
               <motion.span
-                animate={{ rotate: composeOpen ? 45 : 0 }}
+                animate={{ rotate: !isWalk && composeOpen ? 45 : 0 }}
                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
                 className="grid place-items-center"
               >
-                <Plus className="h-5 w-5" strokeWidth={2.4} />
+                {isWalk ? <PenLine className="h-5 w-5" strokeWidth={2.2} /> : <Plus className="h-5 w-5" strokeWidth={2.4} />}
               </motion.span>
             </motion.button>
           )}

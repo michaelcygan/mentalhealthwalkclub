@@ -7,6 +7,7 @@ import { useAmbient } from "@/lib/ambient-context";
 import { CoverThumb } from "@/components/listen/cover-thumb";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { ambientCover } from "@/lib/ambient-cover";
 
 function formatTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return "0:00";
@@ -42,6 +43,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
   const displayTitle = isAmbient ? ambient.current?.title ?? "Ambient mix" : current?.title ?? "Now playing";
   const displaySubtitle = isAmbient ? ambient.current?.artist : current?.subtitle;
   const displayPlaying = isAmbient ? ambient.playing && !ambient.muted : playing;
+  const displayCover = isAmbient ? ambientCover(ambient.current) : current?.cover ?? null;
 
   const live = scrub ?? position;
   const total = Math.max(duration, current?.duration_seconds ?? 0, 1);
@@ -135,7 +137,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                 <div className="overflow-y-auto px-5 pb-5" style={{ maxHeight: "calc(90dvh - 64px)" }}>
                   {/* Cover */}
                    <div className="mx-auto mt-2 aspect-square w-[min(70vw,300px)] overflow-hidden rounded-3xl shadow-floating">
-                     <CoverThumb src={isAmbient ? null : current?.cover ?? null} title={displayTitle} kind={isAmbient ? "guided" : current?.kind ?? "guided"} />
+                     <CoverThumb src={displayCover} title={displayTitle} kind={isAmbient ? "guided" : current?.kind ?? "guided"} />
                   </div>
 
                   {/* Title */}

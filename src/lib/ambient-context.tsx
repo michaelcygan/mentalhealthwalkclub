@@ -7,6 +7,7 @@ export interface AmbientTrack {
   title: string;
   artist: string | null;
   audio_path: string;
+  cover_path: string | null;
   duration_seconds: number;
 }
 
@@ -65,7 +66,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     if (!user) { setLibrary([]); return; }
     supabase
       .from("ambient_tracks")
-      .select("id,title,artist,audio_path,duration_seconds")
+      .select("id,title,artist,audio_path,cover_path,duration_seconds")
       .eq("is_active", true)
       .then(({ data }) => setLibrary((data ?? []) as AmbientTrack[]));
   }, [user]);
@@ -137,6 +138,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
         title: track.title,
         artist: track.artist ?? "Mental Health Walk Club",
         album: "Walk ambience",
+        artwork: track.cover_path ? [{ src: track.cover_path }] : undefined,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
