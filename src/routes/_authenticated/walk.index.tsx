@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Footprints, Play, Square, Camera, Pause, ArrowLeft, Sparkles, Activity, X,
+  ChevronRight, PenLine, ImagePlus, Check, Music2,
 } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -10,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioSourcePicker, type AudioSource } from "@/components/audio/audio-source-picker";
 import { useAmbient } from "@/lib/ambient-context";
+import { usePlayer, type PlayableTrack } from "@/lib/player-context";
 import { useStepCounter } from "@/hooks/use-step-counter";
 import { useGeolocation, useCurrentWeather } from "@/hooks/use-weather";
 import WalkWeather from "@/components/walk-page/walk-weather";
 import { listMyPlaylists, getPlaylist, listenCatalog } from "@/lib/playlists.functions";
-import { PROMPTS, moodToFamily, type ReflectionPrompt } from "@/lib/reflection-prompts";
+import { PROMPTS, moodToFamily, promptsForMood, type ReflectionPrompt } from "@/lib/reflection-prompts";
 import { compressImage } from "@/lib/image-compress";
 
 export const Route = createFileRoute("/_authenticated/walk/")({
@@ -27,7 +30,9 @@ export const Route = createFileRoute("/_authenticated/walk/")({
   }),
 });
 
-const MOODS = ["heavy", "anxious", "okay", "steady", "hopeful", "grateful"];
+const MOODS = ["okay", "steady", "hopeful", "grateful", "anxious", "heavy"];
+const WALK_STATE_KEY = "mhwc_active_solo_walk";
+const WALK_NOTE_KEY = "mhwc_walk_note_draft";
 
 type Stage = "pre" | "active" | "post";
 
@@ -53,6 +58,10 @@ function SoloWalkPage() {
   const [intention, setIntention] = useState("");
   const [note, setNote] = useState("");
   const [source, setSource] = useState<AudioSource>({ kind: "silence" });
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [promptOffset, setPromptOffset] = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
+  const reduceMotion = useReducedMotion();
 
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
   const [podcasts, setPodcasts] = useState<{ id: string; title: string }[]>([]);
@@ -61,7 +70,34 @@ function SoloWalkPage() {
   const { data: weather } = useCurrentWeather(coords);
 
   const ambient = useAmbient();
-  const stepCounter = useStepCounter(stage === "active" && !paused);
+  const player = usePlayer();
+  const stepCounter = useStepCounter(stage === "active" && !paused, walkId);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(WALK_STATE_KEY);
+    if (!saved) return;
+    try {
+      const state = JSON.parse(saved) as { walkId: string; startedAt: number; pausedAccum: number; moodBefore: string | null; intention: string; source: AudioSource };
+      if (!state.walkId || !state.startedAt) return;
+      setWalkId(state.walkId);
+      setStartedAt(state.startedAt);
+      pausedAccum.current = state.pausedAccum || 0;
+      setMoodBefore(state.moodBefore);
+      setIntention(state.intention || "");
+      setSource(state.source || { kind: "silence" });
+      setNote(window.localStorage.getItem(WALK_NOTE_KEY) || "");
+      setStage("active");
+    } catch { window.localStorage.removeItem(WALK_STATE_KEY); }
+  }, []);
+
+  useEffect(() => {
+    if (stage !== "active" || !walkId || startedAt == null) return;
+    window.localStorage.setItem(WALK_STATE_KEY, JSON.stringify({ walkId, startedAt, pausedAccum: pausedAccum.current, moodBefore, intention, source }));
+  }, [stage, walkId, startedAt, paused, moodBefore, intention, source]);
+
+  useEffect(() => {
+    if (stage === "active") window.localStorage.setItem(WALK_NOTE_KEY, note);
+  }, [stage, note]);
 
   // Load picker options
   useEffect(() => {
