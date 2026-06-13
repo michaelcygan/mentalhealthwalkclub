@@ -245,6 +245,11 @@ function SoloWalkPage() {
     return pool[Math.floor(Math.random() * pool.length)];
   }, [stage, moodBefore]);
 
+  const activePrompts = useMemo(() => promptsForMood(moodBefore), [moodBefore]);
+  const activePrompt = activePrompts.length > 0
+    ? activePrompts[(Math.floor(elapsed / 240) + promptOffset) % activePrompts.length]
+    : null;
+
   if (stage === "pre") {
     return (
       <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
@@ -258,7 +263,7 @@ function SoloWalkPage() {
           <p className="mt-1 text-sm text-muted-foreground">A timer, weather, mood, and a journal. No tracking, no pressure.</p>
         </header>
 
-        <Section title="How are you arriving?">
+        <Section title="How are you arriving? Choose whatever feels closest.">
           <MoodGrid value={moodBefore} onChange={setMoodBefore} />
         </Section>
 
@@ -298,22 +303,28 @@ function SoloWalkPage() {
 
   if (stage === "active") {
     return (
-      <div className="mx-auto max-w-2xl px-4 pb-32 pt-6">
-        <header className="mb-6 text-center">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{paused ? "Paused" : "Walking"}</p>
-          <div className="mt-2 font-serif text-6xl tabular-nums">{fmtClock(elapsed)}</div>
-          {stepCounter.permissionState === "granted" && (
-            <p className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Activity className="h-3 w-3" /> {stepCounter.steps} steps
-            </p>
-          )}
-        </header>
-
-        {weather && (
-          <div className="mb-6 text-center text-sm text-muted-foreground">
-            {weather.tempF}° · {weather.label}
+      <div className="mx-auto max-w-2xl px-4 pb-44 pt-4">
+        <header className="relative mb-6 overflow-hidden rounded-[2rem] border border-border/70 bg-card/75 px-5 py-6 text-center shadow-soft backdrop-blur-xl">
+          <div className={`absolute inset-x-10 top-0 h-px bg-forest transition-opacity ${paused ? "opacity-20" : "opacity-70"}`} />
+          <p className={`text-xs font-medium uppercase tracking-[0.18em] transition-colors ${paused ? "text-clay" : "text-forest"}`}>
+            {paused ? "Walk paused" : "Walk in progress"}
+          </p>
+          <div role="timer" aria-label={`Walk time: ${Math.floor(elapsed / 60)} minutes ${elapsed % 60} seconds`} className="mt-3 font-serif text-6xl tabular-nums tracking-tight">
+            {fmtClock(elapsed)}
           </div>
-        )}
+          <div className="mt-4 flex items-center justify-center gap-3 text-xs text-muted-foreground">
+            {stepCounter.permissionState === "granted" && <span className="inline-flex items-center gap-1"><Activity className="h-3.5 w-3.5" /> {stepCounter.steps} steps</span>}
+            {weather && <span>{weather.tempF}° · {weather.label}</span>}
+          </div>
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <Button onClick={togglePause} variant="outline" size="lg" aria-label={paused ? "Resume walk" : "Pause walk"} className="h-12 w-12 rounded-full p-0">
+              {paused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+            </Button>
+            <Button onClick={endWalk} size="lg" className="h-12 rounded-full px-6">
+              <Square className="mr-2 h-4 w-4" /> End walk
+            </Button>
+          </div>
+        </header>
 
         {intention && (
           <blockquote className="mb-6 rounded-3xl border border-border bg-card p-4 text-center font-serif text-sm italic text-muted-foreground">
@@ -321,32 +332,48 @@ function SoloWalkPage() {
           </blockquote>
         )}
 
-        {/* hidden audio element for podcast/playlist */}
-        <audio
-          ref={audioRef}
-          onEnded={() => setQueueIdx((i) => Math.min(i + 1, queue.length))}
-          className="hidden"
-        />
-
         {source.kind === "ambient" && ambient.current && (
-          <div className="mb-6 rounded-3xl border border-border bg-card p-4 text-center text-xs text-muted-foreground">
-            ♪ {ambient.current.title}
-            <button onClick={ambient.skip} className="ml-2 underline">skip</button>
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-card/70 p-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-forest"><Music2 className="h-4 w-4" /></span>
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ambient.current.title}</p><p className="text-[11px] text-muted-foreground">Ambient mix</p></div>
+            <Button variant="ghost" size="sm" onClick={ambient.skip} className="rounded-full">Next</Button>
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-3">
-          <Button onClick={togglePause} variant="outline" size="lg" className="h-14 w-14 rounded-full p-0">
-            {paused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
-          </Button>
-          <Button onClick={endWalk} size="lg" className="h-14 rounded-full px-6">
-            <Square className="mr-2 h-4 w-4" /> End walk
-          </Button>
+        {activePrompt && (
+          <div className="mb-3 overflow-hidden rounded-3xl border border-border/70 bg-card/55 p-5 text-center">
+            <p className="mb-3 inline-flex items-center gap-1 text-xs uppercase tracking-[0.16em] text-muted-foreground"><Sparkles className="h-3.5 w-3.5" /> Something to notice</p>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.button
+                key={activePrompt.id}
+                type="button"
+                onClick={() => setJournalOpen(true)}
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -5 }}
+                className="block w-full font-serif text-base italic leading-relaxed"
+              >
+                {activePrompt.text}
+              </motion.button>
+            </AnimatePresence>
+            <Button variant="ghost" size="sm" onClick={() => setPromptOffset((value) => value + 1)} className="mt-3 rounded-full text-xs text-muted-foreground">Another prompt <ChevronRight className="h-3.5 w-3.5" /></Button>
+          </div>
+        )}
+
+        <div className="rounded-3xl border border-border/70 bg-card/75 p-3 shadow-soft">
+          <button type="button" onClick={() => setJournalOpen((open) => !open)} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-2 text-left" aria-expanded={journalOpen}>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/70 text-forest"><PenLine className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><span className="block text-sm font-medium">A note from this walk</span><span className="block truncate text-xs text-muted-foreground">{note || "Tap to jot something down"}</span></span>
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${journalOpen ? "rotate-90" : ""}`} />
+          </button>
+          <AnimatePresence initial={false}>
+            {journalOpen && <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} className="overflow-hidden"><Textarea autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Write without pressure…" rows={4} maxLength={2000} className="mt-2 rounded-2xl" /></motion.div>}
+          </AnimatePresence>
         </div>
 
-        {/* Camera FAB */}
-        <label className="fixed bottom-24 right-6 z-40 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-forest text-primary-foreground shadow-soft">
-          <Camera className="h-5 w-5" />
+        <label aria-label="Add a photo from this walk" className="fixed bottom-36 right-5 z-40 flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-forest px-4 text-sm font-medium text-primary-foreground shadow-floating">
+          {photoCount > 0 ? <Check className="h-5 w-5" /> : <ImagePlus className="h-5 w-5" />}
+          <span>{photoCount > 0 ? `${photoCount} saved` : "Add photo"}</span>
           <input
             type="file"
             accept="image/*"
