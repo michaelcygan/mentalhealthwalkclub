@@ -2502,6 +2502,7 @@ export type Database = {
           podcast_episode_id: string | null
           privacy: string
           reflection_note: string | null
+          reflection_prompt: string | null
           route_snapshot_path: string | null
           share_map: boolean
           started_at: string
@@ -2528,6 +2529,7 @@ export type Database = {
           podcast_episode_id?: string | null
           privacy?: string
           reflection_note?: string | null
+          reflection_prompt?: string | null
           route_snapshot_path?: string | null
           share_map?: boolean
           started_at?: string
@@ -2554,6 +2556,7 @@ export type Database = {
           podcast_episode_id?: string | null
           privacy?: string
           reflection_note?: string | null
+          reflection_prompt?: string | null
           route_snapshot_path?: string | null
           share_map?: boolean
           started_at?: string

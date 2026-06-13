@@ -1,0 +1,2 @@
+ALTER TABLE public.walk_sessions ADD COLUMN reflection_prompt TEXT;
+COMMENT ON COLUMN public.walk_sessions.reflection_prompt IS 'The gentle reflection prompt shown while the user composed their walk journal note.';
