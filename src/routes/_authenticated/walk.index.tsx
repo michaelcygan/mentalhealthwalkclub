@@ -78,11 +78,13 @@ function SoloWalkPage() {
     const saved = window.localStorage.getItem(WALK_STATE_KEY);
     if (!saved) return;
     try {
-      const state = JSON.parse(saved) as { walkId: string; startedAt: number; pausedAccum: number; moodBefore: string | null; intention: string; source: AudioSource };
+      const state = JSON.parse(saved) as { walkId: string; startedAt: number; pausedAccum: number; pausedAt?: number | null; paused?: boolean; moodBefore: string | null; intention: string; source: AudioSource };
       if (!state.walkId || !state.startedAt) return;
       setWalkId(state.walkId);
       setStartedAt(state.startedAt);
       pausedAccum.current = state.pausedAccum || 0;
+      pausedAt.current = state.pausedAt ?? null;
+      setPaused(Boolean(state.paused));
       setMoodBefore(state.moodBefore);
       setIntention(state.intention || "");
       setSource(state.source || { kind: "silence" });
@@ -93,7 +95,7 @@ function SoloWalkPage() {
 
   useEffect(() => {
     if (stage !== "active" || !walkId || startedAt == null) return;
-    window.localStorage.setItem(WALK_STATE_KEY, JSON.stringify({ walkId, startedAt, pausedAccum: pausedAccum.current, moodBefore, intention, source }));
+    window.localStorage.setItem(WALK_STATE_KEY, JSON.stringify({ walkId, startedAt, pausedAccum: pausedAccum.current, pausedAt: pausedAt.current, paused, moodBefore, intention, source }));
   }, [stage, walkId, startedAt, paused, moodBefore, intention, source]);
 
   useEffect(() => {
