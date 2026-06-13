@@ -17,7 +17,10 @@ import { WhenPicker } from "@/components/walk-page/when-picker";
 import { FirstWalkCoach } from "@/components/walk-page/first-walk-coach";
 import { useAuth } from "@/lib/auth-context";
 
-const SearchSchema = z.object({ from: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional() });
+const SearchSchema = z.object({
+  from: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional(),
+  circle: z.string().uuid().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/walk/new")({
   component: ComposeWalkPage,
@@ -87,7 +90,13 @@ function ComposeWalkPage() {
 
   // load hostable groups + check first-walk status once
   useEffect(() => {
-    listMyHostableGroups().then(setHostable).catch(() => {});
+    listMyHostableGroups().then((result) => {
+      setHostable(result);
+      if (search.circle && result.circles.some((circle) => circle.id === search.circle)) {
+        setAudience("group");
+        setGroupChoice({ kind: "circle", id: search.circle });
+      }
+    }).catch(() => {});
     if (!user) return;
     supabase
       .from("profiles")
@@ -97,7 +106,7 @@ function ComposeWalkPage() {
       .then(({ data }) => {
         if (!data || (data.walks_hosted ?? 0) === 0) setCoachEnabled(true);
       });
-  }, [user]);
+  }, [user, search.circle]);
 
   // prefill from ?from={code} — copy place/group/time-of-day from a past walk
   useEffect(() => {

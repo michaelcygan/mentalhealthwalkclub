@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Plus, Users, UserPlus, X, ArrowLeft, Trash2 } from "lucide-react";
+import { InviteCard } from "@/components/discover/invite-card";
 
 export const Route = createFileRoute("/_authenticated/circles")({
   component: CirclesPage,
@@ -186,6 +187,12 @@ function CirclesPage() {
         </section>
       ) : (
         <section className="mt-6 space-y-5">
+          {friends.accepted.length === 0 && friends.incoming.length === 0 && (
+            <InviteCard
+              title="Invite your first walking person"
+              description="Send a text or link now. Once they join, you can add each other by username and make private circles."
+            />
+          )}
           <div className="rounded-3xl border border-border bg-card p-4">
             <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Add a friend by username</div>
             <div className="mt-2 flex gap-2">
