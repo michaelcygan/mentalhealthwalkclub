@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AttendeeStack } from "@/components/walk-page/attendee-stack";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyHostOfRsvp } from "@/lib/notifications.functions";
+import { InviteCard } from "@/components/discover/invite-card";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
@@ -219,6 +220,7 @@ function Cover({
 }
 
 function ShareRow({ code, title }: { code: string; title: string }) {
+  const { user } = useAuth();
   const url = typeof window !== "undefined" ? `${window.location.origin}/w/${code}` : `/w/${code}`;
   const share = async () => {
     try {
@@ -234,10 +236,21 @@ function ShareRow({ code, title }: { code: string; title: string }) {
   };
   const storyHref = `/api/public/walk/${encodeURIComponent(code)}/story`;
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
-      <button onClick={share} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40">
-        <Share2 className="h-3.5 w-3.5" /> Share
-      </button>
+    <div className="mt-5">
+      {user ? (
+        <InviteCard
+          kind="walk"
+          url={url}
+          title="Invite people to this walk"
+          shareText={`Want to join me for “${title}”? ${url}`}
+        />
+      ) : null}
+      <div className={`${user ? "mt-3" : ""} flex flex-wrap gap-2`}>
+        {!user ? (
+          <button onClick={share} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40">
+            <Share2 className="h-3.5 w-3.5" /> Share
+          </button>
+        ) : null}
       <a
         href={`/api/public/walk/${encodeURIComponent(code)}/ics`}
         className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs hover:bg-accent/40"
@@ -253,6 +266,7 @@ function ShareRow({ code, title }: { code: string; title: string }) {
       >
         <ImageIcon className="h-3.5 w-3.5" /> Story card
       </a>
+      </div>
     </div>
   );
 }

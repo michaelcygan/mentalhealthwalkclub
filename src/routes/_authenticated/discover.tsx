@@ -14,6 +14,7 @@ import {
   Image,
   HeartHandshake,
   ChevronRight,
+  UserPlus,
 } from "lucide-react";
 import { discoverNearbyWalks, discoverFeaturedEvents, discoverFriendsGoing, discoverMyCircleSummary, discoverMemories } from "@/lib/discover.functions";
 import { discoverPublicGroups } from "@/lib/groups.functions";
@@ -109,15 +110,6 @@ const SEGMENTS: Array<{ id: Segment; label: string }> = [
   { id: "more", label: "More" },
 ];
 
-const CIRCLE_STARTERS = [
-  { name: "My Sunday crew", description: "A weekly reset with people you trust." },
-  { name: "Morning walkers", description: "Early walks before the day starts." },
-  { name: "Postpartum walkers", description: "Gentle walks for new parents." },
-  { name: "Grief & movement", description: "Walk and talk through hard seasons." },
-  { name: "Sober Sundays", description: "Weekend walks without the booze." },
-  { name: "Dog parents", description: "Walks that include the four-legged ones." },
-];
-
 function DiscoverPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoState, setGeoState] = useState<"asking" | "ok" | "denied">("asking");
@@ -204,6 +196,11 @@ function DiscoverPage() {
   const showMemories = segment === "for-you";
   const showInvite = segment === "for-you";
   const showMore = segment === "more";
+  const nearbyCount = tonight.length + thisWeek.length;
+  const socialCount = friendsGoing.length + circles.length;
+  const isColdStart = !loading && socialCount === 0;
+  const hasNoLocalWalks = nearbyCount === 0;
+  const isDense = !loading && (nearbyCount >= 8 || friendsGoing.length >= 4 || circles.length >= 4);
 
   return (
     <div className="mx-auto max-w-2xl pb-24">
@@ -256,8 +253,34 @@ function DiscoverPage() {
       )}
 
       <div className="space-y-8">
+        {segment === "for-you" && isColdStart && (
+          <section className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-soft">
+            <div className="px-5 pb-4 pt-5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-forest">New around here</p>
+              <h2 className="mt-2 max-w-sm font-serif text-2xl leading-tight">A good walk can start with one person—or one plan.</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {hasNoLocalWalks
+                  ? "There’s nothing nearby yet. Invite someone into the club, or post the first walk in your area."
+                  : "Your local network is still starting. Invite someone you know, or post a walk people can join."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <a href="#invite-someone" className="group min-h-28 border-r border-border p-4 transition hover:bg-accent/30">
+                <UserPlus className="h-5 w-5 text-forest" />
+                <p className="mt-5 text-sm font-medium">Invite someone</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Text or send a link</p>
+              </a>
+              <Link to="/walk/new" className="group min-h-28 p-4 transition hover:bg-accent/30">
+                <CalendarDays className="h-5 w-5 text-forest" />
+                <p className="mt-5 text-sm font-medium">Plan a walk</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Post it, then invite people</p>
+              </Link>
+            </div>
+          </section>
+        )}
+
         {/* Tonight near you */}
-        {showTonight && (
+        {showTonight && !(isColdStart && hasNoLocalWalks) && (
           <section>
             <SectionHeader
               icon={<Sparkles className="h-4 w-4" />}
@@ -290,7 +313,7 @@ function DiscoverPage() {
         )}
 
         {/* Friends are going */}
-        {showFriends && (
+        {showFriends && (!isColdStart || segment === "friends") && (
           <section>
             <SectionHeader
               icon={<HeartHandshake className="h-4 w-4" />}
@@ -318,7 +341,7 @@ function DiscoverPage() {
         )}
 
         {/* Your circles */}
-        {showCircles && (
+        {showCircles && (!isColdStart || segment === "circles") && (
           <section>
             <SectionHeader
               icon={<CircleDot className="h-4 w-4" />}
@@ -337,26 +360,10 @@ function DiscoverPage() {
                 ))}
               </div>
             ) : circles.length === 0 ? (
-              <div className="space-y-3">
-                <div className="rounded-3xl border border-dashed border-border bg-card/60 p-5 text-center text-xs text-muted-foreground">
-                  No circles yet. Start one for your closest walking people.
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Suggested starters</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CIRCLE_STARTERS.map((c) => (
-                      <Link
-                        key={c.name}
-                        to="/circles"
-                        className="rounded-2xl border border-border bg-card p-3 shadow-soft transition hover:bg-accent/30"
-                      >
-                        <p className="text-sm font-medium">{c.name}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{c.description}</p>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <Link to="/circles" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm shadow-soft">
+                <span>Make a private circle after your people join.</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             ) : (
               <div className="space-y-2.5">
                 {circles.map((c) => (
@@ -415,7 +422,7 @@ function DiscoverPage() {
         )}
 
         {/* This week near you */}
-        {showThisWeek && (
+        {showThisWeek && !(isColdStart && hasNoLocalWalks) && (
           <section>
             <SectionHeader
               icon={<CalendarDays className="h-4 w-4" />}
@@ -443,7 +450,11 @@ function DiscoverPage() {
         )}
 
         {/* Walk together invite */}
-        {showInvite && <InviteCard />}
+        {showInvite && (!isDense || isColdStart) && (
+          <div id="invite-someone" className="scroll-mt-36">
+            <InviteCard />
+          </div>
+        )}
 
         {/* More: Groups, Places, Trails */}
         {showMore && (
