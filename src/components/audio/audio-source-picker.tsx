@@ -6,6 +6,7 @@
  * structured value that maps directly to the walk_sessions audio columns.
  */
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Volume2, VolumeX, Mic2, ListMusic } from "lucide-react";
 
 export type AudioSource =
@@ -68,7 +69,7 @@ export function AudioSourcePicker({ value, onChange, playlists = [], podcasts = 
       />
       {expanded === "podcast" && (
         <ul className="space-y-1 rounded-2xl border border-border bg-card/60 p-2">
-          {podcasts.length === 0 && <li className="px-2 py-1 text-xs text-muted-foreground">No podcasts available.</li>}
+          {podcasts.length === 0 && <li className="px-2 py-1 text-xs text-muted-foreground">No episodes yet. <Link to="/listen" className="font-medium text-forest underline">Browse Listen</Link></li>}
           {podcasts.map((p) => (
             <li key={p.id}>
               <button

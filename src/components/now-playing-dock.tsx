@@ -28,7 +28,7 @@ export function NowPlayingDock() {
   const onToggle = showAudio ? audioToggle : toggleMute;
   const onClose = showAudio ? audioStop : () => ambientStop();
   const isPaused = showAudio ? !audioPlaying : (muted || !ambientPlaying);
-  const canExpand = showAudio; // only foreground player has a sheet
+  const canExpand = true;
 
   return (
     <>
@@ -51,7 +51,7 @@ export function NowPlayingDock() {
               type="button"
               onClick={canExpand ? () => setExpanded(true) : undefined}
               disabled={!canExpand}
-              aria-label={canExpand ? "Open player" : "Now playing"}
+              aria-label="Open player"
               className="flex min-w-0 flex-1 items-center gap-2 rounded-full py-0.5 pl-0.5 pr-1 text-left transition active:scale-[0.99] disabled:cursor-default"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-forest">
@@ -88,7 +88,7 @@ export function NowPlayingDock() {
         </AnimatePresence>
       </div>
 
-      {showAudio && <NowPlayingSheet open={expanded} onOpenChange={setExpanded} />}
+       <NowPlayingSheet open={expanded} onOpenChange={setExpanded} mode={showAudio ? "audio" : "ambient"} />
     </>
   );
 }

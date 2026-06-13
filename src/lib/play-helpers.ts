@@ -23,7 +23,7 @@ export type PlayableItem = {
  * fall back to opening the source link.
  */
 export function usePlayOrOpen() {
-  const { play } = usePlayer();
+  const { play, stop } = usePlayer();
   const ambient = useAmbient();
   const log = useServerFn(logListenEvent);
 
@@ -38,6 +38,7 @@ export function usePlayOrOpen() {
           return;
         }
         if (item.kind === "ambient") {
+          stop();
           ambient.start();
           log({ data: { kind: "ambient", item_id: item.id, action: "play" } }).catch(() => {});
           return;
@@ -67,6 +68,6 @@ export function usePlayOrOpen() {
         toast.error("Couldn't open this item.");
       }
     },
-    [play, ambient, log],
+    [play, stop, ambient, log],
   );
 }

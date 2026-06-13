@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Footprints, Compass, BookHeart, Menu, Plus, CalendarPlus } from "lucide-react";
+import { Footprints, Compass, BookHeart, Menu, Plus, CalendarPlus, PenLine } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { haptics } from "@/lib/device";
 import { useAuth } from "@/lib/auth-context";
@@ -43,7 +43,7 @@ export function MobileTabBar() {
   }, [composeOpen]);
 
   const showCompose = composeAllowed(path);
-  const go = (to: "/walk" | "/walk/new") => {
+  const go = (to: "/walk" | "/walk/new" | "/journal") => {
     setComposeOpen(false);
     haptics.tap();
     navigate({ to });
@@ -76,10 +76,12 @@ export function MobileTabBar() {
               animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              role="menu"
               className="pointer-events-auto flex flex-col items-center gap-2"
             >
-              <ComposeAction label="Plan a walk" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
-              <ComposeAction label="Walk now" icon={<Footprints className="h-4 w-4" />} onClick={() => go("/walk")} />
+              <ComposeAction label="Write a reflection" sub="Open your journal" icon={<PenLine className="h-4 w-4" />} onClick={() => go("/journal")} />
+              <ComposeAction label="Plan a walk" sub="Group or future walk" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
+              <ComposeAction label="Walk now" sub="Solo · starts the timer" icon={<Footprints className="h-4 w-4" />} onClick={() => go("/walk")} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -107,6 +109,7 @@ export function MobileTabBar() {
               }}
               whileTap={{ scale: 0.9 }}
               aria-expanded={composeOpen}
+               aria-haspopup="menu"
               aria-label={composeOpen ? "Close compose menu" : "Start or plan a walk"}
               className="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-forest text-primary-foreground shadow-[0_10px_24px_-8px_color-mix(in_oklab,var(--forest)_70%,transparent)] ring-4 ring-background/70 transition active:scale-95"
               style={{ marginTop: "-4px" }}
@@ -185,15 +188,16 @@ function TabItem({
   );
 }
 
-function ComposeAction({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+function ComposeAction({ label, sub, icon, onClick }: { label: string; sub: string; icon: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-2.5 text-sm font-medium shadow-floating backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 hover:bg-accent/50"
     >
       <span className="text-forest">{icon}</span>
-      {label}
+       <span className="text-left"><span className="block">{label}</span><span className="block text-[10px] font-normal text-muted-foreground">{sub}</span></span>
     </button>
   );
 }

@@ -18,26 +18,33 @@ function formatTime(s: number): string {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode?: "audio" | "ambient";
 }
 
-export function NowPlayingSheet({ open, onOpenChange }: Props) {
+export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
   const {
     current, playing, loading, position, duration, queue,
     toggle, seek, skipBy, skipNext, stop,
     play, removeFromQueue, clearQueue,
     sleepTimerRemainingMs, setSleepTimer,
   } = usePlayer();
-  const { muted, toggleMute, volume, setVolume } = useAmbient();
+  const ambient = useAmbient();
   const reduceMotion = useReducedMotion();
   const [scrub, setScrub] = useState<number | null>(null);
 
   // Reset scrub if track changes
   useEffect(() => { setScrub(null); }, [current?.id]);
 
-  if (!current) return null;
+  const isAmbient = mode === "ambient";
+  if (!current && !isAmbient) return null;
+  if (isAmbient && !ambient.current) return null;
+
+  const displayTitle = isAmbient ? ambient.current?.title ?? "Ambient mix" : current?.title ?? "Now playing";
+  const displaySubtitle = isAmbient ? ambient.current?.artist : current?.subtitle;
+  const displayPlaying = isAmbient ? ambient.playing && !ambient.muted : playing;
 
   const live = scrub ?? position;
-  const total = Math.max(duration, current.duration_seconds ?? 0, 1);
+  const total = Math.max(duration, current?.duration_seconds ?? 0, 1);
   const pct = (live / total) * 100;
 
   const onScrubChange = (v: number[]) => setScrub(v[0]);
@@ -81,7 +88,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                 {/* Hidden title for a11y */}
                 <SheetPrimitive.Title className="sr-only">Now playing</SheetPrimitive.Title>
                 <SheetPrimitive.Description className="sr-only">
-                  {current.title}
+                   {displayTitle}
                 </SheetPrimitive.Description>
 
                 {/* Grab handle */}
@@ -103,9 +110,9 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                     Now playing
                   </span>
                   <div className="flex items-center gap-1">
-                    {current.link && (
+                     {!isAmbient && current?.link && (
                       <a
-                        href={current.link}
+                         href={current.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="Open source"
@@ -116,7 +123,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                     )}
                     <button
                       type="button"
-                      onClick={() => { stop(); onOpenChange(false); }}
+                       onClick={() => { if (isAmbient) ambient.stop(); else stop(); onOpenChange(false); }}
                       aria-label="Stop playback"
                       className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                     >
@@ -127,20 +134,20 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
 
                 <div className="overflow-y-auto px-5 pb-5" style={{ maxHeight: "calc(90dvh - 64px)" }}>
                   {/* Cover */}
-                  <div className="mx-auto mt-2 aspect-square w-[min(70vw,300px)] overflow-hidden rounded-3xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45)]">
-                    <CoverThumb src={current.cover ?? null} title={current.title} kind={current.kind} />
+                   <div className="mx-auto mt-2 aspect-square w-[min(70vw,300px)] overflow-hidden rounded-3xl shadow-floating">
+                     <CoverThumb src={isAmbient ? null : current?.cover ?? null} title={displayTitle} kind={isAmbient ? "guided" : current?.kind ?? "guided"} />
                   </div>
 
                   {/* Title */}
                   <div className="mt-5 text-center">
-                    <h2 className="line-clamp-2 font-serif text-xl leading-tight text-foreground">{current.title}</h2>
-                    {current.subtitle && (
-                      <p className="mt-1 truncate text-sm text-muted-foreground">{current.subtitle}</p>
+                     <h2 className="line-clamp-2 font-serif text-xl leading-tight text-foreground">{displayTitle}</h2>
+                     {displaySubtitle && (
+                       <p className="mt-1 truncate text-sm text-muted-foreground">{displaySubtitle}</p>
                     )}
                   </div>
 
                   {/* Scrubber */}
-                  <div className="mt-6">
+                   {!isAmbient && <div className="mt-6">
                     <Slider
                       value={[live]}
                       min={0}
@@ -150,44 +157,44 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                       onValueCommit={onScrubCommit}
                       aria-label="Scrub"
                     />
-                    <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+                     <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-muted-foreground">
                       <span>{formatTime(live)}</span>
                       <span>-{formatTime(Math.max(0, total - live))}</span>
-                    </div>
-                  </div>
+                     </div>
+                   </div>}
 
                   {/* Transport */}
                   <div className="mt-5 flex items-center justify-center gap-7">
-                    <button
+                     {!isAmbient && <button
                       type="button"
                       onClick={() => skipBy(-15)}
                       aria-label="Back 15 seconds"
                       className="grid h-12 w-12 place-items-center rounded-full text-foreground transition hover:bg-accent/40"
                     >
                       <Rewind className="h-6 w-6" />
-                    </button>
+                     </button>}
                     <button
                       type="button"
-                      onClick={toggle}
-                      aria-label={playing ? "Pause" : "Play"}
+                       onClick={isAmbient ? ambient.toggleMute : toggle}
+                       aria-label={displayPlaying ? "Pause" : "Play"}
                       className="grid h-16 w-16 place-items-center rounded-full bg-forest text-primary-foreground shadow-floating transition active:scale-95"
                     >
-                      {loading ? (
+                       {!isAmbient && loading ? (
                         <Loader2 className="h-7 w-7 animate-spin" />
-                      ) : playing ? (
+                       ) : displayPlaying ? (
                         <Pause className="h-7 w-7" />
                       ) : (
                         <Play className="h-7 w-7 translate-x-0.5" />
                       )}
                     </button>
-                    <button
+                     <button
                       type="button"
-                      onClick={skipNext}
-                      disabled={queue.length === 0}
+                       onClick={isAmbient ? ambient.skip : skipNext}
+                       disabled={!isAmbient && queue.length === 0}
                       aria-label="Skip to next in queue"
                       className={cn(
                         "grid h-12 w-12 place-items-center rounded-full text-foreground transition",
-                        queue.length === 0 ? "opacity-30" : "hover:bg-accent/40",
+                         !isAmbient && queue.length === 0 ? "opacity-30" : "hover:bg-accent/40",
                       )}
                     >
                       <SkipForward className="h-6 w-6" />
@@ -195,15 +202,15 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                   </div>
 
                   {/* Secondary: skip forward 15 + volume */}
-                  <div className="mt-5 flex items-center justify-between gap-3">
-                    <button
+                   <div className="mt-5 flex items-center justify-between gap-3">
+                     {!isAmbient && <button
                       type="button"
                       onClick={() => skipBy(15)}
                       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground transition hover:text-foreground"
                     >
                       <FastForward className="h-3.5 w-3.5" /> +15s
-                    </button>
-                    <button
+                     </button>}
+                     {!isAmbient && <button
                       type="button"
                       onClick={() => {
                         // Cycle: off → 15 → 30 → 60 → off
@@ -225,31 +232,31 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                       {sleepTimerRemainingMs
                         ? `${Math.ceil(sleepTimerRemainingMs / 60_000)}m`
                         : "Sleep"}
-                    </button>
+                     </button>}
                     <div className="flex flex-1 items-center gap-2 pl-3">
                       <button
                         type="button"
-                        onClick={toggleMute}
-                        aria-label={muted ? "Unmute ambient" : "Mute ambient"}
+                         onClick={ambient.toggleMute}
+                         aria-label={ambient.muted ? "Unmute ambient" : "Mute ambient"}
                         className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:text-foreground"
                       >
-                        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                         {ambient.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                       </button>
                       <div className="hidden flex-1 md:block">
                         <Slider
-                          value={[Math.round(volume * 100)]}
+                           value={[Math.round(ambient.volume * 100)]}
                           min={0}
                           max={100}
                           step={1}
-                          onValueChange={(v) => setVolume(v[0] / 100)}
+                           onValueChange={(v) => ambient.setVolume(v[0] / 100)}
                           aria-label="Ambient volume"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Queue */}
-                  <div className="mt-7">
+                   {/* Queue */}
+                   {!isAmbient && <div className="mt-7">
                     <div className="mb-2 flex items-center justify-between">
                       <h3 className="flex items-center gap-1.5 font-serif text-sm text-foreground">
                         <ListMusic className="h-4 w-4 text-forest" /> Up next
@@ -266,7 +273,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                           <Trash2 className="h-3 w-3" /> Clear
                         </button>
                       )}
-                    </div>
+                     </div>
                     {queue.length === 0 ? (
                       <p className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-[11px] text-muted-foreground">
                         Nothing queued. Tap "Add to queue" on any episode to line it up.
@@ -287,13 +294,13 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                             >
                               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
                                 <CoverThumb src={t.cover ?? null} title={t.title} kind={t.kind} />
-                              </div>
+                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-1 font-serif text-xs leading-tight">{t.title}</p>
                                 {t.subtitle && (
                                   <p className="truncate text-[10px] text-muted-foreground">{t.subtitle}</p>
                                 )}
-                              </div>
+                               </div>
                             </button>
                             <button
                               type="button"
@@ -307,7 +314,7 @@ export function NowPlayingSheet({ open, onOpenChange }: Props) {
                         ))}
                       </ul>
                     )}
-                  </div>
+                   </div>}
                 </div>
               </motion.div>
             </SheetPrimitive.Content>

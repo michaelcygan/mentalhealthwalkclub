@@ -40,6 +40,19 @@ export function moodToFamily(mood: string | null | undefined): PromptMoodFamily 
   return MOOD_TO_FAMILY[k] ?? "universal";
 }
 
+const WALK_NOTICING: Array<{ text: string; family: PromptMoodFamily }> = [
+  { text: "What can you hear beneath the loudest sound?", family: "universal" },
+  { text: "Notice where your shoulders are. Can they soften by one percent?", family: "heavy" },
+  { text: "What feels steady beneath your feet right now?", family: "heavy" },
+  { text: "Find one color you might have missed if you were rushing.", family: "steady" },
+  { text: "Has the rhythm of your breathing changed since you began?", family: "steady" },
+  { text: "What small thing in view feels quietly good?", family: "light" },
+  { text: "If this part of the walk had a title, what would it be?", family: "light" },
+  { text: "What would feel kind to hear from someone today?", family: "tender" },
+  { text: "Who or what helps you feel less alone?", family: "connection" },
+  { text: "Let the next ten steps be only ten steps—nothing to solve.", family: "universal" },
+];
+
 // Verbatim from the uploaded Mental Health Questions document.
 const RAW: string[] = [
   "What is your favorite way to unwind after a stressful day?",
@@ -144,16 +157,19 @@ const RAW: string[] = [
   "Describe one change you've made in your routine that significantly improved your mental health.",
 ];
 
-export const PROMPTS: ReflectionPrompt[] = RAW.map((text, i) => ({
-  id: `q_${String(i + 1).padStart(3, "0")}`,
-  text,
-  family: "universal",
-  depth: "reflecting",
-}));
+export const PROMPTS: ReflectionPrompt[] = [
+  ...WALK_NOTICING.map((prompt, i) => ({ id: `walk_${String(i + 1).padStart(2, "0")}`, text: prompt.text, family: prompt.family, depth: "noticing" as const })),
+  ...RAW.map((text, i) => ({
+    id: `q_${String(i + 1).padStart(3, "0")}`,
+    text,
+    family: i < 20 ? "heavy" as const : i < 45 ? "steady" as const : i < 70 ? "light" as const : i < 85 ? "connection" as const : "universal" as const,
+    depth: "reflecting" as const,
+  })),
+];
 
 export function promptsForMood(mood: string | null | undefined): ReflectionPrompt[] {
   const family = moodToFamily(mood);
   const inFamily = PROMPTS.filter((p) => p.family === family);
   const universal = PROMPTS.filter((p) => p.family === "universal");
-  return [...inFamily, ...universal];
+  return [...inFamily.filter((p) => p.depth === "noticing"), ...universal.filter((p) => p.depth === "noticing"), ...inFamily, ...universal];
 }

@@ -26,7 +26,7 @@ const VALLEY_THRESHOLD = -0.6;     // require a downswing before next peak
 const MIN_STEP_INTERVAL_MS = 280;  // ~214 steps/min cap, refractory window
 const SMOOTH_ALPHA = 0.18;         // low-pass on magnitude
 
-export function useStepCounter(enabled: boolean) {
+export function useStepCounter(enabled: boolean, sessionKey: string | null = null) {
   const [steps, setSteps] = useState(0);
   const [permissionState, setPermissionState] = useState<PermissionState>(() => {
     if (typeof window === "undefined" || !("DeviceMotionEvent" in window)) return "unavailable";
@@ -39,8 +39,14 @@ export function useStepCounter(enabled: boolean) {
   const smoothed = useRef(0);
   const armed = useRef(true); // requires a valley before the next peak
 
-  // Reset the counter whenever we start a new session.
-  useEffect(() => { if (enabled) { setSteps(0); lastStepAt.current = 0; smoothed.current = 0; armed.current = true; } }, [enabled]);
+  // Reset only for a genuinely new walk, not after every pause/resume.
+  useEffect(() => {
+    if (!sessionKey) return;
+    setSteps(0);
+    lastStepAt.current = 0;
+    smoothed.current = 0;
+    armed.current = true;
+  }, [sessionKey]);
 
   useEffect(() => {
     if (!enabled) return;
