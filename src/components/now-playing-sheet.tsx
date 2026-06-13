@@ -300,7 +300,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                                 {t.subtitle && (
                                   <p className="truncate text-[10px] text-muted-foreground">{t.subtitle}</p>
                                 )}
-                   </div>}
+                               </div>
                             </button>
                             <button
                               type="button"
@@ -314,7 +314,7 @@ export function NowPlayingSheet({ open, onOpenChange, mode = "audio" }: Props) {
                         ))}
                       </ul>
                     )}
-                  </div>
+                   </div>}
                 </div>
               </motion.div>
             </SheetPrimitive.Content>
