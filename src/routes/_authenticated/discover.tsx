@@ -198,7 +198,8 @@ function DiscoverPage() {
   const showMore = segment === "more";
   const nearbyCount = tonight.length + thisWeek.length;
   const socialCount = friendsGoing.length + circles.length;
-  const isColdStart = !loading && nearbyCount === 0 && socialCount === 0;
+  const isColdStart = !loading && socialCount === 0;
+  const hasNoLocalWalks = nearbyCount === 0;
   const isDense = !loading && (nearbyCount >= 8 || friendsGoing.length >= 4 || circles.length >= 4);
 
   return (
@@ -258,7 +259,9 @@ function DiscoverPage() {
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-forest">New around here</p>
               <h2 className="mt-2 max-w-sm font-serif text-2xl leading-tight">A good walk can start with one person—or one plan.</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                There’s nothing nearby yet. You can invite someone into the club, or post the first walk in your area.
+                {hasNoLocalWalks
+                  ? "There’s nothing nearby yet. Invite someone into the club, or post the first walk in your area."
+                  : "Your local network is still starting. Invite someone you know, or post a walk people can join."}
               </p>
             </div>
             <div className="grid grid-cols-2 border-t border-border">
@@ -277,7 +280,7 @@ function DiscoverPage() {
         )}
 
         {/* Tonight near you */}
-        {showTonight && !isColdStart && (
+        {showTonight && !(isColdStart && hasNoLocalWalks) && (
           <section>
             <SectionHeader
               icon={<Sparkles className="h-4 w-4" />}
@@ -419,7 +422,7 @@ function DiscoverPage() {
         )}
 
         {/* This week near you */}
-        {showThisWeek && !isColdStart && (
+        {showThisWeek && !(isColdStart && hasNoLocalWalks) && (
           <section>
             <SectionHeader
               icon={<CalendarDays className="h-4 w-4" />}
