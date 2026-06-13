@@ -114,11 +114,6 @@ function SoloWalkPage() {
     return () => window.clearInterval(id);
   }, [stage, paused, startedAt]);
 
-  // Podcast / playlist audio (simple sequential <audio>)
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [queue, setQueue] = useState<string[]>([]); // array of audio URLs
-  const [queueIdx, setQueueIdx] = useState(0);
-
   useEffect(() => {
     if (stage !== "active") return;
     let cancelled = false;
@@ -126,50 +121,32 @@ function SoloWalkPage() {
       if (source.kind === "podcast_episode") {
         const { data } = await supabase
           .from("podcast_episodes")
-          .select("audio_url")
+          .select("id,title,audio_url,image_url,duration_seconds,episode_url")
           .eq("id", source.track_id)
           .maybeSingle();
-        if (!cancelled && data?.audio_url) { setQueue([data.audio_url]); setQueueIdx(0); }
+        if (!cancelled && data?.audio_url) {
+          player.play({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
+        }
       } else if (source.kind === "playlist") {
         const r = await getPlaylist({ data: { id: source.playlist_id } });
-        const urls: string[] = [];
+        const tracks: PlayableTrack[] = [];
         for (const it of r.items) {
           if (it.kind === "podcast_episode") {
-            const { data } = await supabase.from("podcast_episodes").select("audio_url").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) urls.push(data.audio_url);
-          } else if (it.kind === "ambient_track") {
-            const { data: tr } = await supabase.from("ambient_tracks").select("audio_path").eq("id", it.track_id).maybeSingle();
-            if (tr?.audio_path) {
-              const { data: signed } = await supabase.storage.from("ambient-music").createSignedUrl(tr.audio_path, 7200);
-              if (signed?.signedUrl) urls.push(signed.signedUrl);
-            }
+            const { data } = await supabase.from("podcast_episodes").select("id,title,audio_url,image_url,duration_seconds,episode_url").eq("id", it.track_id).maybeSingle();
+            if (data?.audio_url) tracks.push({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
           } else if (it.kind === "guided_track") {
-            const { data } = await supabase.from("guided_tracks").select("audio_url").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) urls.push(data.audio_url);
+            const { data } = await supabase.from("guided_tracks").select("id,title,host,audio_url,cover_url,duration_seconds").eq("id", it.track_id).maybeSingle();
+            if (data?.audio_url) tracks.push({ id: data.id, kind: "guided", title: data.title, subtitle: data.host, cover: data.cover_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds });
           }
         }
-        if (!cancelled) { setQueue(urls); setQueueIdx(0); }
+        if (!cancelled && tracks[0]) {
+          player.play(tracks[0]);
+          tracks.slice(1).forEach(player.enqueue);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [stage, source]);
-
-  // Play queue
-  useEffect(() => {
-    if (stage !== "active") return;
-    if (source.kind !== "podcast_episode" && source.kind !== "playlist") return;
-    if (queue.length === 0) return;
-    const el = audioRef.current;
-    if (!el) return;
-    el.src = queue[queueIdx] ?? "";
-    if (!paused) el.play().catch(() => {});
-  }, [queue, queueIdx, source.kind, stage, paused]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (paused) el.pause(); else el.play().catch(() => {});
-  }, [paused]);
+  }, [stage, source, player.play, player.enqueue]);
 
   async function start() {
     if (!user) return;
@@ -193,7 +170,7 @@ function SoloWalkPage() {
       pausedAt.current = null;
       setElapsed(0);
       setStage("active");
-      if (source.kind === "ambient") await ambient.start();
+      if (source.kind === "ambient") { player.stop(); await ambient.start(); }
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -215,7 +192,6 @@ function SoloWalkPage() {
   async function endWalk() {
     setStage("post");
     if (source.kind === "ambient") ambient.stop(400);
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
   }
 
   async function savePost() {
@@ -234,6 +210,8 @@ function SoloWalkPage() {
         })
         .eq("id", walkId);
       if (error) throw error;
+      window.localStorage.removeItem(WALK_STATE_KEY);
+      window.localStorage.removeItem(WALK_NOTE_KEY);
       toast.success("Walk saved");
       navigate({ to: "/journal" });
     } catch (e) {
@@ -255,7 +233,7 @@ function SoloWalkPage() {
       taken_at_seconds: elapsed,
     });
     if (error) toast.error(error.message);
-    else toast.success("Snapshot saved");
+    else { setPhotoCount((count) => count + 1); toast.success("Snapshot saved"); }
   }
 
   // Reflection prompt for the post stage
