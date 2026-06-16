@@ -64,7 +64,6 @@ function SoloWalkPage() {
   const [promptOffset, setPromptOffset] = useState(0);
   const [photoCount, setPhotoCount] = useState(0);
   const reduceMotion = useReducedMotion();
-  const audioStartedFor = useRef<string | null>(null);
 
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
   const [podcasts, setPodcasts] = useState<{ id: string; title: string }[]>([]);
