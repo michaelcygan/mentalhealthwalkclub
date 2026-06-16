@@ -1,105 +1,69 @@
-# Lean V1 launch plan
+# Solo walk: media as a companion, not a "walk type"
 
-## V1 objective
+Two problems to solve together:
 
-Make this simple loop reliable:
+1. **Bug** — a user reported ambient music didn't play on their solo walk.
+2. **Design** — making the user pick one audio source up front makes the choice feel like a commitment ("am I a 'podcast walk' person?") and there's no way to change your mind mid-walk. Real walks are messier: start in silence, put a podcast on after 10 minutes, drop into ambient when the podcast ends, try a guided meditation later.
+
+## What changes (UX)
+
+### Pre-walk
+- Replace the "What do you want to hear?" required picker with a soft **"Start with… (optional)"** section.
+- Options stay the same (Silence / Ambient / Podcast / Playlist), but default is **Silence** and the copy makes clear you can change it any time during the walk.
+- Remove the implicit "walk type = audio type" framing.
+
+### Active walk — new Media panel
+A persistent card on the active screen (replaces today's read-only "ambient now-playing" strip) with four tabs/segments:
 
 ```text
-Create walk → Share link/story → Guest RSVP → Keep RSVP state
-→ Optional account creation → Return to the walk → Share or plan again
+[ Silence ] [ Ambient ] [ Podcast ] [ Playlist / Guided ]
 ```
 
-No email sending, physical attendance tracking, full chat, automated circle enrollment, or growth analytics in V1.
+- **Silence** — stops whatever is playing. Visual confirmation only.
+- **Ambient** — start / stop / skip / volume. Works even if a podcast was playing (it stops the podcast first).
+- **Podcast** — quick list of recent / saved podcast episodes; tap to play. Surfaces the current `now-playing-dock` transport (play/pause, ±15s) inline so the user doesn't have to scroll.
+- **Playlist / Guided** — pick a saved playlist or a single guided track; loads into the player queue.
 
-## 1. Fix launch-critical correctness and privacy
+Switching tabs gracefully hands off: starting a podcast stops ambient with a 300ms fade (already handled in `player-context.tsx`); starting ambient stops the podcast.
 
-- Count both member and guest “going” RSVPs in the walk total and social share count.
-- Keep guest names visible only to the host; public visitors see member profiles plus an aggregate guest count.
-- Replace predictable walk-link generation with secure random codes.
-- Require an explicit server-side encryption secret for guest emails; remove the public/fallback-key behavior.
-- Sanitize username searches before backend filtering.
-- Add an explicit host check before posting walk broadcasts.
-- Align broadcast reaction options between the UI and database.
-- Address the highest-risk existing access findings: billing acknowledgement fields, private profile preferences, realtime topic scope, and unnecessary privileged-function access.
+### Post-walk
+- No change to save behavior. Whatever was playing last is recorded as `podcast_episode_id` only if a podcast was active at end (otherwise null). The "this was an ambient walk" implication goes away.
 
-## 2. Make guest RSVP feel complete without email
+## What changes (code)
 
-After a guest RSVPs, keep a compact receipt directly on the walk page:
+### Bug fix
+In `src/routes/_authenticated/walk.index.tsx`:
 
-- “You’re going” status
-- Add to calendar
-- Copy/share the walk
-- Change RSVP
-- “Create an account to keep this walk” as a secondary action
+- `start()` calls `ambient.start()` immediately after `setStage("active")`. But `ambient.start()` early-returns when `library.length === 0`, and the library load is async (kicked off in `AmbientPlayerProvider` when `user` becomes available). On a fresh load or slow network it can lose the race.
+- Fix: in `ambient-context.tsx`, if `start()` is called before the library is ready, queue the intent and start once `library` populates. Alternative (simpler): in `walk.index.tsx`, await library readiness via a small `useEffect` that calls `ambient.start()` once `source.kind === "ambient" && stage === "active" && ambient.hasLibrary && !ambient.current`.
+- Also add a user-facing fallback: if ambient is requested and `hasLibrary` is still false after 3s, toast "Ambient mix isn't ready yet — try again in a moment" rather than silently doing nothing.
 
-Store only a non-sensitive guest RSVP receipt ID locally—not their email. The public walk link remains their durable destination, and the calendar entry provides an additional reminder without adding email infrastructure.
+### New component
+`src/components/walk/media-panel.tsx` — the four-tab control described above. Reuses:
+- `useAmbient()` for ambient controls
+- `usePlayer()` for podcast / playlist / guided transport
+- `listMyPlaylists`, `listenCatalog` (already loaded in walk.index)
+- A small inline transport (play/pause, ±15s, track title) so users don't need the global dock
 
-## 3. Preserve the walk through account creation
+### Edits
+- `walk.index.tsx`:
+  - Demote `AudioSourcePicker` on pre-walk to optional, default `silence`.
+  - On `active` stage, render `<MediaPanel />` instead of the current read-only ambient strip.
+  - Remove the `useEffect` that auto-plays podcast/playlist from `source` on stage change — initial start still honored, but subsequent changes go through the panel directly.
+- `ambient-context.tsx`: queue-then-flush behavior in `start()` (see bug fix).
+- `AudioSourcePicker`: unchanged API; still used pre-walk.
 
-- When signup starts from a walk, preserve the current walk URL and return there after authentication instead of sending the person to Home.
-- Once signed in, securely match the new member’s verified account email to the guest RSVP’s existing email hash.
-- Mark that guest RSVP as claimed and create/update the member RSVP, so the walk immediately appears as theirs.
-- Remove the local guest receipt after a successful claim.
+### Not changing
+- DB schema, `walk_sessions` columns, player/ambient core logic, now-playing dock.
+- Guided walks scaffolding stays as-is; the Playlist/Guided tab uses whatever guided tracks already exist in `guided_tracks`.
 
-This uses the existing `claimed_user_id` field and auth flow; it does not introduce a new invitation or identity system.
+## Out of scope (call out for v1.5)
+- Mixing ambient *under* a podcast (true ducking) — needs a second audio graph.
+- Saving "media timeline" per walk for the recap.
+- Guided walks as a first-class flow with a curated catalog screen.
 
-## 4. Make sharing the natural completion of walk creation
-
-After “Create walk,” show a lightweight success sheet using the existing share actions:
-
-- Share
-- Text
-- Copy link
-- Story card
-- Add to calendar
-- View walk
-
-The user still lands on the same public walk page; this is presentation and sequencing, not a new workflow.
-
-For V1, retain the existing generated Story card but make its action clearer: download/open the story image rather than implying direct posting to Instagram. Raster social images can remain a later compatibility improvement unless real-device testing shows broken previews.
-
-## 5. Support neighborhood momentum with existing circles
-
-Avoid building chat or automatic group creation. Instead:
-
-- On a past walk/recap, show two clear next steps: “Plan this walk again” and “Keep walking together.”
-- “Keep walking together” opens Circles with concise context and the existing invite/share surface.
-- Keep circle membership opt-in and username-based for V1.
-- From an existing circle, continue preselecting that circle when planning the next walk.
-
-This gives neighborhood groups a path to persist without creating moderation, messaging, or invite-token infrastructure.
-
-## 6. Finish the existing composer and interaction polish
-
-- Keep the central composer; it is real and useful.
-- Fix the silent no-op when its walk-note action is tapped before a walk is active.
-- Correct its accessibility state and focus behavior.
-- Share one tab configuration between mobile and desktop.
-- Remove the unused legacy reflection FAB.
-- Associate guest RSVP labels with their fields and make host controls work on touch, not hover only.
-- Replace destructive browser confirmations only where they occur in the walk/circle launch path.
-
-## 7. Validate the V1 launch scenario
-
-Test this exact path on mobile and desktop:
-
-1. New member creates a link-only and a public walk.
-2. Host shares through native share, SMS, copy, and Story card.
-3. Logged-out guest opens the link and RSVPs.
-4. The page remembers and displays the guest’s RSVP without storing their email locally.
-5. The guest adds the walk to their calendar and shares it onward.
-6. The guest creates an account and returns to the same walk with the RSVP retained.
-7. The host sees the private guest roster; other visitors do not.
-8. Combined counts remain correct through RSVP changes and removals.
-9. The recap leads cleanly to another walk or Circles.
-10. A seeded 100-RSVP walk renders and updates without degraded interaction.
-
-## Deferred to V1.5–2
-
-- Confirmation and reminder emails
-- Physical attendance/check-in and no-show metrics
-- Full group chat or direct messaging
-- Automatic attendee-to-circle enrollment
-- Referral dashboards and funnel analytics
-- Automated Instagram posting
-- Advanced host tooling for very large events
+## Files touched
+- `src/routes/_authenticated/walk.index.tsx` (edit)
+- `src/lib/ambient-context.tsx` (edit — race fix)
+- `src/components/walk/media-panel.tsx` (new)
+- `src/components/audio/audio-source-picker.tsx` (minor copy + optional default)
