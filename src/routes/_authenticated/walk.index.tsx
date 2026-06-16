@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Footprints, Play, Square, Pause, ArrowLeft, Sparkles, Activity, X,
-  ChevronRight, PenLine, ImagePlus, Check, Music2,
+  ChevronRight, PenLine, ImagePlus, Check,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioSourcePicker, type AudioSource } from "@/components/audio/audio-source-picker";
+import { MediaPanel } from "@/components/walk/media-panel";
 import { useAmbient } from "@/lib/ambient-context";
 import { usePlayer, type PlayableTrack } from "@/lib/player-context";
 import { useStepCounter } from "@/hooks/use-step-counter";
@@ -63,7 +64,6 @@ function SoloWalkPage() {
   const [promptOffset, setPromptOffset] = useState(0);
   const [photoCount, setPhotoCount] = useState(0);
   const reduceMotion = useReducedMotion();
-  const audioStartedFor = useRef<string | null>(null);
 
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
   const [podcasts, setPodcasts] = useState<{ id: string; title: string }[]>([]);
@@ -129,42 +129,42 @@ function SoloWalkPage() {
     return () => window.clearInterval(id);
   }, [stage, paused, startedAt]);
 
-  useEffect(() => {
-    if (stage !== "active") return;
-    const sourceKey = source.kind === "podcast_episode" ? `podcast:${source.track_id}` : source.kind === "playlist" ? `playlist:${source.playlist_id}` : source.kind;
-    if (audioStartedFor.current === sourceKey) return;
-    audioStartedFor.current = sourceKey;
-    let cancelled = false;
-    (async () => {
-      if (source.kind === "podcast_episode") {
-        const { data } = await supabase
-          .from("podcast_episodes")
-          .select("id,title,audio_url,image_url,duration_seconds,episode_url")
-          .eq("id", source.track_id)
-          .maybeSingle();
-        if (!cancelled && data?.audio_url) {
-          player.play({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
-        }
-      } else if (source.kind === "playlist") {
-        const r = await getPlaylist({ data: { id: source.playlist_id } });
-        const tracks: PlayableTrack[] = [];
-        for (const it of r.items) {
-          if (it.kind === "podcast_episode") {
-            const { data } = await supabase.from("podcast_episodes").select("id,title,audio_url,image_url,duration_seconds,episode_url").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) tracks.push({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
-          } else if (it.kind === "guided_track") {
-            const { data } = await supabase.from("guided_tracks").select("id,title,host,audio_url,cover_url,duration_seconds").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) tracks.push({ id: data.id, kind: "guided", title: data.title, subtitle: data.host, cover: data.cover_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds });
-          }
-        }
-        if (!cancelled && tracks[0]) {
-          player.play(tracks[0]);
-          tracks.slice(1).forEach(player.enqueue);
+  async function startInitialAudio(s: AudioSource) {
+    if (s.kind === "silence") return;
+    if (s.kind === "ambient") {
+      if (player.current) player.stop();
+      await ambient.start();
+      return;
+    }
+    if (s.kind === "podcast_episode") {
+      const { data } = await supabase
+        .from("podcast_episodes")
+        .select("id,title,audio_url,image_url,duration_seconds,episode_url")
+        .eq("id", s.track_id)
+        .maybeSingle();
+      if (data?.audio_url) {
+        player.play({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
+      }
+      return;
+    }
+    if (s.kind === "playlist") {
+      const r = await getPlaylist({ data: { id: s.playlist_id } });
+      const tracks: PlayableTrack[] = [];
+      for (const it of r.items) {
+        if (it.kind === "podcast_episode") {
+          const { data } = await supabase.from("podcast_episodes").select("id,title,audio_url,image_url,duration_seconds,episode_url").eq("id", it.track_id).maybeSingle();
+          if (data?.audio_url) tracks.push({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
+        } else if (it.kind === "guided_track") {
+          const { data } = await supabase.from("guided_tracks").select("id,title,host,audio_url,cover_url,duration_seconds").eq("id", it.track_id).maybeSingle();
+          if (data?.audio_url) tracks.push({ id: data.id, kind: "guided", title: data.title, subtitle: data.host, cover: data.cover_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds });
         }
       }
-    })();
-    return () => { cancelled = true; };
-  }, [stage, source, player.play, player.enqueue]);
+      if (tracks[0]) {
+        player.play(tracks[0]);
+        tracks.slice(1).forEach(player.enqueue);
+      }
+    }
+  }
 
   async function start() {
     if (!user) return;
@@ -187,9 +187,8 @@ function SoloWalkPage() {
       pausedAccum.current = 0;
       pausedAt.current = null;
       setElapsed(0);
-      audioStartedFor.current = null;
       setStage("active");
-      if (source.kind === "ambient") { player.stop(); await ambient.start(); }
+      startInitialAudio(source).catch(() => {});
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -313,7 +312,7 @@ function SoloWalkPage() {
           />
         </Section>
 
-        <Section title="What do you want to hear?">
+        <Section title="Start with… (optional — you can change this any time)">
           <AudioSourcePicker value={source} onChange={setSource} playlists={playlists} podcasts={podcasts} />
         </Section>
 
@@ -367,13 +366,11 @@ function SoloWalkPage() {
           </blockquote>
         )}
 
-        {source.kind === "ambient" && ambient.current && (
-          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-card/70 p-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-forest"><Music2 className="h-4 w-4" /></span>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ambient.current.title}</p><p className="text-[11px] text-muted-foreground">Ambient mix</p></div>
-            <Button variant="ghost" size="sm" onClick={ambient.skip} className="rounded-full">Next</Button>
-          </div>
-        )}
+        <MediaPanel
+          playlists={playlists}
+          podcasts={podcasts}
+          initialTab={source.kind === "ambient" ? "ambient" : source.kind === "podcast_episode" ? "podcast" : source.kind === "playlist" ? "playlist" : "silence"}
+        />
 
         {activePrompt && (
           <div className="mb-3 overflow-hidden rounded-3xl border border-border/70 bg-card/55 p-5 text-center">
