@@ -129,42 +129,42 @@ function SoloWalkPage() {
     return () => window.clearInterval(id);
   }, [stage, paused, startedAt]);
 
-  useEffect(() => {
-    if (stage !== "active") return;
-    const sourceKey = source.kind === "podcast_episode" ? `podcast:${source.track_id}` : source.kind === "playlist" ? `playlist:${source.playlist_id}` : source.kind;
-    if (audioStartedFor.current === sourceKey) return;
-    audioStartedFor.current = sourceKey;
-    let cancelled = false;
-    (async () => {
-      if (source.kind === "podcast_episode") {
-        const { data } = await supabase
-          .from("podcast_episodes")
-          .select("id,title,audio_url,image_url,duration_seconds,episode_url")
-          .eq("id", source.track_id)
-          .maybeSingle();
-        if (!cancelled && data?.audio_url) {
-          player.play({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
-        }
-      } else if (source.kind === "playlist") {
-        const r = await getPlaylist({ data: { id: source.playlist_id } });
-        const tracks: PlayableTrack[] = [];
-        for (const it of r.items) {
-          if (it.kind === "podcast_episode") {
-            const { data } = await supabase.from("podcast_episodes").select("id,title,audio_url,image_url,duration_seconds,episode_url").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) tracks.push({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
-          } else if (it.kind === "guided_track") {
-            const { data } = await supabase.from("guided_tracks").select("id,title,host,audio_url,cover_url,duration_seconds").eq("id", it.track_id).maybeSingle();
-            if (data?.audio_url) tracks.push({ id: data.id, kind: "guided", title: data.title, subtitle: data.host, cover: data.cover_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds });
-          }
-        }
-        if (!cancelled && tracks[0]) {
-          player.play(tracks[0]);
-          tracks.slice(1).forEach(player.enqueue);
+  async function startInitialAudio(s: AudioSource) {
+    if (s.kind === "silence") return;
+    if (s.kind === "ambient") {
+      if (player.current) player.stop();
+      await ambient.start();
+      return;
+    }
+    if (s.kind === "podcast_episode") {
+      const { data } = await supabase
+        .from("podcast_episodes")
+        .select("id,title,audio_url,image_url,duration_seconds,episode_url")
+        .eq("id", s.track_id)
+        .maybeSingle();
+      if (data?.audio_url) {
+        player.play({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
+      }
+      return;
+    }
+    if (s.kind === "playlist") {
+      const r = await getPlaylist({ data: { id: s.playlist_id } });
+      const tracks: PlayableTrack[] = [];
+      for (const it of r.items) {
+        if (it.kind === "podcast_episode") {
+          const { data } = await supabase.from("podcast_episodes").select("id,title,audio_url,image_url,duration_seconds,episode_url").eq("id", it.track_id).maybeSingle();
+          if (data?.audio_url) tracks.push({ id: data.id, kind: "podcast", title: data.title, cover: data.image_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds, link: data.episode_url });
+        } else if (it.kind === "guided_track") {
+          const { data } = await supabase.from("guided_tracks").select("id,title,host,audio_url,cover_url,duration_seconds").eq("id", it.track_id).maybeSingle();
+          if (data?.audio_url) tracks.push({ id: data.id, kind: "guided", title: data.title, subtitle: data.host, cover: data.cover_url, audio_url: data.audio_url, duration_seconds: data.duration_seconds });
         }
       }
-    })();
-    return () => { cancelled = true; };
-  }, [stage, source, player.play, player.enqueue]);
+      if (tracks[0]) {
+        player.play(tracks[0]);
+        tracks.slice(1).forEach(player.enqueue);
+      }
+    }
+  }
 
   async function start() {
     if (!user) return;
@@ -187,9 +187,8 @@ function SoloWalkPage() {
       pausedAccum.current = 0;
       pausedAt.current = null;
       setElapsed(0);
-      audioStartedFor.current = null;
       setStage("active");
-      if (source.kind === "ambient") { player.stop(); await ambient.start(); }
+      startInitialAudio(source).catch(() => {});
     } catch (e) {
       toast.error((e as Error).message);
     }
