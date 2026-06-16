@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Headphones, BookOpen } from "lucide-react";
 import { PodcastRail } from "@/components/home/podcast-rail";
 import { BlogRail } from "@/components/home/blog-rail";
+import { ShowsGrid } from "@/components/home/shows-grid";
 
 type Tab = "listen" | "read";
 
@@ -31,7 +32,14 @@ export function ListenAndRead() {
           </button>
         </div>
       </div>
-      {tab === "listen" ? <PodcastRail /> : <BlogRail />}
+      {tab === "listen" ? (
+        <>
+          <PodcastRail />
+          <ShowsGrid />
+        </>
+      ) : (
+        <BlogRail />
+      )}
     </section>
   );
 }

@@ -106,3 +106,61 @@ export const recentPodcastEpisodes = createServerFn({ method: "GET" })
     return out;
   });
 
+export interface PodcastShowCard {
+  id: string;
+  title: string;
+  publisher: string | null;
+  image_url: string | null;
+  episode_count: number;
+  latest_published_at: string | null;
+}
+
+/** Public-safe: list of active podcast shows for the homepage grid. */
+export const listPodcastShows = createServerFn({ method: "GET" })
+  .handler(async (): Promise<PodcastShowCard[]> => {
+    const { data: feeds } = await supabaseAdmin
+      .from("podcast_feeds")
+      .select("id,title,publisher,image_url")
+      .eq("is_active", true);
+    if (!feeds?.length) return [];
+
+    // Grab latest episode per feed for ordering + cover fallback
+    const { data: eps } = await supabaseAdmin
+      .from("podcast_episodes")
+      .select("feed_id,image_url,published_at")
+      .eq("is_active", true)
+      .in("feed_id", feeds.map((f) => f.id))
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(2000);
+
+    const byFeed = new Map<string, { latest: string | null; image: string | null; count: number }>();
+    for (const e of eps ?? []) {
+      const fid = e.feed_id as string;
+      const cur = byFeed.get(fid) ?? { latest: null, image: null, count: 0 };
+      cur.count += 1;
+      if (!cur.latest && e.published_at) {
+        cur.latest = e.published_at as string;
+        cur.image = (e.image_url as string | null) ?? cur.image;
+      }
+      byFeed.set(fid, cur);
+    }
+
+    const out: PodcastShowCard[] = feeds.map((f) => {
+      const agg = byFeed.get(f.id as string);
+      return {
+        id: f.id as string,
+        title: (f.title as string) ?? "Untitled",
+        publisher: (f.publisher as string | null) ?? null,
+        image_url: (f.image_url as string | null) ?? agg?.image ?? null,
+        episode_count: agg?.count ?? 0,
+        latest_published_at: agg?.latest ?? null,
+      };
+    });
+    out.sort((a, b) => {
+      const ta = a.latest_published_at ? Date.parse(a.latest_published_at) : 0;
+      const tb = b.latest_published_at ? Date.parse(b.latest_published_at) : 0;
+      return tb - ta;
+    });
+    return out;
+  });
+
