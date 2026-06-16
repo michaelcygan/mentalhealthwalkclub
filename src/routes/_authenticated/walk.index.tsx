@@ -366,13 +366,11 @@ function SoloWalkPage() {
           </blockquote>
         )}
 
-        {source.kind === "ambient" && ambient.current && (
-          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-card/70 p-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-forest"><Music2 className="h-4 w-4" /></span>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ambient.current.title}</p><p className="text-[11px] text-muted-foreground">Ambient mix</p></div>
-            <Button variant="ghost" size="sm" onClick={ambient.skip} className="rounded-full">Next</Button>
-          </div>
-        )}
+        <MediaPanel
+          playlists={playlists}
+          podcasts={podcasts}
+          initialTab={source.kind === "ambient" ? "ambient" : source.kind === "podcast_episode" ? "podcast" : source.kind === "playlist" ? "playlist" : "silence"}
+        />
 
         {activePrompt && (
           <div className="mb-3 overflow-hidden rounded-3xl border border-border/70 bg-card/55 p-5 text-center">
