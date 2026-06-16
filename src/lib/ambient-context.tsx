@@ -155,13 +155,28 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   }, [playTrack, refillQueue]);
 
   const start = useCallback(async () => {
-    if (library.length === 0) return;
     if (current) return; // already running
+    if (library.length === 0) {
+      // Library hasn't loaded yet — flush once it does.
+      pendingStart.current = true;
+      return;
+    }
+    pendingStart.current = false;
     refillQueue();
     const first = queue.current.shift();
     if (!first) return;
     await playTrack(first, false);
   }, [current, library, playTrack, refillQueue]);
+
+  // Flush a pending start once the library arrives.
+  useEffect(() => {
+    if (!pendingStart.current) return;
+    if (library.length === 0 || current) return;
+    pendingStart.current = false;
+    refillQueue();
+    const first = queue.current.shift();
+    if (first) playTrack(first, false);
+  }, [library, current, playTrack, refillQueue]);
 
   const stop = useCallback((fadeMs = 600) => {
     const el = activeRef.current === "a" ? audioA.current : audioB.current;
