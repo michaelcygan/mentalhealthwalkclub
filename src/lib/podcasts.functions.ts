@@ -56,7 +56,10 @@ export const createPodcastFeed = createServerFn({ method: "POST" })
   });
 
 import { z as _z } from "zod";
-const RecentInput = _z.object({ limit: _z.number().int().min(1).max(24).default(6) });
+const RecentInput = _z.object({
+  limit: _z.number().int().min(1).max(50).default(6),
+  feedId: _z.string().uuid().optional(),
+});
 
 export interface PodcastEpisodeCard {
   id: string;
@@ -73,6 +76,30 @@ export interface PodcastEpisodeCard {
 export const recentPodcastEpisodes = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => RecentInput.parse(d ?? {}))
   .handler(async ({ data }): Promise<PodcastEpisodeCard[]> => {
+    // When filtering to one show, return that feed's episodes directly with no dedupe.
+    if (data.feedId) {
+      const { data: rows } = await supabaseAdmin
+        .from("podcast_episodes")
+        .select("id,title,image_url,duration_seconds,published_at,audio_url,episode_url,podcast_feeds!inner(publisher,is_active)")
+        .eq("is_active", true)
+        .eq("feed_id", data.feedId)
+        .eq("podcast_feeds.is_active", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(data.limit);
+      return (rows ?? []).map((r) => {
+        const feed = (r as unknown as { podcast_feeds: { publisher: string | null } }).podcast_feeds;
+        return {
+          id: r.id as string,
+          title: (r.title as string) ?? "",
+          image_url: (r.image_url as string | null) ?? null,
+          duration_seconds: (r.duration_seconds as number) ?? 0,
+          publisher: feed?.publisher ?? null,
+          published_at: (r.published_at as string | null) ?? null,
+          audio_url: (r.audio_url as string | null) ?? null,
+          episode_url: (r.episode_url as string | null) ?? null,
+        };
+      });
+    }
     // Over-fetch so we can dedupe cross-feed syndications (e.g. NPR Life Kit
     // + Life Kit: Health publish identical episodes with different GUIDs).
     const { data: rows } = await supabaseAdmin
