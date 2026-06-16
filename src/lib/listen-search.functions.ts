@@ -81,15 +81,34 @@ export const searchListen = createServerFn({ method: "GET" })
           .limit(limit)
       : Promise.resolve({ data: [] as unknown[], error: null });
 
+    // For podcast search, resolve matching feed IDs first (PostgREST .or()
+    // can't mix parent + embedded columns reliably), then union with
+    // episode-title matches.
+    let podcastFeedIdMatches: string[] = [];
+    if (q && wantKind(kinds, "podcast")) {
+      const { data: feedMatches } = await supabase
+        .from("podcast_feeds")
+        .select("id")
+        .eq("is_active", true)
+        .or(`title.ilike.${like},publisher.ilike.${like}`)
+        .limit(20);
+      podcastFeedIdMatches = (feedMatches ?? []).map((f: { id: string }) => f.id);
+    }
+
     // Add q ilike filters where present
     const [pods, amb, gd, bl] = await Promise.all([
       q && wantKind(kinds, "podcast")
         ? supabase
             .from("podcast_episodes")
-            .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,podcast_feeds!inner(title,publisher,is_active)")
+            .select("id,title,image_url,duration_seconds,episode_url,audio_url,mood_tags,published_at,podcast_feeds!inner(title,publisher,is_active)")
             .eq("is_active", true)
             .eq("podcast_feeds.is_active", true)
-            .or(`title.ilike.${like},podcast_feeds.title.ilike.${like},podcast_feeds.publisher.ilike.${like}`)
+            .or(
+              podcastFeedIdMatches.length
+                ? `title.ilike.${like},feed_id.in.(${podcastFeedIdMatches.join(",")})`
+                : `title.ilike.${like}`
+            )
+            .order("published_at", { ascending: false, nullsFirst: false })
             .limit(limit)
         : podcastsQ,
       q && wantKind(kinds, "ambient")
