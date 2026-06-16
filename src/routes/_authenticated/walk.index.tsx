@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Footprints, Play, Square, Pause, ArrowLeft, Sparkles, Activity, X,
-  ChevronRight, PenLine, ImagePlus, Check, Music2,
+  ChevronRight, PenLine, ImagePlus, Check,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioSourcePicker, type AudioSource } from "@/components/audio/audio-source-picker";
+import { MediaPanel } from "@/components/walk/media-panel";
 import { useAmbient } from "@/lib/ambient-context";
 import { usePlayer, type PlayableTrack } from "@/lib/player-context";
 import { useStepCounter } from "@/hooks/use-step-counter";
