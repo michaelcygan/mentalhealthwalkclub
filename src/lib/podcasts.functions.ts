@@ -56,7 +56,10 @@ export const createPodcastFeed = createServerFn({ method: "POST" })
   });
 
 import { z as _z } from "zod";
-const RecentInput = _z.object({ limit: _z.number().int().min(1).max(24).default(6) });
+const RecentInput = _z.object({
+  limit: _z.number().int().min(1).max(50).default(6),
+  feedId: _z.string().uuid().optional(),
+});
 
 export interface PodcastEpisodeCard {
   id: string;
