@@ -1,0 +1,1 @@
+update public.podcast_feeds set rss_url = 'https://rss.art19.com/mental-illness-happy-hour', last_sync_error = null where title = 'Mental Illness Happy Hour';
