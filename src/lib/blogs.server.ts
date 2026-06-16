@@ -234,3 +234,66 @@ export async function syncAllActiveBlogFeeds() {
   }
   return { scanned: list.length, ok, failed };
 }
+
+/**
+ * Reader-view parser: fetch a URL, run Mozilla Readability on it,
+ * return clean HTML + metadata. Worker-safe via linkedom.
+ */
+export interface ParsedReader {
+  title: string | null;
+  byline: string | null;
+  excerpt: string | null;
+  content_html: string | null;
+  hero_image: string | null;
+}
+
+export async function parseReadable(url: string): Promise<ParsedReader> {
+  const { parseHTML } = await import("linkedom");
+  const { Readability } = await import("@mozilla/readability");
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; MentalHealthWalkClub/1.0; +reader-view)",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
+  const html = await res.text();
+
+  const { document } = parseHTML(html);
+  // Hoist a hero image guess before Readability strips it
+  let hero: string | null = null;
+  const og = document.querySelector('meta[property="og:image"]')?.getAttribute("content");
+  const tw = document.querySelector('meta[name="twitter:image"]')?.getAttribute("content");
+  hero = og || tw || null;
+
+  // Readability expects a DOM-like document
+  const article = new Readability(document as unknown as Document).parse();
+  if (!article) {
+    return { title: null, byline: null, excerpt: null, content_html: null, hero_image: hero };
+  }
+
+  // If no hero from meta, grab first <img> inside the parsed article
+  if (!hero && article.content) {
+    const m = article.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (m?.[1]) hero = m[1];
+  }
+
+  // Light sanitization: drop scripts/iframes/forms — Readability already
+  // strips most of this, but belt-and-braces.
+  const safeHtml = (article.content ?? "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<form[\s\S]*?<\/form>/gi, "")
+    .replace(/\son\w+="[^"]*"/gi, "")
+    .replace(/\son\w+='[^']*'/gi, "");
+
+  return {
+    title: article.title ?? null,
+    byline: article.byline ?? null,
+    excerpt: article.excerpt ?? null,
+    content_html: safeHtml || null,
+    hero_image: hero,
+  };
+}

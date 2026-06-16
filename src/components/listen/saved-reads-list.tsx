@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Trash2 } from "lucide-react";
 import { listSavedReads, toggleSavedRead, type SavedReadCard } from "@/lib/saved-reads.functions";
 import { toast } from "sonner";
 import { parseCapError, CAP_UPSELL_COPY, type CapError } from "@/lib/cap-error";
@@ -47,18 +48,22 @@ export function SavedReadsList() {
             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-forest/10">
               {p.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : null}
             </div>
-            <a
-              href={p.link}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/read/$postId"
+              params={{ postId: p.id }}
               className="min-w-0 flex-1"
             >
               <p className="line-clamp-2 font-serif text-sm leading-tight">{p.title}</p>
               <p className="truncate text-[10px] text-muted-foreground">{p.publisher ?? ""}</p>
-            </a>
-            <a href={p.link} target="_blank" rel="noopener noreferrer" className="rounded-full p-2 text-muted-foreground hover:text-foreground" aria-label="Open">
-              <ExternalLink className="h-4 w-4" />
-            </a>
+            </Link>
+            <Link
+              to="/read/$postId"
+              params={{ postId: p.id }}
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground"
+              aria-label="Open reader"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Link>
             <button
               type="button"
               onClick={() => onRemove(p.id)}
