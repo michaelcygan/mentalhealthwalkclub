@@ -202,7 +202,7 @@ export function MediaPanel({ playlists, podcasts, initialTab = "silence" }: Prop
 
       {tab === "playlist" && (
         <div className="space-y-2 px-1">
-          {(player.current?.kind === "playlist" || player.current?.kind === "guided" || (player.current?.kind === "podcast" && player.queue.length > 0)) && <InlineTransport />}
+          {(player.current?.kind === "guided" || (player.current?.kind === "podcast" && player.queue.length > 0)) && <InlineTransport />}
           <ul className="max-h-56 space-y-1 overflow-y-auto rounded-2xl border border-border/60 bg-background/40 p-1">
             {playlists.length === 0 && (
               <li className="px-2 py-3 text-center text-xs text-muted-foreground">
