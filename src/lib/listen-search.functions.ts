@@ -132,7 +132,7 @@ export const searchListen = createServerFn({ method: "GET" })
             .from("blog_posts")
             .select("id,title,summary,link,image_url,blog_feeds!inner(publisher,is_active)")
             .eq("blog_feeds.is_active", true)
-            .or(`title.ilike.${like},summary.ilike.${like},blog_feeds.publisher.ilike.${like}`)
+            .or(`title.ilike.${like},summary.ilike.${like}`)
             .limit(limit)
         : blogQ,
     ]);
