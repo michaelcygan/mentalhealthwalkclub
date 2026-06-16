@@ -312,7 +312,7 @@ function SoloWalkPage() {
           />
         </Section>
 
-        <Section title="What do you want to hear?">
+        <Section title="Start with… (optional — you can change this any time)">
           <AudioSourcePicker value={source} onChange={setSource} playlists={playlists} podcasts={podcasts} />
         </Section>
 
