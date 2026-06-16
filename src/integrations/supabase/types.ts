@@ -259,6 +259,10 @@ export type Database = {
           is_featured: boolean
           link: string
           published_at: string | null
+          reader_byline: string | null
+          reader_excerpt: string | null
+          reader_html: string | null
+          reader_parsed_at: string | null
           summary: string | null
           title: string
         }
@@ -272,6 +276,10 @@ export type Database = {
           is_featured?: boolean
           link: string
           published_at?: string | null
+          reader_byline?: string | null
+          reader_excerpt?: string | null
+          reader_html?: string | null
+          reader_parsed_at?: string | null
           summary?: string | null
           title: string
         }
@@ -285,6 +293,10 @@ export type Database = {
           is_featured?: boolean
           link?: string
           published_at?: string | null
+          reader_byline?: string | null
+          reader_excerpt?: string | null
+          reader_html?: string | null
+          reader_parsed_at?: string | null
           summary?: string | null
           title?: string
         }

@@ -1,69 +1,76 @@
-# Solo walk: media as a companion, not a "walk type"
+# Three changes
 
-Two problems to solve together:
+## 1. Add Mental Illness Happy Hour to podcast feeds
 
-1. **Bug** — a user reported ambient music didn't play on their solo walk.
-2. **Design** — making the user pick one audio source up front makes the choice feel like a commitment ("am I a 'podcast walk' person?") and there's no way to change your mind mid-walk. Real walks are messier: start in silence, put a podcast on after 10 minutes, drop into ambient when the podcast ends, try a guided meditation later.
+Insert a row into `podcast_feeds` and trigger an initial sync:
+- `rss_url`: `https://mentalpod.com/feed/podcast/`
+- `title`: `Mental Illness Happy Hour`
+- `publisher`: `Paul Gilmartin`
+- `is_active`: `true`
 
-## What changes (UX)
+Done via a data insert; the existing sync cron will keep it fresh, and we'll kick off one immediate sync so episodes appear right away.
 
-### Pre-walk
-- Replace the "What do you want to hear?" required picker with a soft **"Start with… (optional)"** section.
-- Options stay the same (Silence / Ambient / Podcast / Playlist), but default is **Silence** and the copy makes clear you can change it any time during the walk.
-- Remove the implicit "walk type = audio type" framing.
+## 2. Shows grid on the homepage (under the Listen carousel)
 
-### Active walk — new Media panel
-A persistent card on the active screen (replaces today's read-only "ambient now-playing" strip) with four tabs/segments:
+New section rendered inside `ListenAndRead` on the `listen` tab, directly under the recent-episodes carousel.
 
-```text
-[ Silence ] [ Ambient ] [ Podcast ] [ Playlist / Guided ]
-```
+- New server fn `listPodcastShows()` in `src/lib/podcasts.functions.ts` — returns active feeds (`id, title, publisher, image_url, episode_count`) ordered by most recent episode.
+- New component `src/components/home/shows-grid.tsx` — a 3-column grid of square cover tiles with title underneath. On tap → navigates to `/listen?tab=listen&q=<show title>` so the existing Listen page filters/searches to that show (per your answer: "filter the Listen page to that show").
+- Header: small "Shows" label with an "All →" link to `/listen`.
 
-- **Silence** — stops whatever is playing. Visual confirmation only.
-- **Ambient** — start / stop / skip / volume. Works even if a podcast was playing (it stops the podcast first).
-- **Podcast** — quick list of recent / saved podcast episodes; tap to play. Surfaces the current `now-playing-dock` transport (play/pause, ±15s) inline so the user doesn't have to scroll.
-- **Playlist / Guided** — pick a saved playlist or a single guided track; loads into the player queue.
+## 3. In-app reader view for articles
 
-Switching tabs gracefully hands off: starting a podcast stops ambient with a 300ms fade (already handled in `player-context.tsx`); starting ambient stops the podcast.
+Replace the `target="_blank"` external links in `ReadRail`, `BlogRail`, and `SavedReadsList` with a route that opens a parsed reader view inside the app.
 
-### Post-walk
-- No change to save behavior. Whatever was playing last is recorded as `podcast_episode_id` only if a podcast was active at end (otherwise null). The "this was an ambient walk" implication goes away.
+### New route: `/read/$postId`
+- Layout: top bar with ← back, publisher name, and an "Open original ↗" link (preserves attribution + lets power users escape to the live page).
+- Body: article title, byline/date, hero image, parsed article content rendered as clean prose (`prose` Tailwind classes), max-width readable column.
+- Footer: small "From {publisher}" line + "Open original" button.
 
-## What changes (code)
+### Parsing (server-side, Worker-safe)
+New server fn `getReadableArticle({ post_id })` in `src/lib/blogs.functions.ts`:
+1. Load the post row (cached `reader_html`, `reader_excerpt`, `reader_byline`, `reader_parsed_at` if present).
+2. If not parsed (or stale > 30 days), fetch the article URL server-side, then use `@mozilla/readability` + `linkedom` (both pure-JS, Worker-compatible — no Node-only deps) to extract clean article HTML. Sanitize with `dompurify` + linkedom's window.
+3. Persist the parsed result back to the row for future loads (1 parse per article, then served from cache).
+4. Return `{ title, byline, published_at, hero_image, content_html, source_url, publisher }`.
 
-### Bug fix
-In `src/routes/_authenticated/walk.index.tsx`:
+### Schema additions (migration)
+Add nullable columns to `blog_posts`:
+- `reader_html text`
+- `reader_excerpt text`
+- `reader_byline text`
+- `reader_parsed_at timestamptz`
 
-- `start()` calls `ambient.start()` immediately after `setStage("active")`. But `ambient.start()` early-returns when `library.length === 0`, and the library load is async (kicked off in `AmbientPlayerProvider` when `user` becomes available). On a fresh load or slow network it can lose the race.
-- Fix: in `ambient-context.tsx`, if `start()` is called before the library is ready, queue the intent and start once `library` populates. Alternative (simpler): in `walk.index.tsx`, await library readiness via a small `useEffect` that calls `ambient.start()` once `source.kind === "ambient" && stage === "active" && ambient.hasLibrary && !ambient.current`.
-- Also add a user-facing fallback: if ambient is requested and `hasLibrary` is still false after 3s, toast "Ambient mix isn't ready yet — try again in a moment" rather than silently doing nothing.
+No new RLS needed (reads go through the server fn using the admin client; writes only happen there).
 
-### New component
-`src/components/walk/media-panel.tsx` — the four-tab control described above. Reuses:
-- `useAmbient()` for ambient controls
-- `usePlayer()` for podcast / playlist / guided transport
-- `listMyPlaylists`, `listenCatalog` (already loaded in walk.index)
-- A small inline transport (play/pause, ±15s, track title) so users don't need the global dock
+### Fallback
+If Readability returns nothing usable (rare — paywalls, JS-rendered pages), the route shows the title/summary/hero + a prominent "Open original" CTA. No silent failures.
 
-### Edits
-- `walk.index.tsx`:
-  - Demote `AudioSourcePicker` on pre-walk to optional, default `silence`.
-  - On `active` stage, render `<MediaPanel />` instead of the current read-only ambient strip.
-  - Remove the `useEffect` that auto-plays podcast/playlist from `source` on stage change — initial start still honored, but subsequent changes go through the panel directly.
-- `ambient-context.tsx`: queue-then-flush behavior in `start()` (see bug fix).
-- `AudioSourcePicker`: unchanged API; still used pre-walk.
+## Technical details
 
-### Not changing
-- DB schema, `walk_sessions` columns, player/ambient core logic, now-playing dock.
-- Guided walks scaffolding stays as-is; the Playlist/Guided tab uses whatever guided tracks already exist in `guided_tracks`.
+- `@mozilla/readability` + `linkedom` are both pure JS and run in the Cloudflare Worker runtime — confirmed Worker-compatible (no `jsdom`, no native deps).
+- Saved Reads + Read rail tiles change from `<a href={link} target="_blank">` to `<Link to="/read/$postId" params={{ postId: p.id }}>`. The bookmark toggle behavior is unchanged.
+- Show navigation uses a search-param redirect to `/listen` — no new route file, no schema change.
+- Mental Illness Happy Hour insert is a one-shot data change; if duplicate `rss_url`, the insert is a no-op via `ON CONFLICT DO NOTHING`.
 
-## Out of scope (call out for v1.5)
-- Mixing ambient *under* a podcast (true ducking) — needs a second audio graph.
-- Saving "media timeline" per walk for the recap.
-- Guided walks as a first-class flow with a curated catalog screen.
+## Files
 
-## Files touched
-- `src/routes/_authenticated/walk.index.tsx` (edit)
-- `src/lib/ambient-context.tsx` (edit — race fix)
-- `src/components/walk/media-panel.tsx` (new)
-- `src/components/audio/audio-source-picker.tsx` (minor copy + optional default)
+**New**
+- `src/components/home/shows-grid.tsx`
+- `src/routes/_authenticated/read.$postId.tsx`
+- Migration: add reader columns to `blog_posts`
+
+**Edited**
+- `src/lib/podcasts.functions.ts` — add `listPodcastShows()`
+- `src/lib/blogs.functions.ts` — add `getReadableArticle()` server fn
+- `src/lib/blogs.server.ts` — readability helper
+- `src/components/home/listen-and-read.tsx` — render `<ShowsGrid />` under `<PodcastRail />`
+- `src/components/listen/read-rail.tsx` — link to internal reader
+- `src/components/listen/saved-reads-list.tsx` — link to internal reader
+- `src/components/home/blog-rail.tsx` — link to internal reader
+- Data: insert Mental Illness Happy Hour row + trigger initial sync
+
+## Out of scope (v1)
+- Comments / inline highlights / save-progress in reader view.
+- Reader view for podcasts (these already open in the in-app player).
+- A dedicated `/listen/show/$feedId` page — your answer was to filter the Listen page instead, which we'll honor.
