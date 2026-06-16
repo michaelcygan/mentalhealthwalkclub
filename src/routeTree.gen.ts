@@ -49,6 +49,7 @@ import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
+import { Route as AuthenticatedReadPostIdRouteImport } from './routes/_authenticated/read.$postId'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
 import { Route as AuthenticatedListenIdRouteImport } from './routes/_authenticated/listen.$id'
 import { Route as AuthenticatedGroupsSlugRouteImport } from './routes/_authenticated/groups.$slug'
@@ -260,6 +261,11 @@ const AuthenticatedTrailsIdRoute = AuthenticatedTrailsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedTrailsRoute,
 } as any)
+const AuthenticatedReadPostIdRoute = AuthenticatedReadPostIdRouteImport.update({
+  id: '/read/$postId',
+  path: '/read/$postId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlacesKeyRoute = AuthenticatedPlacesKeyRouteImport.update({
   id: '/$key',
   path: '/$key',
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -410,6 +417,7 @@ export interface FileRoutesByTo {
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -464,6 +472,7 @@ export interface FileRoutesById {
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
+  '/_authenticated/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
@@ -518,6 +527,7 @@ export interface FileRouteTypes {
     | '/groups/$slug'
     | '/listen/$id'
     | '/places/$key'
+    | '/read/$postId'
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
@@ -570,6 +580,7 @@ export interface FileRouteTypes {
     | '/groups/$slug'
     | '/listen/$id'
     | '/places/$key'
+    | '/read/$postId'
     | '/trails/$id'
     | '/walk/new'
     | '/admin/podcasts/$feedId'
@@ -623,6 +634,7 @@ export interface FileRouteTypes {
     | '/_authenticated/groups/$slug'
     | '/_authenticated/listen/$id'
     | '/_authenticated/places/$key'
+    | '/_authenticated/read/$postId'
     | '/_authenticated/trails/$id'
     | '/_authenticated/walk/new'
     | '/admin/podcasts/$feedId'
@@ -946,6 +958,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrailsIdRouteImport
       parentRoute: typeof AuthenticatedTrailsRoute
     }
+    '/_authenticated/read/$postId': {
+      id: '/_authenticated/read/$postId'
+      path: '/read/$postId'
+      fullPath: '/read/$postId'
+      preLoaderRoute: typeof AuthenticatedReadPostIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/places/$key': {
       id: '/_authenticated/places/$key'
       path: '/$key'
@@ -1080,6 +1099,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
+  AuthenticatedReadPostIdRoute: typeof AuthenticatedReadPostIdRoute
   AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
   AuthenticatedWalkIndexRoute: typeof AuthenticatedWalkIndexRoute
 }
@@ -1091,6 +1111,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
+  AuthenticatedReadPostIdRoute: AuthenticatedReadPostIdRoute,
   AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
   AuthenticatedWalkIndexRoute: AuthenticatedWalkIndexRoute,
 }

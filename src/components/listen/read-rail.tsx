@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookmarkPlus, BookmarkCheck, ExternalLink, BookOpen } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { BookmarkPlus, BookmarkCheck, BookOpen, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { recentBlogPosts, type BlogPostCard } from "@/lib/blogs.functions";
@@ -101,14 +102,13 @@ export function ReadRail() {
                 {p.publisher ?? "—"}
                 {estReadMin(p.summary) ? ` · ${estReadMin(p.summary)}` : ""}
               </p>
-              <a
-                href={p.link}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/read/$postId"
+                params={{ postId: p.id }}
                 className="mt-2 inline-flex items-center gap-1 text-[11px] text-forest hover:underline"
               >
-                Read <ExternalLink className="h-3 w-3" />
-              </a>
+                Read <ArrowRight className="h-3 w-3" />
+              </Link>
             </article>
           );
         })}

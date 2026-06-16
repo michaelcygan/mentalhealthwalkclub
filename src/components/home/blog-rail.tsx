@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { useServerFn } from "@tanstack/react-start";
 import { recentBlogPosts, type BlogPostCard } from "@/lib/blogs.functions";
@@ -25,11 +26,10 @@ export function BlogRail() {
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((p) => (
-          <a
+          <Link
             key={p.id}
-            href={p.link}
-            target="_blank"
-            rel="noopener noreferrer"
+            to="/read/$postId"
+            params={{ postId: p.id }}
             className="block w-60 shrink-0"
           >
             <Card className="flex h-full flex-col overflow-hidden rounded-2xl border-border bg-card/90 shadow-soft backdrop-blur-sm transition hover:-translate-y-0.5">
@@ -46,7 +46,7 @@ export function BlogRail() {
                 {p.summary && <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{p.summary}</p>}
               </div>
             </Card>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
