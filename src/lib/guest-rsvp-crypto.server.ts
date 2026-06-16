@@ -1,7 +1,14 @@
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 function key(): Buffer {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_URL || "lovable-fallback";
+  const secret =
+    process.env.GUEST_RSVP_ENCRYPTION_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_URL ||
+    "lovable-fallback";
+  if (!process.env.GUEST_RSVP_ENCRYPTION_KEY) {
+    console.warn("[guest-rsvp-crypto] GUEST_RSVP_ENCRYPTION_KEY not set; falling back");
+  }
   return createHash("sha256").update(secret).digest();
 }
 
