@@ -179,6 +179,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   }, [library, current, playTrack, refillQueue]);
 
   const stop = useCallback((fadeMs = 600) => {
+    pendingStart.current = false;
     const el = activeRef.current === "a" ? audioA.current : audioB.current;
     if (!el) { setPlaying(false); setCurrent(null); return; }
     if (fadeRaf.current) cancelAnimationFrame(fadeRaf.current);
