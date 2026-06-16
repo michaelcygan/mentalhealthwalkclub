@@ -57,6 +57,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   });
 
   const queue = useRef<AmbientTrack[]>([]);
+  const pendingStart = useRef(false);
   const audioA = useRef<HTMLAudioElement | null>(null);
   const audioB = useRef<HTMLAudioElement | null>(null);
   const activeRef = useRef<"a" | "b">("a");
