@@ -5,9 +5,11 @@ import { BlogRail } from "@/components/home/blog-rail";
 import { ShowsGrid } from "@/components/home/shows-grid";
 
 type Tab = "listen" | "read";
+export interface SelectedShow { feedId: string; title: string }
 
 export function ListenAndRead() {
   const [tab, setTab] = useState<Tab>("listen");
+  const [selected, setSelected] = useState<SelectedShow | null>(null);
   return (
     <section>
       <div className="mb-2 flex justify-end px-1">
@@ -23,7 +25,7 @@ export function ListenAndRead() {
           </button>
           <button
             type="button"
-            onClick={() => setTab("read")}
+            onClick={() => { setTab("read"); setSelected(null); }}
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
               tab === "read" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
             }`}
@@ -34,8 +36,8 @@ export function ListenAndRead() {
       </div>
       {tab === "listen" ? (
         <>
-          <PodcastRail />
-          <ShowsGrid />
+          <PodcastRail selected={selected} onClear={() => setSelected(null)} />
+          <ShowsGrid selectedFeedId={selected?.feedId ?? null} onSelect={(s) => setSelected(s)} />
         </>
       ) : (
         <BlogRail />
