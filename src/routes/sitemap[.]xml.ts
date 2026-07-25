@@ -69,6 +69,39 @@ export const Route = createFileRoute("/sitemap.xml")({
               priority: "0.6",
             });
           }
+
+          // Public walker profiles (limit to keep sitemap sane)
+          const { data: profiles } = await supabase
+            .from("public_profiles")
+            .select("username")
+            .not("username", "is", null)
+            .limit(1000);
+          for (const p of profiles ?? []) {
+            if (!p.username) continue;
+            entries.push({
+              path: `/u/${p.username}`,
+              changefreq: "weekly",
+              priority: "0.4",
+            });
+          }
+
+          // Upcoming public walks (share pages)
+          const { data: events } = await supabase
+            .from("events")
+            .select("slug, starts_at")
+            .eq("status", "published")
+            .eq("visibility", "public")
+            .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+            .not("slug", "is", null)
+            .limit(500);
+          for (const e of events ?? []) {
+            if (!e.slug) continue;
+            entries.push({
+              path: `/w/${e.slug}`,
+              changefreq: "daily",
+              priority: "0.7",
+            });
+          }
         } catch {
           // Fall through with static entries only.
         }

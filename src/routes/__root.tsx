@@ -68,6 +68,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Mental Health Walk Club" },
       { property: "og:description", content: "Post a walk, share a page, RSVP with friends." },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Mental Health Walk Club" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#2c5340" },
       { name: "apple-mobile-web-app-title", content: "MH Walk Club" },
