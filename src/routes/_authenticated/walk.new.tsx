@@ -90,6 +90,28 @@ function ComposeWalkPage() {
   const submitRef = useRef<HTMLDivElement>(null);
   const [coachEnabled, setCoachEnabled] = useState(false);
 
+  // one-shot device geolocation fallback so the weather strip can appear
+  // before a place is picked. Silent on denial/timeout/unsupported.
+  const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const { latitude, longitude } = pos.coords;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+          setDeviceCoords({ lat: latitude, lng: longitude });
+        }
+      },
+      () => { /* denied / unavailable — stay null */ },
+      { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 6000 },
+    );
+    return () => { cancelled = true; };
+  }, []);
+
+
+
   // load hostable groups + check first-walk status once
   useEffect(() => {
     listMyHostableGroups().then((result) => {
