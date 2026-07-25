@@ -23,7 +23,7 @@ export interface StationTrack {
 }
 
 const COVER_TTL = 60 * 60 * 24; // 1 day
-const TRACK_TTL = 60 * 5; // 5 min
+const TRACK_TTL = 60 * 60 * 2; // 2 hours (session-length)
 
 function serverClient() {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
