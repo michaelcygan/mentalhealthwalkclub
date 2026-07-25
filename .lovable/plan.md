@@ -1,74 +1,72 @@
-Wave 7 first pass is in, but a codebase audit shows it is not fully closed. I recommend finishing the remaining Wave 7 gaps as the opening act of **Wave 8: V1 Launch Readiness**, then moving into final pre-flight work.
 
-## Verified current state
-- Build (`vite build --mode development`) passes.
-- Public routes `/`, `/blog`, `/blog/$slug`, `/groups`, `/g/$slug`, `/u/$username`, `/impact` have `head()` metadata.
-- Default branded OG image exists and is wired into most public leaf routes.
-- Sitemap includes `/`, `/groups`, `/blog`, public groups, public profiles, and upcoming public walks.
-- Security scan has stale warnings (last update 2026-06-04) around `SECURITY DEFINER` function grants, public bucket listing, social-graph exposure on `follows`, and realtime topic scoping.
+## NWS weather in Plan a walk
 
-## Remaining Wave 7 gaps
-1. **Root `__root.tsx` head has no `og:image` / `twitter:image`.**
-2. **`/shop` head has only title + description** — missing full OG/Twitter/canonical set.
-3. **`/w/$code/recap` head uses a relative `/api/public/walk/$code/og` path** for `og:image`; must be absolute.
-4. **`/auth` page still markets retired V1 features** (Solo, Guided, Walk & Talk) in meta description and brand panel.
-5. **Image performance**: 12 `<img>` tags in routes, only 5 use `loading="lazy"`; most lack explicit `width`/`height` or aspect-ratio containers.
-6. **Accessibility**: 106 `<button>` elements in `src/components`, only 43 `aria-label` instances. Icon-only controls in `now-playing-sheet.tsx`, `media-panel.tsx`, `audio-source-picker.tsx`, `badge-wall.tsx`, and `journal/*` need labels or `aria-hidden` if decorative.
-7. **No PWA manifest** despite root links to `icon-192.png` / `icon-512.png`.
+A calm, optional forecast strip that lives inside the existing time-wheel sheet and enriches the collapsed time card. It never blocks walk creation, never persists, and quietly disappears when NWS has no data.
 
-## Wave 8: V1 Launch Readiness
+### Files touched
 
-### 8A — Close Wave 7 metadata & copy gaps
-- Add default `og:image` and `twitter:image` to `src/routes/__root.tsx`.
-- Complete `head()` for `/shop` with canonical, OG, and Twitter tags.
-- Make `/w/$code/recap` `og:image` absolute (`https://mentalhealthwalkclub.com/api/public/walk/$code/og`).
-- Rewrite `/auth` meta description and brand panel to match V1 scope: public walks, groups, journal, radio, blog.
-- Add `description`/`og:description` to `/more`, `/journal`, `/profile`, and `/auth` if missing.
+New:
+- `src/lib/walk-weather.functions.ts` — authenticated `createServerFn`, NWS provider, normalization, bounded TTL + in-flight caches.
+- `src/hooks/use-walk-weather.ts` — TanStack Query hook (key `["walk-weather", roundedLat, roundedLng]`).
+- `src/lib/walk-weather-match.ts` — pure helpers: coord rounding, condition-code derivation, ISO wall-clock parser, nearby-hour window selector.
 
-### 8B — Accessibility sweep
-- Audit every `<button>` in `src/components` that contains only an icon and add `aria-label` (or wrap with visible text).
-- Ensure `now-playing-sheet.tsx`, `media-panel.tsx`, `audio-source-picker.tsx`, `badge-wall.tsx`, and journal icon controls are labeled.
-- Add `focus-visible` rings where custom-styled buttons currently suppress them.
-- Respect `prefers-reduced-motion` for any remaining non-essential motion (most already use `useReducedMotion`).
+Edited:
+- `src/routes/_authenticated/walk.new.tsx` — extend `pickedPlace` with `lat`/`lng`; retain from `getOrCreateWalkPlace` result; extend prefill Supabase select to include `lat,lng`; pass optional `location` prop to `WhenPicker`. No changes to `createWalk` payload.
+- `src/components/walk-page/when-picker.tsx` — accept optional `location`; enrich collapsed time card secondary line; render weather strip inside `TimeWheelSheet` above the wheels; tapping a tile updates the sheet's draft `h`/`mer` (minute preserved) without committing.
 
-### 8C — Performance pass
-- Add `loading="lazy"` to below-the-fold images in routes (`/w/$code`, `/g/$slug`, `/blog.$slug`, `/shop`).
-- Wrap images in aspect-ratio containers and add `width`/`height` attributes where possible to reduce CLS.
-- Add `decoding="async"` to non-hero images.
-- Verify route-level code splitting is preserved; no new heavy libraries are imported at module scope in public routes.
+### Server function (`walk-weather.functions.ts`)
 
-### 8D — PWA manifest
-- Create `public/site.webmanifest` (or `manifest.json`) with app name, short name, theme color `#2c5340`, background color, and icon references.
-- Add `<link rel="manifest" …>` in `src/routes/__root.tsx`.
-- Verify `icon-192.png` and `icon-512.png` exist in `public/`.
+- `getWalkWeather` — `createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).inputValidator(z.object({ lat, lng }))`.
+- Round lat/lng to 3 decimals for request + cache key.
+- Fetch `https://api.weather.gov/points/{lat},{lng}` with `Accept: application/geo+json` and a fixed `User-Agent: "MentalHealthWalkClub/1.0 (https://mentalhealthwalkclub.com)"`.
+- Validate `properties.forecastHourly` is HTTPS + hostname `api.weather.gov` before following it.
+- Fetch hourly forecast; normalize to `WalkWeatherPeriod[]` with a deterministic `conditionCode` derived from `shortForecast` + `isDaytime`. Precipitation: preserve `null`, clamp numeric 0–100. Return `timeZone` from point response.
+- 4.5s `AbortController` timeout per request.
+- Two module-level bounded TTL Maps (max ~200 entries, LRU-ish by insertion order): point cache ≈24h keyed by `lat,lng`; hourly cache ≈12min keyed by resolved URL. In-flight dedupe Map keyed by URL.
+- Returns `{status:"ok"|"unsupported"|"unavailable", provider:"nws", periods, timeZone?, generatedAt?}`. Any error → `"unavailable"`; 404 from `/points` or missing `forecastHourly` → `"unsupported"`. Never throws to caller.
 
-### 8E — Security scan & triage
-- Run a fresh security scan.
-- Triage findings into:
-  - **Fix now**: realtime topic scoping, follows table SELECT policy scoping, public bucket listing.
-  - **Accept with memory note**: legitimate `SECURITY DEFINER` helper functions (e.g., `has_role`) that are intentionally public/authenticated-callable.
-- Update `@security-memory` for any accepted risks.
+### Client hook
 
-### 8F — Launch copy sweep
-- Remove user-facing references to retired V1 features from `src/components/auth-form.tsx` and `src/routes/auth.tsx`.
-- Grep for "Solo", "Guided", "Walk & Talk" in user-facing copy and replace with V1 language or remove.
-- Verify no user-facing "Lovable" strings remain outside integration internals.
+```ts
+useQuery({
+  queryKey: ["walk-weather", roundedLat, roundedLng],
+  queryFn: () => getWalkWeather({ data: { lat, lng } }),
+  enabled: coordinatesExist,
+  staleTime: 10 * 60_000,
+  gcTime: 30 * 60_000,
+  refetchOnWindowFocus: false,
+  retry: false,
+})
+```
 
-### 8G — Critical flow smoke tests
-- Sign-up → onboarding → create walk → share walk page → guest RSVP.
-- Public homepage → nearby grid → group discovery → group join.
-- Radio play → dock persists across navigation.
-- Blog index → blog post → canonical/OG render.
+### WhenPicker changes
 
-### 8H — Final build & publish
-- Run `vite build` in production mode.
-- Verify no console/runtime errors on public routes.
-- Publish and confirm custom domain + preview URLs.
+- New prop `location?: { name; lat; lng } | null`. Call `useWalkWeather(location)`.
+- **Match helper** parses NWS `startTime` (e.g. `2026-07-25T17:00:00-04:00`) via regex to extract wall-clock year/month/day/hour without timezone conversion, then matches against the currently-displayed `date`'s local Y/M/D/H.
+- **Collapsed time card**: when a matching period exists for committed time, replace `{formatTime} · {tz}` with `{formatTime} · {temp}° · {shortForecast}` — or `{formatTime} · {temp}° · {pop}% rain` when precipitation ≥ 25%. Loading/unavailable/no-match → keep existing tz line unchanged.
+- **Weather strip inside `TimeWheelSheet`**:
+  - Computed from draft `h`/`m`/`mer` + committed date.
+  - Horizontally scrollable row of up to 5 tiles: −2h, −1h, selected, +1h, +2h. Clamp to available range.
+  - Fixed-height skeleton while loading (prevents wheel jump).
+  - When date is outside available periods: small muted line "Forecast will appear closer to the walk."
+  - When `unsupported` or `unavailable`: render nothing.
+- **Tile** = `<button type="button" aria-pressed>` with Lucide icon (`Sun`/`Moon`/`CloudSun`/`CloudMoon`/`Cloud`/`CloudRain`/`CloudLightning`/`CloudSnow`/`CloudFog`/`Wind`, `aria-hidden`), hour label, rounded temp, and pop% when ≥ 25%. `aria-label`: `"Select 5 PM, 77 degrees Fahrenheit, partly cloudy, 10 percent chance of rain."` Selected style: `border-forest bg-forest/10`. Tap updates local `h` (12-hour) and `mer` in the sheet; minute untouched; commit still requires the existing "Set" button.
 
-## Out of scope for Wave 8
-- New features (badges refinement, push notifications, email flows, maps).
-- Major UI redesigns beyond the polish listed above.
-- Data migrations (schema is stable for V1).
+### walk.new.tsx changes
 
-## Decision needed
-Should I proceed with Wave 8 as scoped above, or do you want to add/remove any section (e.g., skip the PWA manifest for now, or prioritize the security scan fixes first)?
+- `pickedPlace` state gains `lat: number | null; lng: number | null`.
+- On `getOrCreateWalkPlace` success: store `place.lat`, `place.lng`.
+- On prefill: `.select("id,name,address,hero_url,lat,lng")` and hydrate coords.
+- `<WhenPicker … location={pickedPlace?.lat != null && pickedPlace?.lng != null ? { name, lat, lng } : null} />`.
+- No change to `createWalk` payload.
+
+### Non-goals / guardrails
+
+- No DB migration, no walk schema changes, no analytics, no toasts on failure.
+- No alerts, radar, AQI, wind, humidity, sunrise, daily forecast, city entry, or settings.
+- No new npm packages; use existing `lucide-react`, `zod`, TanStack Query, `createServerFn`.
+- No weather anywhere outside `walk.new` (not on public walk page, Discover, Groups, recap, etc.).
+
+### Acceptance
+
+Matches the 22-point acceptance list: coords retained on new + prefill, no payload change, server-only NWS with validated `forecastHourly`, normalized DTO, bounded cache + in-flight dedupe, reused response across time/date edits, collapsed card enrichment, in-sheet strip with tap-to-update-draft, keyboard/AT accessible tiles, silent on unsupported/failure, existing build + typecheck pass.

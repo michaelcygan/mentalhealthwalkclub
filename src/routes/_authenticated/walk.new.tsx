@@ -61,6 +61,8 @@ function ComposeWalkPage() {
     name: string;
     address: string | null;
     hero_url: string | null;
+    lat: number | null;
+    lng: number | null;
   } | null>(null);
   const [resolvingPlace, setResolvingPlace] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -141,7 +143,7 @@ function ComposeWalkPage() {
         if (prefill.place_id) {
           const { data: p } = await supabase
             .from("places")
-            .select("id,name,address,hero_url")
+            .select("id,name,address,hero_url,lat,lng")
             .eq("id", prefill.place_id)
             .maybeSingle();
           if (!cancel && p) {
@@ -150,6 +152,8 @@ function ComposeWalkPage() {
               name: p.name,
               address: p.address,
               hero_url: p.hero_url,
+              lat: p.lat != null ? Number(p.lat) : null,
+              lng: p.lng != null ? Number(p.lng) : null,
             });
             setPlaceQuery(p.name);
           }
@@ -200,6 +204,8 @@ function ComposeWalkPage() {
         name: place.name,
         address: place.address,
         hero_url: place.hero_url,
+        lat: place.lat != null ? Number(place.lat) : null,
+        lng: place.lng != null ? Number(place.lng) : null,
       });
       setPlaceQuery(place.name);
       if (!title) setTitle(`Walk at ${place.name}`);
@@ -330,7 +336,15 @@ function ComposeWalkPage() {
       {/* WHEN */}
       <section ref={whenRef} className="mt-6 space-y-2">
         <Label>When</Label>
-        <WhenPicker value={startsAt} onChange={setStartsAt} />
+        <WhenPicker
+          value={startsAt}
+          onChange={setStartsAt}
+          location={
+            pickedPlace?.lat != null && pickedPlace?.lng != null
+              ? { name: pickedPlace.name, lat: pickedPlace.lat, lng: pickedPlace.lng }
+              : null
+          }
+        />
       </section>
 
       {/* TITLE + VIBE */}
