@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, Check } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import {
   getUnreadNotificationCount,
   listNotifications,
@@ -58,6 +57,34 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
   });
   const items: NotificationRow[] = listData?.items ?? [];
 
+  // Snapshot which items were unread when the sheet opened, so their "new" styling
+  // persists for this open session even after we auto-mark them read.
+  const [sessionUnread, setSessionUnread] = useState<Set<string>>(new Set());
+  const sweptRef = useRef(false);
+
+  // Auto-mark all as read once the sheet opens with unread items loaded.
+  useEffect(() => {
+    if (!open) {
+      sweptRef.current = false;
+      setSessionUnread(new Set());
+      return;
+    }
+    if (sweptRef.current) return;
+    if (!listData) return;
+    const unreadIds = items.filter((n) => !n.read_at).map((n) => n.id);
+    if (unreadIds.length === 0) {
+      sweptRef.current = true;
+      return;
+    }
+    sweptRef.current = true;
+    setSessionUnread(new Set(unreadIds));
+    void markRead({ data: { all: true } })
+      .catch(() => {})
+      .finally(() => {
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+      });
+  }, [open, listData, items, markRead, qc]);
+
   // Realtime: push fresh count + list into the bell when a new notification lands.
   useEffect(() => {
     if (!user?.id) return;
@@ -91,11 +118,6 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
     }
   };
 
-  const onMarkAll = async () => {
-    if (unread === 0) return;
-    await markRead({ data: { all: true } }).catch(() => {});
-    qc.invalidateQueries({ queryKey: ["notifications"] });
-  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -133,13 +155,8 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
         )}
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0">
-        <SheetHeader className="flex flex-row items-center justify-between border-b border-border px-4 py-3">
+        <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle className="font-serif text-lg">Notifications</SheetTitle>
-          {unread > 0 && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onMarkAll}>
-              <Check className="mr-1 h-3 w-3" /> Mark all read
-            </Button>
-          )}
         </SheetHeader>
         <div className="max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
           {isLoading ? (
@@ -152,12 +169,14 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map((n) => (
+              {items.map((n) => {
+                const isNew = !n.read_at || sessionUnread.has(n.id);
+                return (
                 <li key={n.id}>
                   <button
                     type="button"
                     onClick={() => onItem(n)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 ${!n.read_at ? "bg-accent/15" : ""}`}
+                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 ${isNew ? "bg-accent/15" : ""}`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground">
                       {n.actor?.avatar_url ? (
@@ -171,10 +190,11 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
                       {n.body && <p className="mt-0.5 truncate text-xs text-muted-foreground">{n.body}</p>}
                       <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{relTime(n.created_at)}</p>
                     </div>
-                    {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-forest" aria-hidden />}
+                    {isNew && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-forest" aria-hidden />}
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>
