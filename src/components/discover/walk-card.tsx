@@ -45,6 +45,7 @@ export function WalkCard({ walk, variant = "list", onRsvp, hideRsvp = false }: P
               alt={walk.title}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="flex h-full items-end bg-gradient-to-br from-forest/30 via-clay/20 to-cream p-4">
@@ -88,7 +89,7 @@ export function WalkCard({ walk, variant = "list", onRsvp, hideRsvp = false }: P
     >
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
         {walk.image_url ? (
-          <img src={walk.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <img src={walk.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-forest/10 text-forest">
             <MapPin className="h-5 w-5" />

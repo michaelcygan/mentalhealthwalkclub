@@ -161,7 +161,7 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground">
                       {n.actor?.avatar_url ? (
-                        <img src={n.actor.avatar_url} alt="" className="h-full w-full object-cover" />
+                        <img src={n.actor.avatar_url} alt="" className="h-full w-full object-cover" decoding="async" />
                       ) : (
                         initials(n.actor?.display_name ?? null)
                       )}

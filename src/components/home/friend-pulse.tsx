@@ -71,7 +71,7 @@ export function FriendPulse() {
           return (
             <li key={i} className="flex items-center gap-3 rounded-xl bg-background/60 p-2.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                {it.user.avatar_url ? <img src={it.user.avatar_url} alt="" className="h-full w-full object-cover" /> : initials(name)}
+                {it.user.avatar_url ? <img src={it.user.avatar_url} alt="" className="h-full w-full object-cover" decoding="async" /> : initials(name)}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm">
