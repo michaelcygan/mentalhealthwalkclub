@@ -1,58 +1,94 @@
-# Wave 2 — Public homepage, Nearby grid, retire /discover and /events
+# Wave 3 — Directional follows & public profiles
 
-Goal: turn `/` into the V1 non-negotiable "public nearby walk grid," fold Discover into it, and finish retiring the `/events*` URLs. No visual overhaul of authenticated home — that stays as-is; we only add a Nearby rail and a proper public state.
+The V1 spec calls for **directional follows / mutuals** (replacing the current bidirectional-request "friendships" table) and profile pages that work for both signed-in and signed-out visitors. Today the app has:
 
-## What changes
+- `friendships` table with `user_low / user_high / requested_by / status='pending|accepted|declined'` — symmetric handshake, wrong shape for V1.
+- `/profile` route (self-only, editor). No public `/@username` page.
+- `public_profiles` view (added in Wave 1) already exposing safe columns — unused so far.
 
-### 1. Public read path for walks
-- New migration: add a narrow anon SELECT policy on `public.events` scoped to `status='published' AND visibility='public' AND audience_mode='public' AND starts_at >= now() - interval '1 day'` (so anon can only see genuinely public, current/future walks). `GRANT SELECT` on the safe columns to `anon` via a `public_events` view (id, slug, title, starts_at, timezone, venue_name, city, meeting_point, lat, lng, attendee_count, image_url, cover_override_url, host_user_id). Underlying table policy still gates row visibility; the view provides column safety.
-- New `src/lib/nearby.functions.ts` with `nearbyWalksPublic` — a `createServerFn` (no auth middleware) that creates a server publishable-key Supabase client inside the handler and queries `public_events`. Accepts optional `{ lat, lng, hours, limit }`, applies Haversine ≤25mi filter when coords provided, otherwise returns soonest upcoming.
+## Goals
 
-### 2. Homepage `/` rebuild
-- Logged-out `/`: keep the existing hero, add a **Nearby walks** grid below it powered by `nearbyWalksPublic`. Loader calls the public server fn so the grid is SSR/SEO-friendly. `head()` gets a real description + OG title/description/type for the shareable landing page.
-- Logged-in `/`: keep the current authenticated home components (TodayIsland, UpcomingRail, etc.), then append the same Nearby rail so authenticated users get the discover-style feed without a second destination. `UpcomingRail` already shows *your* upcoming; Nearby shows *everyone's* nearby.
-- Nearby card component: reuse `WalkCard` from `src/components/discover/walk-card.tsx`. Coord acquisition uses the same optional `navigator.geolocation` prompt as Discover, gracefully falling back to soonest-upcoming when denied.
+1. Replace friend handshake with **directional follows** — A follows B is one row; **mutual** = both rows exist.
+2. Ship a **public `/@username` profile route** (SSR, shareable, indexable) that renders for signed-out visitors and shows a Follow button when signed in.
+3. Rename self-profile URL from `/profile` → `/me` and keep a redirect.
+4. Retire "friend request" UI copy in favor of Follow / Following / Followers / Mutuals.
 
-### 3. Retire `/discover`
-- Replace `src/routes/_authenticated/discover.tsx` with a `beforeLoad` redirect to `/`.
-- Update the 4 remaining `to="/discover"` links (in `friend-pulse.tsx`, `groups.tsx`, `places.tsx`, `trails.tsx`) to point at `/`.
+## Data model
 
-### 4. Retire `/events*` from user-visible nav
-- `src/routes/events.tsx` and `src/routes/events.$slug.tsx` already redirect (to `/walk/new` and `/w/$code` respectively). Update `events.tsx` to redirect to `/` instead of `/walk/new` (the URL was meant as a listing, not a compose action).
-- Remove the "Events" row from `src/routes/more.tsx`.
-- Update `src/routes/_authenticated/trails.$id.tsx` `navigate({ to: "/events" })` to `navigate({ to: "/" })`.
-- Update `COMPOSE_HIDDEN_PREFIX` in `src/components/mobile-tab-bar.tsx` — drop `/events/` (route retired), no functional change since it's a redirect.
+New table `public.follows`:
 
-### 5. SEO metadata
-- Give `/` a real head: title, description under 160 chars, `og:title`, `og:description`, `og:type=website`, `twitter:card=summary_large_image`. No `og:image` yet — dynamic per-walk OG images already exist at `/api/public/walk.$code.og` for share links.
+```
+follower_id  uuid  → auth.users (the actor)
+followee_id  uuid  → auth.users (the target)
+created_at   timestamptz
+PRIMARY KEY (follower_id, followee_id)
+CHECK (follower_id <> followee_id)
+```
 
-## Files touched
+RLS:
+- `SELECT` — `authenticated` (anyone signed in can see who follows whom, needed for mutuals + follower lists).
+- `INSERT` — `follower_id = auth.uid()` only.
+- `DELETE` — same. No UPDATE.
+- No `anon` grant; follower counts on the public profile page come from a `SECURITY DEFINER` counter function.
 
-- new: `supabase/migrations/*_public_events_view.sql`
-- new: `src/lib/nearby.functions.ts`
-- edit: `src/routes/index.tsx` (add Nearby grid to both states, add proper `head()` + loader, tighten logged-out marketing copy only where copy touches the grid)
-- edit: `src/routes/_authenticated/discover.tsx` → redirect stub
-- edit: `src/routes/events.tsx` (redirect target `/` instead of `/walk/new`)
-- edit: `src/routes/more.tsx` (drop Events row)
-- edit: `src/components/home/friend-pulse.tsx`, `src/routes/_authenticated/groups.tsx`, `src/routes/_authenticated/places.tsx`, `src/routes/_authenticated/trails.tsx`, `src/routes/_authenticated/trails.$id.tsx` (link/target fixes)
-- edit: `src/components/mobile-tab-bar.tsx` (prefix cleanup)
+Helper SQL functions (all `SECURITY INVOKER` unless noted):
+- `public.is_following(_follower uuid, _followee uuid) returns boolean`
+- `public.is_mutual(_a uuid, _b uuid) returns boolean`
+- `public.follow_counts(_user uuid) returns (followers int, following int, mutuals int)` — `SECURITY DEFINER` so counts render on public profile pages without granting `anon` broad read.
 
-## Deferred to later waves (per Wave 0 plan)
+`friendships` table: leave in place, do NOT drop yet — read-only during Wave 3 so existing data isn't lost. A later wave can migrate accepted rows into two `follows` rows and drop the table.
 
-- Groups simplification → Wave 4
-- Follows migration → Wave 4
-- Rewriting `walk.new` short flow → Wave 3
-- Adding `events.location geography(Point,4326)` + GiST index → Wave 3 (needed for a real geo query; Haversine on the client is fine at Wave 2 scale of ~28 rows)
-- Retiring `/circles`, `/listen`, `/trails`, `/places`, `/read`, `/impact`, `/shop` → later waves; only their `/discover` links are updated now
+## Server functions (`src/lib/follows.functions.ts` — new)
 
-## Risks
+- `followUser({ userId })` — insert row; emit `follow` notification.
+- `unfollowUser({ userId })` — delete row.
+- `getFollowState({ userId })` — `{ iFollow, followsMe, mutual }`.
+- `listFollowers({ userId, limit, cursor })` / `listFollowing({ userId, limit, cursor })` — paginated, join `profiles`.
+- `listMutuals({ userId })` — used for "Walk with" suggestions.
+- `getPublicProfileByUsername({ username })` — reads `public_profiles`; returns `null` on miss so the route can `throw notFound()`.
 
-- The new anon SELECT policy widens reads on `events` — mitigated by the view exposing only display-safe columns and the strict WHERE clause (`visibility+audience_mode+status+starts_at`).
-- Host display names for Nearby cards: `WalkCard` doesn't require host name today, so no `public_profiles` join is needed at this wave.
-- 28 live events; policy change is safe to roll forward.
+The old `sendFriendRequest / respondFriendRequest / removeFriendship / listFriends` server fns stay exported but delegate:
+- `sendFriendRequest` → `followUser`
+- `respondFriendRequest` → no-op (returns ok) — with directional follows there is nothing to accept.
+- `removeFriendship` → `unfollowUser`
+- `listFriends` → `listMutuals`
+This keeps existing screens working while call sites migrate.
+
+## Routes
+
+New:
+- `src/routes/u.$username.tsx` — public profile.
+  - Loader calls `getPublicProfileByUsername` + `follow_counts` (server fn wrapper). `notFound()` on miss.
+  - `head()` sets title/description/og:title/og:url/canonical + `og:image` when the profile has an avatar (absolute URL).
+  - Renders: avatar, display name, `@username`, bio, city, follower / following / mutual counts, upcoming public walks they host (reads `public_events` filtered by `host_user_id`), and past hosted walks (public view only). For signed-in visitors: Follow / Unfollow button and mutual badge.
+- `src/routes/_authenticated/me.tsx` — self editor, same content as the current `/profile` page.
+- `src/routes/profile.tsx` — kept as a `beforeLoad` redirect to `/me` for old links / bookmarks.
+- `src/routes/u.$username.followers.tsx`, `src/routes/u.$username.following.tsx` — paginated lists (authenticated view only; unauthenticated redirected through the public profile).
+
+Rename references in the mobile tab bar, `more.tsx`, and any `Link to="/profile"` to `/me`.
+
+## UI
+
+- Replace the "Add friend / Accept / Decline" affordances in `circles.tsx` and any friend surfaces with a single **Follow** button that toggles to **Following** on hover ("Unfollow"). Mutual state gets a small "Walk buddy" chip.
+- Notification kinds: keep `friend_request` in the DB (backwards compatible) and add `follow` and `mutual` kinds; new emits use the new kinds, old rows keep rendering.
+- Copy sweep: "friends" → "mutuals" in headings; "requests" chip removed from Circles.
+
+## Out of scope for this wave
+
+- Backfilling `friendships → follows` (do later, once Wave 3 is stable in prod).
+- Blocking / mute controls (they exist on the events audience side already).
+- Discovery of accounts to follow — Wave 4 will bring "people you may know" once the follow graph has data.
 
 ## Verification
 
-- After migration: `curl` `/` unauthenticated in preview, confirm SSR HTML contains at least one walk title from the public grid (or an empty-state), no 500.
-- Confirm `/discover` and `/events/*` redirect to `/` and `/w/:code`.
-- Run `supabase--linter` to confirm no new RLS-missing warnings introduced by the new view + policy.
+- Type-check clean after regen.
+- Manual: sign-out visit to `/@ownusername` returns 200 with meta title/description/canonical set to the profile URL, avatar renders as `og:image`, no Follow button. Signed-in visit shows Follow, tapping toggles state and refetches counts.
+- Manual: `/profile` redirects to `/me`. Old friend surfaces still render (via the delegated shims) without console errors.
+
+## Deliverables
+
+1. Migration: `follows` table + grants + RLS + helper functions.
+2. `src/lib/follows.functions.ts` and updates to `src/lib/social.functions.ts` (delegations).
+3. New routes `u.$username.tsx`, `_authenticated/me.tsx`, list routes; redirect route at `/profile`.
+4. UI updates in `circles.tsx`, `more.tsx`, mobile tab bar, notification renderers.
+5. No changes to unrelated flows (walks, journal, listen).
