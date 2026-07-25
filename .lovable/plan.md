@@ -1,55 +1,54 @@
-## Wave 5 — Retirement & Pruning
+## Wave 6 — MHWC Radio + First-Party Blog CMS
 
-The scaffolding is done. Before Radio and Blog polish, we clear everything the V1 spec explicitly removed. Keeping retired code around leaks into nav, DB queries, and SEO, and it slows every future wave.
+With retirement done, Wave 6 turns the two "content" surfaces we kept into real, first-party product. Radio replaces the podcast rail as the app's ambient companion, and Blog becomes an editable SEO surface owned by us — not an RSS aggregator.
 
-### Scope
+### Part A — MHWC Radio (Cloudflare R2)
 
-**Retire from the app (routes, nav, components):**
-- Solo walk timer, step counter, mood-before/after, weather capture (`/walk`, `use-step-counter`, mood UI, weather hooks)
-- Podcasts everywhere (`/listen`, podcast rails on home, `podcast_feeds` / `podcast_episodes` reads, listen collections/search)
-- External blog feeds ingestion (`blog_feeds` reads, aggregated "Read" surface) — keep first-party `blog_posts`
-- Circles (`/circles`, circle_members reads, "invite to circle" flows); replace all links with Groups
-- Map-first discovery UI (map view on Discover); grid stays
-- Paid/Plus gating in UI (Stripe stays wired for later, but no Plus-only walls in V1)
+**Goal:** a small, curated set of ambient "stations" that stream from our own storage and play anywhere in the app (home dock, solo/group walk, background).
 
-**Keep, tighten, and keep private:**
-- Private walk journal (`journal_entries`, reflections) — verify RLS locked to `auth.uid()`, remove any public leak
-- Badges — keep as-is
-- Ambient tracks — keep (they're the Radio foundation, not "podcasts")
+- Storage: Cloudflare R2 bucket `mhwc-radio` with per-station folders (`stations/forest/`, `stations/rain/`, `stations/city-dusk/`, …), each containing 1–N `.mp3`/`.m4a` tracks + a `manifest.json` (title, artist, license, duration).
+- DB: `radio_stations` (slug, title, subtitle, cover_url, is_active, sort) + `radio_tracks` (station_id, storage_key, title, duration_s, sort). Public read, admin write. GRANTs + RLS included.
+- Server: `src/lib/radio.functions.ts` — `listStations()`, `getStation(slug)`, `signTrackUrl(track_id)` (short-lived signed R2 URL so we don't expose the bucket).
+- Player: fold Radio into the existing universal `NowPlayingDock` — new source type `"radio"` alongside ambient/podcast. Shuffle within a station, auto-advance, remember last station per user in localStorage.
+- Surfaces:
+  - Home: single "Radio" rail (replaces the retired podcast/listen rails) with station cards.
+  - Solo/group walk media panel: "Radio" tab picks a station instead of a podcast.
+- Admin: `/admin/radio` — CRUD stations, upload tracks straight to R2 via a signed-PUT server fn, reorder, toggle active.
+- Retire the ambient-video backdrop as the *audio* source of truth; keep the video visual, but audio comes from Radio.
 
-**Navigation cleanup:**
-- Mobile tab bar: no changes to primary tabs, but the compose sheet "Walk now" (solo) is removed → replaced with "Post a walk" (group/share)
-- `/more`: remove Circles row, add Groups row, remove Listen/Read if pointing at retired surfaces
-- Home page rails: drop podcast rail + external-articles rail
+**Secrets needed (I'll request via add_secret when we start):** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE` (optional CDN).
 
-**Database (migration):**
-- Drop routes' backing tables only if fully unused: `podcast_feeds`, `podcast_episodes`, `listen_collections`, `listen_collection_items`, `listen_events`, `listen_search_log`, `blog_feeds` — after code refs are gone
-- Leave `circles` / `circle_members` in place for now (data-preservation) but stop reading from them; drop in a later cleanup wave once we confirm no user impact
-- Leave `walk_sessions` intact (badges reference it); the solo *UI* is what disappears, not the historical rows
+### Part B — First-party Blog CMS
 
-**Redirects:**
-- `/walk` → `/` (public grid)
-- `/listen`, `/listen/*` → `/`
-- `/read` (aggregated feed) → `/blog` (first-party only)
-- `/circles`, `/circles/*` → `/groups`
+**Goal:** `/blog` is our SEO front door. Real posts, real editor, no RSS.
 
-**SEO:**
-- Remove retired routes from any sitemap/head references
-- Ensure home + `/groups` + `/blog` + `/u/$username` + `/g/$slug` + `/w/$code` are the shareable canon
-
-### Not in this wave
-
-- MHWC Radio on Cloudflare R2 (Wave 6)
-- First-party blog CMS polish + editor (Wave 6)
-- Final launch QA pass (Wave 7)
+- DB: extend `blog_posts` for first-party use — `author_id`, `slug` (unique), `status` (`draft`|`published`), `body_md`, `body_html`, `cover_url`, `seo_title`, `seo_description`, `published_at`. Keep `reader_html` columns for any legacy rows, but new posts don't use them. Drop the `blog_feeds` FK requirement on new inserts.
+- Routes:
+  - `/blog` — public index, SEO head, paginated list of published posts.
+  - `/blog/$slug` — public post page, JSON-LD `Article`, canonical, OG image = `cover_url`.
+  - `/admin/blog` — list + "New post".
+  - `/admin/blog/$id` — editor: title, slug (auto from title, editable), cover upload (Supabase Storage `blog-covers` bucket), Markdown body with live preview, SEO title/description, publish toggle.
+- Server: `src/lib/blog-cms.functions.ts` — `listPublished`, `getBySlug`, `adminList`, `adminUpsert`, `adminDelete`, `adminPublish`. Markdown → HTML server-side (`marked` + `sanitize-html`) so the client renders trusted HTML.
+- Retire the in-app "reader view" for external URLs (`/read/$postId`) — redirect to `/blog` since external ingestion is gone.
+- Sitemap: add `/blog` + each published slug to the existing sitemap route.
 
 ### Deliverable order
 
-1. Redirect stubs for retired routes so nothing 404s mid-refactor
-2. Nav + compose sheet cleanup
-3. Home page — remove retired rails
-4. Delete retired route files + their query hooks/components
-5. Migration to drop podcast/listen/blog-feed tables
-6. Grep sweep + typecheck to confirm zero dangling imports
+1. Radio DB migration + GRANTs/RLS + admin CRUD server fns.
+2. R2 signed-URL helpers (server-only) + admin upload flow.
+3. `NowPlayingDock` radio source + home Radio rail + walk media panel Radio tab.
+4. Blog CMS DB migration (extend `blog_posts`, add `blog-covers` storage bucket).
+5. `/admin/blog` list + editor with Markdown + cover upload.
+6. Public `/blog` + `/blog/$slug` with SEO/JSON-LD + sitemap entries.
+7. Redirect `/read/*` → `/blog`; grep sweep; typecheck.
 
-Approve and I'll run Wave 5.
+### Not in this wave
+
+- Comments/reactions on blog posts.
+- Multi-author permissions beyond "admin can edit anything".
+- Radio scheduling / live streams (stations are shuffled track lists in V1).
+- Wave 7: final launch QA pass (perf, a11y, SEO audit, empty-state polish).
+
+### Question before I start
+
+Radio needs Cloudflare R2 credentials. Do you already have an R2 bucket + API token, or should I walk you through creating one before Wave 6 begins?

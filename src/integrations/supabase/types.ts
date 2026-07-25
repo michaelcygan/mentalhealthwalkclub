@@ -264,55 +264,82 @@ export type Database = {
       }
       blog_posts: {
         Row: {
+          author_id: string | null
+          body_html: string | null
+          body_md: string | null
+          cover_url: string | null
           created_at: string
           featured_rank: number | null
-          feed_id: string
-          guid: string
+          feed_id: string | null
+          guid: string | null
           id: string
           image_url: string | null
           is_featured: boolean
-          link: string
+          link: string | null
           published_at: string | null
           reader_byline: string | null
           reader_excerpt: string | null
           reader_html: string | null
           reader_parsed_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string | null
+          status: string
           summary: string | null
           title: string
+          updated_at: string
         }
         Insert: {
+          author_id?: string | null
+          body_html?: string | null
+          body_md?: string | null
+          cover_url?: string | null
           created_at?: string
           featured_rank?: number | null
-          feed_id: string
-          guid: string
+          feed_id?: string | null
+          guid?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean
-          link: string
+          link?: string | null
           published_at?: string | null
           reader_byline?: string | null
           reader_excerpt?: string | null
           reader_html?: string | null
           reader_parsed_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string | null
+          status?: string
           summary?: string | null
           title: string
+          updated_at?: string
         }
         Update: {
+          author_id?: string | null
+          body_html?: string | null
+          body_md?: string | null
+          cover_url?: string | null
           created_at?: string
           featured_rank?: number | null
-          feed_id?: string
-          guid?: string
+          feed_id?: string | null
+          guid?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean
-          link?: string
+          link?: string | null
           published_at?: string | null
           reader_byline?: string | null
           reader_excerpt?: string | null
           reader_html?: string | null
           reader_parsed_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string | null
+          status?: string
           summary?: string | null
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2116,6 +2143,89 @@ export type Database = {
           walks_hosted?: number
         }
         Relationships: []
+      }
+      radio_stations: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          slug: string
+          sort: number
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slug: string
+          sort?: number
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slug?: string
+          sort?: number
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      radio_tracks: {
+        Row: {
+          artist: string | null
+          created_at: string
+          duration_s: number | null
+          id: string
+          is_active: boolean
+          sort: number
+          station_id: string
+          storage_key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          artist?: string | null
+          created_at?: string
+          duration_s?: number | null
+          id?: string
+          is_active?: boolean
+          sort?: number
+          station_id: string
+          storage_key: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          artist?: string | null
+          created_at?: string
+          duration_s?: number | null
+          id?: string
+          is_active?: boolean
+          sort?: number
+          station_id?: string
+          storage_key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_tracks_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "radio_stations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       safety_reports: {
         Row: {
