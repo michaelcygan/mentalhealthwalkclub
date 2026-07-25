@@ -336,7 +336,15 @@ function ComposeWalkPage() {
       {/* WHEN */}
       <section ref={whenRef} className="mt-6 space-y-2">
         <Label>When</Label>
-        <WhenPicker value={startsAt} onChange={setStartsAt} />
+        <WhenPicker
+          value={startsAt}
+          onChange={setStartsAt}
+          location={
+            pickedPlace?.lat != null && pickedPlace?.lng != null
+              ? { name: pickedPlace.name, lat: pickedPlace.lat, lng: pickedPlace.lng }
+              : null
+          }
+        />
       </section>
 
       {/* TITLE + VIBE */}
