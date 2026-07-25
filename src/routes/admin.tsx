@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart, Shield, Inbox, Users as UsersIcon } from "lucide-react";
+import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart, Shield, Inbox, Users as UsersIcon, Radio } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -59,18 +59,18 @@ function AdminLayout() {
           <CalendarDays className="h-3.5 w-3.5" /> Events
         </Link>
         <Link
-          to="/admin/podcasts"
+          to="/admin/radio"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
           activeProps={{ className: "active" }}
         >
-          <Headphones className="h-3.5 w-3.5" /> Podcasts
+          <Radio className="h-3.5 w-3.5" /> Radio
         </Link>
         <Link
-          to="/admin/blogs"
+          to="/admin/blog"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
           activeProps={{ className: "active" }}
         >
-          <BookOpen className="h-3.5 w-3.5" /> Blogs
+          <BookOpen className="h-3.5 w-3.5" /> Blog
         </Link>
         <Link
           to="/admin/collections"

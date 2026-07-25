@@ -15,6 +15,7 @@ import { Reflect30s } from "@/components/home/reflect-30s";
 import { WeekSummary } from "@/components/home/week-summary";
 import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
+import { RadioRail } from "@/components/home/radio-rail";
 
 import { Shimmer } from "@/components/ui/shimmer";
 import { WalkCard, type WalkCardData } from "@/components/discover/walk-card";
@@ -104,6 +105,8 @@ function LoggedOutHome({
 
       <NearbyGrid initialWalks={initialWalks} publicMode subtitle="Public walks anyone can join" />
 
+      <RadioRail />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <ValueCard icon={CalendarPlus} title="Post a walk" body="Pick a place and time. Get a sharable page you can drop in a group chat or story." />
         <ValueCard icon={Footprints} title="Walk together" body="RSVP, follow, and keep a small group walking every week." />
@@ -153,6 +156,7 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
       <TodayIsland user={user} />
       <UpcomingRail />
       <NearbyGrid initialWalks={initialWalks} subtitle="Public walks within reach" />
+      <RadioRail />
       <BestWindow />
       <Reflect30s lastReflection={lastReflection} />
       <WeekSummary />

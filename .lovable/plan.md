@@ -1,54 +1,81 @@
-## Wave 6 — MHWC Radio + First-Party Blog CMS
+## Wave 6 — MHWC Radio + Blog CMS (Option B: Lovable Cloud Storage)
 
-With retirement done, Wave 6 turns the two "content" surfaces we kept into real, first-party product. Radio replaces the podcast rail as the app's ambient companion, and Blog becomes an editable SEO surface owned by us — not an RSS aggregator.
+Schema is already live from the previous step. This plan wires Radio to Lovable Cloud Storage and builds the Blog CMS end-to-end.
 
-### Part A — MHWC Radio (Cloudflare R2)
+### 1. Storage buckets
 
-**Goal:** a small, curated set of ambient "stations" that stream from our own storage and play anywhere in the app (home dock, solo/group walk, background).
+- Create private bucket `radio-tracks` (audio files, served via short-lived signed URLs).
+- Create public bucket `blog-covers` (post cover images, direct URLs).
+- RLS on `storage.objects`: admins can insert/update/delete in both; anyone can read `blog-covers`; `radio-tracks` reads only through signed URLs from server fns.
 
-- Storage: Cloudflare R2 bucket `mhwc-radio` with per-station folders (`stations/forest/`, `stations/rain/`, `stations/city-dusk/`, …), each containing 1–N `.mp3`/`.m4a` tracks + a `manifest.json` (title, artist, license, duration).
-- DB: `radio_stations` (slug, title, subtitle, cover_url, is_active, sort) + `radio_tracks` (station_id, storage_key, title, duration_s, sort). Public read, admin write. GRANTs + RLS included.
-- Server: `src/lib/radio.functions.ts` — `listStations()`, `getStation(slug)`, `signTrackUrl(track_id)` (short-lived signed R2 URL so we don't expose the bucket).
-- Player: fold Radio into the existing universal `NowPlayingDock` — new source type `"radio"` alongside ambient/podcast. Shuffle within a station, auto-advance, remember last station per user in localStorage.
-- Surfaces:
-  - Home: single "Radio" rail (replaces the retired podcast/listen rails) with station cards.
-  - Solo/group walk media panel: "Radio" tab picks a station instead of a podcast.
-- Admin: `/admin/radio` — CRUD stations, upload tracks straight to R2 via a signed-PUT server fn, reorder, toggle active.
-- Retire the ambient-video backdrop as the *audio* source of truth; keep the video visual, but audio comes from Radio.
+### 2. Radio server layer
 
-**Secrets needed (I'll request via add_secret when we start):** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE` (optional CDN).
+New file `src/lib/radio.functions.ts`:
+- `listStations()` — public, returns active stations sorted.
+- `getStation(slug)` — public, returns station + track list (without URLs).
+- `signTrackUrl({ trackId })` — public, returns a short-lived signed URL (5 min) for one track's storage key.
+- Admin: `adminListStations`, `adminUpsertStation`, `adminDeleteStation`, `adminUpsertTrack`, `adminDeleteTrack`, `adminReorderTracks`, `adminSignUpload({ stationSlug, filename })` returning a signed upload URL for direct browser-to-storage PUT.
 
-### Part B — First-party Blog CMS
+All admin fns gated by `has_role(auth.uid(),'admin')` via `requireSupabaseAuth` + role check inside handler.
 
-**Goal:** `/blog` is our SEO front door. Real posts, real editor, no RSS.
+### 3. Radio player integration
 
-- DB: extend `blog_posts` for first-party use — `author_id`, `slug` (unique), `status` (`draft`|`published`), `body_md`, `body_html`, `cover_url`, `seo_title`, `seo_description`, `published_at`. Keep `reader_html` columns for any legacy rows, but new posts don't use them. Drop the `blog_feeds` FK requirement on new inserts.
-- Routes:
-  - `/blog` — public index, SEO head, paginated list of published posts.
-  - `/blog/$slug` — public post page, JSON-LD `Article`, canonical, OG image = `cover_url`.
-  - `/admin/blog` — list + "New post".
-  - `/admin/blog/$id` — editor: title, slug (auto from title, editable), cover upload (Supabase Storage `blog-covers` bucket), Markdown body with live preview, SEO title/description, publish toggle.
-- Server: `src/lib/blog-cms.functions.ts` — `listPublished`, `getBySlug`, `adminList`, `adminUpsert`, `adminDelete`, `adminPublish`. Markdown → HTML server-side (`marked` + `sanitize-html`) so the client renders trusted HTML.
-- Retire the in-app "reader view" for external URLs (`/read/$postId`) — redirect to `/blog` since external ingestion is gone.
-- Sitemap: add `/blog` + each published slug to the existing sitemap route.
+- Extend `src/lib/player-context.tsx` (or add a light `radio-context`) to accept a `"radio"` source with `{ stationId, tracks[], index, shuffle }`. Auto-advance on `ended`, refresh signed URL just-in-time per track.
+- Persist last station slug in `localStorage`.
+- `NowPlayingDock` and `NowPlayingSheet` already render generic title/subtitle/cover — pass radio metadata through the existing player context; no dock redesign needed.
 
-### Deliverable order
+### 4. Home surface
 
-1. Radio DB migration + GRANTs/RLS + admin CRUD server fns.
-2. R2 signed-URL helpers (server-only) + admin upload flow.
-3. `NowPlayingDock` radio source + home Radio rail + walk media panel Radio tab.
-4. Blog CMS DB migration (extend `blog_posts`, add `blog-covers` storage bucket).
-5. `/admin/blog` list + editor with Markdown + cover upload.
-6. Public `/blog` + `/blog/$slug` with SEO/JSON-LD + sitemap entries.
-7. Redirect `/read/*` → `/blog`; grep sweep; typecheck.
+- New `src/components/home/radio-rail.tsx` — horizontal station cards (cover, title, subtitle). Tap = start station in the universal player.
+- Mount on `src/routes/index.tsx` in place of the retired Listen section. Public (no auth required).
+
+### 5. Admin — Radio
+
+- `src/routes/admin.radio.tsx` — list stations + "New station" sheet.
+- `src/routes/admin.radio.$id.tsx` — edit station (title, subtitle, cover upload to `blog-covers`… actually a small `radio-covers` public bucket — added in step 1), track list with drag-reorder, file upload (browser gets signed PUT URL, uploads directly, then calls `adminUpsertTrack`).
+- Add link from `/admin` index.
+
+Correction to step 1: create three buckets — `radio-tracks` (private, audio), `radio-covers` (public, station art), `blog-covers` (public, post art).
+
+### 6. Blog CMS server layer
+
+New file `src/lib/blog-cms.functions.ts`:
+- Public: `listPublished({ limit, offset })`, `getBySlug(slug)`.
+- Admin: `adminList`, `adminGet(id)`, `adminUpsert` (slug auto-generated from title if missing, unique-checked), `adminDelete`, `adminPublish({ id, publish })`.
+- Server-side markdown → HTML via `marked` + `sanitize-html` on save; store both `body_md` and `body_html`.
+
+### 7. Public blog routes
+
+- `src/routes/blog.tsx` — index listing published posts (cover, title, excerpt, date). SEO head with title/description/OG.
+- `src/routes/blog.$slug.tsx` — post page. Renders sanitized `body_html`. Per-route head() with `seo_title`/`seo_description`, canonical, `og:image` = `cover_url`, JSON-LD `Article`.
+- Add `/blog` and each published slug to the existing sitemap route.
+
+### 8. Admin — Blog
+
+- `src/routes/admin.blog.tsx` — list drafts + published, "New post".
+- `src/routes/admin.blog.$id.tsx` — editor: title, slug (auto/editable), cover upload (`blog-covers`), Markdown textarea with live preview pane (client-side `marked` for preview only; server re-renders + sanitizes on save), SEO title/description, publish toggle, delete.
+
+### 9. Retire /read
+
+- `src/routes/_authenticated/read.$postId.tsx` → redirect to `/blog`.
+
+### 10. Verification
+
+- `bun add marked sanitize-html @types/sanitize-html` for CMS.
+- `bun add @aws-sdk/s3-request-presigner @aws-sdk/client-s3` NOT needed — Supabase Storage JS client already handles signed URLs.
+- Typecheck. Manual smoke: create a station via admin, upload one short mp3, play from home; create a draft post, publish, view at `/blog/<slug>`.
 
 ### Not in this wave
 
-- Comments/reactions on blog posts.
-- Multi-author permissions beyond "admin can edit anything".
-- Radio scheduling / live streams (stations are shuffled track lists in V1).
-- Wave 7: final launch QA pass (perf, a11y, SEO audit, empty-state polish).
+- Radio scheduling / live streams (stations are shuffled track lists).
+- Blog comments, multi-author permissions, drafts autosave.
+- Migration to R2 (can be done later without user-facing changes by swapping the storage helper).
 
-### Question before I start
+### Technical notes
 
-Radio needs Cloudflare R2 credentials. Do you already have an R2 bucket + API token, or should I walk you through creating one before Wave 6 begins?
+- Signed URL expiry: 5 min per track; refresh on advance. Avoids exposing raw storage keys.
+- Track uploads use `supabase.storage.from('radio-tracks').createSignedUploadUrl(path)` so large files don't route through server fns.
+- Sanitize-html allowlist: standard block/inline tags + `img[src,alt]`, `a[href,rel,target]`; strip `<script>`, `<iframe>`, event handlers.
+- Sitemap: extend existing sitemap generator to query `blog_posts` where `status='published'`.
+
+Ready to build on approval.
