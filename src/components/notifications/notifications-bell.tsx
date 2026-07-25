@@ -196,7 +196,6 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
                 );
               })}
             </ul>
-            </ul>
           )}
         </div>
       </SheetContent>
