@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, Headphones, Users, CalendarDays, ShoppingBag, Heart, Settings, ShieldCheck, LogOut, User as UserIcon, Sparkles, LifeBuoy } from "lucide-react";
+import { ChevronRight, Headphones, Users, ShoppingBag, Heart, Settings, ShieldCheck, LogOut, User as UserIcon, Sparkles, LifeBuoy } from "lucide-react";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -80,7 +80,7 @@ function MorePage() {
       <Section title="Explore">
         <Row to="/listen" icon={Headphones} label="Listen" hint="Podcasts & playlists" />
         <Row to="/circles" icon={Users} label="Circles & friends" hint="Manage" />
-        <Row to="/events" icon={CalendarDays} label="Events" hint="Upcoming walks" />
+        
         <Row to="/shop" icon={ShoppingBag} label="Shop" hint="Half funds nonprofits" />
         {isPlus && <Row to="/impact" icon={Sparkles} label="Your impact" hint="Where your Plus goes" />}
       </Section>

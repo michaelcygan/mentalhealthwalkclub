@@ -133,7 +133,7 @@ function GroupsPage() {
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
       <header className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <Link to="/discover" className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <Link to="/" className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3 w-3" /> Discover
           </Link>
           <h1 className="font-serif text-2xl text-foreground">Groups</h1>

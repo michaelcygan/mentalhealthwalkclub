@@ -521,6 +521,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "event_blocklist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "event_blocklist_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -608,6 +615,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_broadcasts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_circle_allowlist: {
@@ -639,6 +653,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_circle_allowlist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
             referencedColumns: ["id"]
           },
         ]
@@ -683,6 +704,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_photos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
             referencedColumns: ["id"]
           },
         ]
@@ -742,6 +770,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "event_rsvp_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "event_rsvp_guests_referred_by_guest_id_fkey"
             columns: ["referred_by_guest_id"]
             isOneToOne: false
@@ -781,6 +816,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
             referencedColumns: ["id"]
           },
           {
@@ -2089,6 +2131,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "safety_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "safety_reports_reported_user_id_fkey"
             columns: ["reported_user_id"]
             isOneToOne: false
@@ -2345,6 +2394,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
             referencedColumns: ["id"]
           },
           {
@@ -2700,6 +2756,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "walk_sessions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "walk_sessions_guided_track_id_fkey"
             columns: ["guided_track_id"]
             isOneToOne: false
@@ -2731,6 +2794,81 @@ export type Database = {
       }
     }
     Views: {
+      public_events: {
+        Row: {
+          attendee_count: number | null
+          audience_mode: string | null
+          city: string | null
+          cover_override_url: string | null
+          group_id: string | null
+          host_user_id: string | null
+          id: string | null
+          image_url: string | null
+          lat: number | null
+          lng: number | null
+          neighborhood: string | null
+          slug: string | null
+          starts_at: string | null
+          timezone: string | null
+          title: string | null
+          venue_name: string | null
+          visibility: string | null
+        }
+        Insert: {
+          attendee_count?: number | null
+          audience_mode?: string | null
+          city?: string | null
+          cover_override_url?: string | null
+          group_id?: string | null
+          host_user_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          neighborhood?: string | null
+          slug?: string | null
+          starts_at?: string | null
+          timezone?: string | null
+          title?: string | null
+          venue_name?: string | null
+          visibility?: string | null
+        }
+        Update: {
+          attendee_count?: number | null
+          audience_mode?: string | null
+          city?: string | null
+          cover_override_url?: string | null
+          group_id?: string | null
+          host_user_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          neighborhood?: string | null
+          slug?: string | null
+          starts_at?: string | null
+          timezone?: string | null
+          title?: string | null
+          venue_name?: string | null
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null

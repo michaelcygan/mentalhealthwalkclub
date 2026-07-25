@@ -14,7 +14,7 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
 ];
 
 const COMPOSE_HIDDEN_EXACT = new Set(["/auth", "/welcome", "/privacy", "/terms", "/shop/return"]);
-const COMPOSE_HIDDEN_PREFIX = ["/admin", "/w/", "/listen/", "/events/"];
+const COMPOSE_HIDDEN_PREFIX = ["/admin", "/w/", "/listen/"];
 
 function composeAllowed(path: string) {
   if (COMPOSE_HIDDEN_EXACT.has(path)) return false;
