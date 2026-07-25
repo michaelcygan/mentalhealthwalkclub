@@ -1029,6 +1029,24 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           created_at: string
@@ -2937,6 +2955,14 @@ export type Database = {
         Args: { _user_id: string; _walk_session_id: string }
         Returns: undefined
       }
+      follow_counts: {
+        Args: { _user: string }
+        Returns: {
+          followers: number
+          following: number
+          mutuals: number
+        }[]
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
@@ -2961,6 +2987,10 @@ export type Database = {
         Args: { _event: string; _user: string }
         Returns: boolean
       }
+      is_following: {
+        Args: { _followee: string; _follower: string }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group: string; _user: string }
         Returns: boolean
@@ -2969,6 +2999,7 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      is_mutual: { Args: { _a: string; _b: string }; Returns: boolean }
       recompute_walker_metrics: { Args: { _uid: string }; Returns: undefined }
       set_my_dob: { Args: { _dob: string }; Returns: string }
       user_in_event_allowlist: {
@@ -2999,6 +3030,8 @@ export type Database = {
         | "walk_broadcast"
         | "walk_reminder"
         | "weekly_recap"
+        | "follow"
+        | "mutual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3135,6 +3168,8 @@ export const Constants = {
         "walk_broadcast",
         "walk_reminder",
         "weekly_recap",
+        "follow",
+        "mutual",
       ],
     },
   },
