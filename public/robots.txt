@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/public/hooks/
+Disallow: /settings
+Disallow: /profile
+Disallow: /journal
+
+Sitemap: https://mentalhealthwalkclub.com/sitemap.xml
