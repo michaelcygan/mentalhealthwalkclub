@@ -169,12 +169,14 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map((n) => (
+              {items.map((n) => {
+                const isNew = !n.read_at || sessionUnread.has(n.id);
+                return (
                 <li key={n.id}>
                   <button
                     type="button"
                     onClick={() => onItem(n)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 ${!n.read_at ? "bg-accent/15" : ""}`}
+                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 ${isNew ? "bg-accent/15" : ""}`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground">
                       {n.actor?.avatar_url ? (
@@ -188,10 +190,12 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
                       {n.body && <p className="mt-0.5 truncate text-xs text-muted-foreground">{n.body}</p>}
                       <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{relTime(n.created_at)}</p>
                     </div>
-                    {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-forest" aria-hidden />}
+                    {isNew && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-forest" aria-hidden />}
                   </button>
                 </li>
-              ))}
+                );
+              })}
+            </ul>
             </ul>
           )}
         </div>
