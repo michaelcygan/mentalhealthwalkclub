@@ -60,7 +60,7 @@ export function FriendPulse() {
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Friend pulse</div>
         {more > 0 && (
-          <Link to="/discover" className="text-[11px] text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-[11px] text-muted-foreground hover:text-foreground">
             See all {items.length} →
           </Link>
         )}
