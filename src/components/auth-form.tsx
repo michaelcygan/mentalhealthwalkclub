@@ -191,7 +191,7 @@ export function AuthForm({
               <Footprints className="h-3.5 w-3.5" /> Free
             </span>
             <span className="text-[11px] leading-tight text-muted-foreground">
-              Unlimited Solo + Guided · 5 Walk & Talks/mo
+              Post walks, join groups, keep a journal, listen to Radio
             </span>
           </button>
           <button
@@ -207,7 +207,7 @@ export function AuthForm({
               <Sparkles className="h-3.5 w-3.5 text-forest" /> Plus
             </span>
             <span className="text-[11px] leading-tight text-muted-foreground">
-              Free 30 days · then $2.99/mo · Unlimited Circles, trails, groups · 50% to nonprofits
+              Free 30 days · then $2.99/mo · Extra groups & insights · 50% to nonprofits
             </span>
           </button>
         </div>
