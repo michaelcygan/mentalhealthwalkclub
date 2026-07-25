@@ -22,9 +22,17 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Join the Mental Health Walk Club. Solo, Guided, Walk & Talk, and in-person Local Walks. Free forever — Plus is $2.99/mo with a 30-day free trial, and half of every Plus dollar goes to the 988 Suicide & Crisis Lifeline.",
+          "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio. Free forever — Plus supporters help keep half of every dollar flowing to mental-health nonprofits.",
       },
+      { property: "og:title", content: "Sign in — Mental Health Walk Club" },
+      { property: "og:description", content: "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio." },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/auth" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
     ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/auth" }],
   }),
 });
 

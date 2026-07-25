@@ -15,8 +15,15 @@ export const Route = createFileRoute("/w/$code/recap")({
     meta: [
       { title: `Recap · ${params.code} · Mental Health Walk Club` },
       { name: "description", content: "We walked. Here's the recap." },
-      { property: "og:image", content: `/api/public/walk/${params.code}/og` },
+      { property: "og:title", content: `Recap · ${params.code} · Mental Health Walk Club` },
+      { property: "og:description", content: "We walked. Here's the recap." },
+      { property: "og:url", content: `https://mentalhealthwalkclub.com/w/${params.code}/recap` },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: `https://mentalhealthwalkclub.com/api/public/walk/${params.code}/og` },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: `https://mentalhealthwalkclub.com/api/public/walk/${params.code}/og` },
     ],
+    links: [{ rel: "canonical", href: `https://mentalhealthwalkclub.com/w/${params.code}/recap` }],
   }),
   errorComponent: ({ error }) => (
     <div className="mx-auto max-w-md p-10 text-center">

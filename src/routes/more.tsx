@@ -10,7 +10,20 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/more")({
   component: MorePage,
-  head: () => ({ meta: [{ title: "More — Mental Health Walk Club" }] }),
+  head: () => ({
+    meta: [
+      { title: "More — Mental Health Walk Club" },
+      { name: "description", content: "Settings, support, and everything else in the Mental Health Walk Club." },
+      { property: "og:title", content: "More — Mental Health Walk Club" },
+      { property: "og:description", content: "Settings, support, and everything else in the Mental Health Walk Club." },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/more" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+    ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/more" }],
+  }),
 });
 
 interface MiniProfile {
