@@ -28,6 +28,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
+import { Route as GSlugRouteImport } from './routes/g.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSafetyRouteImport } from './routes/admin.safety'
@@ -156,6 +157,11 @@ const ShopReturnRoute = ShopReturnRouteImport.update({
   id: '/return',
   path: '/return',
   getParentRoute: () => ShopRoute,
+} as any)
+const GSlugRoute = GSlugRouteImport.update({
+  id: '/g/$slug',
+  path: '/g/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
@@ -365,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -419,6 +426,7 @@ export interface FileRoutesByTo {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -585,6 +595,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -679,6 +691,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
+  GSlugRoute: typeof GSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   WCodeRoute: typeof WCodeRouteWithChildren
   ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
@@ -824,6 +837,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop/return'
       preLoaderRoute: typeof ShopReturnRouteImport
       parentRoute: typeof ShopRoute
+    }
+    '/g/$slug': {
+      id: '/g/$slug'
+      path: '/g/$slug'
+      fullPath: '/g/$slug'
+      preLoaderRoute: typeof GSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/events/$slug': {
       id: '/events/$slug'
@@ -1219,6 +1239,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
+  GSlugRoute: GSlugRoute,
   UUsernameRoute: UUsernameRoute,
   WCodeRoute: WCodeRouteWithChildren,
   ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,

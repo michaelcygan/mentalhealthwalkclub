@@ -70,7 +70,7 @@ function PublicGroupPage() {
     const { data: evs } = await supabase
       .from("events")
       .select("id, slug, title, starts_at, meeting_point, attendee_count")
-      .eq("group_id", data.id)
+      .eq("group_id", data.id as string)
       .eq("status", "published")
       .gte("starts_at", new Date().toISOString())
       .order("starts_at", { ascending: true })
