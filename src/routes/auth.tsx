@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { AuthForm, type AuthPlan } from "@/components/auth-form";
 import { LogoStamp } from "@/components/logo-stamp";
-import { Footprints, Headphones, Mic, MapPin } from "lucide-react";
+import { Footprints, Headphones, Users, BookHeart } from "lucide-react";
 
 interface AuthSearch {
   mode?: "signin" | "signup";
