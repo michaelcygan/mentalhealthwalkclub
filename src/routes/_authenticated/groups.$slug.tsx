@@ -103,6 +103,15 @@ function GroupDetailPage() {
         )}
 
         <div className="mt-4 flex flex-wrap gap-2">
+          {group.visibility === "public" && (
+            <Link
+              to="/g/$slug"
+              params={{ slug: group.slug }}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-sm hover:bg-accent/40"
+            >
+              <Globe className="h-4 w-4" /> Public page
+            </Link>
+          )}
           {!is_owner && !isMember && group.visibility === "public" && <Button onClick={onJoin} disabled={busy} className="rounded-full bg-forest text-primary-foreground">Join</Button>}
           {!is_owner && isMember && <Button onClick={onLeave} disabled={busy} variant="outline" className="rounded-full"><LogOut className="mr-1 h-4 w-4" /> Leave</Button>}
           {is_owner && <Button onClick={onDelete} variant="outline" className="rounded-full border-destructive/40 text-destructive"><Trash2 className="mr-1 h-4 w-4" /> Delete</Button>}

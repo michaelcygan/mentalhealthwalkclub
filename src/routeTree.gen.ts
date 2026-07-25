@@ -19,6 +19,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
+import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -27,6 +28,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
+import { Route as GSlugRouteImport } from './routes/g.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSafetyRouteImport } from './routes/admin.safety'
@@ -42,7 +44,6 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
-import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AuthenticatedWalkIndexRouteImport } from './routes/_authenticated/walk.index'
@@ -113,6 +114,11 @@ const ImpactRoute = ImpactRouteImport.update({
   path: '/impact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -151,6 +157,11 @@ const ShopReturnRoute = ShopReturnRouteImport.update({
   id: '/return',
   path: '/return',
   getParentRoute: () => ShopRoute,
+} as any)
+const GSlugRoute = GSlugRouteImport.update({
+  id: '/g/$slug',
+  path: '/g/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
@@ -227,11 +238,6 @@ const AuthenticatedListenRoute = AuthenticatedListenRouteImport.update({
   path: '/listen',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
@@ -283,9 +289,9 @@ const AuthenticatedListenIdRoute = AuthenticatedListenIdRouteImport.update({
   getParentRoute: () => AuthenticatedListenRoute,
 } as any)
 const AuthenticatedGroupsSlugRoute = AuthenticatedGroupsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => AuthenticatedGroupsRoute,
+  id: '/groups/$slug',
+  path: '/groups/$slug',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -349,7 +356,6 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
-  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -365,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -403,7 +411,6 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
-  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -419,6 +426,7 @@ export interface FileRoutesByTo {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -447,6 +455,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -459,7 +468,6 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
-  '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
+  '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -503,6 +512,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -515,7 +525,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/circles'
     | '/discover'
-    | '/groups'
     | '/listen'
     | '/places'
     | '/trails'
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -569,7 +580,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/circles'
     | '/discover'
-    | '/groups'
     | '/listen'
     | '/places'
     | '/trails'
@@ -585,6 +595,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -612,6 +623,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -624,7 +636,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/_authenticated/circles'
     | '/_authenticated/discover'
-    | '/_authenticated/groups'
     | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/admin/safety'
     | '/admin/users'
     | '/events/$slug'
+    | '/g/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -668,6 +680,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
+  GroupsRoute: typeof GroupsRoute
   ImpactRoute: typeof ImpactRoute
   JournalRoute: typeof JournalRoute
   MoreRoute: typeof MoreRoute
@@ -678,6 +691,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
+  GSlugRoute: typeof GSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   WCodeRoute: typeof WCodeRouteWithChildren
   ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
@@ -761,6 +775,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImpactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events': {
       id: '/events'
       path: '/events'
@@ -816,6 +837,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop/return'
       preLoaderRoute: typeof ShopReturnRouteImport
       parentRoute: typeof ShopRoute
+    }
+    '/g/$slug': {
+      id: '/g/$slug'
+      path: '/g/$slug'
+      fullPath: '/g/$slug'
+      preLoaderRoute: typeof GSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/events/$slug': {
       id: '/events/$slug'
@@ -922,13 +950,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/groups': {
-      id: '/_authenticated/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/discover': {
       id: '/_authenticated/discover'
       path: '/discover'
@@ -1001,10 +1022,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/groups/$slug': {
       id: '/_authenticated/groups/$slug'
-      path: '/$slug'
+      path: '/groups/$slug'
       fullPath: '/groups/$slug'
       preLoaderRoute: typeof AuthenticatedGroupsSlugRouteImport
-      parentRoute: typeof AuthenticatedGroupsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
@@ -1065,17 +1086,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedGroupsRouteChildren {
-  AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
-}
-
-const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
-  AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
-}
-
-const AuthenticatedGroupsRouteWithChildren =
-  AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
-
 interface AuthenticatedListenRouteChildren {
   AuthenticatedListenIdRoute: typeof AuthenticatedListenIdRoute
   AuthenticatedListenCollectionSlugRoute: typeof AuthenticatedListenCollectionSlugRoute
@@ -1115,10 +1125,10 @@ const AuthenticatedTrailsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
-  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
+  AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
   AuthenticatedReadPostIdRoute: typeof AuthenticatedReadPostIdRoute
   AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
   AuthenticatedWalkIndexRoute: typeof AuthenticatedWalkIndexRoute
@@ -1127,10 +1137,10 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
-  AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
+  AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
   AuthenticatedReadPostIdRoute: AuthenticatedReadPostIdRoute,
   AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
   AuthenticatedWalkIndexRoute: AuthenticatedWalkIndexRoute,
@@ -1218,6 +1228,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
+  GroupsRoute: GroupsRoute,
   ImpactRoute: ImpactRoute,
   JournalRoute: JournalRoute,
   MoreRoute: MoreRoute,
@@ -1228,6 +1239,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
+  GSlugRoute: GSlugRoute,
   UUsernameRoute: UUsernameRoute,
   WCodeRoute: WCodeRouteWithChildren,
   ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,

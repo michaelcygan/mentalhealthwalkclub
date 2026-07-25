@@ -1,94 +1,84 @@
-# Wave 3 — Directional follows & public profiles
+## Wave 4 — Groups as the V1 social container
 
-The V1 spec calls for **directional follows / mutuals** (replacing the current bidirectional-request "friendships" table) and profile pages that work for both signed-in and signed-out visitors. Today the app has:
+Wave 3 gave every walker a shareable public identity. Wave 4 gives them a shareable place to gather. Groups replace Circles for V1: public, discoverable, hostable, joinable — the ongoing home for a neighborhood, campus, or community.
 
-- `friendships` table with `user_low / user_high / requested_by / status='pending|accepted|declined'` — symmetric handshake, wrong shape for V1.
-- `/profile` route (self-only, editor). No public `/@username` page.
-- `public_profiles` view (added in Wave 1) already exposing safe columns — unused so far.
+### Scope
 
-## Goals
+**In:** public group pages, group discovery, join/leave, hosted walks scoped to a group, group roles (owner/mod/member), SEO metadata on group pages, retiring Circles from the visible app.
 
-1. Replace friend handshake with **directional follows** — A follows B is one row; **mutual** = both rows exist.
-2. Ship a **public `/@username` profile route** (SSR, shareable, indexable) that renders for signed-out visitors and shows a Follow button when signed in.
-3. Rename self-profile URL from `/profile` → `/me` and keep a redirect.
-4. Retire "friend request" UI copy in favor of Follow / Following / Followers / Mutuals.
+**Out (later waves):** group chat/threads, group announcements beyond hosted walks, paid/private groups, Radio, Blog, badges polish, journal polish.
 
-## Data model
+### Deliverables
 
-New table `public.follows`:
+1. **Public group page** at `/g/$slug`
+   - SEO head (title/description/og:title/og:description, canonical, og:image only when the group has a real cover URL).
+   - Server-loaded via a public server fn behind the `SUPABASE_PUBLISHABLE_KEY` client and a narrow `TO anon` SELECT policy on a `public_groups` view (safe columns only: id, slug, name, tagline, cover_url, city, member_count, created_at).
+   - Renders: header + cover, tagline, member count, upcoming walks hosted by the group (reusing `WalkCard`), and a small "recent members" strip (avatar + username → `/u/$username`).
+   - Signed-out: "Join to walk with them" CTA opens auth prompt with return URL back to the group page.
+   - Signed-in non-member: "Join" primary action (optimistic). Member: "Joined" with menu to Leave. Owner/mod: "Manage" link into the authed surface.
 
-```
-follower_id  uuid  → auth.users (the actor)
-followee_id  uuid  → auth.users (the target)
-created_at   timestamptz
-PRIMARY KEY (follower_id, followee_id)
-CHECK (follower_id <> followee_id)
-```
+2. **Groups discovery** at `/groups` (public)
+   - Public server fn `listPublicGroups({ city?, q?, limit })` reading `public_groups`.
+   - Grid of group cards; empty state pitches "Start a group" (auth-gated).
+   - Head metadata + a single H1.
 
-RLS:
-- `SELECT` — `authenticated` (anyone signed in can see who follows whom, needed for mutuals + follower lists).
-- `INSERT` — `follower_id = auth.uid()` only.
-- `DELETE` — same. No UPDATE.
-- No `anon` grant; follower counts on the public profile page come from a `SECURITY DEFINER` counter function.
+3. **Authed surfaces**
+   - `/_authenticated/groups.new` — create form (name, slug preview, tagline, city, cover). Slug uniqueness enforced server-side; auto-generated from name with collision suffix.
+   - `/_authenticated/groups.$slug.manage` — owner/mod only. Edit basics, promote/demote mods, remove members.
+   - Rename existing authed `/circles` → keep the route file but redirect to `/groups`; the "My groups" list surfaces on the existing profile/more surface.
 
-Helper SQL functions (all `SECURITY INVOKER` unless noted):
-- `public.is_following(_follower uuid, _followee uuid) returns boolean`
-- `public.is_mutual(_a uuid, _b uuid) returns boolean`
-- `public.follow_counts(_user uuid) returns (followers int, following int, mutuals int)` — `SECURITY DEFINER` so counts render on public profile pages without granting `anon` broad read.
+4. **Walks ↔ Groups**
+   - Reuse existing `events.group_id` column. `walk.new` gains an optional "Post to a group" selector populated from `listMyGroups()` (memberships).
+   - Public walk cards already surface their group; add a subtle "in {Group}" chip that links to `/g/$slug` when present.
 
-`friendships` table: leave in place, do NOT drop yet — read-only during Wave 3 so existing data isn't lost. A later wave can migrate accepted rows into two `follows` rows and drop the table.
+5. **Retire Circles from V1 visible surface**
+   - Remove Circles from mobile tab bar / more page.
+   - `/circles` route stays as a redirect to `/groups` so old links don't 404.
+   - `event_circle_allowlist` + `circles` tables stay in the DB (frozen) — not dropped in this wave to avoid destabilizing existing events with allowlists. A later cleanup wave handles it.
 
-## Server functions (`src/lib/follows.functions.ts` — new)
+6. **Notifications**
+   - Extend `notification_kind` with `group_join` and `group_walk_posted`.
+   - Fire `group_join` to group owner when someone joins (rate-limited: at most one per user per group).
+   - Fire `group_walk_posted` to members when a walk is posted to their group.
 
-- `followUser({ userId })` — insert row; emit `follow` notification.
-- `unfollowUser({ userId })` — delete row.
-- `getFollowState({ userId })` — `{ iFollow, followsMe, mutual }`.
-- `listFollowers({ userId, limit, cursor })` / `listFollowing({ userId, limit, cursor })` — paginated, join `profiles`.
-- `listMutuals({ userId })` — used for "Walk with" suggestions.
-- `getPublicProfileByUsername({ username })` — reads `public_profiles`; returns `null` on miss so the route can `throw notFound()`.
+### Data model additions
 
-The old `sendFriendRequest / respondFriendRequest / removeFriendship / listFriends` server fns stay exported but delegate:
-- `sendFriendRequest` → `followUser`
-- `respondFriendRequest` → no-op (returns ok) — with directional follows there is nothing to accept.
-- `removeFriendship` → `unfollowUser`
-- `listFriends` → `listMutuals`
-This keeps existing screens working while call sites migrate.
+- `public.groups` — already exists. Ensure columns: `slug` (unique, citext or lower-cased text), `name`, `tagline`, `cover_url`, `city`, `member_count` (maintained by trigger), `owner_id`, `created_at`, `updated_at`. Add missing pieces via migration only if absent.
+- `public.group_memberships` — already exists with `role` (owner/mod/member) and `status`. Add trigger `tg_group_member_count` to keep `groups.member_count` in sync on insert/update/delete when `status='active'`.
+- `public.public_groups` view — `SELECT id, slug, name, tagline, cover_url, city, member_count, created_at FROM public.groups WHERE visibility = 'public'`. Grant `SELECT` to `anon` and `authenticated`.
+- RLS on `groups`:
+  - Public SELECT via the view (no direct `anon` grant on the base table).
+  - `authenticated` SELECT: own + public.
+  - INSERT: `authenticated`, `owner_id = auth.uid()`.
+  - UPDATE/DELETE: `owner_id = auth.uid()` OR `has_group_role(auth.uid(), id, 'mod'|'owner')` via a security-definer function.
+- Owner-visible reads: any hidden/private state must have an owner-scoped SELECT policy in the same migration (per public-schema-grants rule).
+- Slug uniqueness: `UNIQUE (lower(slug))`.
 
-## Routes
+### Server functions
 
-New:
-- `src/routes/u.$username.tsx` — public profile.
-  - Loader calls `getPublicProfileByUsername` + `follow_counts` (server fn wrapper). `notFound()` on miss.
-  - `head()` sets title/description/og:title/og:url/canonical + `og:image` when the profile has an avatar (absolute URL).
-  - Renders: avatar, display name, `@username`, bio, city, follower / following / mutual counts, upcoming public walks they host (reads `public_events` filtered by `host_user_id`), and past hosted walks (public view only). For signed-in visitors: Follow / Unfollow button and mutual badge.
-- `src/routes/_authenticated/me.tsx` — self editor, same content as the current `/profile` page.
-- `src/routes/profile.tsx` — kept as a `beforeLoad` redirect to `/me` for old links / bookmarks.
-- `src/routes/u.$username.followers.tsx`, `src/routes/u.$username.following.tsx` — paginated lists (authenticated view only; unauthenticated redirected through the public profile).
+- **Public (no auth):** `getPublicGroupBySlug({ slug })`, `listPublicGroups({ q?, city?, limit? })`. Both use the server publishable client with the `sb_` fetch shim already used in `follows.functions.ts`.
+- **Authed:** `joinGroup({ groupId })`, `leaveGroup({ groupId })`, `getMyMembership({ groupId })`, `listMyGroups()`, `createGroup({ name, tagline?, city?, cover_url? })`, `updateGroup({ id, ... })`, `listGroupMembers({ groupId, limit })`, `setMemberRole({ groupId, userId, role })`, `removeMember({ groupId, userId })`.
+- All authed fns use `requireSupabaseAuth`; role checks call a `has_group_role` security-definer function to avoid RLS recursion.
 
-Rename references in the mobile tab bar, `more.tsx`, and any `Link to="/profile"` to `/me`.
+### Verification
 
-## UI
+- Type check (tsgo) clean after each migration + code batch.
+- Manual: signed-out `/g/$slug` renders with SEO head; `/groups` lists; join → optimistic UI + member_count increments; post walk to group → visible on group page; leave → decrements; `/circles` redirects.
+- Linter (supabase--linter) run after the migration; fix flagged items before finishing the wave.
 
-- Replace the "Add friend / Accept / Decline" affordances in `circles.tsx` and any friend surfaces with a single **Follow** button that toggles to **Following** on hover ("Unfollow"). Mutual state gets a small "Walk buddy" chip.
-- Notification kinds: keep `friend_request` in the DB (backwards compatible) and add `follow` and `mutual` kinds; new emits use the new kinds, old rows keep rendering.
-- Copy sweep: "friends" → "mutuals" in headings; "requests" chip removed from Circles.
+### Order of operations
 
-## Out of scope for this wave
+1. Migration: `public_groups` view, `has_group_role`, member-count trigger, slug uniqueness, `group_join` + `group_walk_posted` notification kinds, RLS additions/updates, GRANTs.
+2. Public server fns + `/g/$slug` + `/groups` routes.
+3. Authed server fns + `/_authenticated/groups.new` + `/_authenticated/groups.$slug.manage`.
+4. Wire `walk.new` group selector + public walk cards' group chip.
+5. Retire Circles from visible nav; add `/circles` → `/groups` redirect.
+6. Notifications wiring for join + walk-posted.
 
-- Backfilling `friendships → follows` (do later, once Wave 3 is stable in prod).
-- Blocking / mute controls (they exist on the events audience side already).
-- Discovery of accounts to follow — Wave 4 will bring "people you may know" once the follow graph has data.
+### Not doing this wave
 
-## Verification
+- Radio (Wave 5), SEO blog (Wave 6), badges/journal polish (Wave 7).
+- Group chat, invites-by-link, private/paid groups.
+- Dropping legacy `circles` / `event_circle_allowlist` tables.
 
-- Type-check clean after regen.
-- Manual: sign-out visit to `/@ownusername` returns 200 with meta title/description/canonical set to the profile URL, avatar renders as `og:image`, no Follow button. Signed-in visit shows Follow, tapping toggles state and refetches counts.
-- Manual: `/profile` redirects to `/me`. Old friend surfaces still render (via the delegated shims) without console errors.
-
-## Deliverables
-
-1. Migration: `follows` table + grants + RLS + helper functions.
-2. `src/lib/follows.functions.ts` and updates to `src/lib/social.functions.ts` (delegations).
-3. New routes `u.$username.tsx`, `_authenticated/me.tsx`, list routes; redirect route at `/profile`.
-4. UI updates in `circles.tsx`, `more.tsx`, mobile tab bar, notification renderers.
-5. No changes to unrelated flows (walks, journal, listen).
+Approve and I'll start with the migration.

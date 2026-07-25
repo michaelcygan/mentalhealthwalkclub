@@ -1198,6 +1198,13 @@ export type Database = {
             referencedRelation: "groups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "group_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "public_groups"
+            referencedColumns: ["id"]
+          },
         ]
       }
       group_standing_walks: {
@@ -1251,6 +1258,13 @@ export type Database = {
             referencedRelation: "groups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "group_standing_walks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "public_groups"
+            referencedColumns: ["id"]
+          },
         ]
       }
       groups: {
@@ -1262,6 +1276,7 @@ export type Database = {
           id: string
           lat: number | null
           lng: number | null
+          member_count: number
           name: string
           neighborhood: string | null
           owner_id: string
@@ -1281,6 +1296,7 @@ export type Database = {
           id?: string
           lat?: number | null
           lng?: number | null
+          member_count?: number
           name: string
           neighborhood?: string | null
           owner_id: string
@@ -1300,6 +1316,7 @@ export type Database = {
           id?: string
           lat?: number | null
           lng?: number | null
+          member_count?: number
           name?: string
           neighborhood?: string | null
           owner_id?: string
@@ -2887,6 +2904,42 @@ export type Database = {
           },
         ]
       }
+      public_groups: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          member_count: number | null
+          name: string | null
+          neighborhood: string | null
+          scope: string | null
+          slug: string | null
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          member_count?: number | null
+          name?: string | null
+          neighborhood?: string | null
+          scope?: string | null
+          slug?: string | null
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          member_count?: number | null
+          name?: string | null
+          neighborhood?: string | null
+          scope?: string | null
+          slug?: string | null
+        }
+        Relationships: []
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
@@ -2967,6 +3020,10 @@ export type Database = {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
       }
+      has_group_role: {
+        Args: { _group: string; _min_role: string; _user: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3032,6 +3089,8 @@ export type Database = {
         | "weekly_recap"
         | "follow"
         | "mutual"
+        | "group_join"
+        | "group_walk_posted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3170,6 +3229,8 @@ export const Constants = {
         "weekly_recap",
         "follow",
         "mutual",
+        "group_join",
+        "group_walk_posted",
       ],
     },
   },
