@@ -6,7 +6,13 @@ export const Route = createFileRoute("/privacy")({
     meta: [
       { title: "Privacy Policy — Mental Health Walk Club" },
       { name: "description", content: "How Mental Health Walk Club collects, uses, and protects your information." },
+      { property: "og:title", content: "Privacy Policy — Mental Health Walk Club" },
+      { property: "og:description", content: "How Mental Health Walk Club collects, uses, and protects your information." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/privacy" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/privacy" }],
   }),
 });
 

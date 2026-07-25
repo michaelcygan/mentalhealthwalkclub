@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 
 const SITE_URL = "https://mentalhealthwalkclub.com/blog";
 const DESC = "Essays and field notes on walking, mental health, and community from Mental Health Walk Club.";
+const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
 
 export const Route = createFileRoute("/blog")({
   component: BlogIndex,
@@ -19,9 +20,11 @@ export const Route = createFileRoute("/blog")({
       { property: "og:description", content: DESC },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: OG_DEFAULT },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Mental Health Walk Club — Blog" },
       { name: "twitter:description", content: DESC },
+      { name: "twitter:image", content: OG_DEFAULT },
     ],
     links: [{ rel: "canonical", href: SITE_URL }],
   }),
@@ -48,9 +51,18 @@ function BlogIndex() {
       </header>
 
       {posts.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No posts yet. Come back soon.
-        </p>
+        <div className="rounded-3xl border border-dashed border-border bg-card/40 p-8 text-center">
+          <p className="font-serif text-lg text-foreground">Nothing here yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Field notes and essays are on the way. In the meantime — get out for a walk.
+          </p>
+          <Link
+            to="/groups"
+            className="mt-5 inline-flex items-center gap-1 rounded-full bg-forest px-4 py-2 text-sm text-primary-foreground transition hover:opacity-90"
+          >
+            Find a walking group <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       ) : (
         <ul className="space-y-3">
           {posts.map((p) => (

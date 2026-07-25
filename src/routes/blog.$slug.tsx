@@ -28,10 +28,9 @@ export const Route = createFileRoute("/blog/$slug")({
       { name: "twitter:title", content: title },
       { name: "twitter:description", content: desc },
     ];
-    if (post.cover_signed) {
-      meta.push({ property: "og:image", content: post.cover_signed });
-      meta.push({ name: "twitter:image", content: post.cover_signed });
-    }
+    const image = post.cover_signed ?? "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+    meta.push({ property: "og:image", content: image });
+    meta.push({ name: "twitter:image", content: image });
     return {
       meta,
       links: [{ rel: "canonical", href: url }],

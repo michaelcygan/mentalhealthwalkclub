@@ -7,21 +7,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { getGroupBySlug, joinGroup, leaveGroup } from "@/lib/groups.functions";
 
+const GROUP_OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+
 export const Route = createFileRoute("/g/$slug")({
   component: PublicGroupPage,
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug.replace(/-/g, " ")} — Walking group` },
-      {
-        name: "description",
-        content: "A walking group on Mental Health Walk Club. Join to see standing walks and meetups.",
-      },
-      { property: "og:title", content: `${params.slug.replace(/-/g, " ")} — Walking group` },
-      { property: "og:description", content: "A walking group on Mental Health Walk Club." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: ({ params }) => {
+    const nice = params.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const url = `https://mentalhealthwalkclub.com/g/${params.slug}`;
+    return {
+      meta: [
+        { title: `${nice} — Walking group · Mental Health Walk Club` },
+        {
+          name: "description",
+          content: `${nice} — a walking group on Mental Health Walk Club. Join to see standing walks and meetups near you.`,
+        },
+        { property: "og:title", content: `${nice} — Walking group` },
+        { property: "og:description", content: "A walking group on Mental Health Walk Club." },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: GROUP_OG_DEFAULT },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: `${nice} — Walking group` },
+        { name: "twitter:description", content: "A walking group on Mental Health Walk Club." },
+        { name: "twitter:image", content: GROUP_OG_DEFAULT },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
 });
 
 type PublicGroup = {

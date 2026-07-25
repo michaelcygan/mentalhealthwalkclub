@@ -50,10 +50,11 @@ export const Route = createFileRoute("/u/$username")({
       { name: "twitter:title", content: `${name} on Mental Health Walk Club` },
       { name: "twitter:description", content: desc },
     ];
-    if (p.avatar_url && /^https?:\/\//.test(p.avatar_url)) {
-      meta.push({ property: "og:image", content: p.avatar_url });
-      meta.push({ name: "twitter:image", content: p.avatar_url });
-    }
+    const image = (p.avatar_url && /^https?:\/\//.test(p.avatar_url))
+      ? p.avatar_url
+      : "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+    meta.push({ property: "og:image", content: image });
+    meta.push({ name: "twitter:image", content: image });
     return { meta, links: [{ rel: "canonical", href: url }] };
   },
   notFoundComponent: NotFoundView,
