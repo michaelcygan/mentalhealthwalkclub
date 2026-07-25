@@ -15,7 +15,7 @@ import { Reflect30s } from "@/components/home/reflect-30s";
 import { WeekSummary } from "@/components/home/week-summary";
 import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
-import { ListenAndRead } from "@/components/home/listen-and-read";
+
 import { Shimmer } from "@/components/ui/shimmer";
 import { WalkCard, type WalkCardData } from "@/components/discover/walk-card";
 import { nearbyWalksPublic } from "@/lib/nearby.functions";
@@ -158,7 +158,7 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
       <WeekSummary />
       <FriendPulse />
       <WeatherForecast />
-      <ListenAndRead />
+      
       <p className="pt-2 text-center font-serif text-xs italic text-muted-foreground">
         Still here. Still walking.{" "}
         <Link to="/journal" className="underline-offset-2 hover:underline">Journal</Link>

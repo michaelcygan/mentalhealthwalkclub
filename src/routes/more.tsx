@@ -78,8 +78,7 @@ function MorePage() {
       </Link>
 
       <Section title="Explore">
-        <Row to="/listen" icon={Headphones} label="Listen" hint="Podcasts & playlists" />
-        <Row to="/circles" icon={Users} label="Circles & friends" hint="Manage" />
+        <Row to="/groups" icon={Users} label="Groups" hint="Standing walks" />
         
         <Row to="/shop" icon={ShoppingBag} label="Shop" hint="Half funds nonprofits" />
         {isPlus && <Row to="/impact" icon={Sparkles} label="Your impact" hint="Where your Plus goes" />}

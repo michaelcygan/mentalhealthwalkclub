@@ -388,9 +388,8 @@ function ComposeWalkPage() {
               <p className="text-xs text-muted-foreground">Loading your groups…</p>
             ) : hostable.groups.length === 0 && hostable.circles.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                You're not in any groups or circles yet. Try{" "}
-                <Link to="/groups" className="underline">Groups</Link> or{" "}
-                <Link to="/circles" className="underline">Circles</Link>.
+                You're not in any groups yet. Try{" "}
+                <Link to="/groups" className="underline">Groups</Link>.
               </p>
             ) : (
               <div className="space-y-3">
