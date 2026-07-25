@@ -58,7 +58,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           const { data: groups } = await supabase
             .from("groups")
             .select("slug, updated_at")
-            .eq("is_public", true)
+            .eq("visibility", "public")
             .not("slug", "is", null);
           for (const g of groups ?? []) {
             if (!g.slug) continue;
