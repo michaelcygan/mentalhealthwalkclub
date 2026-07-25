@@ -21,6 +21,7 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -30,6 +31,7 @@ import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as GSlugRouteImport } from './routes/g.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSafetyRouteImport } from './routes/admin.safety'
 import { Route as AdminRequestsRouteImport } from './routes/admin.requests'
@@ -124,6 +126,11 @@ const EventsRoute = EventsRouteImport.update({
   path: '/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -167,6 +174,11 @@ const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => EventsRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -342,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -370,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
@@ -397,6 +411,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -425,6 +440,7 @@ export interface FileRoutesByTo {
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
@@ -454,6 +470,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -482,6 +499,7 @@ export interface FileRoutesById {
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
   '/shop/return': typeof ShopReturnRoute
@@ -511,6 +529,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/blog'
     | '/events'
     | '/groups'
     | '/impact'
@@ -539,6 +558,7 @@ export interface FileRouteTypes {
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
+    | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
     | '/shop/return'
@@ -566,6 +586,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/blog'
     | '/events'
     | '/groups'
     | '/impact'
@@ -594,6 +615,7 @@ export interface FileRouteTypes {
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
+    | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
     | '/shop/return'
@@ -622,6 +644,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
+    | '/blog'
     | '/events'
     | '/groups'
     | '/impact'
@@ -650,6 +673,7 @@ export interface FileRouteTypes {
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
+    | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
     | '/shop/return'
@@ -679,6 +703,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  BlogRoute: typeof BlogRouteWithChildren
   EventsRoute: typeof EventsRouteWithChildren
   GroupsRoute: typeof GroupsRoute
   ImpactRoute: typeof ImpactRoute
@@ -789,6 +814,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -851,6 +883,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/$slug'
       preLoaderRoute: typeof EventsSlugRouteImport
       parentRoute: typeof EventsRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -1191,6 +1230,16 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
 }
@@ -1227,6 +1276,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  BlogRoute: BlogRouteWithChildren,
   EventsRoute: EventsRouteWithChildren,
   GroupsRoute: GroupsRoute,
   ImpactRoute: ImpactRoute,
