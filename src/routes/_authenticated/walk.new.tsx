@@ -61,6 +61,8 @@ function ComposeWalkPage() {
     name: string;
     address: string | null;
     hero_url: string | null;
+    lat: number | null;
+    lng: number | null;
   } | null>(null);
   const [resolvingPlace, setResolvingPlace] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
