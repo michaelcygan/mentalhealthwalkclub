@@ -172,24 +172,16 @@ export function TodayIsland({ user }: Props) {
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Link
-          to="/walk"
-          className="group flex items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
+          to="/walk/new"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
         >
-          {activeWalkId ? (
-            <>
-              <Play className="h-4 w-4" /> Resume walk
-            </>
-          ) : (
-            <>
-              <Footprints className="h-4 w-4" /> Walk now
-            </>
-          )}
+          <CalendarPlus className="h-4 w-4" /> Post a walk
         </Link>
         <Link
-          to="/walk/new"
+          to="/groups"
           className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
         >
-          <CalendarPlus className="h-4 w-4 text-forest" /> Plan a walk
+          <Footprints className="h-4 w-4 text-forest" /> Groups
         </Link>
       </div>
     </section>
