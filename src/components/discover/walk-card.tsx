@@ -74,7 +74,7 @@ export function WalkCard({ walk, variant = "list", onRsvp, hideRsvp = false }: P
             <Users className="h-3 w-3" />
             {walk.attendee_count} going
           </div>
-          <RsvpPill eventId={walk.id} onRsvp={onRsvp} />
+          {!hideRsvp && <RsvpPill eventId={walk.id} onRsvp={onRsvp} />}
         </div>
       </Link>
     );
@@ -106,7 +106,7 @@ export function WalkCard({ walk, variant = "list", onRsvp, hideRsvp = false }: P
           {walk.miles != null && <span>· {walk.miles.toFixed(1)} mi</span>}
         </div>
       </div>
-      <RsvpPill eventId={walk.id} onRsvp={onRsvp} />
+      {!hideRsvp && <RsvpPill eventId={walk.id} onRsvp={onRsvp} />}
     </Link>
   );
 }
