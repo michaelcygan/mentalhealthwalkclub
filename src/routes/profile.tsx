@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { User as UserIcon, Pencil, Target, Check, Flame, CalendarDays, TreePine, Heart, Settings } from "lucide-react";
-import { listHostPlaces } from "@/lib/places.functions";
-import { listMySavedTrails } from "@/lib/trails.functions";
+import { User as UserIcon, Pencil, Target, Check, Flame, Heart, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { SectionHeading } from "@/components/section-heading";
@@ -69,8 +67,6 @@ function ProfileTab() {
   const [editOpen, setEditOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
-  const [hostPlaces, setHostPlaces] = useState<Array<{ key: string; label: string | null; neighborhood: string | null; group_count: number; next_summary: string | null }>>([]);
-  const [savedTrails, setSavedTrails] = useState<Array<{ id: string; name: string | null; kind: string | null }>>([]);
   const stats = useProfileStats(user?.id);
   const { isPlus } = useSubscription();
 
@@ -90,16 +86,6 @@ function ProfileTab() {
     });
     supabase.from("goals").select("id,target_value").eq("user_id", user.id).eq("goal_type", "weekly_minutes").eq("is_active", true).maybeSingle()
       .then(({ data }) => { if (data) { setGoalId(data.id); setWeeklyGoal(Number(data.target_value)); } });
-    listHostPlaces({ data: { user_id: user.id } })
-      .then((r) => setHostPlaces(r.places.map(p => ({ key: p.key, label: p.label, neighborhood: p.neighborhood, group_count: p.group_count, next_summary: p.next_summary }))))
-      .catch(() => {});
-    listMySavedTrails()
-      .then((r) => setSavedTrails(
-        (r.saved as Array<{ trail: { id: string; name: string | null; kind: string | null } | null }>)
-          .map((s) => s.trail)
-          .filter((t): t is { id: string; name: string | null; kind: string | null } => !!t)
-      ))
-      .catch(() => {});
   }, [user]);
 
   const savePatch = async (patch: Partial<Profile>) => {
