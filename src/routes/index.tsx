@@ -154,6 +154,7 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
       <TodayIsland user={user} />
       <UpcomingRail />
       <NearbyGrid initialWalks={initialWalks} subtitle="Public walks within reach" />
+      <RadioRail />
       <BestWindow />
       <Reflect30s lastReflection={lastReflection} />
       <WeekSummary />
