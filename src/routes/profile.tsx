@@ -220,19 +220,6 @@ function ProfileTab() {
         </div>
       </section>
 
-      
-
-      </section>
-                >
-                  <TreePine className="h-4 w-4 shrink-0 text-forest" />
-                  <span className="min-w-0 flex-1 truncate">{t.name ?? "Unnamed"}</span>
-                  <span className="text-[11px] text-muted-foreground">{t.kind ?? "trail"}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <Link
         to="/settings"
