@@ -172,7 +172,7 @@ export function AuthForm({
         {isSignup
           ? plan === "plus"
             ? "30 days on us, then $2.99/mo. Half of every Plus dollar goes to mental-health nonprofits. Cancel anytime — no charge until day 30."
-            : "Free forever. Post walks, join groups, keep a private journal, and listen to MHWC Radio."}
+            : "Free forever. Post walks, join groups, keep a private journal, and listen to MHWC Radio."
           : "Lace up. Let's go."}
       </p>
 
