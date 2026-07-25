@@ -2,6 +2,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/events")({
   beforeLoad: () => {
-    throw redirect({ to: "/walk/new" });
+    throw redirect({ to: "/" });
   },
 });
