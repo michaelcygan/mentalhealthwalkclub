@@ -112,7 +112,7 @@ export function AttendeeStack({ code, eventId, hostId, onCountChange }: Props) {
             className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 text-xs"
           >
             {a.avatar_url ? (
-              <img src={a.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+              <img src={a.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" decoding="async" />
             ) : (
               <span className="grid h-5 w-5 place-items-center rounded-full bg-forest/20 text-[10px] text-forest">
                 {(a.display_name ?? "?").slice(0, 1).toUpperCase()}

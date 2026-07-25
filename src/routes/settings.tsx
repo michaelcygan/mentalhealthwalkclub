@@ -176,13 +176,14 @@ function SettingsPage() {
         </Link>
       </section>
 
-      {isAdmin && (
-        <SectionCard title="Admin" icon={ShieldCheck}>
-          <LinkRow to="/admin" label="Admin home" />
-          <LinkRow to="/admin/podcasts" label="Podcasts" />
-          <LinkRow to="/admin/merch" label="Merch" />
-        </SectionCard>
-      )}
+        {isAdmin && (
+          <SectionCard title="Admin" icon={ShieldCheck}>
+            <LinkRow to="/admin" label="Admin home" />
+            <LinkRow to="/admin/blog" label="Blog" />
+            <LinkRow to="/admin/radio" label="Radio" />
+            <LinkRow to="/admin/merch" label="Merch" />
+          </SectionCard>
+        )}
 
       <Button variant="outline" onClick={signOut} className="w-full rounded-full">
         <LogOut className="mr-2 h-4 w-4" />Sign out

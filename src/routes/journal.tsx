@@ -40,7 +40,20 @@ import {
 
 export const Route = createFileRoute("/journal")({
   component: JournalTab,
-  head: () => ({ meta: [{ title: "Journal — Mental Health Walk Club" }] }),
+  head: () => ({
+    meta: [
+      { title: "Journal — Mental Health Walk Club" },
+      { name: "description", content: "Your private walking journal. Track entries, reflect on walks, and notice patterns over time." },
+      { property: "og:title", content: "Journal — Mental Health Walk Club" },
+      { property: "og:description", content: "Your private walking journal. Track entries, reflect on walks, and notice patterns over time." },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/journal" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+    ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/journal" }],
+  }),
 });
 
 function isoDay(d: Date): string {

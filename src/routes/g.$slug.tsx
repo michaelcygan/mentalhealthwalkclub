@@ -159,7 +159,7 @@ function PublicGroupPage() {
 
       <header className="mt-3 overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
         {g.cover_image_url && (
-          <img src={g.cover_image_url} alt="" className="h-40 w-full object-cover" />
+          <img src={g.cover_image_url} alt="" className="h-40 w-full object-cover" decoding="async" />
         )}
         <div className="p-5">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">

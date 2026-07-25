@@ -1,7 +1,7 @@
 {
   "name": "Mental Health Walk Club",
   "short_name": "MH Walk Club",
-  "description": "Walk solo, join live Walk & Talks, RSVP to Local Walks. You don't have to walk through it alone.",
+  "description": "Post walks, join groups, keep a private journal, and listen to MHWC Radio. You don't have to walk through it alone.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -25,6 +25,6 @@
   "shortcuts": [
     { "name": "Start a walk", "short_name": "Walk", "url": "/?start=1", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
     { "name": "Journal", "short_name": "Journal", "url": "/journal" },
-    { "name": "Local walks", "short_name": "Local", "url": "/events" }
+    { "name": "Groups", "short_name": "Groups", "url": "/groups" }
   ]
 }

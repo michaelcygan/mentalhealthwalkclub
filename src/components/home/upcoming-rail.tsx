@@ -78,7 +78,7 @@ function MineCard({ event }: { event: HomeUpcomingMine }) {
     >
       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
         {event.image_url ? (
-          <img src={event.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <img src={event.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <div className="grid h-full w-full place-items-center bg-forest/10 text-forest">
             <CalendarDays className="h-5 w-5" />

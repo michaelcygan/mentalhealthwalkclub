@@ -99,7 +99,7 @@ function AdminRadioStation() {
       <section className="space-y-2 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center gap-4">
           <label className="grid h-24 w-24 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted">
-            {coverSigned ? <img src={coverSigned} className="h-full w-full object-cover" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
+            {coverSigned ? <img src={coverSigned} alt="" className="h-full w-full object-cover" decoding="async" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])} />
           </label>
           <div className="flex-1 space-y-2">

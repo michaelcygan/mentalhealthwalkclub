@@ -35,17 +35,20 @@ export const Route = createFileRoute("/w/$code")({
   head: ({ params, loaderData }) => {
     const title = loaderData?.event?.title ?? `Walk · ${params.code}`;
     const desc = loaderData?.event?.description?.slice(0, 160) ?? "Quiet walk, real people. RSVP and join the club.";
-    const og = `/api/public/walk/${params.code}/og`;
+    const og = `https://mentalhealthwalkclub.com/api/public/walk/${params.code}/og`;
     return {
       meta: [
         { title: `${title} · Mental Health Walk Club` },
         { name: "description", content: desc },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
+        { property: "og:url", content: `https://mentalhealthwalkclub.com/w/${params.code}` },
+        { property: "og:type", content: "website" },
         { property: "og:image", content: og },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:image", content: og },
       ],
+      links: [{ rel: "canonical", href: `https://mentalhealthwalkclub.com/w/${params.code}` }],
     };
   },
   errorComponent: ({ error }) => (

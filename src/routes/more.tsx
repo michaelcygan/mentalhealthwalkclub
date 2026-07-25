@@ -10,7 +10,20 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/more")({
   component: MorePage,
-  head: () => ({ meta: [{ title: "More — Mental Health Walk Club" }] }),
+  head: () => ({
+    meta: [
+      { title: "More — Mental Health Walk Club" },
+      { name: "description", content: "Settings, support, and everything else in the Mental Health Walk Club." },
+      { property: "og:title", content: "More — Mental Health Walk Club" },
+      { property: "og:description", content: "Settings, support, and everything else in the Mental Health Walk Club." },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/more" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+    ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/more" }],
+  }),
 });
 
 interface MiniProfile {
@@ -58,7 +71,7 @@ function MorePage() {
         className="flex items-center gap-4 rounded-3xl border border-border bg-card p-5 shadow-soft transition active:scale-[0.99] hover:bg-accent/30"
       >
         <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-accent font-serif text-xl text-forest">
-          {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : initials}
+          {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" decoding="async" /> : initials}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

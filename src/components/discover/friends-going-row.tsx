@@ -28,7 +28,7 @@ export function FriendsGoingRow({ event, onRsvp }: Props) {
             style={{ zIndex: 3 - i }}
           >
             {f.avatar_url ? (
-              <img src={f.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+              <img src={f.avatar_url} alt="" className="h-full w-full rounded-full object-cover" decoding="async" />
             ) : (
               <span className="grid h-full w-full place-items-center rounded-full bg-forest/20 text-[10px] text-forest">
                 {(f.display_name ?? "?").slice(0, 1).toUpperCase()}
