@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Footprints, CalendarPlus, Flame, Play } from "lucide-react";
+import { Footprints, CalendarPlus, Flame } from "lucide-react";
 import { motion } from "motion/react";
 import type { User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
@@ -59,7 +59,7 @@ export function TodayIsland({ user }: Props) {
     },
   });
   const walkDays = recent?.walkDays ?? new Set<string>();
-  const activeWalkId = recent?.activeWalkId ?? null;
+  
 
   const name = useMemo(() => {
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
