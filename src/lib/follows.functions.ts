@@ -161,16 +161,16 @@ const ListInput = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
-async function loadProfiles(
-  supabase: ReturnType<typeof buildPublicClient> | Awaited<ReturnType<typeof requireSupabaseAuth>>["supabase"],
-  ids: string[],
-) {
-  if (!ids.length || !supabase) return new Map<string, { id: string; display_name: string | null; username: string | null; avatar_url: string | null }>();
-  const { data } = await (supabase as ReturnType<typeof buildPublicClient>)!
+type ProfileLite = { id: string; display_name: string | null; username: string | null; avatar_url: string | null };
+type AnySupabase = ReturnType<typeof buildPublicClient>;
+
+async function loadProfiles(supabase: AnySupabase | unknown, ids: string[]) {
+  if (!ids.length || !supabase) return new Map<string, ProfileLite>();
+  const { data } = await (supabase as NonNullable<AnySupabase>)
     .from("profiles")
     .select("id,display_name,username,avatar_url")
     .in("id", ids);
-  return new Map((data ?? []).map((p) => [p.id, p]));
+  return new Map<string, ProfileLite>((data ?? []).map((p) => [p.id, p]));
 }
 
 export const listFollowers = createServerFn({ method: "GET" })
