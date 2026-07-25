@@ -62,12 +62,12 @@ function AuthPage() {
             <p className="font-serif text-3xl leading-tight text-foreground">
               "I came for the walk. I stayed because someone was on the other end of it."
             </p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <PanelTile icon={Footprints} label="Solo" sub="Unlimited" />
-              <PanelTile icon={Headphones} label="Guided" sub="Unlimited" />
-              <PanelTile icon={Mic} label="Walk & Talk" sub="Live rooms" />
-              <PanelTile icon={MapPin} label="Local Walks" sub="In-person" />
-            </div>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <PanelTile icon={Footprints} label="Post walks" sub="Public or private" />
+            <PanelTile icon={Users} label="Groups" sub="Find your people" />
+            <PanelTile icon={BookHeart} label="Journal" sub="Private reflections" />
+            <PanelTile icon={Headphones} label="Radio" sub="MHWC stations" />
+          </div>
           </div>
 
           <p className="relative font-serif text-xs italic text-muted-foreground">
