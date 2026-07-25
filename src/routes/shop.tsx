@@ -14,9 +14,17 @@ export const Route = createFileRoute("/shop")({
   component: ShopPage,
   head: () => ({
     meta: [
-      { title: "Shop — Walk Club" },
-      { name: "description", content: "Small-batch merch. Half of every dollar funds mental-health nonprofits." },
+      { title: "Shop — Mental Health Walk Club" },
+      { name: "description", content: "Small-batch goods made for walkers. Half of every dollar funds mental-health nonprofits." },
+      { property: "og:title", content: "Shop — Mental Health Walk Club" },
+      { property: "og:description", content: "Small-batch goods made for walkers. Half of every dollar funds mental-health nonprofits." },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/shop" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg" },
     ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/shop" }],
   }),
 });
 
