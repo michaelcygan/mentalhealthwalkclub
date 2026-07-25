@@ -364,8 +364,11 @@ function ComposeWalkPage() {
           location={
             pickedPlace?.lat != null && pickedPlace?.lng != null
               ? { name: pickedPlace.name, lat: pickedPlace.lat, lng: pickedPlace.lng }
-              : null
+              : deviceCoords
+                ? { name: "Near you", lat: deviceCoords.lat, lng: deviceCoords.lng }
+                : null
           }
+
         />
       </section>
 
