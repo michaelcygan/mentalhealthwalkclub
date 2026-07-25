@@ -23,7 +23,7 @@ import { nearbyWalksPublic } from "@/lib/nearby.functions";
 
 const SITE_URL = "https://mentalhealthwalkclub.com";
 const SITE_DESC =
-  "A walking club for your circle. Find public walks near you, post your own, and RSVP with friends.";
+  "A walking club for your people. Find public walks near you, post your own, and RSVP with friends.";
 const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
 
 export const Route = createFileRoute("/")({
@@ -94,7 +94,7 @@ function LoggedOutHome({
           You don't have to walk through it alone.
         </h1>
         <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">
-          Post a walk, share a beautiful page, and let friends RSVP. A walking club for your circle — built around real meetups.
+          Post a walk, share a beautiful page, and let friends RSVP. A walking club for your people — built around real meetups.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={onSignUp} className="rounded-full bg-background text-foreground hover:opacity-90">
