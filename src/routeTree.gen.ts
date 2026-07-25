@@ -42,7 +42,6 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
 import { Route as AuthenticatedListenRouteImport } from './routes/_authenticated/listen'
-import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AuthenticatedWalkIndexRouteImport } from './routes/_authenticated/walk.index'
@@ -227,11 +226,6 @@ const AuthenticatedListenRoute = AuthenticatedListenRouteImport.update({
   path: '/listen',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
@@ -283,9 +277,9 @@ const AuthenticatedListenIdRoute = AuthenticatedListenIdRouteImport.update({
   getParentRoute: () => AuthenticatedListenRoute,
 } as any)
 const AuthenticatedGroupsSlugRoute = AuthenticatedGroupsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => AuthenticatedGroupsRoute,
+  id: '/groups/$slug',
+  path: '/groups/$slug',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
@@ -349,7 +343,6 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
-  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -403,7 +396,6 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
-  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/listen': typeof AuthenticatedListenRouteWithChildren
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -459,7 +451,6 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
-  '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/listen': typeof AuthenticatedListenRouteWithChildren
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
@@ -515,7 +506,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/circles'
     | '/discover'
-    | '/groups'
     | '/listen'
     | '/places'
     | '/trails'
@@ -569,7 +559,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/circles'
     | '/discover'
-    | '/groups'
     | '/listen'
     | '/places'
     | '/trails'
@@ -624,7 +613,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/_authenticated/circles'
     | '/_authenticated/discover'
-    | '/_authenticated/groups'
     | '/_authenticated/listen'
     | '/_authenticated/places'
     | '/_authenticated/trails'
@@ -922,13 +910,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/groups': {
-      id: '/_authenticated/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/discover': {
       id: '/_authenticated/discover'
       path: '/discover'
@@ -1001,10 +982,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/groups/$slug': {
       id: '/_authenticated/groups/$slug'
-      path: '/$slug'
+      path: '/groups/$slug'
       fullPath: '/groups/$slug'
       preLoaderRoute: typeof AuthenticatedGroupsSlugRouteImport
-      parentRoute: typeof AuthenticatedGroupsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
@@ -1065,17 +1046,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedGroupsRouteChildren {
-  AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
-}
-
-const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
-  AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
-}
-
-const AuthenticatedGroupsRouteWithChildren =
-  AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
-
 interface AuthenticatedListenRouteChildren {
   AuthenticatedListenIdRoute: typeof AuthenticatedListenIdRoute
   AuthenticatedListenCollectionSlugRoute: typeof AuthenticatedListenCollectionSlugRoute
@@ -1115,10 +1085,10 @@ const AuthenticatedTrailsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCirclesRoute: typeof AuthenticatedCirclesRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
-  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedListenRoute: typeof AuthenticatedListenRouteWithChildren
   AuthenticatedPlacesRoute: typeof AuthenticatedPlacesRouteWithChildren
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
+  AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
   AuthenticatedReadPostIdRoute: typeof AuthenticatedReadPostIdRoute
   AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
   AuthenticatedWalkIndexRoute: typeof AuthenticatedWalkIndexRoute
@@ -1127,10 +1097,10 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCirclesRoute: AuthenticatedCirclesRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
-  AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedListenRoute: AuthenticatedListenRouteWithChildren,
   AuthenticatedPlacesRoute: AuthenticatedPlacesRouteWithChildren,
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
+  AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
   AuthenticatedReadPostIdRoute: AuthenticatedReadPostIdRoute,
   AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
   AuthenticatedWalkIndexRoute: AuthenticatedWalkIndexRoute,
