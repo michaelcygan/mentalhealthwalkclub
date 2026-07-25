@@ -118,11 +118,6 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
     }
   };
 
-  const onMarkAll = async () => {
-    if (unread === 0) return;
-    await markRead({ data: { all: true } }).catch(() => {});
-    qc.invalidateQueries({ queryKey: ["notifications"] });
-  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
