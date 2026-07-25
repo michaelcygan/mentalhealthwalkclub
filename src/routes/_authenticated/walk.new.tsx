@@ -143,7 +143,7 @@ function ComposeWalkPage() {
         if (prefill.place_id) {
           const { data: p } = await supabase
             .from("places")
-            .select("id,name,address,hero_url")
+            .select("id,name,address,hero_url,lat,lng")
             .eq("id", prefill.place_id)
             .maybeSingle();
           if (!cancel && p) {
@@ -152,6 +152,8 @@ function ComposeWalkPage() {
               name: p.name,
               address: p.address,
               hero_url: p.hero_url,
+              lat: p.lat != null ? Number(p.lat) : null,
+              lng: p.lng != null ? Number(p.lng) : null,
             });
             setPlaceQuery(p.name);
           }
