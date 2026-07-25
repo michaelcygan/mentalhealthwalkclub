@@ -1,84 +1,55 @@
-## Wave 4 — Groups as the V1 social container
+## Wave 5 — Retirement & Pruning
 
-Wave 3 gave every walker a shareable public identity. Wave 4 gives them a shareable place to gather. Groups replace Circles for V1: public, discoverable, hostable, joinable — the ongoing home for a neighborhood, campus, or community.
+The scaffolding is done. Before Radio and Blog polish, we clear everything the V1 spec explicitly removed. Keeping retired code around leaks into nav, DB queries, and SEO, and it slows every future wave.
 
 ### Scope
 
-**In:** public group pages, group discovery, join/leave, hosted walks scoped to a group, group roles (owner/mod/member), SEO metadata on group pages, retiring Circles from the visible app.
+**Retire from the app (routes, nav, components):**
+- Solo walk timer, step counter, mood-before/after, weather capture (`/walk`, `use-step-counter`, mood UI, weather hooks)
+- Podcasts everywhere (`/listen`, podcast rails on home, `podcast_feeds` / `podcast_episodes` reads, listen collections/search)
+- External blog feeds ingestion (`blog_feeds` reads, aggregated "Read" surface) — keep first-party `blog_posts`
+- Circles (`/circles`, circle_members reads, "invite to circle" flows); replace all links with Groups
+- Map-first discovery UI (map view on Discover); grid stays
+- Paid/Plus gating in UI (Stripe stays wired for later, but no Plus-only walls in V1)
 
-**Out (later waves):** group chat/threads, group announcements beyond hosted walks, paid/private groups, Radio, Blog, badges polish, journal polish.
+**Keep, tighten, and keep private:**
+- Private walk journal (`journal_entries`, reflections) — verify RLS locked to `auth.uid()`, remove any public leak
+- Badges — keep as-is
+- Ambient tracks — keep (they're the Radio foundation, not "podcasts")
 
-### Deliverables
+**Navigation cleanup:**
+- Mobile tab bar: no changes to primary tabs, but the compose sheet "Walk now" (solo) is removed → replaced with "Post a walk" (group/share)
+- `/more`: remove Circles row, add Groups row, remove Listen/Read if pointing at retired surfaces
+- Home page rails: drop podcast rail + external-articles rail
 
-1. **Public group page** at `/g/$slug`
-   - SEO head (title/description/og:title/og:description, canonical, og:image only when the group has a real cover URL).
-   - Server-loaded via a public server fn behind the `SUPABASE_PUBLISHABLE_KEY` client and a narrow `TO anon` SELECT policy on a `public_groups` view (safe columns only: id, slug, name, tagline, cover_url, city, member_count, created_at).
-   - Renders: header + cover, tagline, member count, upcoming walks hosted by the group (reusing `WalkCard`), and a small "recent members" strip (avatar + username → `/u/$username`).
-   - Signed-out: "Join to walk with them" CTA opens auth prompt with return URL back to the group page.
-   - Signed-in non-member: "Join" primary action (optimistic). Member: "Joined" with menu to Leave. Owner/mod: "Manage" link into the authed surface.
+**Database (migration):**
+- Drop routes' backing tables only if fully unused: `podcast_feeds`, `podcast_episodes`, `listen_collections`, `listen_collection_items`, `listen_events`, `listen_search_log`, `blog_feeds` — after code refs are gone
+- Leave `circles` / `circle_members` in place for now (data-preservation) but stop reading from them; drop in a later cleanup wave once we confirm no user impact
+- Leave `walk_sessions` intact (badges reference it); the solo *UI* is what disappears, not the historical rows
 
-2. **Groups discovery** at `/groups` (public)
-   - Public server fn `listPublicGroups({ city?, q?, limit })` reading `public_groups`.
-   - Grid of group cards; empty state pitches "Start a group" (auth-gated).
-   - Head metadata + a single H1.
+**Redirects:**
+- `/walk` → `/` (public grid)
+- `/listen`, `/listen/*` → `/`
+- `/read` (aggregated feed) → `/blog` (first-party only)
+- `/circles`, `/circles/*` → `/groups`
 
-3. **Authed surfaces**
-   - `/_authenticated/groups.new` — create form (name, slug preview, tagline, city, cover). Slug uniqueness enforced server-side; auto-generated from name with collision suffix.
-   - `/_authenticated/groups.$slug.manage` — owner/mod only. Edit basics, promote/demote mods, remove members.
-   - Rename existing authed `/circles` → keep the route file but redirect to `/groups`; the "My groups" list surfaces on the existing profile/more surface.
+**SEO:**
+- Remove retired routes from any sitemap/head references
+- Ensure home + `/groups` + `/blog` + `/u/$username` + `/g/$slug` + `/w/$code` are the shareable canon
 
-4. **Walks ↔ Groups**
-   - Reuse existing `events.group_id` column. `walk.new` gains an optional "Post to a group" selector populated from `listMyGroups()` (memberships).
-   - Public walk cards already surface their group; add a subtle "in {Group}" chip that links to `/g/$slug` when present.
+### Not in this wave
 
-5. **Retire Circles from V1 visible surface**
-   - Remove Circles from mobile tab bar / more page.
-   - `/circles` route stays as a redirect to `/groups` so old links don't 404.
-   - `event_circle_allowlist` + `circles` tables stay in the DB (frozen) — not dropped in this wave to avoid destabilizing existing events with allowlists. A later cleanup wave handles it.
+- MHWC Radio on Cloudflare R2 (Wave 6)
+- First-party blog CMS polish + editor (Wave 6)
+- Final launch QA pass (Wave 7)
 
-6. **Notifications**
-   - Extend `notification_kind` with `group_join` and `group_walk_posted`.
-   - Fire `group_join` to group owner when someone joins (rate-limited: at most one per user per group).
-   - Fire `group_walk_posted` to members when a walk is posted to their group.
+### Deliverable order
 
-### Data model additions
+1. Redirect stubs for retired routes so nothing 404s mid-refactor
+2. Nav + compose sheet cleanup
+3. Home page — remove retired rails
+4. Delete retired route files + their query hooks/components
+5. Migration to drop podcast/listen/blog-feed tables
+6. Grep sweep + typecheck to confirm zero dangling imports
 
-- `public.groups` — already exists. Ensure columns: `slug` (unique, citext or lower-cased text), `name`, `tagline`, `cover_url`, `city`, `member_count` (maintained by trigger), `owner_id`, `created_at`, `updated_at`. Add missing pieces via migration only if absent.
-- `public.group_memberships` — already exists with `role` (owner/mod/member) and `status`. Add trigger `tg_group_member_count` to keep `groups.member_count` in sync on insert/update/delete when `status='active'`.
-- `public.public_groups` view — `SELECT id, slug, name, tagline, cover_url, city, member_count, created_at FROM public.groups WHERE visibility = 'public'`. Grant `SELECT` to `anon` and `authenticated`.
-- RLS on `groups`:
-  - Public SELECT via the view (no direct `anon` grant on the base table).
-  - `authenticated` SELECT: own + public.
-  - INSERT: `authenticated`, `owner_id = auth.uid()`.
-  - UPDATE/DELETE: `owner_id = auth.uid()` OR `has_group_role(auth.uid(), id, 'mod'|'owner')` via a security-definer function.
-- Owner-visible reads: any hidden/private state must have an owner-scoped SELECT policy in the same migration (per public-schema-grants rule).
-- Slug uniqueness: `UNIQUE (lower(slug))`.
-
-### Server functions
-
-- **Public (no auth):** `getPublicGroupBySlug({ slug })`, `listPublicGroups({ q?, city?, limit? })`. Both use the server publishable client with the `sb_` fetch shim already used in `follows.functions.ts`.
-- **Authed:** `joinGroup({ groupId })`, `leaveGroup({ groupId })`, `getMyMembership({ groupId })`, `listMyGroups()`, `createGroup({ name, tagline?, city?, cover_url? })`, `updateGroup({ id, ... })`, `listGroupMembers({ groupId, limit })`, `setMemberRole({ groupId, userId, role })`, `removeMember({ groupId, userId })`.
-- All authed fns use `requireSupabaseAuth`; role checks call a `has_group_role` security-definer function to avoid RLS recursion.
-
-### Verification
-
-- Type check (tsgo) clean after each migration + code batch.
-- Manual: signed-out `/g/$slug` renders with SEO head; `/groups` lists; join → optimistic UI + member_count increments; post walk to group → visible on group page; leave → decrements; `/circles` redirects.
-- Linter (supabase--linter) run after the migration; fix flagged items before finishing the wave.
-
-### Order of operations
-
-1. Migration: `public_groups` view, `has_group_role`, member-count trigger, slug uniqueness, `group_join` + `group_walk_posted` notification kinds, RLS additions/updates, GRANTs.
-2. Public server fns + `/g/$slug` + `/groups` routes.
-3. Authed server fns + `/_authenticated/groups.new` + `/_authenticated/groups.$slug.manage`.
-4. Wire `walk.new` group selector + public walk cards' group chip.
-5. Retire Circles from visible nav; add `/circles` → `/groups` redirect.
-6. Notifications wiring for join + walk-posted.
-
-### Not doing this wave
-
-- Radio (Wave 5), SEO blog (Wave 6), badges/journal polish (Wave 7).
-- Group chat, invites-by-link, private/paid groups.
-- Dropping legacy `circles` / `event_circle_allowlist` tables.
-
-Approve and I'll start with the migration.
+Approve and I'll run Wave 5.
