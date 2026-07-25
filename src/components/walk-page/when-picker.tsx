@@ -1,11 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarIcon, ChevronDown, Clock } from "lucide-react";
+import {
+  CalendarIcon,
+  ChevronDown,
+  Clock,
+  Sun,
+  Moon,
+  CloudSun,
+  CloudMoon,
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  CloudSnow,
+  CloudFog,
+  Wind,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useWalkWeather, type WalkLocation } from "@/hooks/use-walk-weather";
+import {
+  findPeriodForLocalHour,
+  nearbyHourWindow,
+  dateWithinPeriods,
+  formatHour12,
+  type ConditionCode,
+  type WalkWeatherPeriod,
+} from "@/lib/walk-weather-match";
 
 function tileClass(active: boolean) {
   return cn(
@@ -36,15 +59,15 @@ function formatChip(d: Date) {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-
-
 /** value/onChange in local ISO format `YYYY-MM-DDTHH:mm` (same as input[type=datetime-local]) */
 export function WhenPicker({
   value,
   onChange,
+  location,
 }: {
   value: string;
   onChange: (v: string) => void;
+  location?: WalkLocation;
 }) {
   const date = useMemo(() => (value ? new Date(value) : new Date()), [value]);
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
@@ -58,6 +81,14 @@ export function WhenPicker({
   const [timeTouched, setTimeTouched] = useState(false);
   const [pulse, setPulse] = useState(false);
   const isMobile = useIsMobile();
+
+  const weather = useWalkWeather(location ?? null);
+  const periods: WalkWeatherPeriod[] =
+    weather.data?.status === "ok" ? weather.data.periods : [];
+  const committedPeriod = useMemo(
+    () => (periods.length ? findPeriodForLocalHour(periods, date, date.getHours()) : null),
+    [periods, date]
+  );
 
   // load persisted "time touched" flag
   useEffect(() => {
@@ -75,7 +106,6 @@ export function WhenPicker({
       next.setHours(n.getHours(), n.getMinutes(), 0, 0);
     }
     onChange(toLocalIso(next));
-    // handoff pulse on time row, but only if user hasn't set time yet
     if (!timeTouched) {
       setPulse(true);
       window.setTimeout(() => setPulse(false), 2000);
@@ -121,6 +151,8 @@ export function WhenPicker({
     />
   );
 
+  const summaryLine = summariseCollapsed(committedPeriod, date, tz);
+
   return (
     <div className="space-y-2.5">
       <div className="grid grid-cols-[1fr_1fr_1.5fr] gap-2">
@@ -132,7 +164,7 @@ export function WhenPicker({
         </DateTile>
         {isMobile ? (
           <DateTile active={isCustom} onClick={() => setCalOpen(true)}>
-            <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{isCustom ? formatChip(date) : "Pick a date"}</span>
           </DateTile>
         ) : (
@@ -143,7 +175,7 @@ export function WhenPicker({
                 className={tileClass(isCustom)}
                 aria-label="Pick a date"
               >
-                <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                <CalendarIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 <span className="truncate">{isCustom ? formatChip(date) : "Pick a date"}</span>
               </button>
             </PopoverTrigger>
@@ -154,7 +186,6 @@ export function WhenPicker({
         )}
       </div>
 
-      {/* mobile calendar sheet */}
       {isMobile && (
         <Sheet open={calOpen} onOpenChange={setCalOpen}>
           <SheetContent side="bottom" className="rounded-t-3xl pb-8">
@@ -178,10 +209,10 @@ export function WhenPicker({
         )}
       >
         <div className="flex items-center gap-3">
-          <Clock className="h-4 w-4 text-forest" />
+          <Clock className="h-4 w-4 text-forest" aria-hidden="true" />
           <div>
             <div className="text-sm font-semibold text-foreground">{formatDate(date)}</div>
-            <div className="text-xs text-muted-foreground">{formatTime(date)} · {tz}</div>
+            <div className="text-xs text-muted-foreground">{summaryLine}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -195,6 +226,7 @@ export function WhenPicker({
               "h-4 w-4 text-forest",
               !timeTouched && "wp-chevron-nudge"
             )}
+            aria-hidden="true"
           />
         </div>
       </button>
@@ -207,6 +239,11 @@ export function WhenPicker({
         }}
         hour={date.getHours()}
         minute={date.getMinutes()}
+        date={date}
+        periods={periods}
+        weatherStatus={weather.data?.status ?? (weather.isLoading ? "loading" : "idle")}
+        weatherLoading={weather.isLoading}
+        hasLocation={!!location}
         onCommit={(h, m) => {
           setTimePart(h, m);
           setTimeOpen(false);
@@ -216,10 +253,22 @@ export function WhenPicker({
   );
 }
 
+/* ---------- collapsed summary ---------- */
+
+function summariseCollapsed(period: WalkWeatherPeriod | null, date: Date, tz: string): string {
+  const timeStr = formatTime(date);
+  if (!period) return `${timeStr} · ${tz}`;
+  const pop = period.precipitationChance;
+  if (pop != null && pop >= 25) {
+    return `${timeStr} · ${period.temperature}° · ${pop}% rain`;
+  }
+  return `${timeStr} · ${period.temperature}° · ${period.shortForecast}`;
+}
+
 /* ---------- time wheel ---------- */
 
-const HOURS_12 = Array.from({ length: 12 }, (_, i) => i + 1); // 1..12
-const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 0,5,..55
+const HOURS_12 = Array.from({ length: 12 }, (_, i) => i + 1);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 const MERIDIEM = ["AM", "PM"] as const;
 
 function TimeWheelSheet({
@@ -227,15 +276,24 @@ function TimeWheelSheet({
   onOpenChange,
   hour,
   minute,
+  date,
+  periods,
+  weatherStatus,
+  weatherLoading,
+  hasLocation,
   onCommit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   hour: number;
   minute: number;
+  date: Date;
+  periods: WalkWeatherPeriod[];
+  weatherStatus: "ok" | "unsupported" | "unavailable" | "loading" | "idle";
+  weatherLoading: boolean;
+  hasLocation: boolean;
   onCommit: (h: number, m: number) => void;
 }) {
-  // snap minute to nearest 5
   const snappedMin = Math.round(minute / 5) * 5 % 60;
   const isPm = hour >= 12;
   const hour12 = ((hour + 11) % 12) + 1;
@@ -252,10 +310,28 @@ function TimeWheelSheet({
     }
   }, [open, hour12, snappedMin, isPm]);
 
+  const draftHour24 = ((h % 12) + (mer === "PM" ? 12 : 0));
+
   function commit() {
-    let h24 = h % 12;
-    if (mer === "PM") h24 += 12;
-    onCommit(h24, m);
+    onCommit(draftHour24, m);
+  }
+
+  const showWeatherArea = hasLocation && weatherStatus !== "unsupported" && weatherStatus !== "unavailable";
+  const window = useMemo(
+    () => (periods.length ? nearbyHourWindow(periods, date, draftHour24) : { tiles: [], selectedIndex: -1 }),
+    [periods, date, draftHour24]
+  );
+  const outsideRange = periods.length > 0 && !dateWithinPeriods(periods, date);
+
+  function pickTile(p: WalkWeatherPeriod) {
+    // Extract wall-clock hour from the tile's startTime.
+    const match = /T(\d{2}):/.exec(p.startTime);
+    if (!match) return;
+    const h24 = parseInt(match[1], 10);
+    const newMer: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
+    const newH12 = ((h24 + 11) % 12) + 1;
+    setH(newH12);
+    setMer(newMer);
   }
 
   return (
@@ -264,8 +340,34 @@ function TimeWheelSheet({
         <SheetHeader>
           <SheetTitle className="font-serif text-2xl">Set time</SheetTitle>
         </SheetHeader>
+
+        {showWeatherArea && (
+          <div className="mt-3 min-h-[76px]">
+            {weatherLoading && periods.length === 0 ? (
+              <WeatherStripSkeleton />
+            ) : outsideRange ? (
+              <p className="px-1 text-xs text-muted-foreground">
+                Forecast will appear closer to the walk.
+              </p>
+            ) : window.tiles.length > 0 ? (
+              <div
+                className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1"
+                style={{ scrollbarWidth: "none" }}
+              >
+                {window.tiles.map((p, i) => (
+                  <WeatherTile
+                    key={p.startTime}
+                    period={p}
+                    active={i === window.selectedIndex}
+                    onClick={() => pickTile(p)}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <div className="relative mt-4 flex items-center justify-center gap-2">
-          {/* center selection band */}
           <div className="pointer-events-none absolute left-0 right-0 top-1/2 z-10 h-10 -translate-y-1/2 rounded-xl border-y border-border bg-accent/20" />
           <Wheel ariaLabel="hour" values={HOURS_12} value={h} onChange={setH} format={(v) => String(v)} />
           <div className="z-20 pb-px text-2xl font-light text-muted-foreground">:</div>
@@ -280,6 +382,100 @@ function TimeWheelSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+/* ---------- weather strip ---------- */
+
+function WeatherStripSkeleton() {
+  return (
+    <div className="flex gap-2 px-1" aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[68px] w-[64px] shrink-0 animate-pulse rounded-2xl border border-border bg-card/60"
+        />
+      ))}
+    </div>
+  );
+}
+
+function WeatherTile({
+  period,
+  active,
+  onClick,
+}: {
+  period: WalkWeatherPeriod;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const w = /T(\d{2}):/.exec(period.startTime);
+  const h24 = w ? parseInt(w[1], 10) : 0;
+  const hourLabel = formatHour12(h24);
+  const pop = period.precipitationChance;
+  const showPop = pop != null && pop >= 25;
+
+  const label = buildTileLabel(period, hourLabel);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={label}
+      className={cn(
+        "flex h-[68px] w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl border text-center transition",
+        active
+          ? "border-forest bg-forest/10 text-foreground"
+          : "border-border bg-card text-foreground hover:bg-accent/40"
+      )}
+    >
+      <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+        {hourLabel}
+      </span>
+      <WeatherIcon code={period.conditionCode} isDaytime={period.isDaytime} />
+      <span className="text-xs font-semibold tabular-nums">
+        {period.temperature}°
+      </span>
+      {showPop ? (
+        <span className="text-[10px] tabular-nums text-muted-foreground">{pop}%</span>
+      ) : null}
+    </button>
+  );
+}
+
+function buildTileLabel(p: WalkWeatherPeriod, hourLabel: string): string {
+  const unit = p.temperatureUnit === "F" ? "Fahrenheit" : "Celsius";
+  const parts = [`Select ${hourLabel}`, `${p.temperature} degrees ${unit}`];
+  if (p.shortForecast) parts.push(p.shortForecast.toLowerCase());
+  if (p.precipitationChance != null && p.precipitationChance >= 25) {
+    parts.push(`${p.precipitationChance} percent chance of precipitation`);
+  }
+  return parts.join(", ") + ".";
+}
+
+function WeatherIcon({ code, isDaytime }: { code: ConditionCode; isDaytime: boolean }) {
+  const cls = "h-4 w-4 text-foreground/80";
+  const props = { className: cls, "aria-hidden": true } as const;
+  switch (code) {
+    case "clear":
+      return isDaytime ? <Sun {...props} /> : <Moon {...props} />;
+    case "partly-cloudy":
+      return isDaytime ? <CloudSun {...props} /> : <CloudMoon {...props} />;
+    case "cloudy":
+      return <Cloud {...props} />;
+    case "rain":
+      return <CloudRain {...props} />;
+    case "storm":
+      return <CloudLightning {...props} />;
+    case "snow":
+      return <CloudSnow {...props} />;
+    case "fog":
+      return <CloudFog {...props} />;
+    case "wind":
+      return <Wind {...props} />;
+    default:
+      return <Cloud {...props} />;
+  }
 }
 
 const ITEM_H = 40;
@@ -300,7 +496,6 @@ function Wheel<T extends string | number>({
   const ref = useRef<HTMLDivElement>(null);
   const settling = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // scroll to selected on mount/value change
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -318,7 +513,6 @@ function Wheel<T extends string | number>({
       const clamped = Math.max(0, Math.min(values.length - 1, idx));
       const next = values[clamped];
       if (next !== value) onChange(next);
-      // snap perfectly
       el.scrollTo({ top: clamped * ITEM_H, behavior: "smooth" });
     }, 90);
   }
@@ -361,11 +555,6 @@ function addDays(d: Date, n: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
   return x;
-}
-function nextDow(from: Date, dow: number) {
-  const x = startOfDay(from);
-  const diff = (dow - x.getDay() + 7) % 7 || 7;
-  return addDays(x, diff);
 }
 function diffDays(a: Date, b: Date) {
   return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / 86400000);
