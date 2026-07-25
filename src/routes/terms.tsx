@@ -6,7 +6,13 @@ export const Route = createFileRoute("/terms")({
     meta: [
       { title: "Terms of Service — Mental Health Walk Club" },
       { name: "description", content: "The terms that govern your use of Mental Health Walk Club." },
+      { property: "og:title", content: "Terms of Service — Mental Health Walk Club" },
+      { property: "og:description", content: "The terms that govern your use of Mental Health Walk Club." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://mentalhealthwalkclub.com/terms" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://mentalhealthwalkclub.com/terms" }],
   }),
 });
 

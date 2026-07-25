@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 
 const SITE_URL = "https://mentalhealthwalkclub.com/blog";
 const DESC = "Essays and field notes on walking, mental health, and community from Mental Health Walk Club.";
+const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
 
 export const Route = createFileRoute("/blog")({
   component: BlogIndex,
@@ -19,9 +20,11 @@ export const Route = createFileRoute("/blog")({
       { property: "og:description", content: DESC },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: OG_DEFAULT },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Mental Health Walk Club — Blog" },
       { name: "twitter:description", content: DESC },
+      { name: "twitter:image", content: OG_DEFAULT },
     ],
     links: [{ rel: "canonical", href: SITE_URL }],
   }),

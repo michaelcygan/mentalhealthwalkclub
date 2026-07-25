@@ -16,6 +16,9 @@ import {
   setMyDob,
 } from "@/lib/groups.functions";
 
+const GROUPS_URL = "https://mentalhealthwalkclub.com/groups";
+const GROUPS_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+
 export const Route = createFileRoute("/groups")({
   component: GroupsPage,
   head: () => ({
@@ -32,8 +35,14 @@ export const Route = createFileRoute("/groups")({
         content: "Find and start public walking groups near you.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: GROUPS_URL },
+      { property: "og:image", content: GROUPS_OG },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Walking groups — Mental Health Walk Club" },
+      { name: "twitter:description", content: "Find and start public walking groups near you." },
+      { name: "twitter:image", content: GROUPS_OG },
     ],
+    links: [{ rel: "canonical", href: GROUPS_URL }],
   }),
 });
 

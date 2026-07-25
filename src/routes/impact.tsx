@@ -7,22 +7,27 @@ import { Button } from "@/components/ui/button";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import { FoundingBadge } from "@/components/membership/founding-badge";
 
+const IMPACT_URL = "https://mentalhealthwalkclub.com/impact";
+const IMPACT_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+const IMPACT_DESC = "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too.";
+
 export const Route = createFileRoute("/impact")({
   component: ImpactPage,
   head: () => ({
     meta: [
       { title: "Impact — Mental Health Walk Club" },
-      {
-        name: "description",
-        content:
-          "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too. See the running total and methodology.",
-      },
+      { name: "description", content: IMPACT_DESC },
       { property: "og:title", content: "Our Impact — Mental Health Walk Club" },
-      {
-        property: "og:description",
-        content: "Half of every Plus dollar — and 100% of Supporter donations — go straight to mental health nonprofits.",
-      },
+      { property: "og:description", content: IMPACT_DESC },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: IMPACT_URL },
+      { property: "og:image", content: IMPACT_OG },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Our Impact — Mental Health Walk Club" },
+      { name: "twitter:description", content: IMPACT_DESC },
+      { name: "twitter:image", content: IMPACT_OG },
     ],
+    links: [{ rel: "canonical", href: IMPACT_URL }],
   }),
 });
 
