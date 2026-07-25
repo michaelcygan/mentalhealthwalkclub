@@ -1,81 +1,67 @@
-## Wave 6 — MHWC Radio + Blog CMS (Option B: Lovable Cloud Storage)
+## Wave 6 — remaining polish
 
-Schema is already live from the previous step. This plan wires Radio to Lovable Cloud Storage and builds the Blog CMS end-to-end.
+Core of Wave 6 shipped (Radio schema + server fns + signed URLs, `RadioRail` on home, `/blog` + `/blog/$slug` with JSON-LD, `/admin/radio` + `/admin/blog`, retired `admin.blogs` and `admin.podcasts` redirect). A few small loose ends before we call it done:
 
-### 1. Storage buckets
+1. **Sitemap**: add `/blog` and each published post slug to the sitemap route so the SEO front door is actually discoverable.
+2. **`NowPlayingDock` "radio" affordance**: the dock already plays radio tracks (they route through `PlayerContext`), but the cover fallback + subtitle assume podcast/ambient. Add a light radio branch so the current station name shows as subtitle and station cover shows as art.
+3. **First seed**: create one starter station ("Forest") and one starter blog post via the admin UI so the rails aren't empty on first prod visit. (Content only — no code.)
+4. **Grep sweep**: remove the last stale references to retired podcast/blog-feed UI (any leftover imports of `PodcastRail`, `BlogRail`, `ListenAndRead`, `ShowsGrid`) so we don't ship dead code.
 
-- Create private bucket `radio-tracks` (audio files, served via short-lived signed URLs).
-- Create public bucket `blog-covers` (post cover images, direct URLs).
-- RLS on `storage.objects`: admins can insert/update/delete in both; anyone can read `blog-covers`; `radio-tracks` reads only through signed URLs from server fns.
+That closes Wave 6.
 
-### 2. Radio server layer
+---
 
-New file `src/lib/radio.functions.ts`:
-- `listStations()` — public, returns active stations sorted.
-- `getStation(slug)` — public, returns station + track list (without URLs).
-- `signTrackUrl({ trackId })` — public, returns a short-lived signed URL (5 min) for one track's storage key.
-- Admin: `adminListStations`, `adminUpsertStation`, `adminDeleteStation`, `adminUpsertTrack`, `adminDeleteTrack`, `adminReorderTracks`, `adminSignUpload({ stationSlug, filename })` returning a signed upload URL for direct browser-to-storage PUT.
+## Wave 7 — Launch QA & polish
 
-All admin fns gated by `has_role(auth.uid(),'admin')` via `requireSupabaseAuth` + role check inside handler.
+Final pass before promoting the app publicly. No new product surface — only hardening what exists.
 
-### 3. Radio player integration
+### 7A. Performance
+- Route-level code splitting audit: confirm heavy admin routes (`admin.radio.$id`, `admin.blog.$id` with marked/sanitize-html) aren't in the public bundle.
+- Image discipline: `loading="lazy"` + `decoding="async"` on every non-hero `<img>`; explicit width/height to kill CLS on walk cards, group tiles, radio covers, blog covers.
+- Prefetch the top public routes (`/groups`, `/blog`) from the homepage.
+- Kill the ambient video autoplay on cellular / reduced-data.
 
-- Extend `src/lib/player-context.tsx` (or add a light `radio-context`) to accept a `"radio"` source with `{ stationId, tracks[], index, shuffle }`. Auto-advance on `ended`, refresh signed URL just-in-time per track.
-- Persist last station slug in `localStorage`.
-- `NowPlayingDock` and `NowPlayingSheet` already render generic title/subtitle/cover — pass radio metadata through the existing player context; no dock redesign needed.
+### 7B. Accessibility
+- Focus-visible rings on every interactive tile (walk cards, radio stations, group tiles) — several currently rely on hover only.
+- `aria-label` on icon-only buttons in the dock, tab bar, and admin toolbars.
+- Color-contrast check on `text-muted-foreground` over `bg-card` in the current theme; bump one shade if it fails AA.
+- Reduced-motion: the mobile dock already respects it — audit the walk-page confetti, home rails' hover translate, and the reflection rotator.
 
-### 4. Home surface
+### 7C. SEO
+- Per-route head audit: every public leaf (`/`, `/groups`, `/g/$slug`, `/blog`, `/blog/$slug`, `/u/$username`, `/w/$code`) has a unique title < 60 chars, description < 160 chars, `og:type`, `twitter:card`, and — where an absolute hero URL exists — `og:image` + `twitter:image`.
+- `robots.txt` allows crawl of public routes and disallows `/admin`, `/_authenticated`, `/api/public/hooks/*`.
+- Sitemap includes: `/`, `/groups`, published blog posts, and public walk share pages that are opted-in.
+- Structured data: `Article` on blog posts (already), `Event` on public walk pages, `Organization` on `__root`.
 
-- New `src/components/home/radio-rail.tsx` — horizontal station cards (cover, title, subtitle). Tap = start station in the universal player.
-- Mount on `src/routes/index.tsx` in place of the retired Listen section. Public (no auth required).
+### 7D. Empty & error states
+- Homepage with 0 nearby walks: the "New around here" adaptive state is done; verify it also shows for signed-out users, not just cold-start authed users.
+- `/blog` with 0 posts: current empty state is a bare "Nothing yet" — replace with a soft CTA that links to `/groups` so the page isn't a dead end.
+- `/g/$slug` for a group with 0 upcoming walks: show a "Be the first to post a walk here" affordance for members.
+- Route errors: confirm every public route has an `errorComponent` that doesn't leak stack traces.
 
-### 5. Admin — Radio
+### 7E. Privacy & safety pass
+- Confirm `public_profiles` view is what every public surface reads (walk cards, group member counts, `/u/$username`) — no accidental joins to the raw `profiles` table.
+- `/api/public/hooks/*` — re-verify signature checks and rate-limit-friendly responses.
+- Guest RSVP: confirm the encrypted email is never returned to the client, only used server-side.
 
-- `src/routes/admin.radio.tsx` — list stations + "New station" sheet.
-- `src/routes/admin.radio.$id.tsx` — edit station (title, subtitle, cover upload to `blog-covers`… actually a small `radio-covers` public bucket — added in step 1), track list with drag-reorder, file upload (browser gets signed PUT URL, uploads directly, then calls `adminUpsertTrack`).
-- Add link from `/admin` index.
+### 7F. Copy & branding
+- One pass on all shipped strings — remove any "Lovable App" / "Lovable Generated Project" leftovers.
+- Consistent voice for the empty states (currently a mix of "Nothing here yet" and "No walks nearby"). Pick one.
+- Favicons + PWA manifest icon set exist and are actually referenced.
 
-Correction to step 1: create three buckets — `radio-tracks` (private, audio), `radio-covers` (public, station art), `blog-covers` (public, post art).
+### 7G. Final build gates
+- Typecheck clean.
+- `bun run build` clean (no warnings for unhandled deps in Worker SSR).
+- Manual smoke on preview: signed-out home → sign up → post walk → share → guest RSVP → publish blog post → publish radio station → verify all show up.
+- Then publish.
 
-### 6. Blog CMS server layer
+---
 
-New file `src/lib/blog-cms.functions.ts`:
-- Public: `listPublished({ limit, offset })`, `getBySlug(slug)`.
-- Admin: `adminList`, `adminGet(id)`, `adminUpsert` (slug auto-generated from title if missing, unique-checked), `adminDelete`, `adminPublish({ id, publish })`.
-- Server-side markdown → HTML via `marked` + `sanitize-html` on save; store both `body_md` and `body_html`.
+### Deliverable order for this turn
 
-### 7. Public blog routes
+If you approve, I'll ship Wave 6's four cleanup items first (sitemap, dock radio branch, seed content stub, dead-code sweep), and confirm with a typecheck. Wave 7 is scoped as a follow-up and I'd tackle it in subsections (7A→7G) rather than one giant PR.
 
-- `src/routes/blog.tsx` — index listing published posts (cover, title, excerpt, date). SEO head with title/description/OG.
-- `src/routes/blog.$slug.tsx` — post page. Renders sanitized `body_html`. Per-route head() with `seo_title`/`seo_description`, canonical, `og:image` = `cover_url`, JSON-LD `Article`.
-- Add `/blog` and each published slug to the existing sitemap route.
+### Questions before I start
 
-### 8. Admin — Blog
-
-- `src/routes/admin.blog.tsx` — list drafts + published, "New post".
-- `src/routes/admin.blog.$id.tsx` — editor: title, slug (auto/editable), cover upload (`blog-covers`), Markdown textarea with live preview pane (client-side `marked` for preview only; server re-renders + sanitizes on save), SEO title/description, publish toggle, delete.
-
-### 9. Retire /read
-
-- `src/routes/_authenticated/read.$postId.tsx` → redirect to `/blog`.
-
-### 10. Verification
-
-- `bun add marked sanitize-html @types/sanitize-html` for CMS.
-- `bun add @aws-sdk/s3-request-presigner @aws-sdk/client-s3` NOT needed — Supabase Storage JS client already handles signed URLs.
-- Typecheck. Manual smoke: create a station via admin, upload one short mp3, play from home; create a draft post, publish, view at `/blog/<slug>`.
-
-### Not in this wave
-
-- Radio scheduling / live streams (stations are shuffled track lists).
-- Blog comments, multi-author permissions, drafts autosave.
-- Migration to R2 (can be done later without user-facing changes by swapping the storage helper).
-
-### Technical notes
-
-- Signed URL expiry: 5 min per track; refresh on advance. Avoids exposing raw storage keys.
-- Track uploads use `supabase.storage.from('radio-tracks').createSignedUploadUrl(path)` so large files don't route through server fns.
-- Sanitize-html allowlist: standard block/inline tags + `img[src,alt]`, `a[href,rel,target]`; strip `<script>`, `<iframe>`, event handlers.
-- Sitemap: extend existing sitemap generator to query `blog_posts` where `status='published'`.
-
-Ready to build on approval.
+- **Seed content:** want me to seed one demo Forest station + one launch blog post via the admin UI in this turn, or leave the shelves empty for you to fill?
+- **Wave 7 scope:** run all of 7A–7G, or trim (e.g. skip the ambient-video cellular gate, skip PWA icons)?
