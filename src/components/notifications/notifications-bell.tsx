@@ -57,6 +57,34 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
   });
   const items: NotificationRow[] = listData?.items ?? [];
 
+  // Snapshot which items were unread when the sheet opened, so their "new" styling
+  // persists for this open session even after we auto-mark them read.
+  const [sessionUnread, setSessionUnread] = useState<Set<string>>(new Set());
+  const sweptRef = useRef(false);
+
+  // Auto-mark all as read once the sheet opens with unread items loaded.
+  useEffect(() => {
+    if (!open) {
+      sweptRef.current = false;
+      setSessionUnread(new Set());
+      return;
+    }
+    if (sweptRef.current) return;
+    if (!listData) return;
+    const unreadIds = items.filter((n) => !n.read_at).map((n) => n.id);
+    if (unreadIds.length === 0) {
+      sweptRef.current = true;
+      return;
+    }
+    sweptRef.current = true;
+    setSessionUnread(new Set(unreadIds));
+    void markRead({ data: { all: true } })
+      .catch(() => {})
+      .finally(() => {
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+      });
+  }, [open, listData, items, markRead, qc]);
+
   // Realtime: push fresh count + list into the bell when a new notification lands.
   useEffect(() => {
     if (!user?.id) return;
