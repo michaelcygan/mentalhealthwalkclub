@@ -51,9 +51,18 @@ function BlogIndex() {
       </header>
 
       {posts.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No posts yet. Come back soon.
-        </p>
+        <div className="rounded-3xl border border-dashed border-border bg-card/40 p-8 text-center">
+          <p className="font-serif text-lg text-foreground">Nothing here yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Field notes and essays are on the way. In the meantime — get out for a walk.
+          </p>
+          <Link
+            to="/groups"
+            className="mt-5 inline-flex items-center gap-1 rounded-full bg-forest px-4 py-2 text-sm text-primary-foreground transition hover:opacity-90"
+          >
+            Find a walking group <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       ) : (
         <ul className="space-y-3">
           {posts.map((p) => (
