@@ -72,6 +72,7 @@ export function BadgeWall({ userId }: Props) {
           return (
             <button
               key={b.id}
+              type="button"
               onClick={() => { haptics.tap(); setOpen(b); }}
               className={`group flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition active:scale-95 ${
                 got
@@ -79,7 +80,7 @@ export function BadgeWall({ userId }: Props) {
                   : "border-border/50 bg-secondary/30 opacity-60 hover:opacity-90"
               }`}
             >
-              <span className={`grid h-11 w-11 place-items-center rounded-full ${got ? "bg-forest text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground"}`}>
+              <span className={`grid h-11 w-11 place-items-center rounded-full ${got ? "bg-forest text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground"}`} aria-hidden="true">
                 <Icon className="h-5 w-5" strokeWidth={got ? 2.2 : 1.6} />
               </span>
               <span className={`line-clamp-2 text-center text-[10px] leading-tight ${got ? "font-medium text-foreground" : "text-muted-foreground"}`}>
