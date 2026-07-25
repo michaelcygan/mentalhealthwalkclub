@@ -50,6 +50,9 @@ export function MobileTabBar() {
     navigate({ to });
   };
 
+  const left = TABS.slice(0, 2);
+  const right = TABS.slice(2);
+
   return (
     <>
       {composeOpen && (
@@ -78,8 +81,7 @@ export function MobileTabBar() {
               className="pointer-events-auto flex flex-col items-center gap-2"
             >
               <ComposeAction label="Write a reflection" sub="Open your journal" icon={<PenLine className="h-4 w-4" />} onClick={() => go("/journal")} />
-              <ComposeAction label="Plan a walk" sub="Group or future walk" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
-              <ComposeAction label="Walk now" sub="Solo · starts the timer" icon={<Footprints className="h-4 w-4" />} onClick={() => go("/walk")} />
+              <ComposeAction label="Plan a walk" sub="Post a walk to share" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
             </motion.div>
           )}
         </AnimatePresence>
