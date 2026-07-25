@@ -204,6 +204,8 @@ function ComposeWalkPage() {
         name: place.name,
         address: place.address,
         hero_url: place.hero_url,
+        lat: place.lat != null ? Number(place.lat) : null,
+        lng: place.lng != null ? Number(place.lng) : null,
       });
       setPlaceQuery(place.name);
       if (!title) setTitle(`Walk at ${place.name}`);
