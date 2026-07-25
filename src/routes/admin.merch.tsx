@@ -204,7 +204,7 @@ function AdminMerch() {
             <div key={p.id} className="space-y-2 rounded-2xl border border-border bg-card p-3">
               <div className="flex items-center gap-3">
                 {(e.image_url ?? p.image_url) ? (
-                  <img src={(e.image_url ?? p.image_url) as string} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                  <img src={(e.image_url ?? p.image_url) as string} alt="" className="h-12 w-12 rounded-lg object-cover" loading="lazy" decoding="async" />
                 ) : (
                   <div className="h-12 w-12 rounded-lg bg-accent" />
                 )}

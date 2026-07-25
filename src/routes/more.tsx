@@ -71,7 +71,7 @@ function MorePage() {
         className="flex items-center gap-4 rounded-3xl border border-border bg-card p-5 shadow-soft transition active:scale-[0.99] hover:bg-accent/30"
       >
         <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-accent font-serif text-xl text-forest">
-          {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : initials}
+          {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" decoding="async" /> : initials}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

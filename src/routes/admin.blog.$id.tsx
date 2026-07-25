@@ -109,7 +109,7 @@ function AdminBlogEditor() {
 
       {showPreview ? (
         <article className="rounded-2xl border border-border bg-card p-6">
-          {coverSigned && <img src={coverSigned} className="mb-4 w-full rounded-2xl object-cover" />}
+          {coverSigned && <img src={coverSigned} alt="" className="mb-4 w-full rounded-2xl object-cover" loading="lazy" decoding="async" />}
           <h1 className="font-serif text-3xl">{post.title}</h1>
           {post.summary && <p className="mt-2 text-muted-foreground">{post.summary}</p>}
           <div className="prose prose-neutral mt-4 max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -119,7 +119,7 @@ function AdminBlogEditor() {
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <div className="flex items-center gap-4">
               <label className="grid h-24 w-24 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted">
-                {coverSigned ? <img src={coverSigned} className="h-full w-full object-cover" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
+                {coverSigned ? <img src={coverSigned} alt="" className="h-full w-full object-cover" decoding="async" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])} />
               </label>
               <div className="flex-1 space-y-2">

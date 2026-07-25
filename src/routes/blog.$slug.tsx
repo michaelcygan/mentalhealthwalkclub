@@ -76,6 +76,7 @@ function BlogPostPage() {
           src={post.cover_signed}
           alt=""
           className="mt-6 w-full rounded-3xl object-cover shadow-soft"
+          decoding="async"
         />
       )}
       <div
