@@ -66,7 +66,7 @@ function TrailDetail() {
         }),
       );
     } catch { /* ignore */ }
-    navigate({ to: "/events" });
+    navigate({ to: "/" });
   }
 
   if (loading) {
