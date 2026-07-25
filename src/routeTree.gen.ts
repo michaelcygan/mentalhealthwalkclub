@@ -19,6 +19,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
+import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -110,6 +111,11 @@ const JournalRoute = JournalRouteImport.update({
 const ImpactRoute = ImpactRouteImport.update({
   id: '/impact',
   path: '/impact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -384,6 +391,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/events': typeof EventsRouteWithChildren
+  '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
   '/journal': typeof JournalRoute
   '/more': typeof MoreRoute
@@ -494,6 +503,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -547,6 +557,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -601,6 +612,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/events'
+    | '/groups'
     | '/impact'
     | '/journal'
     | '/more'
@@ -656,6 +668,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   EventsRoute: typeof EventsRouteWithChildren
+  GroupsRoute: typeof GroupsRoute
   ImpactRoute: typeof ImpactRoute
   JournalRoute: typeof JournalRoute
   MoreRoute: typeof MoreRoute
@@ -747,6 +760,13 @@ declare module '@tanstack/react-router' {
       path: '/impact'
       fullPath: '/impact'
       preLoaderRoute: typeof ImpactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -1188,6 +1208,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   EventsRoute: EventsRouteWithChildren,
+  GroupsRoute: GroupsRoute,
   ImpactRoute: ImpactRoute,
   JournalRoute: JournalRoute,
   MoreRoute: MoreRoute,
