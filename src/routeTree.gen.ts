@@ -35,6 +35,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSafetyRouteImport } from './routes/admin.safety'
 import { Route as AdminRequestsRouteImport } from './routes/admin.requests'
+import { Route as AdminRadioRouteImport } from './routes/admin.radio'
 import { Route as AdminPodcastsRouteImport } from './routes/admin.podcasts'
 import { Route as AdminMerchRouteImport } from './routes/admin.merch'
 import { Route as AdminMembershipRouteImport } from './routes/admin.membership'
@@ -42,6 +43,7 @@ import { Route as AdminInsightsRouteImport } from './routes/admin.insights'
 import { Route as AdminEventsRouteImport } from './routes/admin.events'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
 import { Route as AdminBlogsRouteImport } from './routes/admin.blogs'
+import { Route as AdminBlogRouteImport } from './routes/admin.blog'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AuthenticatedTrailsRouteImport } from './routes/_authenticated/trails'
 import { Route as AuthenticatedPlacesRouteImport } from './routes/_authenticated/places'
@@ -50,7 +52,9 @@ import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCirclesRouteImport } from './routes/_authenticated/circles'
 import { Route as AuthenticatedWalkIndexRouteImport } from './routes/_authenticated/walk.index'
 import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
+import { Route as AdminRadioIdRouteImport } from './routes/admin.radio.$id'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
+import { Route as AdminBlogIdRouteImport } from './routes/admin.blog.$id'
 import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
 import { Route as AuthenticatedReadPostIdRouteImport } from './routes/_authenticated/read.$postId'
@@ -195,6 +199,11 @@ const AdminRequestsRoute = AdminRequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRadioRoute = AdminRadioRouteImport.update({
+  id: '/radio',
+  path: '/radio',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPodcastsRoute = AdminPodcastsRouteImport.update({
   id: '/podcasts',
   path: '/podcasts',
@@ -228,6 +237,11 @@ const AdminCollectionsRoute = AdminCollectionsRouteImport.update({
 const AdminBlogsRoute = AdminBlogsRouteImport.update({
   id: '/blogs',
   path: '/blogs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBlogRoute = AdminBlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
@@ -270,10 +284,20 @@ const WCodeRecapRoute = WCodeRecapRouteImport.update({
   path: '/recap',
   getParentRoute: () => WCodeRoute,
 } as any)
+const AdminRadioIdRoute = AdminRadioIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminRadioRoute,
+} as any)
 const AdminPodcastsFeedIdRoute = AdminPodcastsFeedIdRouteImport.update({
   id: '/$feedId',
   path: '/$feedId',
   getParentRoute: () => AdminPodcastsRoute,
+} as any)
+const AdminBlogIdRoute = AdminBlogIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminBlogRoute,
 } as any)
 const AuthenticatedWalkNewRoute = AuthenticatedWalkNewRouteImport.update({
   id: '/walk/new',
@@ -373,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
@@ -380,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
+  '/admin/radio': typeof AdminRadioRouteWithChildren
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -395,7 +421,9 @@ export interface FileRoutesByFullPath {
   '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
+  '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/admin/radio/$id': typeof AdminRadioIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk/': typeof AuthenticatedWalkIndexRoute
   '/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -430,6 +458,7 @@ export interface FileRoutesByTo {
   '/places': typeof AuthenticatedPlacesRouteWithChildren
   '/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
@@ -437,6 +466,7 @@ export interface FileRoutesByTo {
   '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
+  '/admin/radio': typeof AdminRadioRouteWithChildren
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -452,7 +482,9 @@ export interface FileRoutesByTo {
   '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/walk/new': typeof AuthenticatedWalkNewRoute
+  '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/admin/radio/$id': typeof AdminRadioIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/walk': typeof AuthenticatedWalkIndexRoute
   '/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -489,6 +521,7 @@ export interface FileRoutesById {
   '/_authenticated/places': typeof AuthenticatedPlacesRouteWithChildren
   '/_authenticated/trails': typeof AuthenticatedTrailsRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/events': typeof AdminEventsRoute
@@ -496,6 +529,7 @@ export interface FileRoutesById {
   '/admin/membership': typeof AdminMembershipRoute
   '/admin/merch': typeof AdminMerchRoute
   '/admin/podcasts': typeof AdminPodcastsRouteWithChildren
+  '/admin/radio': typeof AdminRadioRouteWithChildren
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/safety': typeof AdminSafetyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -511,7 +545,9 @@ export interface FileRoutesById {
   '/_authenticated/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
   '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
+  '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
+  '/admin/radio/$id': typeof AdminRadioIdRoute
   '/w/$code/recap': typeof WCodeRecapRoute
   '/_authenticated/walk/': typeof AuthenticatedWalkIndexRoute
   '/_authenticated/listen/collection/$slug': typeof AuthenticatedListenCollectionSlugRoute
@@ -548,6 +584,7 @@ export interface FileRouteTypes {
     | '/places'
     | '/trails'
     | '/admin/analytics'
+    | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
     | '/admin/events'
@@ -555,6 +592,7 @@ export interface FileRouteTypes {
     | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
+    | '/admin/radio'
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
@@ -570,7 +608,9 @@ export interface FileRouteTypes {
     | '/read/$postId'
     | '/trails/$id'
     | '/walk/new'
+    | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
+    | '/admin/radio/$id'
     | '/w/$code/recap'
     | '/walk/'
     | '/listen/collection/$slug'
@@ -605,6 +645,7 @@ export interface FileRouteTypes {
     | '/places'
     | '/trails'
     | '/admin/analytics'
+    | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
     | '/admin/events'
@@ -612,6 +653,7 @@ export interface FileRouteTypes {
     | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
+    | '/admin/radio'
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
@@ -627,7 +669,9 @@ export interface FileRouteTypes {
     | '/read/$postId'
     | '/trails/$id'
     | '/walk/new'
+    | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
+    | '/admin/radio/$id'
     | '/w/$code/recap'
     | '/walk'
     | '/listen/collection/$slug'
@@ -663,6 +707,7 @@ export interface FileRouteTypes {
     | '/_authenticated/places'
     | '/_authenticated/trails'
     | '/admin/analytics'
+    | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
     | '/admin/events'
@@ -670,6 +715,7 @@ export interface FileRouteTypes {
     | '/admin/membership'
     | '/admin/merch'
     | '/admin/podcasts'
+    | '/admin/radio'
     | '/admin/requests'
     | '/admin/safety'
     | '/admin/users'
@@ -685,7 +731,9 @@ export interface FileRouteTypes {
     | '/_authenticated/read/$postId'
     | '/_authenticated/trails/$id'
     | '/_authenticated/walk/new'
+    | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
+    | '/admin/radio/$id'
     | '/w/$code/recap'
     | '/_authenticated/walk/'
     | '/_authenticated/listen/collection/$slug'
@@ -912,6 +960,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRequestsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/radio': {
+      id: '/admin/radio'
+      path: '/radio'
+      fullPath: '/admin/radio'
+      preLoaderRoute: typeof AdminRadioRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/podcasts': {
       id: '/admin/podcasts'
       path: '/podcasts'
@@ -959,6 +1014,13 @@ declare module '@tanstack/react-router' {
       path: '/blogs'
       fullPath: '/admin/blogs'
       preLoaderRoute: typeof AdminBlogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/blog': {
+      id: '/admin/blog'
+      path: '/blog'
+      fullPath: '/admin/blog'
+      preLoaderRoute: typeof AdminBlogRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/analytics': {
@@ -1017,12 +1079,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WCodeRecapRouteImport
       parentRoute: typeof WCodeRoute
     }
+    '/admin/radio/$id': {
+      id: '/admin/radio/$id'
+      path: '/$id'
+      fullPath: '/admin/radio/$id'
+      preLoaderRoute: typeof AdminRadioIdRouteImport
+      parentRoute: typeof AdminRadioRoute
+    }
     '/admin/podcasts/$feedId': {
       id: '/admin/podcasts/$feedId'
       path: '/$feedId'
       fullPath: '/admin/podcasts/$feedId'
       preLoaderRoute: typeof AdminPodcastsFeedIdRouteImport
       parentRoute: typeof AdminPodcastsRoute
+    }
+    '/admin/blog/$id': {
+      id: '/admin/blog/$id'
+      path: '/$id'
+      fullPath: '/admin/blog/$id'
+      preLoaderRoute: typeof AdminBlogIdRouteImport
+      parentRoute: typeof AdminBlogRoute
     }
     '/_authenticated/walk/new': {
       id: '/_authenticated/walk/new'
@@ -1188,6 +1264,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AdminBlogRouteChildren {
+  AdminBlogIdRoute: typeof AdminBlogIdRoute
+}
+
+const AdminBlogRouteChildren: AdminBlogRouteChildren = {
+  AdminBlogIdRoute: AdminBlogIdRoute,
+}
+
+const AdminBlogRouteWithChildren = AdminBlogRoute._addFileChildren(
+  AdminBlogRouteChildren,
+)
+
 interface AdminPodcastsRouteChildren {
   AdminPodcastsFeedIdRoute: typeof AdminPodcastsFeedIdRoute
 }
@@ -1200,8 +1288,21 @@ const AdminPodcastsRouteWithChildren = AdminPodcastsRoute._addFileChildren(
   AdminPodcastsRouteChildren,
 )
 
+interface AdminRadioRouteChildren {
+  AdminRadioIdRoute: typeof AdminRadioIdRoute
+}
+
+const AdminRadioRouteChildren: AdminRadioRouteChildren = {
+  AdminRadioIdRoute: AdminRadioIdRoute,
+}
+
+const AdminRadioRouteWithChildren = AdminRadioRoute._addFileChildren(
+  AdminRadioRouteChildren,
+)
+
 interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminBlogRoute: typeof AdminBlogRouteWithChildren
   AdminBlogsRoute: typeof AdminBlogsRoute
   AdminCollectionsRoute: typeof AdminCollectionsRoute
   AdminEventsRoute: typeof AdminEventsRoute
@@ -1209,6 +1310,7 @@ interface AdminRouteChildren {
   AdminMembershipRoute: typeof AdminMembershipRoute
   AdminMerchRoute: typeof AdminMerchRoute
   AdminPodcastsRoute: typeof AdminPodcastsRouteWithChildren
+  AdminRadioRoute: typeof AdminRadioRouteWithChildren
   AdminRequestsRoute: typeof AdminRequestsRoute
   AdminSafetyRoute: typeof AdminSafetyRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1216,6 +1318,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminBlogRoute: AdminBlogRouteWithChildren,
   AdminBlogsRoute: AdminBlogsRoute,
   AdminCollectionsRoute: AdminCollectionsRoute,
   AdminEventsRoute: AdminEventsRoute,
@@ -1223,6 +1326,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMembershipRoute: AdminMembershipRoute,
   AdminMerchRoute: AdminMerchRoute,
   AdminPodcastsRoute: AdminPodcastsRouteWithChildren,
+  AdminRadioRoute: AdminRadioRouteWithChildren,
   AdminRequestsRoute: AdminRequestsRoute,
   AdminSafetyRoute: AdminSafetyRoute,
   AdminUsersRoute: AdminUsersRoute,

@@ -15,6 +15,7 @@ import { Reflect30s } from "@/components/home/reflect-30s";
 import { WeekSummary } from "@/components/home/week-summary";
 import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
+import { RadioRail } from "@/components/home/radio-rail";
 
 import { Shimmer } from "@/components/ui/shimmer";
 import { WalkCard, type WalkCardData } from "@/components/discover/walk-card";
