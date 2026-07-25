@@ -43,15 +43,12 @@ export function MobileTabBar() {
   }, [composeOpen]);
 
   const showCompose = composeAllowed(path);
-  const isWalk = path === "/walk" || path === "/walk/";
-  const go = (to: "/walk" | "/walk/new" | "/journal") => {
+  const isWalk = false;
+  const go = (to: "/walk/new" | "/journal") => {
     setComposeOpen(false);
     haptics.tap();
     navigate({ to });
   };
-
-  const left = TABS.slice(0, 2);
-  const right = TABS.slice(2);
 
   return (
     <>
