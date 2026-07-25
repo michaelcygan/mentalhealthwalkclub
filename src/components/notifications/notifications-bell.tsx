@@ -155,13 +155,8 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
         )}
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0">
-        <SheetHeader className="flex flex-row items-center justify-between border-b border-border px-4 py-3">
+        <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle className="font-serif text-lg">Notifications</SheetTitle>
-          {unread > 0 && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onMarkAll}>
-              <Check className="mr-1 h-3 w-3" /> Mark all read
-            </Button>
-          )}
         </SheetHeader>
         <div className="max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
           {isLoading ? (
