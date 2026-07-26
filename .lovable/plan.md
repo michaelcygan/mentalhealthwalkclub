@@ -1,23 +1,29 @@
-## Radio rail redesign (pre-launch polish)
+## Problem
 
-Scope: `src/components/home/radio-rail.tsx` + one generated cover image. No data or backend changes.
+The global `EligibilityGate` in `src/routes/__root.tsx` hard-redirects every signed-in user whose status isn't `adult_active` to `/confirm-age`, including when they're just browsing the homepage or other public surfaces. DOB collection should happen at signup — not as a wall in front of general browsing.
 
-### Changes
+## Approach
 
-1. **Rename header** — "MHWC Radio" → "Radio" (keeps the broadcast icon + free-minutes meter to the right).
+Make age confirmation an **action-time gate**, not a **navigation-time gate**. DOB is still collected during signup (already wired in `auth-form.tsx`), and server-side triggers + the existing `useIsAdultActive` client preflights still block adult actions (RSVP, follow, join group, create walk, publish, etc.). We just stop redirecting people who are only browsing.
 
-2. **Generate a station cover image** — use `imagegen--generate_image` (standard tier) to create a warm, hand-drawn / textured graphic that fits the app's cream + forest palette. Saved to `src/assets/radio-cover-default.jpg` and imported as a fallback whenever a station has no `cover_signed` URL. This replaces the current empty gray tile with the small broadcast glyph.
+## Changes
 
-3. **Desktop layout** — right now the rail renders 40-unit square cards in a horizontal scroller even on desktop, leaving the huge empty band shown in screenshot 1. On `md:` and up, switch to a responsive grid (`md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4`) so cards fill the available width. Cards become landscape-ish (aspect-[5/3] cover + title/subtitle strip) for better use of horizontal space. Mobile keeps the current horizontal snap scroller.
+1. **`src/routes/__root.tsx`** — Remove the auto-redirect inside `EligibilityGate`. Keep the component as a lightweight wrapper (or delete it entirely and render `<AppFrame>` directly). The `/confirm-age` route stays reachable via preflight toasts' deep-link and via a soft prompt.
 
-4. **Mobile card polish** — same card component, but the cover area now always shows an image (station cover OR generated fallback) with a subtle gradient overlay and the broadcast icon pinned top-left. Title uses the serif face, subtitle sits below in muted tone. Slight shadow lift + rounded-3xl for a more designed feel.
+2. **Soft prompt for signed-in, non-adult-active users** — Add a small dismissible banner (top of `AppFrame`, only when `user && eligibility.eligibilityStatus !== "adult_active"`) that says "Confirm your age to RSVP, follow, and join groups" with a link to `/confirm-age`. No forced redirect.
 
-### Out of scope
-- No changes to `startStation`, usage tracking, paywall, or server functions.
-- No new per-station images — one shared generated fallback for now.
+3. **Keep everything else intact**:
+   - Signup DOB collection in `auth-form.tsx` — unchanged.
+   - Server triggers enforcing adult-only writes — unchanged.
+   - `useIsAdultActive` client preflights on RSVP / follow / join — unchanged (they already deep-link to `/confirm-age` on failure).
+   - `/confirm-age` route — unchanged, still works when reached via preflight or banner.
 
-### Technical notes
-- File edited: `src/components/home/radio-rail.tsx`.
-- New asset: `src/assets/radio-cover-default.jpg` (generated).
-- Uses existing `Card`, `Shimmer`, `UpsellSheet`, `usePlayer`, hooks — no new dependencies.
-- Tailwind responsive: mobile flex-scroller preserved via `md:hidden` wrapper, desktop grid via `hidden md:grid`.
+## Result
+
+- Anonymous visitors: no change (were never gated).
+- New signups: DOB captured at signup as today.
+- Legacy signed-in users without DOB: can browse freely; get a soft banner and are prompted only when they try an adult action.
+
+## Out of scope
+
+No DB/migration changes. No changes to admin DOB correction, preflight hooks, or safety triggers.

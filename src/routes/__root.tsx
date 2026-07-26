@@ -1,5 +1,5 @@
 import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import appCss from "../styles.css?url";
@@ -21,7 +21,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { installConsoleCapture } from "@/lib/console-capture";
 import { dur, easeOut } from "@/lib/motion";
-import { useRouter } from "@tanstack/react-router";
+
 
 if (typeof window !== "undefined") installConsoleCapture();
 
@@ -226,24 +226,19 @@ function TabBar() {
   );
 }
 
-const ELIGIBILITY_ALLOWLIST = ["/auth", "/confirm-age", "/terms", "/privacy", "/support", "/w/"];
-
-function EligibilityGate({ children }: { children: React.ReactNode }) {
+function AgeConfirmBanner() {
   const { user } = useAuth();
   const { eligibility, loading } = useEligibility();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!user || loading || !eligibility) return;
-    const allowed = ELIGIBILITY_ALLOWLIST.some((p) => path === p || path.startsWith(p));
-    if (allowed) return;
-    if (eligibility.eligibilityStatus !== "adult_active") {
-      void router.navigate({ to: "/confirm-age" });
-    }
-  }, [user, loading, eligibility, path, router]);
-
-  return <>{children}</>;
+  if (!user || loading || !eligibility) return null;
+  if (eligibility.eligibilityStatus === "adult_active") return null;
+  if (path.startsWith("/confirm-age") || path.startsWith("/auth")) return null;
+  return (
+    <div className="border-b border-border/60 bg-accent/40 px-4 py-2 text-center text-xs text-foreground md:px-8">
+      Confirm your age to RSVP, follow, and join groups.{" "}
+      <Link to="/confirm-age" className="font-medium underline underline-offset-2">Confirm now</Link>
+    </div>
+  );
 }
 
 function AppFrame({ children }: { children: React.ReactNode }) {
@@ -255,6 +250,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background">
+      <AgeConfirmBanner />
       <TabBar />
       <main className="md:pl-60">
         <div className="mx-auto max-w-3xl px-4 pt-3 pb-[calc(8rem+env(safe-area-inset-bottom))] md:px-8 md:pt-10 md:pb-12">
@@ -264,6 +260,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -275,11 +272,9 @@ function RootComponent() {
             <AmbientPlayerProvider>
               <PlayerProvider>
                 <PaymentTestModeBanner />
-                <EligibilityGate>
-                  <AppFrame>
-                    <RoutedOutlet />
-                  </AppFrame>
-                </EligibilityGate>
+                <AppFrame>
+                  <RoutedOutlet />
+                </AppFrame>
                 <Toaster />
               </PlayerProvider>
             </AmbientPlayerProvider>
