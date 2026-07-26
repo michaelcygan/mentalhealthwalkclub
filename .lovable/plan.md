@@ -1,40 +1,60 @@
 ## Goal
-Make walk-page photos ("Memory strip") privacy-gated: only visible to walkers who actually joined (RSVP'd / host / group member). Logged-out and non-RSVP'd viewers see a gated placeholder instead of images.
+Collapse the Solo Walk flow into a single, calm page: **Start → Walking (with End) → End (mood + reflection + save)**. Drop the pre-walk optional fields, the intermediate "saved" screen, and the toggle-open reflection during the walk.
 
-## Current behavior
-- `getEventPhotos` (in `src/lib/walk-page.functions.ts`) currently returns photos to ANY authenticated viewer when the event is `public` or `link_only`. That's too permissive.
-- The client (`src/components/walk-page/memory-strip.tsx`) skips fetching when logged-out and shows a generic "No memories yet" empty state, giving no signal that memories exist or that RSVP unlocks them.
+## Current friction
+- Ready state stacks a big Start button, an "Optional" details section (arriving mood + intention), and a Radio quick picker — feels heavy for what should be one tap.
+- Active state has two side-by-side buttons (Reflect / End walk), a collapsible reflection box, and a discard link.
+- After saving, users are pushed to a separate "Walk saved." confirmation screen with two navigation buttons.
+- Four visible UI states (`ready`, `active`, `finish`, `saved`) for a routine loop.
 
-## Changes
+## Target flow (one page, three phases)
 
-### 1. Tighten server access (`src/lib/walk-page.functions.ts`)
-Rework `getEventPhotos` so access requires one of:
-- host of the event, OR
-- active member of the event's group (if group-scoped), OR
-- has an RSVP row for this event
+```text
+┌─ ready ─────────────┐   ┌─ active ────────────┐   ┌─ finish ────────────┐
+│ Title + subtitle    │ → │ Elapsed timer       │ → │ "You walked N min"  │
+│ [ Start walking ]   │   │ Intention (if any)  │   │ Mood after (opt.)   │
+└─────────────────────┘   │ [ End walk ]        │   │ Reflection (opt.)   │
+                          │ (small discard link)│   │ [ Save walk ]       │
+                          └─────────────────────┘   └─────────────────────┘
+                                                             │
+                                                     toast + redirect to /
+```
 
-Public/link_only alone no longer grants photo access. Return shape becomes `{ photos, access: "member" | "gated", photoCount }` so the client can render a gated state that tells the truth about whether photos exist without exposing them.
+Everything renders inside one card on `src/routes/_authenticated/walk.index.tsx`. Phase transitions animate in place, no route change.
 
-Also add a lightweight public count helper (or fold into the above via an unauthenticated branch) so logged-out viewers can see "N memories — join the walk to view".
+## Changes in `src/routes/_authenticated/walk.index.tsx`
 
-### 2. Add logged-out / non-RSVP gated state (`src/components/walk-page/memory-strip.tsx`)
-- Logged out: render the Memory Strip section with a locked card:
-  - Title: "Memories from this walk"
-  - Body: "Photos here are for members who joined the walk."
-  - Buttons: "Log in" and "Create account" (route to `/auth` with return URL preserved)
-  - Never render any `<img>` or signed URL. Do not call the photos endpoint.
-- Logged in, but not host / group member / RSVP'd: same locked card, swap CTA to "RSVP to view memories" (link to the RSVP action / event page anchor). No image tags rendered.
-- Logged in and allowed: current behavior (fetch + render strip + camera FAB).
-- Hide the floating camera FAB unless the viewer is allowed (member/host/group).
+1. **Ready phase — minimal**
+   - Keep title, one-line subtitle, and the big **Start walking** button.
+   - Remove the `<details>` "Optional" block (arriving mood + intention inputs).
+   - Remove the Radio quick picker from this page (Radio is already reachable from the dock/home rail; the walk page shouldn't double as a launcher).
+   - `onStart` no longer sends `moodBefore` / `intention`.
 
-### 3. Fetching
-- Skip the server call entirely for logged-out and non-allowed viewers to avoid 401 noise; rely on the RSVP/host/group signals already present on the walk page (`event.viewerRsvp` / host id / group membership) — pass an `allowed` prop into `MemoryStrip` from `src/routes/w.$code.tsx`, which already knows the viewer's RSVP state.
+2. **Active phase — just the timer and End**
+   - Keep the elapsed clock and (if a prior session had one) the intention line for continuity with resumed walks.
+   - Remove the "Reflect" toggle button and the inline reflection textarea — reflection lives in the End step only.
+   - Keep the small "Discard walk" text link and the stale-session banner (End now / Discard) as-is; those are safety valves, not friction.
+   - Single primary button: **End walk**.
 
-## Technical details
-- No schema changes.
-- Keep signed URL TTL as-is; they're only minted for allowed callers now.
-- `EventPhoto.url` is never sent to unauthorized callers, so no risk of leaked signed URLs in network responses.
-- Route `src/routes/w.$code.tsx`: pass `viewerAllowed` boolean into `<MemoryStrip>` based on existing loader data (host === viewer, group membership, RSVP present).
+3. **Finish phase — reflection lives here**
+   - Keep mood-after + reflection inputs, both optional, both labeled as such.
+   - "Back" button stays (returns to active) so an accidental tap doesn't lose the walk.
+   - **Save walk** completes and, on success, shows a toast ("Walk saved — today counts") and navigates to `/`. No dedicated `saved` screen.
+
+4. **State machine**
+   - Drop the `saved` UI state; remove that whole render branch.
+   - `UIState = "loading" | "ready" | "active" | "finish"`.
+
+5. **Drafts / resume**
+   - Keep the localStorage reflection draft keyed by session id (useful if user closes the tab mid-finish).
+   - Keep the "Resumed your open walk" toast when the server returns an existing active session.
 
 ## Out of scope
-- Photo captions/comments, per-photo privacy toggles, or blurred previews. Gated state is a plain card, no blurred thumbnails.
+- No server changes. `startSoloWalk` still accepts optional `moodBefore` / `intention`; we just stop sending them from this page.
+- No changes to homepage streak dots / Today island / journal integration.
+- Radio + audio still available globally via the dock; not removed from the app, only removed from this page.
+
+## Technical notes
+- Imports to drop: `RadioQuickPicker`, `RadioIcon`, `Check`, `PenLine`, `Link` (if unused after removing the saved screen — verify), `useMemo` stays for `isStale`.
+- Remove state: `moodBefore`, `intention`, `reflectOpen`.
+- `onSave` success path: `toast.success("Walk saved — today counts.")` then `navigate({ to: "/" })`.
