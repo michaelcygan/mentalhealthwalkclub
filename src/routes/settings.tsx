@@ -11,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { LocationAutosuggest, type LocationValue } from "@/components/location-autosuggest";
 import { BillingCard } from "@/components/billing/billing-card";
-import { SupporterCard } from "@/components/billing/supporter-card";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { toast } from "sonner";
 
@@ -143,7 +142,6 @@ function SettingsPage() {
       <SectionCard title="Membership" icon={Sparkles}>
         <div className="-m-1 space-y-3">
           <BillingCard />
-          <SupporterCard />
         </div>
         {isPlus && (
           <Link to="/impact" className="mt-3 flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm hover:bg-accent/30">
