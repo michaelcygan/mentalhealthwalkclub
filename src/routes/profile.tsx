@@ -158,9 +158,9 @@ function ProfileTab() {
                 <Link
                   to="/impact"
                   className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-700 hover:bg-rose-200"
-                  title="50% of your Plus goes to mental health nonprofits"
+                  title="You're supporting the 988 Suicide & Crisis Lifeline"
                 >
-                  <Heart className="h-3 w-3" /> Supporter
+                  <Heart className="h-3 w-3" /> Plus
                 </Link>
               )}
             </div>
