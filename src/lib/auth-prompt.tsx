@@ -119,7 +119,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
               <h2 className="font-serif text-xl text-foreground">Walk Club Plus</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              $2.99/mo keeps Plus running. Every dollar above is designated to the 988 Suicide &amp; Crisis Lifeline.
+              $2.99/mo unlocks unlimited MHWC Radio and keeps the club running. Every dollar above is designated to the 988 Suicide &amp; Crisis Lifeline.
             </p>
             {plusOpen && !checkoutStarted && (
               <div className="mt-5">

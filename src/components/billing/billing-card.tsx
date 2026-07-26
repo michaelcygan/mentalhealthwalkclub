@@ -147,7 +147,7 @@ export function BillingCard() {
           <div className="flex-1">
             <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              $2.99/mo keeps Plus running. Every cent above is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
+              $2.99/mo unlocks unlimited MHWC Radio and keeps the club running. Every cent above is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <Button
               onClick={() => openPlusCheckout()}
@@ -216,7 +216,7 @@ export function BillingCard() {
               </button>
             </div>
             <div className="mt-1 text-[11px] text-muted-foreground">
-              $2.99 base
+              $2.99 keeps Radio running
               {donationCents > 0 && (
                 <>
                   {" + "}
@@ -291,7 +291,7 @@ export function BillingCard() {
         <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card p-6 sm:max-w-md">
           <h3 className="font-serif text-xl">Change your monthly amount</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Applies on your next invoice. The $2.99 base stays the same.
+            Applies on your next invoice. The $2.99 Radio-running base stays the same.
           </p>
           <div className="mt-4">
             <PlusAmountPicker

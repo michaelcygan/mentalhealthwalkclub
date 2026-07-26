@@ -9,7 +9,7 @@ import { FoundingBadge } from "@/components/membership/founding-badge";
 
 const IMPACT_URL = "https://mentalhealthwalkclub.com/impact";
 const IMPACT_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/a9e1c704-8b35-4af9-8a3b-6571b05a857e/og-default-v4.jpg";
-const IMPACT_DESC = "Every dollar of Walk Club Plus above the $2.99 base is designated to the 988 Suicide & Crisis Lifeline. See the live ledger.";
+const IMPACT_DESC = "Walk Club Plus unlocks unlimited MHWC Radio and keeps the club running. Every dollar above $2.99 is designated to the 988 Suicide & Crisis Lifeline. See the live ledger.";
 
 export const Route = createFileRoute("/impact")({
   component: ImpactPage,
@@ -91,7 +91,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Walk Club Plus is $2.99/month. Every dollar you add on top is designated to the 988 Suicide &amp; Crisis Lifeline. The $2.99 base keeps the lights on so we can keep building.
+          Walk Club Plus is $2.99/month. That unlocks unlimited MHWC Radio and keeps the club running. Every dollar you add on top is designated to the 988 Suicide &amp; Crisis Lifeline.
         </p>
       </header>
 
@@ -159,7 +159,7 @@ function ImpactPage() {
           <div className="flex-1">
             <h2 className="font-serif text-xl">Add to your monthly gift</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Plus is $2.99/month. Add any amount on top — 100% of that add-on is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
+              Plus is $2.99/month for unlimited MHWC Radio and keeping the club running. Add any amount on top — 100% of that add-on is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
@@ -197,7 +197,7 @@ function ImpactPage() {
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
-          Each successful Walk Club Plus charge splits into two lines: a $2.99 membership allocation that keeps the app running, and a donation allocation for everything above that. We route 100% of designated allocations to the 988 Suicide &amp; Crisis Lifeline and publish each transfer on the ledger so you can check our math.
+          Each successful Walk Club Plus charge splits into two lines: a $2.99 membership allocation that unlocks unlimited MHWC Radio and keeps the app running, and a donation allocation for everything above that. We route 100% of designated allocations to the 988 Suicide &amp; Crisis Lifeline and publish each transfer on the ledger so you can check our math.
         </p>
         <p className="mt-3">
           <Link to="/transparency" className="underline">

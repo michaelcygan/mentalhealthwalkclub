@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 
 export interface StationCard {
   id: string;
@@ -22,31 +20,8 @@ export interface StationTrack {
   sort: number;
 }
 
-const COVER_TTL = 60 * 60 * 24; // 1 day
-const TRACK_TTL = 60 * 60 * 2; // 2 hours (session-length)
-
-function serverClient() {
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-  return createClient<Database>(process.env.SUPABASE_URL!, key, {
-    auth: { persistSession: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-}
-
-async function signCover(supabase: ReturnType<typeof serverClient>, path: string | null): Promise<string | null> {
-  if (!path) return null;
-  const { data } = await supabase.storage.from("radio-covers").createSignedUrl(path, COVER_TTL);
-  return data?.signedUrl ?? null;
-}
-
 export const listStations = createServerFn({ method: "GET" }).handler(async () => {
+  const { serverClient, signCover } = await import("@/lib/radio.server");
   const supabase = serverClient();
   const { data, error } = await supabase
     .from("radio_stations")
@@ -67,6 +42,7 @@ export const listStations = createServerFn({ method: "GET" }).handler(async () =
 export const getStation = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ slug: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
+    const { serverClient, signCover } = await import("@/lib/radio.server");
     const supabase = serverClient();
     const { data: st, error } = await supabase
       .from("radio_stations")
@@ -91,6 +67,7 @@ export const getStation = createServerFn({ method: "GET" })
 export const signTrackUrl = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ trackId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
+    const { serverClient, TRACK_TTL } = await import("@/lib/radio.server");
     const supabase = serverClient();
     const { data: track, error } = await supabase
       .from("radio_tracks")
@@ -106,21 +83,13 @@ export const signTrackUrl = createServerFn({ method: "GET" })
     return { url: signed.signedUrl };
   });
 
-// --- Admin --------------------------------------------------------------
-
-async function assertAdmin(context: { supabase: ReturnType<typeof serverClient>; userId: string }) {
-  const { data } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (!data) throw new Error("Forbidden");
-}
-
 export const adminListStations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
-    const { data, error } = await context.supabase
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
+    const { data, error } = await supabase
       .from("radio_stations")
       .select("*")
       .order("sort", { ascending: true });
@@ -132,16 +101,18 @@ export const adminGetStation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { data: st } = await context.supabase.from("radio_stations").select("*").eq("id", data.id).maybeSingle();
-    const { data: tracks } = await context.supabase
+    const { serverClient, assertAdmin, COVER_TTL } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
+    const { data: st } = await supabase.from("radio_stations").select("*").eq("id", data.id).maybeSingle();
+    const { data: tracks } = await supabase
       .from("radio_tracks")
       .select("*")
       .eq("station_id", data.id)
       .order("sort", { ascending: true });
     let coverSigned: string | null = null;
     if (st?.cover_url) {
-      const { data: s } = await context.supabase.storage.from("radio-covers").createSignedUrl(st.cover_url, COVER_TTL);
+      const { data: s } = await supabase.storage.from("radio-covers").createSignedUrl(st.cover_url, COVER_TTL);
       coverSigned = s?.signedUrl ?? null;
     }
     return { station: st, tracks: tracks ?? [], coverSigned };
@@ -163,7 +134,9 @@ export const adminUpsertStation = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
     const payload = {
       slug: data.slug,
       title: data.title,
@@ -173,7 +146,7 @@ export const adminUpsertStation = createServerFn({ method: "POST" })
       sort: data.sort ?? 0,
     };
     if (data.id) {
-      const { data: row, error } = await context.supabase
+      const { data: row, error } = await supabase
         .from("radio_stations")
         .update(payload)
         .eq("id", data.id)
@@ -182,7 +155,7 @@ export const adminUpsertStation = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return row;
     }
-    const { data: row, error } = await context.supabase.from("radio_stations").insert(payload).select().single();
+    const { data: row, error } = await supabase.from("radio_stations").insert(payload).select().single();
     if (error) throw new Error(error.message);
     return row;
   });
@@ -191,8 +164,10 @@ export const adminDeleteStation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { error } = await context.supabase.from("radio_stations").delete().eq("id", data.id);
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
+    const { error } = await supabase.from("radio_stations").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -214,7 +189,9 @@ export const adminUpsertTrack = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
     const payload = {
       station_id: data.station_id,
       storage_key: data.storage_key,
@@ -225,7 +202,7 @@ export const adminUpsertTrack = createServerFn({ method: "POST" })
       is_active: data.is_active ?? true,
     };
     if (data.id) {
-      const { data: row, error } = await context.supabase
+      const { data: row, error } = await supabase
         .from("radio_tracks")
         .update(payload)
         .eq("id", data.id)
@@ -234,7 +211,7 @@ export const adminUpsertTrack = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return row;
     }
-    const { data: row, error } = await context.supabase.from("radio_tracks").insert(payload).select().single();
+    const { data: row, error } = await supabase.from("radio_tracks").insert(payload).select().single();
     if (error) throw new Error(error.message);
     return row;
   });
@@ -243,12 +220,14 @@ export const adminDeleteTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { data: t } = await context.supabase.from("radio_tracks").select("storage_key").eq("id", data.id).maybeSingle();
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
+    const { data: t } = await supabase.from("radio_tracks").select("storage_key").eq("id", data.id).maybeSingle();
     if (t?.storage_key) {
-      await context.supabase.storage.from("radio-tracks").remove([t.storage_key]);
+      await supabase.storage.from("radio-tracks").remove([t.storage_key]);
     }
-    const { error } = await context.supabase.from("radio_tracks").delete().eq("id", data.id);
+    const { error } = await supabase.from("radio_tracks").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -264,8 +243,10 @@ export const adminSignUpload = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { data: signed, error } = await context.supabase.storage
+    const { serverClient, assertAdmin } = await import("@/lib/radio.server");
+    const supabase = serverClient();
+    await assertAdmin({ supabase, userId: context.userId });
+    const { data: signed, error } = await supabase.storage
       .from(data.bucket)
       .createSignedUploadUrl(data.path);
     if (error || !signed) throw new Error(error?.message ?? "Sign failed");

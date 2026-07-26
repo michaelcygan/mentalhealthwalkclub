@@ -171,7 +171,7 @@ export function AuthForm({
       <p className="mt-1 text-sm text-muted-foreground">
         {isSignup
           ? plan === "plus"
-            ? "30 days on us, then $2.99/mo. The $2.99 base keeps Plus running; anything you add on top is designated to the 988 Suicide & Crisis Lifeline. Cancel anytime — no charge until day 30."
+            ? "30 days on us, then $2.99/mo. Unlock unlimited MHWC Radio and help keep the club running. Anything you add on top is designated to the 988 Suicide & Crisis Lifeline. Cancel anytime — no charge until day 30."
             : "Free forever. Post walks, join groups, keep a private journal, and listen to MHWC Radio."
           : "Lace up. Let's go."}
       </p>
@@ -207,7 +207,7 @@ export function AuthForm({
               <Sparkles className="h-3.5 w-3.5 text-forest" /> Plus
             </span>
             <span className="text-[11px] leading-tight text-muted-foreground">
-              Free 30 days · then $2.99/mo · Extra groups & insights · add-ons go to 988
+              Free 30 days · then $2.99/mo · Unlimited MHWC Radio · add-ons go to 988
             </span>
           </button>
         </div>
