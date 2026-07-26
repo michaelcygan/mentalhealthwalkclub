@@ -42,12 +42,15 @@ export const Route = createFileRoute("/api/public/walk/$code/rsvp")({
 
         const { data: ev } = await supabaseAdmin
           .from("events")
-          .select("id,visibility,status,title")
+          .select("id,visibility,status,title,age_realm")
           .eq("slug", code.data)
           .in("visibility", ["public", "link_only", "group"])
           .eq("status", "published")
           .maybeSingle();
         if (!ev) return new Response("not found", { status: 404 });
+        if (ev.age_realm && ev.age_realm !== "adult") {
+          return Response.json({ error: "This walk isn't accepting guest RSVPs." }, { status: 403 });
+        }
 
         // Soft rate-limit per IP per event
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
