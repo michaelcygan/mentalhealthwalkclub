@@ -1,30 +1,40 @@
-## Solo Walk — Remaining Waves
+# Weather peek on the walk page
 
-Waves 1–7 are done (DB migration + unique active-session index, server functions, rebuilt walk route with ready/active/finish/saved states, Radio quick picker, composer + tab bar updates, homepage Today island resume state, Journal inclusion of empty solo walks).
+Add a small, glanceable weather summary in the empty space to the right of the walk title (as circled). Keep the existing full `WalkWeather` strip lower on the page unchanged.
 
-Three waves remain from the original plan, all small.
+## What it shows
 
-### Wave 8 — Streaks + routine dots
-- Ensure a completed solo walk (even with no reflection) counts toward the daily walking streak and lights up today's dot on the homepage routine strip.
-- Verify the streak query includes `walk_sessions` where `kind = 'solo'` and `status = 'completed'`, not just walks with journal content.
-- No new tables; adjust the existing streak/dots selector only.
+A compact pill/square with:
+- Condition icon (sun / cloud / rain / snow — reuse `src/lib/weather-icons.tsx`)
+- Temperature (e.g. `72°F`)
+- Precip chance if ≥ 20% (e.g. `· 30%`)
 
-### Wave 9 — Stale + edge-case handling
-- 12h stale banner already shown; add a one-tap "End now" that calls `completeSoloWalk` using the server-computed duration, and "Discard" that calls `abandonSoloWalk`.
-- Handle the "already has active session" error from `startSoloWalk` by routing the user into the existing active session instead of surfacing a raw error.
-- Confirm idempotency: double-tapping Start or Finish cannot create duplicates or corrupt duration.
+Sourced from the NWS period nearest to `event.starts_at`, using the existing `useWalkWeather` hook + `pickPeriodForTime` from `src/lib/walk-weather-match.ts`. No new server function or query — the same query key is reused by the full strip below, so this is one network call for the page.
 
-### Wave 10 — QA pass
-- `tsgo --noEmit` + production build.
-- Playwright: start → wait → finish → saved; verify session appears in Journal, streak/dot updates, no public/discover/group leakage, composer hidden during walk, Radio picker respects Free/Plus entitlement.
-- Verify unauthenticated users are redirected and that solo walks never appear on public profiles or group feeds.
+## Behavior
 
-### Out of scope (still deferred)
-Pause, GPS/route tracking, step counting, photo uploads, mood/weather, sharing, notifications.
+- Only render when `hasMap && !isPast` (same condition as the full strip) and the query returns `status: "ok"` with a matched period.
+- While loading: render a small skeleton of the same footprint so layout doesn't jump.
+- On error / unsupported region (outside NWS coverage): render nothing — the full strip already handles that messaging below.
+- Tooltip / `title` on hover: full `shortForecast` text.
 
-### Technical notes
-- Duration stays server-owned (`ended_at - started_at`); client never sends elapsed time.
-- Single-active-session invariant is enforced by the existing partial unique index; client should treat the conflict as "resume" not "error".
-- All new UI reuses existing components — no new dependencies.
+## Layout
 
-Want me to proceed with Waves 8–10, or is there something you'd add/cut first?
+Desktop / tablet (≥ sm):
+- Wrap the header block in a flex row: title + meta on the left, peek aligned top-right in the circled spot.
+- Peek is a rounded-2xl card, `bg-card border border-border`, ~ auto width, single line.
+
+Mobile (< sm):
+- Peek moves to a slim row directly under the "Hosted by …" line (still above RSVP), full-width-ish inline pill, left-aligned. This preserves the "peek at the top" feel without crowding the title on narrow screens.
+- Achieved with `sm:absolute sm:top-0 sm:right-0` + relative header, or a simpler `flex-col sm:flex-row sm:items-start sm:justify-between` header with the peek as the second flex child.
+
+## Files
+
+- `src/routes/w.$code.tsx` — restructure the `<header>` in `WalkPage` to a responsive flex row; render a new `<WalkWeatherPeek lat={lat} lng={lng} centerIso={event.starts_at} />` inside it, gated on `hasMap && !isPast`.
+- `src/components/walk-page/walk-weather-peek.tsx` — new small client component using `useWalkWeather` + `pickPeriodForTime` + `weatherIconFor`. Skeleton + null states as above.
+
+## Non-goals
+
+- No change to the full `WalkWeather` strip section.
+- No new data fetching, caching, or server code.
+- No change to `Cover`, RSVP, map, or share rows.
