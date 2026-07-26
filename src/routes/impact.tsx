@@ -180,12 +180,12 @@ function ImpactPage() {
         </div>
         {wall.length > 0 && (
           <div className="mt-6 border-t border-rose-200 pt-4">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Supporter wall</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Founding members</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {wall.map((p) => (
                 <li key={p.user_id} className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-card px-3 py-1 text-xs">
                   <FoundingBadge size="xs" />
-                  <span>{p.display_name ?? "Supporter"}</span>
+                  <span>{p.display_name ?? "Member"}</span>
                 </li>
               ))}
             </ul>
