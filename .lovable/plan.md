@@ -1,88 +1,55 @@
+## Wave 3: Stripe webhook + immutable allocation accounting
 
-# Wave 2 — Unified Plus Checkout
+Wave 2 is complete — checkout, hook, billing UI, and amount-change flow are wired to the unified base + donation model. Moving to Wave 3, which is entirely webhook + ledger work. No user-facing UI changes here.
 
-Goal: one Stripe subscription per member with two line items — a fixed $2.99 base and a variable donation delta. Retire Supporter, yearly, and the 30-day trial from the new-user flow. Every dollar above $2.99 is designated to 988 in the ledger created in Wave 1.
+### Goal
+On every successful Plus renewal (and one-time contribution), post a single immutable row to `donation_allocations` splitting the invoice into $2.99 (membership) and the delta (988 designation). Also mirror the current donation amount onto the subscription row so the app can render it without recomputing.
 
-## Mental model
+### Changes
 
-- Plus is $2.99/month, monthly only, no trial.
-- Members may voluntarily pay more; extra amount is the "donation" line item.
-- Ledger row is written on invoice paid (webhook, Wave 3) — base stays, donation is designated to 988.
-- One subscription per user. If they already have one, they change the amount via portal / "change amount", not a new checkout.
+**1. `src/routes/api/public/payments/webhook.ts` — expand handler**
+- Handle new events:
+  - `invoice.paid` (or `invoice.payment_succeeded`) — write ledger row + refresh subscription mirror fields.
+  - `charge.refunded` / `charge.dispute.created` — mark matching allocation as `refunded` / `partially_refunded` / `disputed`.
+- On `customer.subscription.created` / `.updated`:
+  - Detect the donation line item by product (resolve `plus_donation` product ID via `stripe.products.list({...})` cached in-module).
+  - Compute `base_cents = 299`, `donation_cents_monthly = donation_item.price.unit_amount || 0`, `monthly_amount_cents = 299 + donation`.
+  - Write these to `subscriptions` (`base_cents`, `donation_cents_monthly`, `monthly_amount_cents`, `stripe_base_item_id`, `stripe_donation_item_id`, `selected_total_cents`, `allocation_model_version = 'v2_unified'`).
+  - Drop legacy `supporter_profile` mirroring — retired in Wave 2.
+- Retire `kind === "supporter"` branch. Everything is `plus` in v2.
 
-## Server changes — `src/lib/billing.functions.ts`
+**2. Ledger write logic (new `handleInvoicePaid`)**
+- Idempotency: unique key is `stripe_event_id` (already unique in schema). Use `upsert` with `onConflict: "stripe_event_id"` and `ignoreDuplicates: true`.
+- Skip invoices where `billing_reason` is `subscription_create` AND `amount_paid = 0` (trial signup, already retired but defensive).
+- For each paid invoice on a Plus subscription:
+  - `gross_payment_cents = invoice.amount_paid`
+  - `membership_allocation_cents = min(299, gross)` (base always $2.99)
+  - `donation_allocation_cents = max(0, gross - 299)`
+  - Copy dedication/public-donor fields from the subscription row so the transparency feed can render them PII-safely.
+  - `source = 'plus_overage'` when donation > 0, `'legacy_plus_commitment'` otherwise.
+  - `status = 'designated'`, `paid_at = invoice.status_transitions.paid_at * 1000`.
+  - `stripe_payment_intent_id` / `stripe_charge_id` from `invoice.charge` and `invoice.payment_intent`.
 
-Rewrite the checkout + management surface. Preserve `resolveOrCreateCustomer`, portal, resume.
+**3. Refund + dispute handling**
+- `charge.refunded`: look up the allocation by `stripe_charge_id`. If `amount_refunded == amount`, set `status = 'refunded'`; otherwise `'partially_refunded'`. Preserve the original amounts (immutable) — status change only.
+- `charge.dispute.created`: set `status = 'disputed'`. Dispute won → keep `'disputed'` (admin later moves to `'reversed'` via Wave 6 admin flow, not automated).
+- Both refuse to touch rows already in a transfer batch (`transfer_batch_id IS NOT NULL`) — log a warning; batches are immutable once cut. Wave 6 handles clawback accounting.
 
-1. **`createPlusCheckoutSession`** (rewrite)
-   - Input: `{ returnUrl, environment, donationCents }` where `donationCents >= 0`, integer, `<= 100_000`.
-   - Reject if the user already has any active/trialing/past_due Plus subscription (all kinds).
-   - Build session with two `line_items`:
-     - Base: `price_data` recurring monthly, `unit_amount: 299`, product = existing `plus` product (lookup via `plus_monthly_v2` price → its product), `nickname: "Plus base"`.
-     - Donation (only if `donationCents > 0`): `price_data` recurring monthly, `unit_amount: donationCents`, product = new `plus_donation` product ID, `nickname: "988 designation"`.
-   - `mode: "subscription"`, `ui_mode: "embedded_page"`, no `trial_period_days`.
-   - `metadata`: `{ userId, kind: "plus", base_cents: "299", donation_cents: String(donationCents) }`.
-   - `subscription_data.metadata`: same keys — the webhook (Wave 3) reads these to split ledger amounts.
-   - `managed_payments: { enabled: true }` retained.
+**4. Idempotency + ordering guards**
+- Keep existing `last_event_at` guard on subscription upserts.
+- Ledger uses `stripe_event_id` uniqueness — retries are safe.
+- Wrap each event handler in try/catch so one failure doesn't 400 the whole webhook (Stripe will retry the failed one via a separate event).
 
-2. **`updatePlusDonationAmount`** (new)
-   - Input: `{ environment, donationCents }`, same validation.
-   - Loads the user's active Plus subscription, finds the donation item (by product id) — adds, updates `unit_amount`, or removes it.
-   - Uses `stripe.subscriptions.update` with `items: [...]` and `proration_behavior: "always_invoice"`. Base item is left untouched.
+**5. Nothing changes on the client**
+No UI, hook, or route edits in this wave. `useMembership` already reads `donation_cents_monthly` and `monthly_amount_cents` from the subscription row — the webhook simply starts populating them.
 
-3. **Retire**
-   - Delete `createSupporterCheckoutSession`, `switchPlusToYearly`.
-   - Delete `PlusPlan` type and yearly branches. `getMembershipState` stops reading `plus_interval` / `supporter_cents` and just returns `{ isPlus, monthlyCents }` derived from `subscriptions` (base + donation summed).
-   - Update `getMembershipSettings` return shape: drop supporter fields, keep caps.
+### Verification after build
+- Load `invoke-server-function` against the webhook URL with a signed test payload from Stripe CLI (sandbox) → confirm one `donation_allocations` row per invoice with correct split.
+- Run `SELECT * FROM public.transparency_totals('sandbox')` after seeding a test subscription — expect `designated_cents` to increase by exactly the donation delta.
+- Force a partial refund via Stripe CLI and check the allocation status flips to `partially_refunded` while amounts stay untouched.
 
-4. **Stripe products**
-   - Add a one-time note in the plan (not code): after approval we'll call `payments--create_product` for `plus_donation` (name "988 Designation") so `price_data.product` resolves. Base product reuses the existing `plus` product.
-
-## Client changes
-
-1. **`src/lib/stripe.ts`** — remove `PLUS_TRIAL_DAYS`, keep `PLUS_PRICE_ID` reference only if still used; likely delete.
-
-2. **`src/components/billing/plus-checkout.tsx`** — accept `donationCents` prop instead of `plan`, pass through to server fn. Drop `plan` key remount; remount on `donationCents` change instead.
-
-3. **New: `src/components/billing/plus-amount-picker.tsx`**
-   - Presets: $2.99 (base only), $5, $10, $25 + custom input.
-   - Copy: "$2.99 keeps Plus running. Anything above goes to 988." Shows the split (e.g. "$5.00 = $2.99 base + $2.01 to 988").
-   - Emits `donationCents` (chosen total − 299, min 0).
-   - Used inside the upgrade sheet before mounting `<PlusCheckout>`.
-
-4. **`src/components/billing/billing-card.tsx`**
-   - Show current monthly (base + donation) and "Contributing $X.XX/month to 988".
-   - "Change amount" opens the picker → calls `updatePlusDonationAmount` (no new checkout).
-   - Remove yearly-switch CTA, remove Supporter section entirely.
-
-5. **`src/components/billing/plan-picker.tsx`** — delete (yearly toggle no longer needed). Replace usages with the amount picker.
-
-6. **`src/components/billing/supporter-*.tsx`** — delete: `supporter-amount-picker.tsx`, `supporter-card.tsx`, `supporter-checkout.tsx`.
-
-7. **`src/lib/auth-prompt.tsx` / upgrade sheets** — replace "Start 30-day trial" copy with "Join Plus — $2.99/mo". Any "Supporter" CTA is removed.
-
-8. **`src/hooks/use-membership.ts`** — align to new `getMembershipState` shape (`isPlus`, `monthlyCents`); drop `isSupporter`, `plusInterval`.
-
-9. **`src/lib/billing-analytics.ts`** — drop `supporter_*`, `plan_switch_yearly_*` event types. Add `plus_amount_chosen`, `plus_amount_updated`.
-
-## Route touch-ups
-
-- `src/routes/welcome.tsx` and any post-checkout return handling: unchanged behavior, but copy no longer mentions trial.
-- `src/routes/settings.tsx` (billing area) — uses new billing-card; no other change.
-- Admin membership page (`admin.membership.tsx`) — remove supporter/yearly columns; show base + donation totals.
-
-## Out of scope for Wave 2
-
-- Webhook ledger writes (Wave 3).
+### Explicitly out of scope for Wave 3
 - Transparency page UI (Wave 4).
-- Radio JIT signing / usage caps (later wave).
-- Any migration of the legacy `impact_donations` row (staying as-is; audit already confirmed 0 live subs).
-
-## Technical notes
-
-- Sandbox and live both need the `plus_donation` product; `payments--create_product` syncs to live on publish.
-- Base + donation as separate items keeps the ledger split trivial in the webhook: each invoice line's `price.product` tells us which bucket.
-- `proration_behavior: "always_invoice"` ensures amount changes bill immediately and produce a webhook we can ledger.
-- No DB migration needed this wave — Wave 1 already added `subscription_kind`, `base_cents`, `donation_cents_monthly`, etc.
-
-Reply "continue" to implement.
+- One-time contribution checkout (Wave 4).
+- Admin transfer batching (Wave 6).
+- Any schema changes — Wave 1 already provisioned every column and index this handler needs.

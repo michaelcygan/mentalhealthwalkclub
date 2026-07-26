@@ -23,8 +23,8 @@ interface SubRow {
   current_period_end: string | null;
   cancel_at_period_end: boolean | null;
   monthly_amount_cents: number | null;
-  donation_cents_monthly: number | null;
-  base_cents: number | null;
+  donation_allocation_cents: number | null;
+  membership_allocation_cents: number | null;
 }
 
 const ACTIVE = new Set(["active", "trialing", "past_due"]);
@@ -44,7 +44,7 @@ export function useMembership(): MembershipState {
     const { data } = await supabase
       .from("subscriptions" as never)
       .select(
-        "status,current_period_end,cancel_at_period_end,monthly_amount_cents,donation_cents_monthly,base_cents",
+        "status,current_period_end,cancel_at_period_end,monthly_amount_cents,donation_allocation_cents,membership_allocation_cents",
       )
       .eq("user_id", user.id)
       .eq("environment", env)
@@ -83,8 +83,8 @@ export function useMembership(): MembershipState {
     (!!row && ACTIVE.has(row.status) && inPeriod) ||
     (!!row && row.status === "canceled" && !!periodEnd && periodEnd.getTime() > Date.now());
 
-  const donationCents = isActive ? (row?.donation_cents_monthly ?? 0) : 0;
-  const baseCents = row?.base_cents ?? BASE_CENTS;
+  const donationCents = isActive ? (row?.donation_allocation_cents ?? 0) : 0;
+  const baseCents = row?.membership_allocation_cents ?? BASE_CENTS;
   const monthlyCents = isActive ? (row?.monthly_amount_cents ?? baseCents + donationCents) : 0;
 
   return {
