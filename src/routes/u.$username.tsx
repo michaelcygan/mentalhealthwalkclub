@@ -52,7 +52,7 @@ export const Route = createFileRoute("/u/$username")({
     ];
     const image = (p.avatar_url && /^https?:\/\//.test(p.avatar_url))
       ? p.avatar_url
-      : "https://mentalhealthwalkclub.com/__l5e/assets-v1/f8ac10f7-acf6-4744-958d-b8c58cb29ca7/og-default-v3.jpg";
+      : "https://mentalhealthwalkclub.com/__l5e/assets-v1/a9e1c704-8b35-4af9-8a3b-6571b05a857e/og-default-v4.jpg";
     meta.push({ property: "og:image", content: image });
     meta.push({ name: "twitter:image", content: image });
     return { meta, links: [{ rel: "canonical", href: url }] };
