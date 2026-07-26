@@ -14,6 +14,7 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { AmbientPlayerProvider } from "@/lib/ambient-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { NotificationsBell } from "@/components/notifications/notifications-bell";
+import { useUnreadNotifications } from "@/components/notifications/use-unread-notifications";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { installConsoleCapture } from "@/lib/console-capture";
