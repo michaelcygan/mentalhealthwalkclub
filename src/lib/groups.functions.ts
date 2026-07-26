@@ -330,6 +330,7 @@ export const discoverPublicGroups = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(60);
     if (data.scope === "global") q = q.eq("scope", "global");
+    else q = q.eq("scope", "local");
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
