@@ -111,6 +111,23 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
             </span>
             Notifications
           </button>
+        ) : variant === "row" ? (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+          >
+            <Bell className="h-4 w-4 shrink-0 text-forest" />
+            <span className="font-medium">Notifications</span>
+            <span className="ml-auto flex items-center gap-2">
+              {unread > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </span>
+          </button>
         ) : (
           <button
             type="button"
