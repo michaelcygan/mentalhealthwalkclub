@@ -8,6 +8,8 @@ const BodySchema = z.object({
   status: z.enum(["going", "maybe", "declined"]).default("going"),
   ref: z.string().uuid().optional().nullable(),
   guestRef: z.string().uuid().optional().nullable(),
+  // Adult-only launch: guest attests they are 18+.
+  ageAttest: z.literal(true, { errorMap: () => ({ message: "You must be 18 or older to RSVP." }) }),
   // honeypot — must be empty
   website: z.string().max(0).optional(),
 });
