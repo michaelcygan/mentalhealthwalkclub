@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronRight, Headphones, Users, ShoppingBag, Heart, Settings, ShieldCheck, LogOut, User as UserIcon, Sparkles, LifeBuoy } from "lucide-react";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
+import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
