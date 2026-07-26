@@ -101,6 +101,15 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
             style={{ position: "absolute", left: "-10000px", width: 1, height: 1, opacity: 0 }}
             autoComplete="off"
           />
+          <label className="flex items-start gap-2 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={ageAttest}
+              onChange={(e) => setAgeAttest(e.target.checked)}
+            />
+            <span>I confirm I&apos;m 18 or older. Mental Health Walk Club is currently an adult community.</span>
+          </label>
           <Button type="submit" disabled={busy} className="w-full rounded-full bg-forest text-primary-foreground">
             {busy ? "Sending…" : "I'm in"}
           </Button>
