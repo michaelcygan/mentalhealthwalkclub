@@ -191,6 +191,14 @@ function ImpactPage() {
           Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to the 988 Suicide &amp; Crisis Lifeline. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
         </p>
         <p className="mt-3">
+          <Link to="/transparency" className="underline">
+            Live transparency ledger
+          </Link>{" "}
+          ·{" "}
+          <Link to="/contribute" className="underline">
+            Give once
+          </Link>{" "}
+          ·{" "}
           <Link to="/terms" className="underline">
             Terms
           </Link>{" "}
@@ -199,6 +207,7 @@ function ImpactPage() {
             Privacy
           </Link>
         </p>
+
       </section>
     </div>
   );
