@@ -152,13 +152,32 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
     },
   });
 
+  const { data: homeCity } = useQuery({
+    queryKey: ["home", "profile-city", user?.id],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("city")
+        .eq("id", user!.id)
+        .maybeSingle();
+      const c = (data?.city as string | null | undefined) ?? null;
+      return c && c.trim() ? c.trim() : null;
+    },
+  });
+
   if (!user) return null;
 
   return (
     <div className="space-y-6 pb-20">
       <TodayIsland user={user} />
       <UpcomingRail />
-      <NearbyGrid initialWalks={initialWalks} subtitle="Public walks within reach" />
+      <NearbyGrid
+        initialWalks={initialWalks}
+        subtitle="Public walks within reach"
+        homeCity={homeCity ?? null}
+      />
       <RadioRail />
       <BestWindow />
       <Reflect30s lastReflection={lastReflection} />
@@ -174,14 +193,17 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
   );
 }
 
+
 function NearbyGrid({
   initialWalks,
   subtitle,
   publicMode = false,
+  homeCity = null,
 }: {
   initialWalks: WalkCardData[];
   subtitle: string;
   publicMode?: boolean;
+  homeCity?: string | null;
 }) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoResolved, setGeoResolved] = useState(false);
@@ -198,15 +220,33 @@ function NearbyGrid({
     );
   }, []);
 
+  const hasLocation = homeCity != null || coords != null;
   const { data, isLoading } = useQuery({
-    queryKey: ["home", "nearby", coords?.lat ?? null, coords?.lng ?? null],
-    enabled: geoResolved && coords != null,
+    queryKey: ["home", "nearby", homeCity ?? null, coords?.lat ?? null, coords?.lng ?? null],
+    enabled: geoResolved && hasLocation,
     staleTime: 60_000,
-    queryFn: () => nearbyWalksPublic({ data: { lat: coords!.lat, lng: coords!.lng, hours: 72, limit: 8 } }),
+    queryFn: () =>
+      nearbyWalksPublic({
+        data: {
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
+          city: homeCity ?? null,
+          hours: 72,
+          limit: 8,
+        },
+      }),
   });
 
   const walks = (data?.walks ?? initialWalks) as WalkCardData[];
-  const showLoader = coords != null && isLoading && !data;
+  const showLoader = hasLocation && isLoading && !data;
+  const needsHomeCity = !publicMode && !homeCity && geoResolved && coords == null;
+
+  const heading = hasLocation ? "Walks near you" : "Upcoming walks";
+  const sub = homeCity
+    ? `In ${homeCity}${coords ? " · plus within 25 mi" : ""}`
+    : coords
+      ? `Within 25 mi · ${subtitle}`
+      : subtitle;
 
   return (
     <section aria-labelledby="nearby-heading">
@@ -214,11 +254,9 @@ function NearbyGrid({
         <div>
           <h2 id="nearby-heading" className="flex items-center gap-2 font-serif text-lg">
             <Sparkles className="h-4 w-4 text-forest" />
-            {coords ? "Walks near you" : "Upcoming walks"}
+            {heading}
           </h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {coords ? `Within 25 mi · ${subtitle}` : subtitle}
-          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>
         </div>
         {!publicMode && (
           <Link to="/walk/new" className="shrink-0 text-[11px] text-forest underline">
@@ -234,7 +272,7 @@ function NearbyGrid({
           ))}
         </div>
       ) : walks.length === 0 ? (
-        <EmptyNearby publicMode={publicMode} />
+        needsHomeCity ? <EmptyNoHomeCity /> : <EmptyNearby publicMode={publicMode} />
       ) : (
         <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {walks.map((w) => (
@@ -257,3 +295,22 @@ function EmptyNearby({ publicMode }: { publicMode: boolean }) {
     </div>
   );
 }
+
+function EmptyNoHomeCity() {
+  return (
+    <div className="rounded-3xl border border-dashed border-border bg-card/60 p-6 text-center">
+      <MapPin className="mx-auto h-5 w-5 text-forest" />
+      <p className="mt-2 text-sm font-medium">Set your home city to see walks near you.</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        We'll show upcoming walks in your area.
+      </p>
+      <Link
+        to="/settings"
+        className="mt-3 inline-block rounded-full bg-forest px-4 py-1.5 text-[12px] font-medium text-primary-foreground hover:opacity-95"
+      >
+        Set home city
+      </Link>
+    </div>
+  );
+}
+

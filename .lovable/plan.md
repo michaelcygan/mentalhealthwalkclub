@@ -1,60 +1,46 @@
-## Goal
-Collapse the Solo Walk flow into a single, calm page: **Start → Walking (with End) → End (mood + reflection + save)**. Drop the pre-walk optional fields, the intermediate "saved" screen, and the toggle-open reflection during the walk.
+## Problem
+"Walks near you" today only uses browser geolocation coords + a 25-mile radius. When the browser returns an approximate/off-city location (or a distant one), real walks in the user's home city — like the Grant Park walk in the screenshot — get filtered out and the section falls back to the generic empty state. The user's profile `city` (a text field like "Chicago") is never consulted.
 
-## Current friction
-- Ready state stacks a big Start button, an "Optional" details section (arriving mood + intention), and a Radio quick picker — feels heavy for what should be one tap.
-- Active state has two side-by-side buttons (Reflect / End walk), a collapsible reflection box, and a discard link.
-- After saving, users are pushed to a separate "Walk saved." confirmation screen with two navigation buttons.
-- Four visible UI states (`ready`, `active`, `finish`, `saved`) for a routine loop.
+## Fix
+Make **home city** the primary signal for nearby. Geolocation stays as an optional refinement.
 
-## Target flow (one page, three phases)
+Behavior:
+- **No home city set** → empty state asks the user to set one, with a link to `/settings`. No walks shown, no misleading "No walks posted yet" copy.
+- **Home city set** → server returns walks whose event `city` matches (case-insensitive, trimmed) the profile city, unioned with any walks within 25 mi if the browser also provided coords. Section shows those walks when there is at least one.
+- **Home city set, truly zero matches** → current "No walks posted yet · Plant the first flag" empty state.
 
-```text
-┌─ ready ─────────────┐   ┌─ active ────────────┐   ┌─ finish ────────────┐
-│ Title + subtitle    │ → │ Elapsed timer       │ → │ "You walked N min"  │
-│ [ Start walking ]   │   │ Intention (if any)  │   │ Mood after (opt.)   │
-└─────────────────────┘   │ [ End walk ]        │   │ Reflection (opt.)   │
-                          │ (small discard link)│   │ [ Save walk ]       │
-                          └─────────────────────┘   └─────────────────────┘
-                                                             │
-                                                     toast + redirect to /
-```
+## Changes
 
-Everything renders inside one card on `src/routes/_authenticated/walk.index.tsx`. Phase transitions animate in place, no route change.
+### 1. `src/lib/nearby.functions.ts`
+- Extend input schema: add `city: z.string().trim().min(1).max(120).nullable().optional()`.
+- After the base 72-hour query, build the result set as the union of:
+  - rows where `row.city` case-insensitively equals the input `city`, AND
+  - rows within 25 mi of `lat/lng` (existing distance filter) when coords are present.
+- Sort by `starts_at` asc, then miles asc (nulls last). De-dupe by `id`. Apply `limit` at the end.
+- Keep the current fallback (return unfiltered upcoming list) only when BOTH `city` and coords are absent — used by the SSR loader for the public/logged-out homepage.
 
-## Changes in `src/routes/_authenticated/walk.index.tsx`
+### 2. `src/routes/index.tsx` — `NearbyGrid`
+- Accept optional `homeCity: string | null` prop from the authenticated home view (read from the existing profile query pattern already used in `more.tsx` / `settings.tsx`).
+- Pass `city: homeCity` alongside `lat/lng` into `nearbyWalksPublic`. Enable the query as soon as EITHER `homeCity` is present OR geolocation has resolved with coords (today it waits for geo only).
+- Query key includes `homeCity` so it refetches when the user updates their city in Settings.
+- Section heading: show "Walks near you" whenever `homeCity` OR `coords` is set; keep "Upcoming walks" only for the truly public homepage.
+- Subtitle: when `homeCity` is set, read `In ${homeCity}${coords ? " · plus within 25 mi" : ""}` instead of the current "Within 25 mi · …".
 
-1. **Ready phase — minimal**
-   - Keep title, one-line subtitle, and the big **Start walking** button.
-   - Remove the `<details>` "Optional" block (arriving mood + intention inputs).
-   - Remove the Radio quick picker from this page (Radio is already reachable from the dock/home rail; the walk page shouldn't double as a launcher).
-   - `onStart` no longer sends `moodBefore` / `intention`.
+### 3. Empty state — `EmptyNearby`
+- New variant: **no home city**. When the authenticated viewer has no `profiles.city`, render:
+  - copy: "Set your home city to see walks near you."
+  - primary link: "Set home city" → `/settings`.
+- Existing "No walks posted yet · Plant the first flag" copy stays for the `homeCity`-is-set-but-zero-matches case (and for the public/logged-out variant).
+- Loader-fed public homepage (`publicMode`) is unchanged: it still shows the unfiltered upcoming list or the current empty copy.
 
-2. **Active phase — just the timer and End**
-   - Keep the elapsed clock and (if a prior session had one) the intention line for continuity with resumed walks.
-   - Remove the "Reflect" toggle button and the inline reflection textarea — reflection lives in the End step only.
-   - Keep the small "Discard walk" text link and the stale-session banner (End now / Discard) as-is; those are safety valves, not friction.
-   - Single primary button: **End walk**.
-
-3. **Finish phase — reflection lives here**
-   - Keep mood-after + reflection inputs, both optional, both labeled as such.
-   - "Back" button stays (returns to active) so an accidental tap doesn't lose the walk.
-   - **Save walk** completes and, on success, shows a toast ("Walk saved — today counts") and navigates to `/`. No dedicated `saved` screen.
-
-4. **State machine**
-   - Drop the `saved` UI state; remove that whole render branch.
-   - `UIState = "loading" | "ready" | "active" | "finish"`.
-
-5. **Drafts / resume**
-   - Keep the localStorage reflection draft keyed by session id (useful if user closes the tab mid-finish).
-   - Keep the "Resumed your open walk" toast when the server returns an existing active session.
+### 4. Profile read
+- Fetch `profiles.city` for the current user once in the home route (same pattern as elsewhere, via TanStack Query), pass it into `NearbyGrid`. No new endpoints.
 
 ## Out of scope
-- No server changes. `startSoloWalk` still accepts optional `moodBefore` / `intention`; we just stop sending them from this page.
-- No changes to homepage streak dots / Today island / journal integration.
-- Radio + audio still available globally via the dock; not removed from the app, only removed from this page.
+- Any schema change (no lat/lng added to profiles).
+- Fuzzy city matching, geocoding profile city into coords, or radius-based expansion beyond the existing 25 mi.
+- Changing the geolocation prompt UX.
 
 ## Technical notes
-- Imports to drop: `RadioQuickPicker`, `RadioIcon`, `Check`, `PenLine`, `Link` (if unused after removing the saved screen — verify), `useMemo` stays for `isStale`.
-- Remove state: `moodBefore`, `intention`, `reflectOpen`.
-- `onSave` success path: `toast.success("Walk saved — today counts.")` then `navigate({ to: "/" })`.
+- City match uses `row.city?.trim().toLowerCase() === input.city.trim().toLowerCase()`; done in JS after the base query (avoids Postgres collation surprises and keeps the query the same shape).
+- Public homepage loader keeps calling `nearbyWalksPublic({ data: { hours, limit } })` with no city/coords, so anonymous SSR is unchanged.
