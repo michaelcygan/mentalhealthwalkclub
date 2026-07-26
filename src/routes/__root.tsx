@@ -1,9 +1,11 @@
 import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
+import { EligibilityProvider, useEligibility } from "@/lib/eligibility-context";
 import { Toaster } from "@/components/ui/sonner";
 import { Home as HomeIcon, Footprints, Compass, BookHeart, Menu, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { installConsoleCapture } from "@/lib/console-capture";
 import { dur, easeOut } from "@/lib/motion";
+import { useRouter } from "@tanstack/react-router";
 
 if (typeof window !== "undefined") installConsoleCapture();
 
@@ -223,11 +226,31 @@ function TabBar() {
   );
 }
 
+const ELIGIBILITY_ALLOWLIST = ["/auth", "/confirm-age", "/terms", "/privacy", "/support", "/w/"];
+
+function EligibilityGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { eligibility, loading } = useEligibility();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user || loading || !eligibility) return;
+    const allowed = ELIGIBILITY_ALLOWLIST.some((p) => path === p || path.startsWith(p));
+    if (allowed) return;
+    if (eligibility.eligibilityStatus !== "adult_active") {
+      void router.navigate({ to: "/confirm-age" });
+    }
+  }, [user, loading, eligibility, path, router]);
+
+  return <>{children}</>;
+}
+
 function AppFrame({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
-  if (path.startsWith("/auth") || path.startsWith("/w/")) return <>{children}</>;
+  if (path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/confirm-age")) return <>{children}</>;
   if (loading) return <LoadingScreen />;
 
   return (
@@ -247,17 +270,21 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthPromptProvider>
-          <AmbientPlayerProvider>
-            <PlayerProvider>
-              <PaymentTestModeBanner />
-              <AppFrame>
-                <RoutedOutlet />
-              </AppFrame>
-              <Toaster />
-            </PlayerProvider>
-          </AmbientPlayerProvider>
-        </AuthPromptProvider>
+        <EligibilityProvider>
+          <AuthPromptProvider>
+            <AmbientPlayerProvider>
+              <PlayerProvider>
+                <PaymentTestModeBanner />
+                <EligibilityGate>
+                  <AppFrame>
+                    <RoutedOutlet />
+                  </AppFrame>
+                </EligibilityGate>
+                <Toaster />
+              </PlayerProvider>
+            </AmbientPlayerProvider>
+          </AuthPromptProvider>
+        </EligibilityProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

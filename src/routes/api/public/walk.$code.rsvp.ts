@@ -8,6 +8,8 @@ const BodySchema = z.object({
   status: z.enum(["going", "maybe", "declined"]).default("going"),
   ref: z.string().uuid().optional().nullable(),
   guestRef: z.string().uuid().optional().nullable(),
+  // Adult-only launch: guest attests they are 18+.
+  ageAttest: z.literal(true, { errorMap: () => ({ message: "You must be 18 or older to RSVP." }) }),
   // honeypot — must be empty
   website: z.string().max(0).optional(),
 });
@@ -40,12 +42,15 @@ export const Route = createFileRoute("/api/public/walk/$code/rsvp")({
 
         const { data: ev } = await supabaseAdmin
           .from("events")
-          .select("id,visibility,status,title")
+          .select("id,visibility,status,title,age_realm")
           .eq("slug", code.data)
           .in("visibility", ["public", "link_only", "group"])
           .eq("status", "published")
           .maybeSingle();
         if (!ev) return new Response("not found", { status: 404 });
+        if (ev.age_realm && ev.age_realm !== "adult") {
+          return Response.json({ error: "This walk isn't accepting guest RSVPs." }, { status: 403 });
+        }
 
         // Soft rate-limit per IP per event
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";

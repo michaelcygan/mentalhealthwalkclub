@@ -26,8 +26,14 @@ function TermsPage() {
         these terms. Please read them carefully — there are important disclaimers and a limitation of liability below.
       </p>
 
-      <h2>1. Eligibility</h2>
-      <p>You must be at least 16 years old to use the app and capable of forming a binding contract.</p>
+      <h2>1. Eligibility (18+)</h2>
+      <p>
+        Mental Health Walk Club is currently available only to adults who are at least 18 years old. By creating an
+        account or RSVPing as a guest, you confirm that you are 18 or older, that any date of birth you provide is
+        accurate, and that you are capable of forming a binding contract. We do not knowingly permit users under 18.
+        If we determine an account belongs to someone under 18, we will block or delete it. If you believe an underage
+        user is on the platform, please contact us so we can remove them.
+      </p>
 
       <h2>2. Your account</h2>
       <p>

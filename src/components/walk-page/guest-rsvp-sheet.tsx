@@ -16,6 +16,7 @@ interface Props {
 export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "going", refParam, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [ageAttest, setAgeAttest] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [busy, setBusy] = useState(false);
 
@@ -23,6 +24,10 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       toast.error("Name and email please.");
+      return;
+    }
+    if (!ageAttest) {
+      toast.error("You must be 18 or older to RSVP.");
       return;
     }
     setBusy(true);
@@ -35,6 +40,7 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
           email: email.trim(),
           status: defaultStatus,
           ref: refParam ?? null,
+          ageAttest: true,
           website,
         }),
       });
@@ -95,6 +101,15 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
             style={{ position: "absolute", left: "-10000px", width: 1, height: 1, opacity: 0 }}
             autoComplete="off"
           />
+          <label className="flex items-start gap-2 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={ageAttest}
+              onChange={(e) => setAgeAttest(e.target.checked)}
+            />
+            <span>I confirm I&apos;m 18 or older. Mental Health Walk Club is currently an adult community.</span>
+          </label>
           <Button type="submit" disabled={busy} className="w-full rounded-full bg-forest text-primary-foreground">
             {busy ? "Sending…" : "I'm in"}
           </Button>
