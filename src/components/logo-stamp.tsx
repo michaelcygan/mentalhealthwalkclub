@@ -1,4 +1,4 @@
-import logoSrc from "@/assets/logo-stamp.png";
+import logoSrc from "@/assets/logo-stamp-v2.png";
 
 interface Props {
   tone?: "dark" | "light";

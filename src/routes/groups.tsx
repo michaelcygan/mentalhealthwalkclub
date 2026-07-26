@@ -17,7 +17,7 @@ import {
 } from "@/lib/groups.functions";
 
 const GROUPS_URL = "https://mentalhealthwalkclub.com/groups";
-const GROUPS_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7a90bd38-5bbe-4fc5-8eb1-3d80cb7cad77/og-default.jpg";
+const GROUPS_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7244738f-35c7-4630-a18d-c08ba328bd68/og-default-v2.jpg";
 
 export const Route = createFileRoute("/groups")({
   component: GroupsPage,

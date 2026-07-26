@@ -38,7 +38,7 @@ export function LoadingScreen({
     >
       <div className="flex flex-col items-center gap-5">
         <img
-          src="/logo-stamp.png"
+          src="/logo-stamp-v2.png"
           alt=""
           aria-hidden="true"
           draggable={false}
