@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_safety: {
+        Row: {
+          age_attested_at: string | null
+          age_method: string
+          created_at: string
+          eligibility_status: string
+          privacy_version: string | null
+          safety_realm: string
+          suspended_at: string | null
+          suspended_reason: string | null
+          terms_version: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_attested_at?: string | null
+          age_method?: string
+          created_at?: string
+          eligibility_status?: string
+          privacy_version?: string | null
+          safety_realm?: string
+          suspended_at?: string | null
+          suspended_reason?: string | null
+          terms_version?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_attested_at?: string | null
+          age_method?: string
+          created_at?: string
+          eligibility_status?: string
+          privacy_version?: string | null
+          safety_realm?: string
+          suspended_at?: string | null
+          suspended_reason?: string | null
+          terms_version?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      account_safety_audit: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_realm: string | null
+          new_status: string | null
+          previous_realm: string | null
+          previous_status: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_realm?: string | null
+          new_status?: string | null
+          previous_realm?: string | null
+          previous_status?: string | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_realm?: string | null
+          new_status?: string | null
+          previous_realm?: string | null
+          previous_status?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ambient_tracks: {
         Row: {
           artist: string | null
@@ -402,6 +480,7 @@ export type Database = {
       }
       circles: {
         Row: {
+          age_realm: string
           color: string | null
           created_at: string
           description: string | null
@@ -412,6 +491,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          age_realm?: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -422,6 +502,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          age_realm?: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1018,6 +1099,7 @@ export type Database = {
         Row: {
           accessibility_notes: string | null
           address: string | null
+          age_realm: string
           attendee_count: number
           audience_mode: string
           audio_room_id: string | null
@@ -1070,6 +1152,7 @@ export type Database = {
         Insert: {
           accessibility_notes?: string | null
           address?: string | null
+          age_realm?: string
           attendee_count?: number
           audience_mode?: string
           audio_room_id?: string | null
@@ -1122,6 +1205,7 @@ export type Database = {
         Update: {
           accessibility_notes?: string | null
           address?: string | null
+          age_realm?: string
           attendee_count?: number
           audience_mode?: string
           audio_room_id?: string | null
@@ -1443,6 +1527,7 @@ export type Database = {
       groups: {
         Row: {
           age_band_min: string
+          age_realm: string
           cover_image_url: string | null
           created_at: string
           description: string | null
@@ -1463,6 +1548,7 @@ export type Database = {
         }
         Insert: {
           age_band_min?: string
+          age_realm?: string
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -1483,6 +1569,7 @@ export type Database = {
         }
         Update: {
           age_band_min?: string
+          age_realm?: string
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -3180,44 +3267,6 @@ export type Database = {
           venue_name: string | null
           visibility: string | null
         }
-        Insert: {
-          attendee_count?: number | null
-          audience_mode?: string | null
-          city?: string | null
-          cover_override_url?: string | null
-          group_id?: string | null
-          host_user_id?: string | null
-          id?: string | null
-          image_url?: string | null
-          lat?: number | null
-          lng?: number | null
-          neighborhood?: string | null
-          slug?: string | null
-          starts_at?: string | null
-          timezone?: string | null
-          title?: string | null
-          venue_name?: string | null
-          visibility?: string | null
-        }
-        Update: {
-          attendee_count?: number | null
-          audience_mode?: string | null
-          city?: string | null
-          cover_override_url?: string | null
-          group_id?: string | null
-          host_user_id?: string | null
-          id?: string | null
-          image_url?: string | null
-          lat?: number | null
-          lng?: number | null
-          neighborhood?: string | null
-          slug?: string | null
-          starts_at?: string | null
-          timezone?: string | null
-          title?: string | null
-          venue_name?: string | null
-          visibility?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "events_host_user_id_fkey"
@@ -3285,42 +3334,32 @@ export type Database = {
           walks_attended: number | null
           walks_hosted: number | null
         }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          current_streak_weeks?: number | null
-          display_name?: string | null
-          id?: string | null
-          is_host_account?: boolean | null
-          location_label?: string | null
-          username?: string | null
-          walks_attended?: number | null
-          walks_hosted?: number | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          current_streak_weeks?: number | null
-          display_name?: string | null
-          id?: string | null
-          is_host_account?: boolean | null
-          location_label?: string | null
-          username?: string | null
-          walks_attended?: number | null
-          walks_hosted?: number | null
-        }
         Relationships: []
       }
     }
     Functions: {
+      admin_correct_user_dob: {
+        Args: { _dob: string; _reason: string; _user_id: string }
+        Returns: Json
+      }
+      admin_set_account_eligibility: {
+        Args: { _reason: string; _status: string; _user_id: string }
+        Returns: undefined
+      }
       age_band_for: { Args: { _dob: string }; Returns: string }
       age_band_meets: {
         Args: { _min_band: string; _user_band: string }
         Returns: boolean
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      confirm_my_date_of_birth: {
+        Args: {
+          _dob: string
+          _privacy_version?: string
+          _terms_version?: string
+        }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           _actor_id: string
@@ -3332,6 +3371,14 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      current_account_eligibility: {
+        Args: never
+        Returns: {
+          age_band: string
+          eligibility_status: string
+          safety_realm: string
+        }[]
       }
       emit_walk_reminders: { Args: never; Returns: number }
       emit_weekly_recap: { Args: never; Returns: number }
@@ -3367,6 +3414,8 @@ export type Database = {
         Args: { _seconds: number; _user: string }
         Returns: number
       }
+      is_adult_active: { Args: { _user_id: string }; Returns: boolean }
+      is_adult_dob: { Args: { _dob: string }; Returns: boolean }
       is_circle_member: {
         Args: { _circle: string; _user: string }
         Returns: boolean
