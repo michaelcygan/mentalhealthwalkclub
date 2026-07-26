@@ -270,17 +270,21 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthPromptProvider>
-          <AmbientPlayerProvider>
-            <PlayerProvider>
-              <PaymentTestModeBanner />
-              <AppFrame>
-                <RoutedOutlet />
-              </AppFrame>
-              <Toaster />
-            </PlayerProvider>
-          </AmbientPlayerProvider>
-        </AuthPromptProvider>
+        <EligibilityProvider>
+          <AuthPromptProvider>
+            <AmbientPlayerProvider>
+              <PlayerProvider>
+                <PaymentTestModeBanner />
+                <EligibilityGate>
+                  <AppFrame>
+                    <RoutedOutlet />
+                  </AppFrame>
+                </EligibilityGate>
+                <Toaster />
+              </PlayerProvider>
+            </AmbientPlayerProvider>
+          </AuthPromptProvider>
+        </EligibilityProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
