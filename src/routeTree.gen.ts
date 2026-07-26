@@ -33,6 +33,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
+import { Route as RadioSlugRouteImport } from './routes/radio.$slug'
 import { Route as GSlugRouteImport } from './routes/g.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
@@ -193,6 +194,11 @@ const ShopReturnRoute = ShopReturnRouteImport.update({
   id: '/return',
   path: '/return',
   getParentRoute: () => ShopRoute,
+} as any)
+const RadioSlugRoute = RadioSlugRouteImport.update({
+  id: '/radio/$slug',
+  path: '/radio/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GSlugRoute = GSlugRouteImport.update({
   id: '/g/$slug',
@@ -447,6 +453,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -513,6 +520,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -581,6 +589,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
@@ -649,6 +658,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -715,6 +725,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -782,6 +793,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
@@ -829,6 +841,7 @@ export interface RootRouteChildren {
   TransparencyRoute: typeof TransparencyRoute
   WelcomeRoute: typeof WelcomeRoute
   GSlugRoute: typeof GSlugRoute
+  RadioSlugRoute: typeof RadioSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   WCodeRoute: typeof WCodeRouteWithChildren
   ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
@@ -1009,6 +1022,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop/return'
       preLoaderRoute: typeof ShopReturnRouteImport
       parentRoute: typeof ShopRoute
+    }
+    '/radio/$slug': {
+      id: '/radio/$slug'
+      path: '/radio/$slug'
+      fullPath: '/radio/$slug'
+      preLoaderRoute: typeof RadioSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/g/$slug': {
       id: '/g/$slug'
@@ -1499,6 +1519,7 @@ const rootRouteChildren: RootRouteChildren = {
   TransparencyRoute: TransparencyRoute,
   WelcomeRoute: WelcomeRoute,
   GSlugRoute: GSlugRoute,
+  RadioSlugRoute: RadioSlugRoute,
   UUsernameRoute: UUsernameRoute,
   WCodeRoute: WCodeRouteWithChildren,
   ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,

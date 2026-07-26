@@ -2,7 +2,19 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ChevronLeft, Upload, Trash2, Plus, Link as LinkIcon, Podcast, Music, Shuffle, ListOrdered, Repeat } from "lucide-react";
+import {
+  ChevronLeft, Upload, Trash2, Plus, Link as LinkIcon, Podcast, Music,
+  Shuffle, ListOrdered, Repeat, GripVertical, PlayCircle,
+} from "lucide-react";
+import {
+  DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  closestCenter, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, arrayMove, verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   adminGetStation, adminUpsertStation, adminUpsertTrack, adminDeleteTrack, adminSignUpload,
   adminAddExternalUrl, adminAddPodcastEpisodesToStation, adminListRadioFeeds, adminListFeedEpisodes,
+  adminPatchTrack, adminReorderTracks, resolveRadioItem,
 } from "@/lib/radio.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,6 +59,9 @@ function AdminRadioStation() {
   const get = useServerFn(adminGetStation);
   const upStation = useServerFn(adminUpsertStation);
   const upTrack = useServerFn(adminUpsertTrack);
+  const patchTrack = useServerFn(adminPatchTrack);
+  const reorderTracks = useServerFn(adminReorderTracks);
+  const resolveItem = useServerFn(resolveRadioItem);
   const delTrack = useServerFn(adminDeleteTrack);
   const signUp = useServerFn(adminSignUpload);
   const addUrl = useServerFn(adminAddExternalUrl);
@@ -59,6 +75,7 @@ function AdminRadioStation() {
   const [saving, setSaving] = useState(false);
   const [uploadingTrack, setUploadingTrack] = useState(false);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
 
   const load = async () => {
     const r = await get({ data: { id } });
@@ -102,6 +119,7 @@ function AdminRadioStation() {
     try {
       const ext = file.name.split(".").pop() || "mp3";
       const path = `${station.slug}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      void ext;
       const { token } = await signUp({ data: { bucket: "radio-tracks", path } });
       const { error } = await supabase.storage.from("radio-tracks").uploadToSignedUrl(path, token, file);
       if (error) throw error;
@@ -114,6 +132,49 @@ function AdminRadioStation() {
   const removeTrack = async (tid: string) => {
     if (!confirm("Remove this item from the station?")) return;
     try { await delTrack({ data: { id: tid } }); await load(); toast.success("Removed"); } catch (e) { toast.error(String(e)); }
+  };
+
+  const setActive = async (t: Track, v: boolean) => {
+    setTracks((prev) => prev.map((x) => (x.id === t.id ? { ...x, is_active: v } : x)));
+    try { await patchTrack({ data: { id: t.id, is_active: v } }); }
+    catch (e) { toast.error(String(e)); await load(); }
+  };
+
+  const setRepeat = async (t: Track, n: number) => {
+    const clamped = Math.max(1, Math.min(20, Math.round(n) || 1));
+    setTracks((prev) => prev.map((x) => (x.id === t.id ? { ...x, repeat_count: clamped } : x)));
+    try { await patchTrack({ data: { id: t.id, repeat_count: clamped } }); }
+    catch (e) { toast.error(String(e)); await load(); }
+  };
+
+  const testResolve = async (t: Track) => {
+    setTestingId(t.id);
+    try {
+      const r = await resolveItem({ data: { itemId: t.id } });
+      if (!r) toast.error("Could not resolve — source unavailable.");
+      else toast.success(`OK · ${r.sourceType}${r.durationSeconds ? ` · ${Math.round(r.durationSeconds / 60)}m` : ""}`);
+    } catch (e) { toast.error(String(e)); } finally { setTestingId(null); }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id || !station) return;
+    const oldIndex = tracks.findIndex((t) => t.id === active.id);
+    const newIndex = tracks.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = arrayMove(tracks, oldIndex, newIndex);
+    setTracks(next);
+    try {
+      await reorderTracks({ data: { stationId: station.id, orderedIds: next.map((t) => t.id) } });
+    } catch (err) {
+      toast.error(String(err));
+      await load();
+    }
   };
 
   if (!station) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -174,23 +235,30 @@ function AdminRadioStation() {
           </div>
         </div>
         {tracks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No items yet — upload audio, paste a link, or pick from a podcast feed.</p>
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center">
+            <p className="font-serif text-sm text-foreground">Nothing on this station yet.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Upload audio, paste a link, or pick from a podcast feed.</p>
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {tracks.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
-                <SourceBadge kind={t.source_type} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{t.title}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{sourceLabel(t)}</p>
-                </div>
-                <button onClick={() => removeTrack(t.id)} aria-label="Remove" className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <ul className="space-y-2">
+                {tracks.map((t) => (
+                  <SortableTrackRow
+                    key={t.id}
+                    track={t}
+                    onRemove={() => removeTrack(t.id)}
+                    onActive={(v) => setActive(t, v)}
+                    onRepeat={(n) => setRepeat(t, n)}
+                    onTest={() => testResolve(t)}
+                    testing={testingId === t.id}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
+        <p className="pt-1 text-[11px] text-muted-foreground">Drag rows to reorder. Repeat sets how many times an item plays in one cycle.</p>
       </section>
 
       <AddSourceDialog
@@ -204,6 +272,75 @@ function AdminRadioStation() {
         listEpisodes={listEpisodes}
       />
     </div>
+  );
+}
+
+function SortableTrackRow({
+  track: t, onRemove, onActive, onRepeat, onTest, testing,
+}: {
+  track: Track;
+  onRemove: () => void;
+  onActive: (v: boolean) => void;
+  onRepeat: (n: number) => void;
+  onTest: () => void;
+  testing: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 rounded-2xl border border-border bg-card p-2.5 sm:gap-3 sm:p-3 ${t.is_active ? "" : "opacity-60"}`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+        className="grid h-8 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:text-foreground touch-none cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <SourceBadge kind={t.source_type} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{t.title}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{sourceLabel(t)}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <label className="hidden items-center gap-1 text-[11px] text-muted-foreground sm:flex" title="Repeat count">
+          <Repeat className="h-3 w-3" />
+          <input
+            type="number"
+            min={1}
+            max={20}
+            defaultValue={t.repeat_count}
+            onBlur={(e) => {
+              const n = Number(e.target.value);
+              if (n !== t.repeat_count) onRepeat(n);
+            }}
+            className="w-12 rounded-md border border-border bg-background px-1.5 py-0.5 text-center text-[11px]"
+          />
+        </label>
+        <Switch checked={t.is_active} onCheckedChange={onActive} aria-label="Active" />
+        <button
+          onClick={onTest}
+          disabled={testing}
+          aria-label="Test resolve"
+          className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-50"
+          title="Test resolve"
+        >
+          <PlayCircle className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onRemove}
+          aria-label="Remove"
+          className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </li>
   );
 }
 
