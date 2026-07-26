@@ -91,7 +91,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Half of every Walk Club Plus dollar goes to the 988 Suicide &amp; Crisis Lifeline. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
+          Walk Club Plus is $2.99/month. Every dollar you add on top is designated to the 988 Suicide &amp; Crisis Lifeline. The $2.99 base keeps the lights on so we can keep building.
         </p>
       </header>
 
