@@ -157,9 +157,9 @@ function ImpactPage() {
             <Heart className="h-5 w-5" />
           </span>
           <div className="flex-1">
-            <h2 className="font-serif text-xl">Become a Supporter</h2>
+            <h2 className="font-serif text-xl">Add to your monthly gift</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
+              Plus is $2.99/month. Add any amount on top — 100% of that add-on is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
