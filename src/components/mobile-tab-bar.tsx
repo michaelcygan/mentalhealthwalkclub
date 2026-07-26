@@ -13,8 +13,8 @@ const TABS: Array<{ to: string; label: string; icon: typeof Footprints; exact?: 
   { to: "/more", label: "More", icon: Menu },
 ];
 
-const COMPOSE_HIDDEN_EXACT = new Set(["/auth", "/welcome", "/privacy", "/terms", "/shop/return"]);
-const COMPOSE_HIDDEN_PREFIX = ["/admin", "/w/", "/listen/"];
+const COMPOSE_HIDDEN_EXACT = new Set(["/auth", "/welcome", "/privacy", "/terms", "/shop/return", "/walk"]);
+const COMPOSE_HIDDEN_PREFIX = ["/admin", "/w/", "/listen/", "/walk/"];
 
 function composeAllowed(path: string) {
   if (COMPOSE_HIDDEN_EXACT.has(path)) return false;
@@ -43,10 +43,10 @@ export function MobileTabBar() {
   }, [composeOpen]);
 
   const showCompose = composeAllowed(path);
-  const isWalk = false;
-  const go = (to: "/walk/new" | "/journal") => {
+  const go = (to: "/walk/new" | "/walk" | "/journal") => {
     setComposeOpen(false);
     haptics.tap();
+    if (!user) { openAuth("signup"); return; }
     navigate({ to });
   };
 
@@ -81,7 +81,8 @@ export function MobileTabBar() {
               className="pointer-events-auto flex flex-col items-center gap-2"
             >
               <ComposeAction label="Write a reflection" sub="Open your journal" icon={<PenLine className="h-4 w-4" />} onClick={() => go("/journal")} />
-              <ComposeAction label="Plan a walk" sub="Post a walk to share" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
+              <ComposeAction label="Walk now" sub="Private timer · optional Radio" icon={<Footprints className="h-4 w-4" />} onClick={() => go("/walk")} />
+              <ComposeAction label="Plan a walk" sub="Post a walk for others" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => go("/walk/new")} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -99,24 +100,20 @@ export function MobileTabBar() {
               onClick={() => {
                 haptics.tap();
                 if (!user) { openAuth("signup"); return; }
-                if (isWalk) {
-                  window.dispatchEvent(new CustomEvent("mhwc:open-walk-journal"));
-                  return;
-                }
                 setComposeOpen((v) => !v);
               }}
               whileTap={{ scale: 0.9 }}
               aria-expanded={composeOpen}
-               aria-haspopup="menu"
-              aria-label={isWalk ? "Write a walk note" : composeOpen ? "Close compose menu" : "Create"}
+              aria-haspopup="menu"
+              aria-label={composeOpen ? "Close compose menu" : "Create"}
               className="relative -mt-3 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-forest text-primary-foreground shadow-floating ring-4 ring-background/70 transition active:scale-95"
             >
               <motion.span
-                animate={{ rotate: !isWalk && composeOpen ? 45 : 0 }}
+                animate={{ rotate: composeOpen ? 45 : 0 }}
                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
                 className="grid place-items-center"
               >
-                {isWalk ? <PenLine className="h-5 w-5" strokeWidth={2.2} /> : <Plus className="h-5 w-5" strokeWidth={2.4} />}
+                <Plus className="h-5 w-5" strokeWidth={2.4} />
               </motion.span>
             </motion.button>
           )}

@@ -46,19 +46,25 @@ export function TodayIsland({ user }: Props) {
       start.setHours(0, 0, 0, 0);
       const { data } = await supabase
         .from("walk_sessions")
-        .select("started_at,status")
+        .select("id,started_at,status,walk_type")
         .eq("user_id", user.id)
         .gte("started_at", start.toISOString());
       const days = new Set<string>();
-      let active: string | null = null;
-      for (const r of (data ?? []) as { started_at: string; status: string }[]) {
+      let activeSoloWalk: { id: string; started_at: string } | null = null;
+      for (const r of (data ?? []) as { id: string; started_at: string; status: string; walk_type: string }[]) {
         if (r.status === "completed") days.add(isoDay(new Date(r.started_at)));
-        if (r.status === "active" && !active) active = r.started_at;
+        if (r.status === "active" && r.walk_type === "solo" && !activeSoloWalk) {
+          activeSoloWalk = { id: r.id, started_at: r.started_at };
+        }
       }
-      return { walkDays: days, activeWalkId: active };
+      return { walkDays: days, activeSoloWalk };
     },
   });
   const walkDays = recent?.walkDays ?? new Set<string>();
+  const activeSoloWalk = recent?.activeSoloWalk ?? null;
+  const activeMinutes = activeSoloWalk
+    ? Math.max(0, Math.round((Date.now() - new Date(activeSoloWalk.started_at).getTime()) / 60000))
+    : 0;
   
 
   const name = useMemo(() => {
@@ -170,19 +176,35 @@ export function TodayIsland({ user }: Props) {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 space-y-2">
         <Link
-          to="/walk/new"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
+          to="/walk"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
         >
-          <CalendarPlus className="h-4 w-4" /> Post a walk
+          <Footprints className="h-4 w-4" />
+          {activeSoloWalk
+            ? `Resume walk · ${activeMinutes} min`
+            : "Start a solo walk"}
         </Link>
-        <Link
-          to="/groups"
-          className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
-        >
-          <Footprints className="h-4 w-4 text-forest" /> Groups
-        </Link>
+        {!activeSoloWalk && (
+          <p className="text-center text-[11px] text-muted-foreground">
+            Private timer · counts toward your routine
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/walk/new"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
+          >
+            <CalendarPlus className="h-4 w-4 text-forest" /> Post a walk
+          </Link>
+          <Link
+            to="/groups"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
+          >
+            <Footprints className="h-4 w-4 text-forest" /> Groups
+          </Link>
+        </div>
       </div>
     </section>
   );
