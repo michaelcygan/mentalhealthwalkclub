@@ -212,7 +212,9 @@ export const listJournalFeed = createServerFn({ method: "GET" })
 
     const walkEntries: FeedEntry[] = walks
       .filter((w) => {
-        // Only show walks that have written/mood/photo content
+        // Solo walks always count toward the private routine record.
+        // Other walk types show when they carry meaningful content.
+        if (w.walk_type === "solo") return true;
         const hasNote = !!w.reflection_note?.trim();
         const hasMood = !!(w.mood_before || w.mood_after);
         const hasPhotos = (photoCounts[w.id] ?? 0) > 0;
