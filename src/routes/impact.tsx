@@ -56,7 +56,7 @@ function ImpactPage() {
   }>>([]);
   const [total, setTotal] = useState(0);
   const [wall, setWall] = useState<{ user_id: string; display_name: string | null }[]>([]);
-  const { openSupporterFlow } = useAuthPrompt();
+  const { openPlusCheckout } = useAuthPrompt();
 
   useEffect(() => {
     listImpactDonations()
@@ -162,7 +162,7 @@ function ImpactPage() {
               Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <Button
-              onClick={() => openSupporterFlow(500)}
+              onClick={() => openPlusCheckout()}
               className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
             >
               Give monthly

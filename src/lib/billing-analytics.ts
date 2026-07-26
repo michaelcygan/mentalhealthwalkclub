@@ -3,6 +3,8 @@ import { getStripeEnvironment } from "@/lib/stripe";
 
 export type BillingEventType =
   | "plus_intent_selected"
+  | "plus_amount_chosen"
+  | "plus_amount_updated"
   | "checkout_opened"
   | "checkout_completed"
   | "checkout_dismissed"
@@ -10,13 +12,6 @@ export type BillingEventType =
   | "subscription_resumed"
   | "billing_portal_opened"
   | "payment_method_update_clicked"
-  | "plan_switch_yearly_clicked"
-  | "plan_switch_yearly_completed"
-  | "supporter_intent_selected"
-  | "supporter_amount_chosen"
-  | "supporter_checkout_opened"
-  | "supporter_checkout_dismissed"
-  | "supporter_subscribed"
   | "cap_upsell_shown"
   | "cap_upsell_dismissed"
   | "cap_upsell_converted";
