@@ -3,16 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { useAuth } from "@/lib/auth-context";
 
+const BASE_CENTS = 299;
+
 export interface MembershipState {
   loading: boolean;
   isPlus: boolean;
-  isSupporter: boolean;
-  supporterCents: number;
-  plusInterval: "monthly" | "yearly" | null;
+  /** Voluntary donation on top of base (cents). */
+  donationCents: number;
+  /** Total monthly contribution (base + donation), cents. */
+  monthlyCents: number;
   cancelAtPeriodEnd: boolean;
   plusStatus: string | null;
   plusCurrentPeriodEnd: Date | null;
-  supporterStatus: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -20,50 +22,37 @@ interface SubRow {
   status: string;
   current_period_end: string | null;
   cancel_at_period_end: boolean | null;
-  price_id: string | null;
   monthly_amount_cents: number | null;
-  subscription_kind: string | null;
+  donation_cents_monthly: number | null;
+  base_cents: number | null;
 }
 
 const ACTIVE = new Set(["active", "trialing", "past_due"]);
 
 export function useMembership(): MembershipState {
   const { user } = useAuth();
-  const [plusRow, setPlusRow] = useState<SubRow | null>(null);
-  const [supporterRow, setSupporterRow] = useState<SubRow | null>(null);
+  const [row, setRow] = useState<SubRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     if (!user) {
-      setPlusRow(null);
-      setSupporterRow(null);
+      setRow(null);
       setLoading(false);
       return;
     }
     const env = getStripeEnvironment();
-    const baseSelect = "status,current_period_end,cancel_at_period_end,price_id,monthly_amount_cents,subscription_kind";
-    const [{ data: p }, { data: sup }] = await Promise.all([
-      supabase
-        .from("subscriptions" as never)
-        .select(baseSelect)
-        .eq("user_id", user.id)
-        .eq("environment", env)
-        .eq("subscription_kind", "plus")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("subscriptions" as never)
-        .select(baseSelect)
-        .eq("user_id", user.id)
-        .eq("environment", env)
-        .eq("subscription_kind", "supporter")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
-    setPlusRow((p as unknown as SubRow) ?? null);
-    setSupporterRow((sup as unknown as SubRow) ?? null);
+    const { data } = await supabase
+      .from("subscriptions" as never)
+      .select(
+        "status,current_period_end,cancel_at_period_end,monthly_amount_cents,donation_cents_monthly,base_cents",
+      )
+      .eq("user_id", user.id)
+      .eq("environment", env)
+      .eq("subscription_kind", "plus")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setRow((data as unknown as SubRow) ?? null);
     setLoading(false);
   }, [user]);
 
@@ -88,35 +77,24 @@ export function useMembership(): MembershipState {
     };
   }, [user, refresh]);
 
-  const plusPeriodEnd = plusRow?.current_period_end ? new Date(plusRow.current_period_end) : null;
-  const plusInPeriod = !plusPeriodEnd || plusPeriodEnd.getTime() > Date.now();
-  const isPlusActive =
-    (!!plusRow && ACTIVE.has(plusRow.status) && plusInPeriod) ||
-    (!!plusRow && plusRow.status === "canceled" && !!plusPeriodEnd && plusPeriodEnd.getTime() > Date.now());
+  const periodEnd = row?.current_period_end ? new Date(row.current_period_end) : null;
+  const inPeriod = !periodEnd || periodEnd.getTime() > Date.now();
+  const isActive =
+    (!!row && ACTIVE.has(row.status) && inPeriod) ||
+    (!!row && row.status === "canceled" && !!periodEnd && periodEnd.getTime() > Date.now());
 
-  const supporterPeriodEnd = supporterRow?.current_period_end ? new Date(supporterRow.current_period_end) : null;
-  const supporterInPeriod = !supporterPeriodEnd || supporterPeriodEnd.getTime() > Date.now();
-  const isSupporterActive =
-    (!!supporterRow && ACTIVE.has(supporterRow.status) && supporterInPeriod) ||
-    (!!supporterRow && supporterRow.status === "canceled" && !!supporterPeriodEnd && supporterPeriodEnd.getTime() > Date.now());
-
-  const plusInterval: "monthly" | "yearly" | null =
-    plusRow?.price_id === "plus_yearly" || plusRow?.price_id === "plus_yearly_v2"
-      ? "yearly"
-      : plusRow?.price_id === "plus_monthly" || plusRow?.price_id === "plus_monthly_v2"
-        ? "monthly"
-        : null;
+  const donationCents = isActive ? (row?.donation_cents_monthly ?? 0) : 0;
+  const baseCents = row?.base_cents ?? BASE_CENTS;
+  const monthlyCents = isActive ? (row?.monthly_amount_cents ?? baseCents + donationCents) : 0;
 
   return {
     loading,
-    isPlus: isPlusActive,
-    isSupporter: isSupporterActive,
-    supporterCents: isSupporterActive ? (supporterRow?.monthly_amount_cents ?? 0) : 0,
-    plusInterval,
-    cancelAtPeriodEnd: !!plusRow?.cancel_at_period_end,
-    plusStatus: plusRow?.status ?? null,
-    plusCurrentPeriodEnd: plusPeriodEnd,
-    supporterStatus: supporterRow?.status ?? null,
+    isPlus: isActive,
+    donationCents,
+    monthlyCents,
+    cancelAtPeriodEnd: !!row?.cancel_at_period_end,
+    plusStatus: row?.status ?? null,
+    plusCurrentPeriodEnd: periodEnd,
     refresh,
   };
 }

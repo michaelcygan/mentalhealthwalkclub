@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { type StripeEnv, createStripeClient } from "@/lib/stripe.server";
 
-const PLUS_TRIAL_DAYS = 30;
-const SUPPORTER_MIN_CENTS_FALLBACK = 300;
-const SUPPORTER_MAX_CENTS = 100_000; // $1,000/mo sanity cap
+const BASE_CENTS = 299;
+const MAX_DONATION_CENTS = 100_000; // $1,000/mo sanity cap
+const BASE_LOOKUP = "plus_monthly_v2";
+const DONATION_LOOKUP = "plus_donation_stub";
 
 async function resolveOrCreateCustomer(
   stripe: ReturnType<typeof createStripeClient>,
@@ -39,23 +40,38 @@ async function resolveOrCreateCustomer(
   return created.id;
 }
 
-export type PlusPlan = "plus_monthly_v2" | "plus_yearly_v2";
+/** Resolves the Stripe Product IDs for base ($2.99) and donation via lookup keys. */
+async function resolveProducts(stripe: ReturnType<typeof createStripeClient>) {
+  const [base, donation] = await Promise.all([
+    stripe.prices.list({ lookup_keys: [BASE_LOOKUP] }),
+    stripe.prices.list({ lookup_keys: [DONATION_LOOKUP] }),
+  ]);
+  const basePrice = base.data[0];
+  const donationPrice = donation.data[0];
+  if (!basePrice) throw new Error("Plus base price not configured");
+  if (!donationPrice) throw new Error("Plus donation product not configured");
+  const baseProduct = typeof basePrice.product === "string" ? basePrice.product : basePrice.product.id;
+  const donationProduct =
+    typeof donationPrice.product === "string" ? donationPrice.product : donationPrice.product.id;
+  return { basePriceId: basePrice.id, baseProduct, donationProduct };
+}
 
 export const createPlusCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { returnUrl: string; environment: StripeEnv; plan?: PlusPlan }) => {
-      if (data.plan && data.plan !== "plus_monthly_v2" && data.plan !== "plus_yearly_v2") {
-        throw new Error("Invalid plan");
+    (data: { returnUrl: string; environment: StripeEnv; donationCents?: number }) => {
+      const donation = data.donationCents ?? 0;
+      if (!Number.isInteger(donation) || donation < 0 || donation > MAX_DONATION_CENTS) {
+        throw new Error("Invalid donation amount");
       }
-      return data;
+      return { ...data, donationCents: donation };
     },
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const plan: PlusPlan = data.plan ?? "plus_monthly_v2";
+    const donationCents = data.donationCents ?? 0;
 
-    // Don't double-subscribe (Plus only — Supporter is a separate row)
+    // Don't double-subscribe
     const { data: existing } = await supabase
       .from("subscriptions")
       .select("status, current_period_end, subscription_kind")
@@ -73,9 +89,7 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
     }
 
     const stripe = createStripeClient(data.environment);
-    const prices = await stripe.prices.list({ lookup_keys: [plan] });
-    if (!prices.data.length) throw new Error("Plus price not configured");
-    const stripePrice = prices.data[0];
+    const { basePriceId, donationProduct } = await resolveProducts(stripe);
 
     const { data: userResp } = await supabase.auth.getUser();
     const email = userResp.user?.email ?? undefined;
@@ -85,16 +99,40 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
       userId: userId as string,
     });
 
+    const lineItems: Array<Record<string, unknown>> = [
+      { price: basePriceId, quantity: 1 },
+    ];
+    if (donationCents > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product: donationProduct,
+          unit_amount: donationCents,
+          recurring: { interval: "month" },
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
-      line_items: [{ price: stripePrice.id, quantity: 1 }],
+      line_items: lineItems as never,
       mode: "subscription",
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
-      metadata: { userId: userId as string, kind: "plus", managed_payments: "true" },
+      metadata: {
+        userId: userId as string,
+        kind: "plus",
+        base_cents: String(BASE_CENTS),
+        donation_cents: String(donationCents),
+      },
       subscription_data: {
-        trial_period_days: PLUS_TRIAL_DAYS,
-        metadata: { userId: userId as string, kind: "plus" },
+        metadata: {
+          userId: userId as string,
+          kind: "plus",
+          base_cents: String(BASE_CENTS),
+          donation_cents: String(donationCents),
+        },
       },
       managed_payments: { enabled: true },
     } as never);
@@ -102,99 +140,90 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
     return session.client_secret;
   });
 
-export const createSupporterCheckoutSession = createServerFn({ method: "POST" })
+/** Adjust the donation line item on an existing active Plus subscription. */
+export const updatePlusDonationAmount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (data: { amountCents: number; returnUrl: string; environment: StripeEnv }) => {
-      if (
-        !Number.isInteger(data.amountCents) ||
-        data.amountCents < 100 ||
-        data.amountCents > SUPPORTER_MAX_CENTS
-      ) {
-        throw new Error("Pick an amount between $1 and $1,000");
-      }
-      return data;
-    },
-  )
+  .inputValidator((data: { environment: StripeEnv; donationCents: number }) => {
+    if (
+      !Number.isInteger(data.donationCents) ||
+      data.donationCents < 0 ||
+      data.donationCents > MAX_DONATION_CENTS
+    ) {
+      throw new Error("Invalid donation amount");
+    }
+    return data;
+  })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: settings } = await supabase
-      .from("membership_settings")
-      .select("supporter_min_cents, supporter_signups_paused")
-      .eq("id", true)
-      .maybeSingle();
-    if (settings?.supporter_signups_paused) {
-      throw new Error("Supporter signups are paused right now. Try again soon.");
-    }
-    const minCents = settings?.supporter_min_cents ?? SUPPORTER_MIN_CENTS_FALLBACK;
-    if (data.amountCents < minCents) {
-      throw new Error(`Minimum monthly amount is $${(minCents / 100).toFixed(0)}.`);
-    }
-
-    // Block double-subscribe (Supporter only — Plus is independent)
-    const { data: existing } = await supabase
+    const { data: sub, error } = await supabase
       .from("subscriptions")
-      .select("status")
+      .select("stripe_subscription_id, status")
       .eq("user_id", userId)
       .eq("environment", data.environment)
-      .eq("subscription_kind", "supporter")
+      .eq("subscription_kind", "plus")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (
-      existing &&
-      ["trialing", "active", "past_due"].includes(existing.status as string)
-    ) {
-      throw new Error("You're already a Supporter. Use 'Change amount' in Settings.");
+    if (error || !sub?.stripe_subscription_id) throw new Error("No active Plus subscription");
+    if (!["trialing", "active", "past_due"].includes(sub.status as string)) {
+      throw new Error("Your Plus plan isn't active.");
     }
 
     const stripe = createStripeClient(data.environment);
-
-    const { data: userResp } = await supabase.auth.getUser();
-    const email = userResp.user?.email ?? undefined;
-
-    const customerId = await resolveOrCreateCustomer(stripe, {
-      email,
-      userId: userId as string,
+    const { donationProduct } = await resolveProducts(stripe);
+    const current = await stripe.subscriptions.retrieve(sub.stripe_subscription_id as string, {
+      expand: ["items.data.price"],
     });
 
-    const session = await stripe.checkout.sessions.create({
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            // Distinct Stripe Product so Supporter donations are easy to
-            // separate from Plus subscriptions in the dashboard + Search API.
-            product: "supporter",
-            unit_amount: data.amountCents,
-            recurring: { interval: "month" },
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      ui_mode: "embedded_page",
-      return_url: data.returnUrl,
-      customer: customerId,
-      metadata: {
-        userId: userId as string,
-        kind: "supporter",
-        donation: "true",
-      },
-      subscription_data: {
-        description: "Supporter Donation",
-        metadata: {
-          userId: userId as string,
-          kind: "supporter",
-          donation: "true",
-          amount_cents: String(data.amountCents),
-        },
-      },
-      managed_payments: { enabled: true },
-    } as never);
+    const donationItem = current.items.data.find((it) => {
+      const p = it.price?.product;
+      const productId = typeof p === "string" ? p : p?.id;
+      return productId === donationProduct;
+    });
 
-    return session.client_secret;
+    const items: Array<Record<string, unknown>> = [];
+    if (donationItem && data.donationCents > 0) {
+      // Update in place with a new inline price
+      items.push({
+        id: donationItem.id,
+        price_data: {
+          currency: "usd",
+          product: donationProduct,
+          unit_amount: data.donationCents,
+          recurring: { interval: "month" },
+        },
+      });
+    } else if (donationItem && data.donationCents === 0) {
+      // Remove the donation line
+      items.push({ id: donationItem.id, deleted: true });
+    } else if (!donationItem && data.donationCents > 0) {
+      // Add a donation line
+      items.push({
+        price_data: {
+          currency: "usd",
+          product: donationProduct,
+          unit_amount: data.donationCents,
+          recurring: { interval: "month" },
+        },
+        quantity: 1,
+      });
+    } else {
+      // No donation before, no donation now — nothing to do
+      return { ok: true, unchanged: true };
+    }
+
+    await stripe.subscriptions.update(sub.stripe_subscription_id as string, {
+      cancel_at_period_end: false,
+      proration_behavior: "always_invoice",
+      items: items as never,
+      metadata: {
+        ...(current.metadata ?? {}),
+        base_cents: String(BASE_CENTS),
+        donation_cents: String(data.donationCents),
+      },
+    });
+    return { ok: true, unchanged: false };
   });
 
 type PortalFlow = "payment_method_update" | "subscription_cancel" | "subscription_update";
@@ -206,21 +235,20 @@ export const createBillingPortalSession = createServerFn({ method: "POST" })
       returnUrl?: string;
       environment: StripeEnv;
       flow?: PortalFlow;
-      kind?: "plus" | "supporter";
     }) => data,
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    let q = supabase
+    const { data: sub, error } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id, stripe_subscription_id, status, subscription_kind")
       .eq("user_id", userId)
       .eq("environment", data.environment)
+      .eq("subscription_kind", "plus")
       .order("created_at", { ascending: false })
-      .limit(1);
-    if (data.kind) q = q.eq("subscription_kind", data.kind);
-    const { data: sub, error } = await q.maybeSingle();
+      .limit(1)
+      .maybeSingle();
     if (error || !sub?.stripe_customer_id) throw new Error("No subscription found");
 
     const stripe = createStripeClient(data.environment);
@@ -275,47 +303,8 @@ export const resumePlusSubscription = createServerFn({ method: "POST" })
     return { ok: true, alreadyActive: false };
   });
 
-/** Swap an active monthly Plus subscription to the yearly price, pro-rating immediately. */
-export const switchPlusToYearly = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { environment: StripeEnv }) => data)
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: sub, error } = await supabase
-      .from("subscriptions")
-      .select("stripe_subscription_id, price_id, status, cancel_at_period_end")
-      .eq("user_id", userId)
-      .eq("environment", data.environment)
-      .eq("subscription_kind", "plus")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error || !sub?.stripe_subscription_id) throw new Error("No active Plus subscription");
-    if (sub.price_id === "plus_yearly" || sub.price_id === "plus_yearly_v2") return { ok: true, alreadyYearly: true };
-    if (!["trialing", "active", "past_due"].includes(sub.status as string)) {
-      throw new Error("Your Plus plan isn't active.");
-    }
-
-    const stripe = createStripeClient(data.environment);
-    const prices = await stripe.prices.list({ lookup_keys: ["plus_yearly_v2"] });
-    if (!prices.data.length) throw new Error("Yearly price not configured");
-    const yearlyPrice = prices.data[0];
-
-    const current = await stripe.subscriptions.retrieve(sub.stripe_subscription_id as string);
-    const itemId = current.items.data[0]?.id;
-    if (!itemId) throw new Error("Subscription item missing");
-
-    await stripe.subscriptions.update(sub.stripe_subscription_id as string, {
-      cancel_at_period_end: false,
-      proration_behavior: "always_invoice",
-      items: [{ id: itemId, price: yearlyPrice.id }],
-    });
-    return { ok: true, alreadyYearly: false };
-  });
-
 /**
- * One-shot read used by use-membership: returns Plus + Supporter state.
- * Wraps the user_membership Postgres helper so RLS is bypassed safely.
+ * One-shot read used by use-membership: returns Plus base + donation.
  */
 export const getMembershipState = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -326,30 +315,27 @@ export const getMembershipState = createServerFn({ method: "POST" })
       rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
     }).rpc("user_membership", { _user: userId, _env: data.environment });
     const row = Array.isArray(rows) ? (rows[0] as Record<string, unknown> | undefined) : undefined;
+    const donationCents = Number(row?.supporter_cents ?? 0);
     return {
       isPlus: Boolean(row?.is_plus),
-      isSupporter: Boolean(row?.is_supporter),
-      supporterCents: Number(row?.supporter_cents ?? 0),
-      plusInterval: (row?.plus_interval as "monthly" | "yearly" | null) ?? null,
+      donationCents,
+      monthlyCents: Boolean(row?.is_plus) ? BASE_CENTS + donationCents : 0,
     };
   });
 
-/** Public read of cap settings — used to size soft caps on the client. */
+/** Public read of cap settings. */
 export const getMembershipSettings = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => data ?? {})
   .handler(async () => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin
       .from("membership_settings")
-      .select("saved_reads_cap, playlists_cap, collections_follow_cap, supporter_min_cents, supporter_suggested_amounts, supporter_signups_paused")
+      .select("saved_reads_cap, playlists_cap, collections_follow_cap")
       .eq("id", true)
       .maybeSingle();
     return data ?? {
       saved_reads_cap: 15,
       playlists_cap: 3,
       collections_follow_cap: 5,
-      supporter_min_cents: 300,
-      supporter_suggested_amounts: [300, 500, 1000, 2500],
-      supporter_signups_paused: false,
     };
   });
