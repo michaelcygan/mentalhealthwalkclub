@@ -132,23 +132,25 @@ export const resolveRadioItem = createServerFn({ method: "GET" })
     const supabase = serverClient();
     const { data: row, error } = await supabase
       .from("radio_tracks")
-      .select(
-        "id,station_id,source_type,storage_key,external_url,podcast_episode_id,title,artist,duration_s,is_active," +
-          "radio_stations!inner(is_active),podcast_episodes(audio_url,episode_url,image_url,duration_seconds,title,description)",
-      )
+      .select("id,station_id,source_type,storage_key,external_url,podcast_episode_id,title,artist,duration_s,is_active")
       .eq("id", data.itemId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row || !row.is_active) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const station = (row as any).radio_stations;
-    if (!station?.is_active) return null;
+
+    // Verify station is active
+    const { data: st } = await supabase
+      .from("radio_stations")
+      .select("is_active")
+      .eq("id", row.station_id)
+      .maybeSingle();
+    if (!st?.is_active) return null;
 
     const sourceType = (row.source_type ?? "upload") as RadioSourceType;
     let audioUrl = "";
     let sourcePageUrl: string | null = null;
     let imageUrl: string | null = null;
-    let durationSeconds = row.duration_s ?? null;
+    let durationSeconds: number | null = row.duration_s ?? null;
     const artist = row.artist ?? null;
 
     if (sourceType === "upload") {
@@ -162,10 +164,12 @@ export const resolveRadioItem = createServerFn({ method: "GET" })
       if (!row.external_url) return null;
       audioUrl = row.external_url;
     } else if (sourceType === "podcast_episode") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ep = (row as any).podcast_episodes as
-        | { audio_url: string; episode_url: string | null; image_url: string | null; duration_seconds: number | null }
-        | null;
+      if (!row.podcast_episode_id) return null;
+      const { data: ep } = await supabase
+        .from("podcast_episodes")
+        .select("audio_url,episode_url,image_url,duration_seconds")
+        .eq("id", row.podcast_episode_id)
+        .maybeSingle();
       if (!ep?.audio_url) return null;
       audioUrl = ep.audio_url;
       sourcePageUrl = ep.episode_url ?? null;
