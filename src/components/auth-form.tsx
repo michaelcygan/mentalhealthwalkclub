@@ -54,6 +54,8 @@ export function AuthForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [dob, setDob] = useState("");
+  const [ageAttest, setAgeAttest] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const isSignup = mode === "signup";
@@ -63,25 +65,43 @@ export function AuthForm({
     setBusy(true);
     try {
       if (isSignup) {
+        // Client-side age sanity check. Server is authoritative via confirm_my_date_of_birth.
+        const { isPlausibleAdultDob } = await import("@/lib/safety-config");
+        if (!ageAttest) {
+          toast.error("Please confirm you are at least 18.");
+          setBusy(false);
+          return;
+        }
+        if (!isPlausibleAdultDob(dob)) {
+          toast.error("Mental Health Walk Club is currently for adults 18 and older.");
+          setBusy(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/confirm-age`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
         if (error) throw error;
         if (typeof window !== "undefined") {
           window.localStorage.setItem(PLAN_INTENT_KEY, plan);
+          // Only a non-sensitive flag; never the DOB itself.
+          window.localStorage.setItem("wc_age_gate_started", "1");
         }
-        toast.success(
-          plan === "plus"
-            ? "Account created. We'll set up your free trial right after onboarding."
-            : "Welcome. Lacing up your walking shoes…"
-        );
+        // If a session exists immediately (auto-confirm), record DOB.
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          if (sess.session) {
+            const { confirmMyDateOfBirth } = await import("@/lib/account-eligibility.functions");
+            await confirmMyDateOfBirth({ data: { dob } });
+          }
+        } catch { /* handled at gate */ }
+        toast.success("Welcome. Lacing up your walking shoes…");
         onSuccess?.("signup");
-        if (!suppressRedirect) navigate({ to: "/" });
+        if (!suppressRedirect) navigate({ to: "/confirm-age" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
