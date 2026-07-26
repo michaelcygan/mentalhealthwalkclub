@@ -24,7 +24,7 @@ import { nearbyWalksPublic } from "@/lib/nearby.functions";
 const SITE_URL = "https://mentalhealthwalkclub.com";
 const SITE_DESC =
   "A walking club for your people. Find public walks near you, post your own, and RSVP with friends.";
-const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7244738f-35c7-4630-a18d-c08ba328bd68/og-default-v2.jpg";
+const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/f8ac10f7-acf6-4744-958d-b8c58cb29ca7/og-default-v3.jpg";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
