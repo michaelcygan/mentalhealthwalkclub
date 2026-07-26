@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Shuffle, X, Sparkles } from "lucide-react";
+import { Shuffle, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { createJournalEntry } from "@/lib/journal-entries.functions";
 import { PROMPTS, type ReflectionPrompt } from "@/lib/reflection-prompts";
-import { useMembership } from "@/hooks/use-membership";
-import { useAuthPrompt } from "@/lib/auth-prompt";
 
 interface Props {
   open: boolean;
