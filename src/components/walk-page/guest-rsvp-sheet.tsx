@@ -16,6 +16,7 @@ interface Props {
 export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "going", refParam, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [ageAttest, setAgeAttest] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [busy, setBusy] = useState(false);
 
@@ -23,6 +24,10 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       toast.error("Name and email please.");
+      return;
+    }
+    if (!ageAttest) {
+      toast.error("You must be 18 or older to RSVP.");
       return;
     }
     setBusy(true);
@@ -35,6 +40,7 @@ export function GuestRsvpSheet({ code, open, onOpenChange, defaultStatus = "goin
           email: email.trim(),
           status: defaultStatus,
           ref: refParam ?? null,
+          ageAttest: true,
           website,
         }),
       });
