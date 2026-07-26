@@ -128,7 +128,7 @@ function ImpactPage() {
         <h2 className="text-lg font-semibold">By period</h2>
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            First donation report posts at the end of our first full revenue period. Subscribe to Plus or become a Supporter and you'll show up here.
+            First donation report posts at the end of our first full revenue period. Join Plus and you'll show up here.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
