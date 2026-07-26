@@ -176,19 +176,35 @@ export function TodayIsland({ user }: Props) {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 space-y-2">
         <Link
-          to="/walk/new"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
+          to="/walk"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition active:scale-[0.98] hover:opacity-95"
         >
-          <CalendarPlus className="h-4 w-4" /> Post a walk
+          <Footprints className="h-4 w-4" />
+          {activeSoloWalk
+            ? `Resume walk · ${activeMinutes} min`
+            : "Start a solo walk"}
         </Link>
-        <Link
-          to="/groups"
-          className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
-        >
-          <Footprints className="h-4 w-4 text-forest" /> Groups
-        </Link>
+        {!activeSoloWalk && (
+          <p className="text-center text-[11px] text-muted-foreground">
+            Private timer · counts toward your routine
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/walk/new"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
+          >
+            <CalendarPlus className="h-4 w-4 text-forest" /> Post a walk
+          </Link>
+          <Link
+            to="/groups"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-soft transition active:scale-[0.98] hover:bg-accent/40"
+          >
+            <Footprints className="h-4 w-4 text-forest" /> Groups
+          </Link>
+        </div>
       </div>
     </section>
   );
