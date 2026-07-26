@@ -24,6 +24,7 @@ import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as ContributeRouteImport } from './routes/contribute'
+import { Route as ConfirmAgeRouteImport } from './routes/confirm-age'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -147,6 +148,11 @@ const EventsRoute = EventsRouteImport.update({
 const ContributeRoute = ContributeRouteImport.update({
   id: '/contribute',
   path: '/contribute',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfirmAgeRoute = ConfirmAgeRouteImport.update({
+  id: '/confirm-age',
+  path: '/confirm-age',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -403,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/confirm-age': typeof ConfirmAgeRoute
   '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
@@ -468,6 +475,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/confirm-age': typeof ConfirmAgeRoute
   '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/confirm-age': typeof ConfirmAgeRoute
   '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
@@ -602,6 +611,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/confirm-age'
     | '/contribute'
     | '/events'
     | '/groups'
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/confirm-age'
     | '/contribute'
     | '/events'
     | '/groups'
@@ -733,6 +744,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/confirm-age'
     | '/contribute'
     | '/events'
     | '/groups'
@@ -800,6 +812,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BlogRoute: typeof BlogRouteWithChildren
+  ConfirmAgeRoute: typeof ConfirmAgeRoute
   ContributeRoute: typeof ContributeRoute
   EventsRoute: typeof EventsRouteWithChildren
   GroupsRoute: typeof GroupsRoute
@@ -932,6 +945,13 @@ declare module '@tanstack/react-router' {
       path: '/contribute'
       fullPath: '/contribute'
       preLoaderRoute: typeof ContributeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confirm-age': {
+      id: '/confirm-age'
+      path: '/confirm-age'
+      fullPath: '/confirm-age'
+      preLoaderRoute: typeof ConfirmAgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -1462,6 +1482,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BlogRoute: BlogRouteWithChildren,
+  ConfirmAgeRoute: ConfirmAgeRoute,
   ContributeRoute: ContributeRoute,
   EventsRoute: EventsRouteWithChildren,
   GroupsRoute: GroupsRoute,

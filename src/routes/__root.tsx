@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AuthPromptProvider, useAuthPrompt } from "@/lib/auth-prompt";
+import { EligibilityProvider, useEligibility } from "@/lib/eligibility-context";
 import { Toaster } from "@/components/ui/sonner";
 import { Home as HomeIcon, Footprints, Compass, BookHeart, Menu, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { installConsoleCapture } from "@/lib/console-capture";
 import { dur, easeOut } from "@/lib/motion";
+import { useRouter } from "@tanstack/react-router";
 
 if (typeof window !== "undefined") installConsoleCapture();
 
