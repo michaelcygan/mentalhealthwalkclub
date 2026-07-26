@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Footprints, X, PenLine, Radio as RadioIcon, Check, Loader2 } from "lucide-react";
+import { Footprints, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,7 +12,6 @@ import {
   startSoloWalk,
   type SoloWalkSession,
 } from "@/lib/solo-walk.functions";
-import { RadioQuickPicker } from "@/components/radio/radio-quick-picker";
 import { haptics } from "@/lib/device";
 
 export const Route = createFileRoute("/_authenticated/walk/")({
@@ -26,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/walk/")({
   component: WalkPage,
 });
 
-type UIState = "loading" | "ready" | "active" | "finish" | "saved";
+type UIState = "loading" | "ready" | "active" | "finish";
 
 const STALE_HOURS = 12;
 
@@ -64,11 +63,8 @@ function WalkPage() {
 
   const [ui, setUi] = useState<UIState>("loading");
   const [session, setSession] = useState<SoloWalkSession | null>(null);
-  const [moodBefore, setMoodBefore] = useState<string>("");
-  const [intention, setIntention] = useState<string>("");
   const [reflection, setReflection] = useState<string>("");
   const [moodAfter, setMoodAfter] = useState<string>("");
-  const [reflectOpen, setReflectOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -82,7 +78,8 @@ function WalkPage() {
         if (active) {
           setSession(active);
           setUi("active");
-          const draft = typeof window !== "undefined" ? window.localStorage.getItem(draftKey(active.id)) : null;
+          const draft =
+            typeof window !== "undefined" ? window.localStorage.getItem(draftKey(active.id)) : null;
           if (draft) setReflection(draft);
         } else {
           setUi("ready");
@@ -129,12 +126,7 @@ function WalkPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const { session: s, resumedExisting } = await start({
-        data: {
-          moodBefore: moodBefore.trim() || undefined,
-          intention: intention.trim() || undefined,
-        },
-      });
+      const { session: s, resumedExisting } = await start({ data: {} });
       haptics.tap();
       setSession(s);
       setUi("active");
@@ -157,18 +149,18 @@ function WalkPage() {
     if (!session || busy) return;
     setBusy(true);
     try {
-      const updated = await complete({
+      await complete({
         data: {
           id: session.id,
           moodAfter: moodAfter.trim() || undefined,
           reflectionNote: reflection.trim() || undefined,
         },
       });
-      setSession(updated);
       if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(session.id));
       invalidateRoutine();
       haptics.tap();
-      setUi("saved");
+      toast.success("Walk saved — today counts.");
+      navigate({ to: "/" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save walk");
     } finally {
@@ -203,50 +195,27 @@ function WalkPage() {
     );
   }
 
-  if (ui === "saved" && session) {
+  if (ui === "finish" && session) {
+    const duration = Math.max(
+      0,
+      Math.round((Date.now() - new Date(session.started_at).getTime()) / 1000),
+    );
     return (
       <main className="mx-auto max-w-md px-4 pb-24 pt-6 md:pt-10">
         <motion.section
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-border bg-card p-6 text-center shadow-soft"
+          className="rounded-3xl border border-border bg-card p-5 shadow-soft"
         >
-          <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full bg-forest/10">
-            <Check className="h-5 w-5 text-forest" />
-          </div>
-          <h1 className="font-serif text-2xl">Walk saved.</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Today counts.</p>
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            <Link
-              to="/"
-              className="rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium hover:bg-accent/40"
-            >
-              Back home
-            </Link>
-            <Link
-              to="/journal"
-              className="rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground hover:opacity-95"
-            >
-              View journal
-            </Link>
-          </div>
-        </motion.section>
-      </main>
-    );
-  }
-
-  if (ui === "finish" && session) {
-    const duration = Math.max(0, Math.round((Date.now() - new Date(session.started_at).getTime()) / 1000));
-    return (
-      <main className="mx-auto max-w-md px-4 pb-24 pt-6 md:pt-10">
-        <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             Solo walk
           </div>
           <h1 className="mt-1 font-serif text-2xl">You walked for {fmtMinutes(duration)}.</h1>
           <p className="mt-1 text-sm text-muted-foreground">Everything below is optional.</p>
 
-          <label className="mt-4 block text-xs font-medium text-muted-foreground">How are you leaving?</label>
+          <label className="mt-4 block text-xs font-medium text-muted-foreground">
+            How are you leaving?
+          </label>
           <input
             value={moodAfter}
             onChange={(e) => setMoodAfter(e.target.value)}
@@ -286,7 +255,7 @@ function WalkPage() {
               {busy ? "Saving…" : "Save walk"}
             </button>
           </div>
-        </section>
+        </motion.section>
       </main>
     );
   }
@@ -294,11 +263,17 @@ function WalkPage() {
   if (ui === "active" && session) {
     return (
       <main className="mx-auto max-w-md px-4 pb-24 pt-6 md:pt-10">
-        <section className="rounded-3xl border border-border bg-gradient-to-br from-card via-card to-accent/40 p-5 shadow-soft">
+        <motion.section
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-border bg-gradient-to-br from-card via-card to-accent/40 p-5 shadow-soft"
+        >
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             Walking
           </div>
-          <div className="mt-1 font-serif text-5xl tabular-nums tracking-tight">{fmtElapsed(elapsed)}</div>
+          <div className="mt-1 font-serif text-5xl tabular-nums tracking-tight">
+            {fmtElapsed(elapsed)}
+          </div>
           {session.intention ? (
             <p className="mt-2 text-sm text-muted-foreground">"{session.intention}"</p>
           ) : null}
@@ -327,36 +302,13 @@ function WalkPage() {
             </div>
           ) : null}
 
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setReflectOpen((v) => !v)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium hover:bg-accent/40"
-            >
-              <PenLine className="h-4 w-4" /> Reflect
-            </button>
-            <button
-              type="button"
-              onClick={onEndClick}
-              className="rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
-            >
-              End walk
-            </button>
-          </div>
-
-          {reflectOpen ? (
-            <div className="mt-3">
-              <textarea
-                value={reflection}
-                onChange={(e) => setReflection(e.target.value)}
-                rows={3}
-                maxLength={20000}
-                placeholder="A quiet noticing, saved with this walk."
-                className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-forest"
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">Autosaves on this device.</p>
-            </div>
-          ) : null}
+          <button
+            type="button"
+            onClick={onEndClick}
+            className="mt-5 w-full rounded-2xl bg-forest px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
+          >
+            End walk
+          </button>
 
           <button
             type="button"
@@ -366,7 +318,7 @@ function WalkPage() {
           >
             <X className="h-3 w-3" /> Discard walk
           </button>
-        </section>
+        </motion.section>
       </main>
     );
   }
@@ -374,12 +326,18 @@ function WalkPage() {
   // ready
   return (
     <main className="mx-auto max-w-md px-4 pb-24 pt-6 md:pt-10">
-      <section className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-3xl border border-border bg-card p-5 shadow-soft"
+      >
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           Solo walk
         </div>
         <h1 className="mt-1 font-serif text-2xl">A private walk for your own routine.</h1>
-        <p className="mt-1 text-sm text-muted-foreground">No route tracking. No pressure. A short walk still counts.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          No route tracking. No pressure. A short walk still counts.
+        </p>
 
         <button
           type="button"
@@ -390,46 +348,7 @@ function WalkPage() {
           <Footprints className="h-5 w-5" />
           {busy ? "Starting…" : "Start walking"}
         </button>
-
-        <details className="mt-5 group">
-          <summary className="cursor-pointer text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Optional
-          </summary>
-          <div className="mt-3 space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground">
-                How are you arriving?
-              </label>
-              <input
-                value={moodBefore}
-                onChange={(e) => setMoodBefore(e.target.value)}
-                placeholder="One word is enough"
-                maxLength={64}
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-forest"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground">
-                Anything to carry with you?
-              </label>
-              <input
-                value={intention}
-                onChange={(e) => setIntention(e.target.value)}
-                placeholder="A small intention"
-                maxLength={240}
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-forest"
-              />
-            </div>
-          </div>
-        </details>
-
-        <div className="mt-6">
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            <RadioIcon className="h-3.5 w-3.5" /> Walk with Radio
-          </div>
-          <RadioQuickPicker />
-        </div>
-      </section>
+      </motion.section>
     </main>
   );
 }
