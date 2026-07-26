@@ -727,6 +727,8 @@ export const adminAddPodcastFeed = createServerFn({ method: "POST" })
           rss_url: data.rssUrl,
           is_active: false, // radio-only by default; don't leak into public library
           radio_enabled: true,
+          title: "Pending sync",
+          category: "podcast",
         })
         .select("id")
         .single();
