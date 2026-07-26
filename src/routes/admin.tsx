@@ -87,6 +87,13 @@ function AdminLayout() {
           <Heart className="h-3.5 w-3.5" /> Membership
         </Link>
         <Link
+          to="/admin/donations"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <HandHeart className="h-3.5 w-3.5" /> Donations
+        </Link>
+        <Link
           to="/admin/merch"
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
           activeProps={{ className: "active" }}
