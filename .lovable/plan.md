@@ -1,36 +1,48 @@
-## Radio V1 QA Pass
+## Ungate private text journaling for Free users
 
-End-to-end verification of the mixed-source Radio flow with fixes applied inline for anything blocking.
+Surgical entitlement removal. No redesign, no photo/RLS/billing changes.
 
-### 1. Static checks
-- `tsgo --noEmit` typecheck
-- Production build (`bun run build`) to catch SSR / bundler issues
-- Grep for any lingering references to the old single-source Radio shape (`audio_url` only, missing `source_type`)
+### Findings from inspection
+- **RLS is already owner-only** — `journal_entries` policies (migration `20260609024318…`) do only `auth.uid() = user_id` checks. No subscription requirement present. **No migration needed.**
+- **Plus gate is enforced in two places**:
+  1. `src/lib/journal-entries.functions.ts` — local `requirePlus()` helper (lines 25–39) called inside `createJournalEntry` (line 46), throws `Error("plus_required")`.
+  2. `src/components/home/reflection-write-sheet.tsx` — `useMembership`, `openPlusCheckout`, pre-save `!isPlus` redirect, "Save with Plus" button copy, `plus_required` error branch, `Sparkles` icon.
+- **`requirePlus` in `src/lib/plus-guard.server.ts`** is a *separate* exported helper used elsewhere — leave it alone.
+- **Copy audit**: no other UI strings gate basic text journaling behind Plus. `src/routes/auth.tsx` already frames the private journal as a free feature.
+- **`src/routes/journal.tsx`** never references Plus for text entries; edit/delete/feed/stats already run over owner-scoped server fns.
 
-### 2. Admin flow (Playwright, authenticated as admin)
-- `/admin/radio`: create a station, mark as default (verify only one default enforced), register a podcast feed, toggle `radio_enabled`, run "Sync now"
-- `/admin/radio/$id`: add tracks from all three sources (Upload, External Link, Podcast Episode); reorder via drag; adjust `repeat_count`; toggle `is_active`; run Test Resolve on each source type; remove a track
-- Verify SSRF guard rejects `http://` and private IPs on external link add
+### Changes
 
-### 3. Public + playback flow
-- `/` home Radio rail: default station shows star badge, Resume chip appears after playing once, mobile scroller + desktop grid both render
-- `/radio/$slug`: tracklist renders with source badges, play a track, verify continuous playback advances through cycle, shuffle vs ordered mode honored, loop pre-enqueues next cycle
-- Dock: current track shows correct title/source, next/prev works across source types, resume on reload restores station + position
+**1. `src/lib/journal-entries.functions.ts`**
+- Remove the local `requirePlus` helper.
+- Remove the `await requirePlus(...)` call inside `createJournalEntry`.
+- Keep `requireSupabaseAuth` middleware and the existing `user_id = context.userId` insert.
+- All other functions untouched.
 
-### 4. Safety + metering
-- Free-tier monthly cap still enforced (UpsellSheet triggers)
-- Signed-out user can browse `/radio/$slug` but paywall/limit behaves correctly
-- Non-adult-active user: Radio browsing works (not gated), adult-only actions still gate
+**2. `src/components/home/reflection-write-sheet.tsx`**
+- Remove imports: `Sparkles` (from lucide-react), `useMembership`, `useAuthPrompt`.
+- Remove state: `isPlus`, `membershipLoading`, `openPlusCheckout`.
+- Remove the pre-save `if (!isPlus)` redirect in `save()`.
+- Remove the `msg.includes("plus_required")` branch in the catch.
+- Save button:
+  - Label: `saving ? "Saving…" : "Save to journal"`.
+  - `disabled={!body.trim() || saving}`.
+- Preserve: prompt shuffle/skip, freeform writing, draft autosave (`draftKey`, localStorage), Cmd/Ctrl+Enter save, textarea auto-grow, toast on success.
 
-### 5. Deferred items to confirm (from prior message)
-Not blocking QA, but flag status of:
-- Wave 7 (playback controls polish)
-- Wave 8 (continuous UX details)
-- Wave 10 (metering edges)
-- Wave 12 (public discovery surfaces)
-- Wave 14 (final metrics/telemetry)
+**3. Database** — no migration. Existing policies already meet the "authenticated owner-only CRUD" requirement.
 
-Any regressions found get fixed in the same pass; anything larger gets called out with a recommendation.
+### Verification
+- `bunx tsgo --noEmit`
+- `bun run build`
+- Grep for `plus_required` in `src/` → only expected remaining references (if any) will be outside the journal path; if the phrase is orphaned, remove it.
+- Manual acceptance mapping:
+  - Free user saves homepage prompt → `createJournalEntry` succeeds under `requireSupabaseAuth`.
+  - Freeform entry from Journal → same server fn, `source: "journal_freeform"`.
+  - Post-walk reflection → uses `updateWalkReflection` which never had a Plus gate.
+  - Edit/delete/list → unchanged owner-scoped server fns.
+  - Cross-user isolation → RLS policies unchanged.
+  - Photo flow → not touched.
+  - Plus users → identical UX; button copy is the same they'd have seen after upgrading.
 
-### Deliverable
-A short QA report: what passed, what was fixed inline, and any remaining follow-ups for the deferred waves before launch.
+### Out of scope (unchanged)
+Walk-photo/event-photo upload, storage, compression, entitlements. Radio metering. Plus pricing/billing. `src/lib/plus-guard.server.ts`. Other `requirePlus` callers.
