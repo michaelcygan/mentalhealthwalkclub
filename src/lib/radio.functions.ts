@@ -532,7 +532,12 @@ export const adminAddPodcastEpisodesToStation = createServerFn({ method: "POST" 
 
     let alreadyPresent = 0;
     let unavailable = 0;
-    const rows: Array<Record<string, unknown>> = [];
+    type InsertRow = {
+      station_id: string; source_type: "podcast_episode"; storage_key: null; external_url: null;
+      podcast_episode_id: string; title: string; artist: string | null; duration_s: number | null;
+      sort: number; is_active: boolean; repeat_count: number;
+    };
+    const rows: InsertRow[] = [];
     for (const id of requested) {
       const ep = epMap.get(id);
       if (!ep) { unavailable += 1; continue; }
