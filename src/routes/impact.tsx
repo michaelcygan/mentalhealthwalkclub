@@ -8,7 +8,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt";
 import { FoundingBadge } from "@/components/membership/founding-badge";
 
 const IMPACT_URL = "https://mentalhealthwalkclub.com/impact";
-const IMPACT_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7244738f-35c7-4630-a18d-c08ba328bd68/og-default-v2.jpg";
+const IMPACT_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/f8ac10f7-acf6-4744-958d-b8c58cb29ca7/og-default-v3.jpg";
 const IMPACT_DESC = "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too.";
 
 export const Route = createFileRoute("/impact")({

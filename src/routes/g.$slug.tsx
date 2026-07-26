@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { getGroupBySlug, joinGroup, leaveGroup } from "@/lib/groups.functions";
 
-const GROUP_OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/7244738f-35c7-4630-a18d-c08ba328bd68/og-default-v2.jpg";
+const GROUP_OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/f8ac10f7-acf6-4744-958d-b8c58cb29ca7/og-default-v3.jpg";
 
 export const Route = createFileRoute("/g/$slug")({
   component: PublicGroupPage,
