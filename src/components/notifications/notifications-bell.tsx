@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  getUnreadNotificationCount,
   listNotifications,
   markNotificationsRead,
   type NotificationRow,
 } from "@/lib/notifications.functions";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { useUnreadNotifications } from "./use-unread-notifications";
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -29,25 +28,16 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" } = {}) {
+export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" | "row" } = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  const fetchCount = useServerFn(getUnreadNotificationCount);
   const fetchList = useServerFn(listNotifications);
   const markRead = useServerFn(markNotificationsRead);
 
-  const { data: countData } = useQuery({
-    queryKey: ["notifications", "unread"],
-    queryFn: () => fetchCount({}),
-    enabled: !!user,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
-  });
-  const unread = countData?.count ?? 0;
+  const unread = useUnreadNotifications();
 
   const { data: listData, isLoading } = useQuery({
     queryKey: ["notifications", "list"],
@@ -85,24 +75,7 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
       });
   }, [open, listData, items, markRead, qc]);
 
-  // Realtime: push fresh count + list into the bell when a new notification lands.
-  useEffect(() => {
-    if (!user?.id) return;
-    const nonce = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString();
-    const channel = supabase
-      .channel(`notifications:${user.id}:${nonce}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["notifications"] });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [user?.id, qc]);
+  // Realtime subscription lives inside useUnreadNotifications; nothing else needed here.
 
   if (!user) return null;
 
@@ -137,6 +110,23 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
               )}
             </span>
             Notifications
+          </button>
+        ) : variant === "row" ? (
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-sm shadow-soft transition active:scale-[0.99] hover:bg-accent/40"
+          >
+            <Bell className="h-4 w-4 shrink-0 text-forest" />
+            <span className="font-medium">Notifications</span>
+            <span className="ml-auto flex items-center gap-2">
+              {unread > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </span>
           </button>
         ) : (
           <button
