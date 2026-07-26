@@ -75,24 +75,7 @@ export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "si
       });
   }, [open, listData, items, markRead, qc]);
 
-  // Realtime: push fresh count + list into the bell when a new notification lands.
-  useEffect(() => {
-    if (!user?.id) return;
-    const nonce = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString();
-    const channel = supabase
-      .channel(`notifications:${user.id}:${nonce}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["notifications"] });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [user?.id, qc]);
+  // Realtime subscription lives inside useUnreadNotifications; nothing else needed here.
 
   if (!user) return null;
 
