@@ -105,6 +105,8 @@ export const followUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (data.userId === userId) throw new Error("You can't follow yourself.");
+    const { data: adult } = await supabase.rpc("is_adult_active", { _user_id: userId });
+    if (!adult) throw new Error("Confirm your age to follow other walkers.");
     const { error } = await supabase
       .from("follows")
       .upsert({ follower_id: userId, followee_id: data.userId }, { onConflict: "follower_id,followee_id", ignoreDuplicates: true });

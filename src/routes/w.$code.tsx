@@ -16,6 +16,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { notifyHostOfRsvp } from "@/lib/notifications.functions";
 import { InviteCard } from "@/components/discover/invite-card";
 import { ClientOnly } from "@/components/client-only";
+import { useIsAdultActive } from "@/hooks/use-is-adult-active";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
@@ -316,8 +317,10 @@ function RsvpRow({
   }, [eventId, user]);
 
   const notifyHost = useServerFn(notifyHostOfRsvp);
+  const { guard: adultGuard } = useIsAdultActive();
   const setLoggedIn = async (next: RsvpStatus) => {
     if (!user || busy) return;
+    if (!adultGuard("Confirm your age to RSVP.")) return;
     setBusy(true);
     const prev = my;
     setMy(next);
