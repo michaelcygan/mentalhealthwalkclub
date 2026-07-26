@@ -23,6 +23,7 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -140,6 +141,11 @@ const GroupsRoute = GroupsRouteImport.update({
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributeRoute = ContributeRouteImport.update({
+  id: '/contribute',
+  path: '/contribute',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -391,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -519,6 +527,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -584,6 +593,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -711,6 +722,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -776,6 +788,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BlogRoute: typeof BlogRouteWithChildren
+  ContributeRoute: typeof ContributeRoute
   EventsRoute: typeof EventsRouteWithChildren
   GroupsRoute: typeof GroupsRoute
   ImpactRoute: typeof ImpactRoute
@@ -900,6 +913,13 @@ declare module '@tanstack/react-router' {
       path: '/events'
       fullPath: '/events'
       preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute': {
+      id: '/contribute'
+      path: '/contribute'
+      fullPath: '/contribute'
+      preLoaderRoute: typeof ContributeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -1421,6 +1441,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BlogRoute: BlogRouteWithChildren,
+  ContributeRoute: ContributeRoute,
   EventsRoute: EventsRouteWithChildren,
   GroupsRoute: GroupsRoute,
   ImpactRoute: ImpactRoute,
