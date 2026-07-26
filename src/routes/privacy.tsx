@@ -34,9 +34,19 @@ function PrivacyPage() {
         <li>We are not a medical service. Please read the disclaimer at the bottom.</li>
       </ul>
 
+      <h2>Age eligibility (18+)</h2>
+      <p>
+        Mental Health Walk Club is currently for adults 18 and older. When you create an account we ask for your date
+        of birth solely to confirm eligibility and to maintain an adult-only community. Your date of birth is stored
+        privately, never displayed on your profile, and never shared with other users. We derive an age band
+        (for example "25+") that is used internally for safety checks. If you decline to provide a date of birth, or
+        the date indicates you are under 18, we cannot provide account access.
+      </p>
+
       <h2>What we collect</h2>
       <ul>
         <li><strong>Account info</strong> — your email, display name, optional avatar, and (if you provide it) your city.</li>
+        <li><strong>Date of birth</strong> — collected once to confirm you are 18+. Kept private; not shown to other users.</li>
         <li><strong>Walk data</strong> — start/end time, duration, walk type, mood check-ins you choose to log, journal entries you write, and any badges you earn.</li>
         <li><strong>Location</strong> — only while a walk is active and only with your permission, used to estimate distance and (if you opt in) show your live route to your group.</li>
         <li><strong>Health data</strong> — on iOS, with your permission, we read your step count from Apple Health while you walk so we can show steps in real time.</li>
