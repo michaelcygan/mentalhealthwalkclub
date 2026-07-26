@@ -447,7 +447,7 @@ function GroupCard({
   to: "authed" | "public";
   badge?: string;
 }) {
-  const isPrivate = group.visibility === "private";
+  const isPrivate = "visibility" in group && group.visibility === "private";
   const miles = "miles" in group ? group.miles : null;
   const inner = (
     <div className="flex gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft transition hover:bg-accent/30">
