@@ -272,11 +272,9 @@ function RootComponent() {
             <AmbientPlayerProvider>
               <PlayerProvider>
                 <PaymentTestModeBanner />
-                <EligibilityGate>
-                  <AppFrame>
-                    <RoutedOutlet />
-                  </AppFrame>
-                </EligibilityGate>
+                <AppFrame>
+                  <RoutedOutlet />
+                </AppFrame>
                 <Toaster />
               </PlayerProvider>
             </AmbientPlayerProvider>
