@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  getUnreadNotificationCount,
   listNotifications,
   markNotificationsRead,
   type NotificationRow,
 } from "@/lib/notifications.functions";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { useUnreadNotifications } from "./use-unread-notifications";
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
