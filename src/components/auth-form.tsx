@@ -283,6 +283,36 @@ export function AuthForm({
           />
           {isSignup && <p className="text-xs text-muted-foreground">At least 8 characters.</p>}
         </div>
+        {isSignup && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="dob">Date of birth</Label>
+              <Input
+                id="dob"
+                type="date"
+                required
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                autoComplete="bday"
+              />
+              <p className="text-xs text-muted-foreground">
+                Mental Health Walk Club is currently for adults 18 and older. Your date of birth stays private.
+              </p>
+            </div>
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={ageAttest}
+                onChange={(e) => setAgeAttest(e.target.checked)}
+              />
+              <span>
+                I confirm I&apos;m at least 18 and this date is accurate.
+              </span>
+            </label>
+          </>
+        )}
         <Button type="submit" disabled={busy} className="h-11 w-full rounded-full bg-forest text-primary-foreground hover:opacity-90">
           {busy
             ? "One moment…"
