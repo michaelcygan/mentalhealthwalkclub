@@ -40,9 +40,14 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
   };
 
   useEffect(() => {
+    // Photos are auth-scoped; skip fetch when logged out to avoid 401 noise.
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [eventId, user]);
 
   const onPick = () => {
     requireAuth(() => inputRef.current?.click());
