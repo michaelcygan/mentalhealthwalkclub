@@ -161,12 +161,21 @@ function ImpactPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
-            <Button
-              onClick={() => openPlusCheckout()}
-              className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
-            >
-              Give monthly
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                onClick={() => openPlusCheckout()}
+                className="rounded-full bg-rose-600 text-white hover:opacity-90"
+              >
+                Give monthly
+              </Button>
+              <Link
+                to="/contribute"
+                className="inline-flex items-center rounded-full border border-rose-200 bg-card px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              >
+                Give once
+              </Link>
+            </div>
+
           </div>
         </div>
         {wall.length > 0 && (
