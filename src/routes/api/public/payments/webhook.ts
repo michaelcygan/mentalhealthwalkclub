@@ -345,6 +345,72 @@ async function handleTrialWillEnd(subscription: any, env: StripeEnv) {
   });
 }
 
+async function handleCheckoutSessionCompleted(
+  session: any,
+  env: StripeEnv,
+  eventId: string,
+  eventCreated: number,
+) {
+  const kind = session?.metadata?.kind;
+  if (kind !== "one_time_988") return; // subscription sessions are handled via subscription/invoice events
+  const gross = Number(session.amount_total ?? 0);
+  if (!gross || gross <= 0) return;
+
+  // Look up the payment intent → latest charge, for refund matching later.
+  let chargeId: string | null = null;
+  let paymentIntentId: string | null =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
+  if (paymentIntentId) {
+    try {
+      const stripe = createStripeClient(env);
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+        expand: ["latest_charge"],
+      });
+      const lc = (pi as any).latest_charge;
+      chargeId = typeof lc === "string" ? lc : lc?.id ?? null;
+    } catch (e) {
+      console.warn("could not expand latest_charge for one-time session", e);
+    }
+  }
+
+  const displayPublicly = session.metadata?.display_publicly === "1";
+  const dedicationName = (session.metadata?.dedication_name as string | undefined)?.trim() || null;
+  const dedicationMessage =
+    (session.metadata?.dedication_message as string | undefined)?.trim() || null;
+  const publicDonorName = displayPublicly
+    ? ((session.metadata?.public_donor_name as string | undefined) || null)
+    : null;
+
+  const paidAtSec = session.created ?? eventCreated;
+
+  const payload = {
+    source: "one_time_988",
+    user_id: (session.metadata?.userId as string | undefined) || null,
+    environment: env,
+    currency: (session.currency ?? "usd").toLowerCase(),
+    stripe_event_id: eventId,
+    stripe_invoice_id: null,
+    stripe_payment_intent_id: paymentIntentId,
+    stripe_charge_id: chargeId,
+    stripe_subscription_id: null,
+    gross_payment_cents: gross,
+    membership_allocation_cents: 0,
+    donation_allocation_cents: gross,
+    status: "designated",
+    paid_at: new Date(paidAtSec * 1000).toISOString(),
+    dedication_type: dedicationName || dedicationMessage ? "in_honor_of" : "none",
+    honoree_name: dedicationName,
+    dedication_message: dedicationMessage,
+    public_donor_name: publicDonorName,
+    display_publicly: displayPublicly,
+  };
+
+  const { error } = await getSupabase()
+    .from("donation_allocations")
+    .upsert(payload, { onConflict: "stripe_event_id", ignoreDuplicates: true });
+  if (error) console.error("one-time donation_allocations upsert failed", error);
+}
+
 async function safe(fn: () => Promise<void>, label: string) {
   try {
     await fn();
@@ -352,6 +418,7 @@ async function safe(fn: () => Promise<void>, label: string) {
     console.error(`Webhook handler '${label}' failed:`, e);
   }
 }
+
 
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
