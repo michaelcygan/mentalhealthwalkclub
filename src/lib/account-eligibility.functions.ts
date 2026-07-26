@@ -47,10 +47,13 @@ export const confirmMyDateOfBirth = createServerFn({ method: "POST" })
 
 /** Server-side helper used by other server fns: throws if caller is not adult-active. */
 export async function requireAdultAccount(
-  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  supabase: { rpc: (fn: "is_adult_active", args: { _user_id: string }) => Promise<{ data: unknown; error: unknown }> } | unknown,
   userId: string,
 ): Promise<void> {
-  const { data } = await supabase.rpc("is_adult_active", { _user_id: userId });
+  // Cast to any-like RPC caller — Supabase generated types constrain fn name to a union
+  // that already includes is_adult_active.
+  const client = supabase as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+  const { data } = await client.rpc("is_adult_active", { _user_id: userId });
   if (data !== true) {
     const err = new Error("adult_account_required");
     (err as Error & { code?: string }).code = "adult_account_required";
