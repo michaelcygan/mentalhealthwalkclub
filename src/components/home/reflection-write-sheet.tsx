@@ -32,8 +32,6 @@ export function ReflectionWriteSheet({
   allowPromptControls = true,
 }: Props) {
   const create = useServerFn(createJournalEntry);
-  const { isPlus, loading: membershipLoading } = useMembership();
-  const { openPlusCheckout } = useAuthPrompt();
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [activePrompt, setActivePrompt] = useState<{ id?: string; text?: string } | null>(prompt ?? null);
@@ -84,11 +82,6 @@ export function ReflectionWriteSheet({
   async function save() {
     const value = body.trim();
     if (!value || saving) return;
-    if (!isPlus) {
-      onOpenChange(false);
-      openPlusCheckout();
-      return;
-    }
     setSaving(true);
     try {
       await create({
@@ -108,11 +101,6 @@ export function ReflectionWriteSheet({
       onOpenChange(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't save";
-      if (msg.includes("plus_required")) {
-        onOpenChange(false);
-        openPlusCheckout();
-        return;
-      }
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -200,15 +188,10 @@ export function ReflectionWriteSheet({
               <Button
                 type="button"
                 onClick={save}
-                disabled={!body.trim() || saving || membershipLoading}
+                disabled={!body.trim() || saving}
                 className="rounded-full bg-forest text-primary-foreground hover:opacity-90"
               >
-                {!isPlus && !membershipLoading ? (
-                  <>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Save with Plus
-                  </>
-                ) : saving ? "Saving…" : "Save to journal"}
+                {saving ? "Saving…" : "Save to journal"}
               </Button>
             </div>
           </div>
