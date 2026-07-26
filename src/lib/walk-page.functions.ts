@@ -25,11 +25,11 @@ export const getWalkByCode = createServerFn({ method: "GET" })
     }
     if (!event) return { event: null, host: null, place: null, group: null, circle: null };
 
-    let host: { display_name: string | null; avatar_url: string | null } | null = null;
+    let host: { display_name: string | null; avatar_url: string | null; username: string | null } | null = null;
     if (event.host_user_id) {
       const { data: hostRow } = await supabaseAdmin
         .from("profiles")
-        .select("display_name,avatar_url")
+        .select("display_name,avatar_url,username")
         .eq("id", event.host_user_id)
         .maybeSingle();
       host = hostRow ?? null;
