@@ -129,7 +129,7 @@ function WalkPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const { session: s } = await start({
+      const { session: s, resumedExisting } = await start({
         data: {
           moodBefore: moodBefore.trim() || undefined,
           intention: intention.trim() || undefined,
@@ -138,6 +138,7 @@ function WalkPage() {
       haptics.tap();
       setSession(s);
       setUi("active");
+      if (resumedExisting) toast("Resumed your open walk.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not start walk";
       if (msg.includes("adult")) toast.error("Please confirm your age to start a walk.");
