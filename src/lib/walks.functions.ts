@@ -81,6 +81,12 @@ export const createWalk = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // 18+ launch: only adult-active accounts can create walks.
+    const { requireAdultAccount } = await import("@/lib/account-eligibility.functions");
+    await requireAdultAccount(supabase, userId);
+
+
+
     // resolve place fields if provided
     let venue_name: string | null = null;
     let address: string | null = null;
