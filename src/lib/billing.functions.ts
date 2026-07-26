@@ -339,3 +339,85 @@ export const getMembershipSettings = createServerFn({ method: "GET" })
       collections_follow_cap: 5,
     };
   });
+
+// ────────────────────────────────────────────────────────────────
+// One-time 988 contribution (guest-friendly, no auth required)
+// ────────────────────────────────────────────────────────────────
+
+const MIN_ONE_TIME_CENTS = 100;
+const MAX_ONE_TIME_CENTS = 100_000;
+
+async function resolveDonationProduct(stripe: ReturnType<typeof createStripeClient>): Promise<string> {
+  const donation = await stripe.prices.list({ lookup_keys: [DONATION_LOOKUP] });
+  const donationPrice = donation.data[0];
+  if (!donationPrice) throw new Error("Plus donation product not configured");
+  return typeof donationPrice.product === "string" ? donationPrice.product : donationPrice.product.id;
+}
+
+export const createOneTimeContributionSession = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      returnUrl: string;
+      environment: StripeEnv;
+      amountCents: number;
+      email?: string;
+      dedicationName?: string;
+      dedicationMessage?: string;
+      displayPublicly?: boolean;
+    }) => {
+      if (!data.returnUrl || !data.returnUrl.startsWith("http")) {
+        throw new Error("Invalid return URL");
+      }
+      const cents = Math.round(Number(data.amountCents));
+      if (!Number.isInteger(cents) || cents < MIN_ONE_TIME_CENTS || cents > MAX_ONE_TIME_CENTS) {
+        throw new Error("Amount must be between $1 and $1,000");
+      }
+      return {
+        ...data,
+        amountCents: cents,
+        dedicationName: (data.dedicationName ?? "").trim().slice(0, 60) || undefined,
+        dedicationMessage: (data.dedicationMessage ?? "").trim().slice(0, 240) || undefined,
+        displayPublicly: !!data.displayPublicly,
+        email: (data.email ?? "").trim().slice(0, 254) || undefined,
+      };
+    },
+  )
+  .handler(async ({ data }) => {
+    const stripe = createStripeClient(data.environment);
+    const donationProduct = await resolveDonationProduct(stripe);
+
+    const publicName = data.displayPublicly && data.dedicationName
+      ? data.dedicationName.split(/\s+/)[0].slice(0, 40)
+      : "";
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product: donationProduct,
+            unit_amount: data.amountCents,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      ui_mode: "embedded_page",
+      return_url: data.returnUrl,
+      ...(data.email && { customer_email: data.email }),
+      payment_intent_data: {
+        description: "988 Suicide & Crisis Lifeline contribution",
+      },
+      metadata: {
+        kind: "one_time_988",
+        dedication_name: data.dedicationName ?? "",
+        dedication_message: data.dedicationMessage ?? "",
+        display_publicly: data.displayPublicly ? "1" : "0",
+        public_donor_name: publicName,
+      },
+      managed_payments: { enabled: true },
+    } as never);
+
+    return session.client_secret ?? "";
+  });
+
