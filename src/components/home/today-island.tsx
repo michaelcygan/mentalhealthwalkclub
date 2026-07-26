@@ -46,19 +46,25 @@ export function TodayIsland({ user }: Props) {
       start.setHours(0, 0, 0, 0);
       const { data } = await supabase
         .from("walk_sessions")
-        .select("started_at,status")
+        .select("id,started_at,status,walk_type")
         .eq("user_id", user.id)
         .gte("started_at", start.toISOString());
       const days = new Set<string>();
-      let active: string | null = null;
-      for (const r of (data ?? []) as { started_at: string; status: string }[]) {
+      let activeSoloWalk: { id: string; started_at: string } | null = null;
+      for (const r of (data ?? []) as { id: string; started_at: string; status: string; walk_type: string }[]) {
         if (r.status === "completed") days.add(isoDay(new Date(r.started_at)));
-        if (r.status === "active" && !active) active = r.started_at;
+        if (r.status === "active" && r.walk_type === "solo" && !activeSoloWalk) {
+          activeSoloWalk = { id: r.id, started_at: r.started_at };
+        }
       }
-      return { walkDays: days, activeWalkId: active };
+      return { walkDays: days, activeSoloWalk };
     },
   });
   const walkDays = recent?.walkDays ?? new Set<string>();
+  const activeSoloWalk = recent?.activeSoloWalk ?? null;
+  const activeMinutes = activeSoloWalk
+    ? Math.max(0, Math.round((Date.now() - new Date(activeSoloWalk.started_at).getTime()) / 60000))
+    : 0;
   
 
   const name = useMemo(() => {
