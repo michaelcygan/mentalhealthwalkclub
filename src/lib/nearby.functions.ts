@@ -85,15 +85,29 @@ export const nearbyWalksPublic = createServerFn({ method: "GET" })
           : null,
     }));
 
-    const filtered = data.lat != null && data.lng != null
-      ? withDist
-          .filter((r) => r.miles == null || r.miles <= 25)
-          .sort((a, b) => {
-            const t = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
-            if (t !== 0) return t;
-            return (a.miles ?? 9999) - (b.miles ?? 9999);
-          })
-      : withDist;
+    const cityNorm = data.city?.trim().toLowerCase() || null;
+    const hasCoords = data.lat != null && data.lng != null;
+    const hasFilter = cityNorm != null || hasCoords;
+
+    let filtered = withDist;
+    if (hasFilter) {
+      const seen = new Set<string>();
+      filtered = withDist.filter((r) => {
+        const cityMatch =
+          cityNorm != null && (r.city?.trim().toLowerCase() ?? "") === cityNorm;
+        const withinRadius = hasCoords && r.miles != null && r.miles <= 25;
+        if (!cityMatch && !withinRadius) return false;
+        if (seen.has(r.id)) return false;
+        seen.add(r.id);
+        return true;
+      });
+    }
+
+    filtered = filtered.slice().sort((a, b) => {
+      const t = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+      if (t !== 0) return t;
+      return (a.miles ?? 9999) - (b.miles ?? 9999);
+    });
 
     return { walks: filtered.slice(0, data.limit) };
   });
