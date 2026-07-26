@@ -21,7 +21,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { ReportIssueDialog } from "@/components/report-issue-dialog";
 import { installConsoleCapture } from "@/lib/console-capture";
 import { dur, easeOut } from "@/lib/motion";
-import { useRouter } from "@tanstack/react-router";
+
 
 if (typeof window !== "undefined") installConsoleCapture();
 
