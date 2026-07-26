@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Radio } from "lucide-react";
+import { Radio, RotateCcw, Star } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Shimmer } from "@/components/ui/shimmer";
 import { listStations, type StationCard } from "@/lib/radio.functions";
-import { startStation } from "@/lib/radio-client";
+import { startStation, getLastStation } from "@/lib/radio-client";
 import { usePlayer } from "@/lib/player-context";
 import { useMembership } from "@/hooks/use-membership";
 import { useRadioUsage } from "@/hooks/use-radio-usage";
@@ -15,6 +16,7 @@ import radioCoverDefault from "@/assets/radio-cover-default.jpg";
 export function RadioRail() {
   const fetcher = useServerFn(listStations);
   const [stations, setStations] = useState<StationCard[] | null>(null);
+  const [lastSlug, setLastSlug] = useState<string | null>(null);
   const player = usePlayer();
   const { isPlus, loading: membershipLoading } = useMembership();
   const { freeSeconds, usedSeconds, loading: usageLoading } = useRadioUsage();
@@ -22,7 +24,17 @@ export function RadioRail() {
 
   useEffect(() => {
     fetcher().then((s) => setStations(s as StationCard[])).catch(() => setStations([]));
+    setLastSlug(getLastStation());
   }, [fetcher]);
+
+  // Pin default station first, then by sort.
+  const sorted = useMemo(() => {
+    if (!stations) return null;
+    return [...stations].sort((a, b) => {
+      if (a.is_default !== b.is_default) return a.is_default ? -1 : 1;
+      return a.sort - b.sort;
+    });
+  }, [stations]);
 
   const onStart = async (slug: string, title: string) => {
     if (membershipLoading || usageLoading) return;
@@ -39,7 +51,7 @@ export function RadioRail() {
     }
   };
 
-  if (stations === null) {
+  if (sorted === null) {
     return (
       <div className="-mx-1 flex gap-3 overflow-hidden px-1 pb-2 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:px-0 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -48,7 +60,9 @@ export function RadioRail() {
       </div>
     );
   }
-  if (!stations.length) return null;
+  if (!sorted.length) return null;
+
+  const resumeStation = lastSlug ? sorted.find((s) => s.slug === lastSlug) ?? null : null;
 
   const freeMinutes = Math.round(freeSeconds / 60);
   const usedMinutes = Math.round(usedSeconds / 60);
