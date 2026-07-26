@@ -15,6 +15,7 @@ import { AttendeeStack } from "@/components/walk-page/attendee-stack";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyHostOfRsvp } from "@/lib/notifications.functions";
 import { InviteCard } from "@/components/discover/invite-card";
+import { ClientOnly } from "@/components/client-only";
 
 const WalkMap = lazy(() => import("@/components/walk-page/walk-map"));
 const MemoryStrip = lazy(() => import("@/components/walk-page/memory-strip"));
@@ -144,17 +145,21 @@ function WalkPage() {
 
       <ShareRow code={code} title={event.title} />
 
-      <Suspense fallback={null}>
-        <WalkBroadcasts eventId={event.id} hostId={event.host_user_id} />
-      </Suspense>
+      <ClientOnly fallback={null}>
+        <Suspense fallback={null}>
+          <WalkBroadcasts eventId={event.id} hostId={event.host_user_id} />
+        </Suspense>
+      </ClientOnly>
 
       <HostOnlyAudience eventId={event.id} hostId={event.host_user_id} />
 
       {hasMap ? (
         <section className="mt-6 space-y-3">
-          <Suspense fallback={<div className="h-72 w-full animate-pulse rounded-3xl bg-muted" />}>
-            <WalkMap lat={lat!} lng={lng!} title={event.title} venue={event.venue_name} />
-          </Suspense>
+          <ClientOnly fallback={<div className="h-72 w-full animate-pulse rounded-3xl bg-muted" />}>
+            <Suspense fallback={<div className="h-72 w-full animate-pulse rounded-3xl bg-muted" />}>
+              <WalkMap lat={lat!} lng={lng!} title={event.title} venue={event.venue_name} />
+            </Suspense>
+          </ClientOnly>
           {event.meeting_point ? (
             <p className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Meet at:</span> {event.meeting_point}
@@ -181,9 +186,11 @@ function WalkPage() {
         </section>
       ) : null}
 
-      <Suspense fallback={null}>
-        <MemoryStrip eventId={event.id} />
-      </Suspense>
+      <ClientOnly fallback={null}>
+        <Suspense fallback={null}>
+          <MemoryStrip eventId={event.id} />
+        </Suspense>
+      </ClientOnly>
 
       <JoinClub />
     </main>

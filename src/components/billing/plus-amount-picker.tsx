@@ -28,8 +28,9 @@ interface Props {
 }
 
 /**
- * Picker for total monthly Plus contribution. Base is a fixed $2.99;
- * anything above is designated to 988. Emits donation cents (total − base).
+ * Picker for total monthly Plus contribution. The $2.99 base unlocks
+ * unlimited MHWC Radio and keeps the service running; anything above is
+ * designated to 988. Emits donation cents (total − base).
  */
 export function PlusAmountPicker({
   value,
@@ -77,7 +78,7 @@ export function PlusAmountPicker({
             >
               <div className="font-serif text-lg">{dollars(c)}</div>
               <div className="text-[11px] opacity-80">
-                {c === BASE_CENTS ? "base only" : `${dollars(c - BASE_CENTS)} to 988`}
+                {c === BASE_CENTS ? "keeps Radio running" : `${dollars(c - BASE_CENTS)} to 988`}
               </div>
             </button>
           );
@@ -107,7 +108,7 @@ export function PlusAmountPicker({
           <span className="text-sm text-muted-foreground">/ month</span>
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {dollars(BASE_CENTS)} keeps Plus running. Anything above goes to 988.
+          {dollars(BASE_CENTS)} unlocks unlimited MHWC Radio and keeps the club running. Anything above goes to 988.
         </p>
       </div>
 

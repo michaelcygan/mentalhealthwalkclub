@@ -4,7 +4,7 @@ import { createPlusCheckoutSession } from "@/lib/billing.functions";
 import type { PlusDedication } from "@/components/billing/plus-amount-picker";
 
 interface Props {
-  /** Voluntary donation on top of the $2.99 base, in cents. */
+  /** Voluntary donation on top of the $2.99 Radio-running base, in cents. */
   donationCents?: number;
   returnUrl?: string;
   dedication?: PlusDedication;

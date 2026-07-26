@@ -32,9 +32,17 @@ export function WalkBroadcasts({
 
   useEffect(() => {
     let cancel = false;
+    // Broadcasts are auth-scoped; skip fetch/subscribe when logged out to avoid 401 noise.
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     listBroadcasts({ data: { eventId } })
       .then(({ broadcasts }) => {
         if (!cancel) setItems(broadcasts);
+      })
+      .catch(() => {
+        if (!cancel) setItems([]);
       })
       .finally(() => !cancel && setLoading(false));
 
@@ -65,7 +73,7 @@ export function WalkBroadcasts({
       cancel = true;
       supabase.removeChannel(ch);
     };
-  }, [eventId]);
+  }, [eventId, user]);
 
   async function post() {
     const text = body.trim();
