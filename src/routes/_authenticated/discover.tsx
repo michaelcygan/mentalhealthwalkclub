@@ -332,7 +332,7 @@ type MyGroup = {
   neighborhood: string | null;
   cover_image_url: string | null;
 };
-type PublicGroup = MyGroup & { miles: number | null };
+type PublicGroup = Omit<MyGroup, "visibility"> & { miles: number | null };
 
 function GroupsSegment({ coords }: { coords: Coords }) {
   const { user } = useAuth();
