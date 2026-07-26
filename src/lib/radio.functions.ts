@@ -280,17 +280,17 @@ export const adminUpsertStation = createServerFn({ method: "POST" })
         .update({ is_default: false })
         .neq("id", data.id ?? "00000000-0000-0000-0000-000000000000");
     }
-    const payload: Record<string, unknown> = {
+    const payload = {
       slug: data.slug,
       title: data.title,
       subtitle: data.subtitle ?? null,
       cover_url: data.cover_url ?? null,
       is_active: data.is_active ?? true,
       sort: data.sort ?? 0,
+      ...(data.playback_mode !== undefined ? { playback_mode: data.playback_mode } : {}),
+      ...(data.loop_enabled !== undefined ? { loop_enabled: data.loop_enabled } : {}),
+      ...(data.is_default !== undefined ? { is_default: data.is_default } : {}),
     };
-    if (data.playback_mode !== undefined) payload.playback_mode = data.playback_mode;
-    if (data.loop_enabled !== undefined) payload.loop_enabled = data.loop_enabled;
-    if (data.is_default !== undefined) payload.is_default = data.is_default;
 
     if (data.id) {
       const { data: row, error } = await supabase
