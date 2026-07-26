@@ -80,7 +80,7 @@ function DiscoverPage() {
   const { coords, status, request } = useDiscoverLocation();
 
   const setTab = (next: Tab) => {
-    navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true });
+    navigate({ search: (prev: { tab: Tab }) => ({ ...prev, tab: next }), replace: true });
   };
 
   return (
