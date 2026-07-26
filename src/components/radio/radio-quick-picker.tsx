@@ -81,7 +81,7 @@ export function RadioQuickPicker() {
         ))}
         <button
           type="button"
-          onClick={() => player.pause()}
+          onClick={() => player.stop()}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/40"
         >
           <VolumeX className="h-3.5 w-3.5" />
@@ -91,8 +91,9 @@ export function RadioQuickPicker() {
       <UpsellSheet
         open={paywallOpen}
         onOpenChange={setPaywallOpen}
+        surface="radio"
         title="You've reached the free Radio limit"
-        description="Upgrade to Plus for unlimited listening. Your $2.99 keeps the service running."
+        body="Upgrade to Plus for unlimited listening. Your $2.99 keeps the service running."
       />
     </>
   );
