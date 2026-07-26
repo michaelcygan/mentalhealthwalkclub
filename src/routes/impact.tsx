@@ -197,7 +197,7 @@ function ImpactPage() {
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
-          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to the 988 Suicide &amp; Crisis Lifeline. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
+          Each successful Walk Club Plus charge splits into two lines: a $2.99 membership allocation that keeps the app running, and a donation allocation for everything above that. We route 100% of designated allocations to the 988 Suicide &amp; Crisis Lifeline and publish each transfer on the ledger so you can check our math.
         </p>
         <p className="mt-3">
           <Link to="/transparency" className="underline">
