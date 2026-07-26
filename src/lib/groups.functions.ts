@@ -247,6 +247,8 @@ export const joinGroup = createServerFn({ method: "POST" })
   .inputValidator((d) => UuidInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: adult } = await supabase.rpc("is_adult_active", { _user_id: userId });
+    if (!adult) throw new Error("Confirm your age to join a group.");
     const { data: g } = await supabase
       .from("groups")
       .select("id,visibility,status,age_band_min")
