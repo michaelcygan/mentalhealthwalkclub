@@ -2275,6 +2275,7 @@ export type Database = {
           last_sync_error: string | null
           last_synced_at: string | null
           publisher: string | null
+          radio_enabled: boolean
           rss_url: string
           title: string
           updated_at: string
@@ -2290,6 +2291,7 @@ export type Database = {
           last_sync_error?: string | null
           last_synced_at?: string | null
           publisher?: string | null
+          radio_enabled?: boolean
           rss_url: string
           title: string
           updated_at?: string
@@ -2305,6 +2307,7 @@ export type Database = {
           last_sync_error?: string | null
           last_synced_at?: string | null
           publisher?: string | null
+          radio_enabled?: boolean
           rss_url?: string
           title?: string
           updated_at?: string
@@ -2422,6 +2425,9 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_default: boolean
+          loop_enabled: boolean
+          playback_mode: string
           slug: string
           sort: number
           subtitle: string | null
@@ -2433,6 +2439,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
+          loop_enabled?: boolean
+          playback_mode?: string
           slug: string
           sort?: number
           subtitle?: string | null
@@ -2444,6 +2453,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
+          loop_enabled?: boolean
+          playback_mode?: string
           slug?: string
           sort?: number
           subtitle?: string | null
@@ -2457,11 +2469,15 @@ export type Database = {
           artist: string | null
           created_at: string
           duration_s: number | null
+          external_url: string | null
           id: string
           is_active: boolean
+          podcast_episode_id: string | null
+          repeat_count: number
           sort: number
+          source_type: string
           station_id: string
-          storage_key: string
+          storage_key: string | null
           title: string
           updated_at: string
         }
@@ -2469,11 +2485,15 @@ export type Database = {
           artist?: string | null
           created_at?: string
           duration_s?: number | null
+          external_url?: string | null
           id?: string
           is_active?: boolean
+          podcast_episode_id?: string | null
+          repeat_count?: number
           sort?: number
+          source_type?: string
           station_id: string
-          storage_key: string
+          storage_key?: string | null
           title: string
           updated_at?: string
         }
@@ -2481,15 +2501,26 @@ export type Database = {
           artist?: string | null
           created_at?: string
           duration_s?: number | null
+          external_url?: string | null
           id?: string
           is_active?: boolean
+          podcast_episode_id?: string | null
+          repeat_count?: number
           sort?: number
+          source_type?: string
           station_id?: string
-          storage_key?: string
+          storage_key?: string | null
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "radio_tracks_podcast_episode_id_fkey"
+            columns: ["podcast_episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "radio_tracks_station_id_fkey"
             columns: ["station_id"]
