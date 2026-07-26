@@ -1,40 +1,40 @@
-# Weather peek on the walk page
+## Goal
+Make walk-page photos ("Memory strip") privacy-gated: only visible to walkers who actually joined (RSVP'd / host / group member). Logged-out and non-RSVP'd viewers see a gated placeholder instead of images.
 
-Add a small, glanceable weather summary in the empty space to the right of the walk title (as circled). Keep the existing full `WalkWeather` strip lower on the page unchanged.
+## Current behavior
+- `getEventPhotos` (in `src/lib/walk-page.functions.ts`) currently returns photos to ANY authenticated viewer when the event is `public` or `link_only`. That's too permissive.
+- The client (`src/components/walk-page/memory-strip.tsx`) skips fetching when logged-out and shows a generic "No memories yet" empty state, giving no signal that memories exist or that RSVP unlocks them.
 
-## What it shows
+## Changes
 
-A compact pill/square with:
-- Condition icon (sun / cloud / rain / snow — reuse `src/lib/weather-icons.tsx`)
-- Temperature (e.g. `72°F`)
-- Precip chance if ≥ 20% (e.g. `· 30%`)
+### 1. Tighten server access (`src/lib/walk-page.functions.ts`)
+Rework `getEventPhotos` so access requires one of:
+- host of the event, OR
+- active member of the event's group (if group-scoped), OR
+- has an RSVP row for this event
 
-Sourced from the NWS period nearest to `event.starts_at`, using the existing `useWalkWeather` hook + `pickPeriodForTime` from `src/lib/walk-weather-match.ts`. No new server function or query — the same query key is reused by the full strip below, so this is one network call for the page.
+Public/link_only alone no longer grants photo access. Return shape becomes `{ photos, access: "member" | "gated", photoCount }` so the client can render a gated state that tells the truth about whether photos exist without exposing them.
 
-## Behavior
+Also add a lightweight public count helper (or fold into the above via an unauthenticated branch) so logged-out viewers can see "N memories — join the walk to view".
 
-- Only render when `hasMap && !isPast` (same condition as the full strip) and the query returns `status: "ok"` with a matched period.
-- While loading: render a small skeleton of the same footprint so layout doesn't jump.
-- On error / unsupported region (outside NWS coverage): render nothing — the full strip already handles that messaging below.
-- Tooltip / `title` on hover: full `shortForecast` text.
+### 2. Add logged-out / non-RSVP gated state (`src/components/walk-page/memory-strip.tsx`)
+- Logged out: render the Memory Strip section with a locked card:
+  - Title: "Memories from this walk"
+  - Body: "Photos here are for members who joined the walk."
+  - Buttons: "Log in" and "Create account" (route to `/auth` with return URL preserved)
+  - Never render any `<img>` or signed URL. Do not call the photos endpoint.
+- Logged in, but not host / group member / RSVP'd: same locked card, swap CTA to "RSVP to view memories" (link to the RSVP action / event page anchor). No image tags rendered.
+- Logged in and allowed: current behavior (fetch + render strip + camera FAB).
+- Hide the floating camera FAB unless the viewer is allowed (member/host/group).
 
-## Layout
+### 3. Fetching
+- Skip the server call entirely for logged-out and non-allowed viewers to avoid 401 noise; rely on the RSVP/host/group signals already present on the walk page (`event.viewerRsvp` / host id / group membership) — pass an `allowed` prop into `MemoryStrip` from `src/routes/w.$code.tsx`, which already knows the viewer's RSVP state.
 
-Desktop / tablet (≥ sm):
-- Wrap the header block in a flex row: title + meta on the left, peek aligned top-right in the circled spot.
-- Peek is a rounded-2xl card, `bg-card border border-border`, ~ auto width, single line.
+## Technical details
+- No schema changes.
+- Keep signed URL TTL as-is; they're only minted for allowed callers now.
+- `EventPhoto.url` is never sent to unauthorized callers, so no risk of leaked signed URLs in network responses.
+- Route `src/routes/w.$code.tsx`: pass `viewerAllowed` boolean into `<MemoryStrip>` based on existing loader data (host === viewer, group membership, RSVP present).
 
-Mobile (< sm):
-- Peek moves to a slim row directly under the "Hosted by …" line (still above RSVP), full-width-ish inline pill, left-aligned. This preserves the "peek at the top" feel without crowding the title on narrow screens.
-- Achieved with `sm:absolute sm:top-0 sm:right-0` + relative header, or a simpler `flex-col sm:flex-row sm:items-start sm:justify-between` header with the peek as the second flex child.
-
-## Files
-
-- `src/routes/w.$code.tsx` — restructure the `<header>` in `WalkPage` to a responsive flex row; render a new `<WalkWeatherPeek lat={lat} lng={lng} centerIso={event.starts_at} />` inside it, gated on `hasMap && !isPast`.
-- `src/components/walk-page/walk-weather-peek.tsx` — new small client component using `useWalkWeather` + `pickPeriodForTime` + `weatherIconFor`. Skeleton + null states as above.
-
-## Non-goals
-
-- No change to the full `WalkWeather` strip section.
-- No new data fetching, caching, or server code.
-- No change to `Cover`, RSVP, map, or share rows.
+## Out of scope
+- Photo captions/comments, per-photo privacy toggles, or blurred previews. Gated state is a plain card, no blurred thumbnails.

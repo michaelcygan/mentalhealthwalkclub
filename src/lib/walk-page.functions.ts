@@ -84,21 +84,25 @@ export type EventPhoto = {
 export const getEventPhotos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => EventIdInput.parse(d))
-  .handler(async ({ data, context }): Promise<{ photos: EventPhoto[] }> => {
-    const { supabase, userId } = context;
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ photos: EventPhoto[]; access: "member" | "gated"; photoCount: number }> => {
+      const { supabase, userId } = context;
 
-    // Verify caller can see this event before signing photo URLs.
-    const { data: ev } = await supabase
-      .from("events")
-      .select("id,visibility,host_user_id,group_id")
-      .eq("id", data.eventId)
-      .maybeSingle();
-    if (!ev) return { photos: [] };
+      // Verify caller is a walker on this event before signing photo URLs.
+      // Photos are private to people who actually joined — public/link_only
+      // visibility of the walk page itself does NOT grant photo access.
+      const { data: ev } = await supabase
+        .from("events")
+        .select("id,host_user_id,group_id")
+        .eq("id", data.eventId)
+        .maybeSingle();
+      if (!ev) return { photos: [], access: "gated", photoCount: 0 };
 
-    let allowed = ev.visibility === "public" || ev.visibility === "link_only" || ev.host_user_id === userId;
-    if (!allowed) {
-      // Group-scoped: caller must be an active member
-      if (ev.group_id) {
+      let allowed = ev.host_user_id === userId;
+      if (!allowed && ev.group_id) {
         const { data: m } = await supabase
           .from("group_memberships")
           .select("user_id")
@@ -109,7 +113,6 @@ export const getEventPhotos = createServerFn({ method: "GET" })
         if (m) allowed = true;
       }
       if (!allowed) {
-        // Otherwise caller must have RSVP'd
         const { data: r } = await supabase
           .from("event_rsvps")
           .select("user_id")
@@ -118,45 +121,55 @@ export const getEventPhotos = createServerFn({ method: "GET" })
           .maybeSingle();
         if (r) allowed = true;
       }
-    }
-    if (!allowed) return { photos: [] };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("event_photos")
-      .select("id,storage_path,caption,user_id,created_at")
-      .eq("event_id", data.eventId)
-      .order("created_at", { ascending: false })
-      .limit(40);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (error || !rows?.length) return { photos: [] };
+      if (!allowed) {
+        // Return a count only, so the gated card can hint at activity without
+        // leaking any image URLs.
+        const { count } = await supabaseAdmin
+          .from("event_photos")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", data.eventId);
+        return { photos: [], access: "gated", photoCount: count ?? 0 };
+      }
 
-    const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
-    const { data: profs } = await supabaseAdmin
-      .from("profiles")
-      .select("id,display_name,avatar_url")
-      .in("id", userIds);
-    const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
+      const { data: rows, error } = await supabaseAdmin
+        .from("event_photos")
+        .select("id,storage_path,caption,user_id,created_at")
+        .eq("event_id", data.eventId)
+        .order("created_at", { ascending: false })
+        .limit(40);
 
-    const photos: EventPhoto[] = [];
-    for (const r of rows) {
-      const { data: signed } = await supabaseAdmin.storage
-        .from("event-photos")
-        .createSignedUrl(r.storage_path, 60 * 60);
-      if (!signed?.signedUrl) continue;
-      const p = pmap.get(r.user_id);
-      photos.push({
-        id: r.id,
-        url: signed.signedUrl,
-        caption: r.caption,
-        user_id: r.user_id,
-        display_name: p?.display_name ?? null,
-        avatar_url: p?.avatar_url ?? null,
-        created_at: r.created_at,
-      });
-    }
-    return { photos };
-  });
+      if (error || !rows?.length) return { photos: [], access: "member", photoCount: 0 };
+
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id,display_name,avatar_url")
+        .in("id", userIds);
+      const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
+
+      const photos: EventPhoto[] = [];
+      for (const r of rows) {
+        const { data: signed } = await supabaseAdmin.storage
+          .from("event-photos")
+          .createSignedUrl(r.storage_path, 60 * 60);
+        if (!signed?.signedUrl) continue;
+        const p = pmap.get(r.user_id);
+        photos.push({
+          id: r.id,
+          url: signed.signedUrl,
+          caption: r.caption,
+          user_id: r.user_id,
+          display_name: p?.display_name ?? null,
+          avatar_url: p?.avatar_url ?? null,
+          created_at: r.created_at,
+        });
+      }
+      return { photos, access: "member", photoCount: photos.length };
+    },
+  );
 
 const AddPhotoInput = z.object({
   eventId: z.string().uuid(),
