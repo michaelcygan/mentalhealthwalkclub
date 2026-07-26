@@ -59,12 +59,25 @@ async function resolveProducts(stripe: ReturnType<typeof createStripeClient>) {
 export const createPlusCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { returnUrl: string; environment: StripeEnv; donationCents?: number }) => {
+    (data: {
+      returnUrl: string;
+      environment: StripeEnv;
+      donationCents?: number;
+      dedicationName?: string;
+      dedicationMessage?: string;
+      displayPublicly?: boolean;
+    }) => {
       const donation = data.donationCents ?? 0;
       if (!Number.isInteger(donation) || donation < 0 || donation > MAX_DONATION_CENTS) {
         throw new Error("Invalid donation amount");
       }
-      return { ...data, donationCents: donation };
+      return {
+        ...data,
+        donationCents: donation,
+        dedicationName: (data.dedicationName ?? "").trim().slice(0, 60) || undefined,
+        dedicationMessage: (data.dedicationMessage ?? "").trim().slice(0, 240) || undefined,
+        displayPublicly: !!data.displayPublicly,
+      };
     },
   )
   .handler(async ({ data, context }) => {
@@ -114,6 +127,11 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
       });
     }
 
+    const publicDonorName =
+      data.displayPublicly && data.dedicationName
+        ? data.dedicationName.split(/\s+/)[0].slice(0, 40)
+        : "";
+
     const session = await stripe.checkout.sessions.create({
       line_items: lineItems as never,
       mode: "subscription",
@@ -125,6 +143,10 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
         kind: "plus",
         base_cents: String(BASE_CENTS),
         donation_cents: String(donationCents),
+        dedication_name: data.dedicationName ?? "",
+        dedication_message: data.dedicationMessage ?? "",
+        display_publicly: data.displayPublicly ? "1" : "0",
+        public_donor_name: publicDonorName,
       },
       subscription_data: {
         metadata: {
@@ -132,6 +154,10 @@ export const createPlusCheckoutSession = createServerFn({ method: "POST" })
           kind: "plus",
           base_cents: String(BASE_CENTS),
           donation_cents: String(donationCents),
+          dedication_name: data.dedicationName ?? "",
+          dedication_message: data.dedicationMessage ?? "",
+          display_publicly: data.displayPublicly ? "1" : "0",
+          public_donor_name: publicDonorName,
         },
       },
       managed_payments: { enabled: true },
@@ -213,12 +239,15 @@ export const updatePlusDonationAmount = createServerFn({ method: "POST" })
       return { ok: true, unchanged: true };
     }
 
+    // Preserve dedication metadata from the existing subscription when only
+    // the donation amount is changing.
+    const existingMeta = (current.metadata ?? {}) as Record<string, string>;
     await stripe.subscriptions.update(sub.stripe_subscription_id as string, {
       cancel_at_period_end: false,
       proration_behavior: "always_invoice",
       items: items as never,
       metadata: {
-        ...(current.metadata ?? {}),
+        ...existingMeta,
         base_cents: String(BASE_CENTS),
         donation_cents: String(data.donationCents),
       },

@@ -35,6 +35,20 @@ function splitItems(subscription: any) {
   return { base, donation, donationCents };
 }
 
+function deriveDedicationFields(metadata?: Record<string, string> | null) {
+  const name = metadata?.dedication_name?.trim() || null;
+  const message = metadata?.dedication_message?.trim() || null;
+  const displayPublicly = metadata?.display_publicly === "1";
+  const publicDonorName = displayPublicly && name ? name.split(/\s+/)[0].slice(0, 40) : null;
+  return {
+    dedication_type: name || message ? "in_honor_of" : "none",
+    honoree_name: name,
+    dedication_message: message,
+    public_donor_name: publicDonorName,
+    display_donation_publicly: displayPublicly,
+  };
+}
+
 async function handleSubscriptionUpsert(
   subscription: any,
   env: StripeEnv,
@@ -65,6 +79,8 @@ async function handleSubscriptionUpsert(
     return;
   }
 
+  const dedication = deriveDedicationFields(subscription.metadata);
+
   await getSupabase()
     .from("subscriptions")
     .upsert(
@@ -93,6 +109,7 @@ async function handleSubscriptionUpsert(
         allocation_model_version: "v2_unified",
         last_event_at: eventAtIso,
         updated_at: new Date().toISOString(),
+        ...dedication,
       },
       { onConflict: "stripe_subscription_id" },
     );

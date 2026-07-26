@@ -6,18 +6,30 @@ import { Shimmer } from "@/components/ui/shimmer";
 import { listStations, type StationCard } from "@/lib/radio.functions";
 import { startStation } from "@/lib/radio-client";
 import { usePlayer } from "@/lib/player-context";
+import { useMembership } from "@/hooks/use-membership";
+import { useRadioUsage } from "@/hooks/use-radio-usage";
+import { UpsellSheet } from "@/components/membership/upsell-sheet";
 import { toast } from "sonner";
 
 export function RadioRail() {
   const fetcher = useServerFn(listStations);
   const [stations, setStations] = useState<StationCard[] | null>(null);
   const player = usePlayer();
+  const { isPlus, loading: membershipLoading } = useMembership();
+  const { freeSeconds, usedSeconds, loading: usageLoading } = useRadioUsage();
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   useEffect(() => {
     fetcher().then((s) => setStations(s as StationCard[])).catch(() => setStations([]));
   }, [fetcher]);
 
   const onStart = async (slug: string, title: string) => {
+    if (membershipLoading || usageLoading) return;
+    // Anonymous users can preview radio without a cap for now.
+    if (!isPlus && usedSeconds >= freeSeconds && freeSeconds > 0) {
+      setPaywallOpen(true);
+      return;
+    }
     try {
       const ok = await startStation(slug, player);
       if (!ok) toast.error("No tracks in this station yet.");
@@ -38,6 +50,9 @@ export function RadioRail() {
   }
   if (!stations.length) return null;
 
+  const freeMinutes = Math.round(freeSeconds / 60);
+  const usedMinutes = Math.round(usedSeconds / 60);
+
   return (
     <section aria-labelledby="radio-heading">
       <div className="mb-2 flex items-center justify-between px-1">
@@ -45,7 +60,9 @@ export function RadioRail() {
           <Radio className="h-4 w-4 text-forest" />
           MHWC Radio
         </h2>
-        <span className="text-[11px] text-muted-foreground">Ambient companions</span>
+        <span className="text-[11px] text-muted-foreground">
+          {isPlus ? "Unlimited" : `${usedMinutes} / ${freeMinutes} min free this month`}
+        </span>
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {stations.map((s) => (
@@ -74,6 +91,15 @@ export function RadioRail() {
           </button>
         ))}
       </div>
+
+      <UpsellSheet
+        open={paywallOpen}
+        onOpenChange={setPaywallOpen}
+        surface="radio"
+        title="Radio free limit reached"
+        body="You've used your free radio minutes this month. Upgrade to Walk Club Plus for unlimited ambient stations."
+        cap={freeMinutes}
+      />
     </section>
   );
 }
