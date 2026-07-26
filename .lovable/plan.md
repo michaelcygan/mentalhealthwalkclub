@@ -1,67 +1,164 @@
-## What the last logo update did — and didn't — cover
+# Unified Plus + 988 Transparency — Layered Renovation Plan
 
-The previous pass replaced the in-app logo, favicon suite, Apple touch icons, and PWA manifest icons with cache-safe `-v2` filenames. It also swapped a generic branded `og-default-v2.jpg` into every route's `og:image`, but that file was generated during Wave 7 (before the corrected artwork arrived) and still uses the older stamp. So: yes, a social share image exists, but it is NOT yet based on the authoritative corrected logo. That's the main gap.
+Implement in sequential waves against the existing TanStack Start / Supabase / Stripe app. After each wave: `npm run lint && npm run build`, fix errors, verify acceptance, then continue. If context runs out, stop at a clean wave boundary and state which wave is next.
 
-## Plan
+## Guiding rules
 
-### 1. Generate a launch-ready OG social image (1200×630)
+- One membership class only: **Walk Club Plus**, minimum $2.99/mo, voluntary higher amounts.
+- First $2.99 → MHWC. Every cent above → designated for 988. MHWC absorbs processing fees.
+- All Plus members get identical benefits regardless of amount.
+- No new: Supporter tier, yearly plan, free trial, tiered perks.
+- Existing paid customers are never silently canceled or converted.
+- Server is source of truth for allocation math; webhook-led immutable ledger.
 
-Design brief for the new `og-default-v3.jpg`:
-- Warm cream background (`#f6efdf`, matches PWA icon backdrop) so it reads as MHWC across iMessage / X / IG / LinkedIn light+dark previews.
-- Authoritative corrected black stamp logo, left-anchored, ~460px tall with safe padding.
-- Right column: wordmark "Mental Health Walk Club" + tagline "Walk together. Feel better." in the site's serif/sans pairing already used in the header.
-- Subtle forest-green accent rule under tagline; no photo, no gradients, no AI-looking abstract art — matches the calm editorial tone of the app.
-- Export as JPG (smaller, universally supported by scrapers) at 1200×630.
+---
 
-Ship it via the CDN under a new versioned name (`og-default-v3.jpg`) so Twitter/Meta scrapers refetch instead of serving cached v2.
+## Wave 0 — Audit & migration safety
 
-### 2. Wire the new image into every route's head()
+Read-only inventory before any code change.
 
-Update the `OG_DEFAULT` constant in each of these leaf routes to the v3 URL, and confirm both `og:image` and `twitter:image` are set (per project head-meta rules — leaf routes only, never `__root`):
+- Query `subscriptions`, `impact_donations`, existing webhook, `user_membership` fn, billing-events tables, admin routes, storage policies (`event-photos`, `radio-tracks`).
+- Report counts: live Plus, live yearly, live Supporter, active trials, published impact rows, per-env split (sandbox vs live).
+- Define **`allocation_model_cutover_at`** timestamp — boundary between legacy accounting and new `plus_overage_v1`.
+- Decide fate of legacy Supporter rows (archive as `legacy_supporter` source; keep manageable if live rows exist, else retire UI).
 
-- `src/routes/index.tsx`
-- `src/routes/auth.tsx`
-- `src/routes/profile.tsx`
-- `src/routes/journal.tsx`
-- `src/routes/more.tsx`
-- `src/routes/shop.tsx`
-- `src/routes/impact.tsx`
-- `src/routes/blog.tsx` and `src/routes/blog.$slug.tsx` (default; per-post covers stay as-is)
-- `src/routes/g.$slug.tsx` (default; group covers stay as-is)
-- `src/routes/groups.tsx`
-- `src/routes/u.$username.tsx` (default; user avatars/covers stay as-is)
-- `src/routes/w.$code.tsx` and `src/routes/w.$code.recap.tsx` (default)
-- `src/lib/blogs.server.ts` fallback
+Acceptance: written audit; no data mutated; cutover timestamp chosen.
 
-### 3. Retire the stale asset
+---
 
-Delete `src/assets/og-default-v2.jpg.asset.json` via `lovable-assets delete` so the old CDN object is purged and no route can accidentally point back at it.
+## Wave 1 — Database foundations (migration)
 
-### 4. Quick audit of other final-branding touchpoints
+Single migration with GRANTs + RLS in the required order.
 
-While the OG refresh is the main ask, these are the remaining surfaces that carry the logo/brand and are worth a glance for launch:
+**Extend `subscriptions`** with: `selected_total_cents`, `membership_allocation_cents`, `donation_allocation_cents`, `stripe_base_item_id`, `stripe_donation_item_id`, `dedication_type`, `honoree_name`, `dedication_message`, `public_donor_name`, `display_donation_publicly`, `allocation_model_version`, `allocation_model_cutover_at`.
 
-| Surface | File | Status | Action |
-|---|---|---|---|
-| In-app stamp component | `src/components/logo-stamp.tsx` | Uses v2 asset | ✅ Correct |
-| Loading screen breathing logo | `src/components/loading-screen.tsx` | Uses v2 public path | ✅ Correct |
-| Favicon / Apple touch / PWA icons | `public/*-v2.png` + `__root.tsx` links | v2 | ✅ Correct |
-| PWA manifest | `public/manifest.webmanifest` | v2 icons + shortcut icons | ✅ Correct |
-| Invite card share preview | `src/components/discover/invite-card.tsx` | Uses in-app LogoStamp | ✅ Correct |
-| Billing brand mark | `src/components/billing/billing-card.tsx` | Uses in-app LogoStamp | ✅ Correct |
-| Social share image | `og-default-v2.jpg` (CDN) | ❌ **Stale artwork** | Replace with v3 |
-| Email templates | none — email sending is deferred to v1.5 | — | No action |
+**New tables**:
+- `donation_allocations` — immutable ledger (fields per spec; `stripe_event_id` unique; source ∈ {plus_overage, one_time_contribution, legacy_supporter, legacy_plus_commitment}; status ∈ {designated, transferred, refunded, partially_refunded, disputed, reversed}).
+- `donation_transfer_batches` — admin batches with `published boolean`, receipt path, status ∈ {draft, transferred, verified}.
+- `radio_monthly_usage (user_id, month_start, seconds_used)` PK composite.
+- Extend `membership_settings`: `plus_base_cents=299`, `plus_max_monthly_cents=100000`, `radio_free_seconds=18000`, `donation_org_name`, `donation_org_url` (988 defaults).
 
-Nothing else in the codebase references the old stamp artwork directly.
+**Constraints**: allocation can only belong to one batch (FK + partial unique). Ledger financial fields not client-writable.
 
-### 5. Verify
+**Postgres functions**:
+- `increment_radio_usage(_user, _seconds)` — atomic upsert.
+- `public_transparency_feed()` — returns only opted-in public rows (no PII/Stripe IDs).
+- `public_transparency_totals()` — designated / transferred / awaiting.
 
-- `bun run build` for a clean typecheck.
-- Confirm the v3 URL loads.
-- Note in the reply that Meta/X/LinkedIn cache share previews aggressively — the user can force a re-scrape via each platform's debugger (Facebook Sharing Debugger, X Card Validator, LinkedIn Post Inspector) if they want the update visible in already-shared links immediately.
+**RLS**: anon can only read via the security-definer feed functions; admin (`has_role`) manages batches; webhook writes via service role.
+
+Acceptance: idempotent migration, no PII exposed via anon, atomic usage increment works.
+
+---
+
+## Wave 2 — Unified Plus checkout (frontend + server fn)
+
+Refactor billing surfaces to a single amount-picker flow.
+
+**Server (`src/lib/billing.functions.ts`)**:
+- Replace `createPlusCheckoutSession` / `createSupporterCheckoutSession` with `createPlusCheckoutSession({ selectedTotalCents, dedication })`.
+- Server clamps 299 ≤ amount ≤ 100000, recomputes allocations, creates Stripe Checkout with two subscription items: base Plus price ($2.99) + inline recurring price for `(total-299)` on the configured **988 contribution product** (env-scoped product IDs stored in `membership_settings` or env vars).
+- Store both item IDs on session metadata; final persistence happens in webhook.
+- Add `updatePlusMonthlyAmount({ newTotalCents, dedication })` — updates/creates/removes the contribution item on the existing subscription, no proration, next-renewal apply.
+- Remove yearly + trial code paths from *new* checkouts (keep read paths for legacy rows).
+
+**Client**:
+- New `PlusAmountPicker` (presets 2.99 / 5 / 10 / 25 / Custom) with live allocation breakdown.
+- Dedication controls only when amount > 299; public display off by default; 280-char message cap.
+- Update `src/lib/auth-prompt.tsx`: `openPlusCheckout()` → amount picker directly. Rename `openSupporterFlow` → `openOneTimeContributionFlow` (impl in Wave 3).
+- Update `billing-card.tsx` to show selected total + designated portion + renewal date; actions = Change amount / Update payment / Cancel / Invoices. Remove "Switch to yearly".
+- Retire `plan-picker.tsx`, `supporter-checkout.tsx`, `supporter-amount-picker.tsx`, `supporter-card.tsx` from active flow (delete or keep behind a legacy flag only if live Supporter rows exist).
+- Preserve signup-intent handoff.
+
+Acceptance: new subs are single Stripe subscription with correct 2-item structure; amount changes don't create a second sub; no new yearly/trial/Supporter.
+
+---
+
+## Wave 3 — Webhook + immutable ledger + one-time contributions
+
+Extend the existing `src/routes/api/public/payments/webhook.ts` (do not add a second webhook).
+
+**Handle**:
+- `invoice.paid` (Plus recurring) → verify sub metadata `kind=plus` + `allocation_model=plus_overage_v1`; read live sub items from Stripe; base must be 299; donation = `paid_amount - 299`; upsert one `donation_allocations` row keyed by `stripe_event_id`; snapshot dedication + public display from subscription; sync `subscriptions` row.
+- `payment_intent.succeeded` (one-time) → allocation with `source=one_time_contribution`, full amount to 988.
+- `charge.refunded` / `charge.dispute.created` / `charge.dispute.closed` → mutate existing allocation status (refunded/partially_refunded/disputed/reversed), preserve audit if already transferred.
+- `customer.subscription.updated/deleted` → keep existing behavior, update selected/allocation fields.
+
+Idempotency via unique `stripe_event_id`. Never trust client math. Retire `recomputeImpactForPeriod` as source of truth (leave read-only for legacy view).
+
+**One-time contribution**:
+- `createOneTimeContributionCheckoutSession({ amountCents, dedication })` — min $5, presets 5/10/25/50/custom, mode=payment, metadata on PaymentIntent.
+- Client sheet reused from Plus dedication controls.
+
+Acceptance: duplicate events no-op; $10 Plus → $7.01 row; refund flips status; sandbox/live isolated.
+
+---
+
+## Wave 4 — `/transparency` page + `/impact` redirect
+
+- New route `src/routes/transparency.tsx` (public, SEO head, OG image).
+- Summary cards: Designated / Transferred / Awaiting (from ledger functions).
+- Public contribution feed: date, public name or Anonymous, donation portion only (not gross), source label (Monthly Plus / One-time), dedication if public, status.
+- Transfer batches list with receipt link when published.
+- Legacy `impact_donations` shown in separate "Legacy impact reports" section if any.
+- "Make a one-time contribution" CTA opens new flow.
+- Methodology note: not tax-deductible; designated vs transferred; link to official 988 donation channel.
+- `src/routes/impact.tsx` → 301 to `/transparency` (retain existing head metadata redirect via loader).
+- Remove NAMI defaults; org name from `membership_settings`.
+
+Acceptance: public feed shows no Stripe/PII; totals match ledger; `/impact` redirects.
+
+---
+
+## Wave 5 — Simplified entitlements
+
+### 5A — Free journal
+- `src/lib/journal-entries.functions.ts`: remove Plus gate from create/update; keep auth + ownership + body limits.
+
+### 5B — Photo uploads (Plus-only) + free viewing
+- Refactor `memory-strip.tsx` upload path.
+- New server fns `createEventPhotoUploadIntent` + `finalizeEventPhotoUpload` — verify Plus + event permission (host/RSVP/group) + MIME + size + path; return short-lived signed upload URL; finalize inserts `event_photos` row after re-check.
+- Viewing: public/link_only walks accessible to signed-out users; private/group scoping preserved.
+- Free user tap → upsell copy per spec.
+- Tighten storage bucket policies: reads follow walk visibility, writes only via signed URL from server fn.
+
+### 5C — Radio quota + JIT signing
+- Add `"radio"` PlayableKind in `src/lib/player-context.tsx`; stop classifying Radio as `guided`.
+- Server: `getRadioEntitlement`, `recordRadioUsage` (calls SQL fn), `signRadioTrack` (single track, short TTL ~5min, checks Plus or remaining seconds).
+- Remove batch station pre-signing in `radio.functions.ts` / `radio-client.ts`.
+- Client: 60s heartbeat while actually playing (not paused/loading); at cap, finish current track, block next, show upsell + reset date.
+- Public station browsing OK; playback requires auth.
+
+Acceptance criteria per spec bullets in each sub-wave.
+
+---
+
+## Wave 6 — Admin transfer workflow + cleanup
+
+- New/updated admin route `src/routes/admin.transparency.tsx` (rename from admin.impact if present): list designated allocations, filter by date/env, multi-select → create batch (server fn); mark transferred with date + receipt upload; publish toggle.
+- Guards: allocation ↔ batch 1:1; can't publish without amount; sandbox/live isolation; audit trail on amount change.
+- Update `use-membership.ts` / `use-subscription.ts`: expose `isPlus`, `selectedMonthlyCents`, `monthlyDonationCents`, `plusInterval`; keep `isSupporter` only as legacy read.
+- Admin revenue: split `gross_billing` / `platform_recurring` / `988_recurring`; stop multiplying subs × hard-coded price.
+- Repo-wide copy sweep for: Supporter/supporter/Patron/patron/"50%"/"Half of every"/"profits"/"30-day"/"free trial"/"yearly"/NAMI/impact — replace or remove per final copy block. Keep legacy DB support for real active customers only.
+
+Acceptance: admin can transfer + publish; totals reflect new model; no new-user flow references retired concepts.
+
+---
+
+## Wave 7 — QA + launch validation
+
+Sandbox matrix (checkout amounts, subscription changes, webhook events including duplicates/out-of-order, refunds/disputes, sandbox/live separation), privacy checks (no Stripe IDs / no name leak / snapshot immutability), entitlement matrix (free vs Plus for walks/RSVP/journal/photo view/photo upload/radio quota).
+
+Run `npm run lint && npm run build`; fix all introduced errors. No TODO/placeholder in security or financial paths.
+
+## Final copy
+
+Use the spec's final copy verbatim across Plus summary, processing costs, benefits list, one-time contribution, transparency status, equal-membership statement.
 
 ## Technical notes
 
-- Use `imagegen--generate_image` at `premium` quality (typography must be legible in the wordmark) with `transparent_background: false`, save to `src/assets/og-default-v3.jpg`, then upload with `lovable-assets create`, capture the CDN URL, and thread it into the route constants.
-- Do not put `og:image` on `__root.tsx` — it would override every child (per the head-meta rules).
-- Keep `og:image` and `twitter:image` as absolute `https://mentalhealthwalkclub.com/...` URLs so scrapers accept them.
+- Stripe API version pinned by `stripe.server.ts` (2026-03-25.dahlia). Use `subscription.items.create/update/del` for donation item changes.
+- 988 contribution product IDs configured per env (sandbox/live) in `membership_settings` or env vars — never hardcoded `"supporter"`.
+- Server functions calling Stripe wrap errors via `getStripeErrorMessage` and return `{ error }` rather than throwing (per project rule).
+- All new public-schema tables include GRANTs + RLS + policies in the same migration.
+- `subscriptions` reads keep `.eq('environment', env)` filter everywhere.

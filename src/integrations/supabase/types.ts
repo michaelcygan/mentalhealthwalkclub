@@ -484,6 +484,152 @@ export type Database = {
         }
         Relationships: []
       }
+      donation_allocations: {
+        Row: {
+          created_at: string
+          currency: string
+          dedication_message: string | null
+          dedication_type: string
+          display_publicly: boolean
+          donation_allocation_cents: number
+          environment: string
+          gross_payment_cents: number
+          honoree_name: string | null
+          id: string
+          membership_allocation_cents: number
+          paid_at: string
+          processing_fee_cents: number | null
+          public_donor_name: string | null
+          source: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_event_id: string
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_subscription_id: string | null
+          transfer_batch_id: string | null
+          transferred_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          dedication_message?: string | null
+          dedication_type?: string
+          display_publicly?: boolean
+          donation_allocation_cents?: number
+          environment?: string
+          gross_payment_cents: number
+          honoree_name?: string | null
+          id?: string
+          membership_allocation_cents?: number
+          paid_at?: string
+          processing_fee_cents?: number | null
+          public_donor_name?: string | null
+          source: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_event_id: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_subscription_id?: string | null
+          transfer_batch_id?: string | null
+          transferred_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          dedication_message?: string | null
+          dedication_type?: string
+          display_publicly?: boolean
+          donation_allocation_cents?: number
+          environment?: string
+          gross_payment_cents?: number
+          honoree_name?: string | null
+          id?: string
+          membership_allocation_cents?: number
+          paid_at?: string
+          processing_fee_cents?: number | null
+          public_donor_name?: string | null
+          source?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_event_id?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_subscription_id?: string | null
+          transfer_batch_id?: string | null
+          transferred_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_allocations_batch_fk"
+            columns: ["transfer_batch_id"]
+            isOneToOne: false
+            referencedRelation: "donation_transfer_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donation_transfer_batches: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          environment: string
+          id: string
+          notes: string | null
+          organization_name: string
+          organization_url: string | null
+          period_end: string
+          period_start: string
+          published: boolean
+          receipt_storage_path: string | null
+          status: string
+          transferred_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          id?: string
+          notes?: string | null
+          organization_name: string
+          organization_url?: string | null
+          period_end: string
+          period_start: string
+          published?: boolean
+          receipt_storage_path?: string | null
+          status?: string
+          transferred_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          id?: string
+          notes?: string | null
+          organization_name?: string
+          organization_url?: string | null
+          period_end?: string
+          period_start?: string
+          published?: boolean
+          receipt_storage_path?: string | null
+          status?: string
+          transferred_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       error_reports: {
         Row: {
           app_version: string | null
@@ -1651,9 +1797,15 @@ export type Database = {
       }
       membership_settings: {
         Row: {
+          allocation_model_cutover_at: string
           collections_follow_cap: number
+          donation_org_name: string
+          donation_org_url: string
           id: boolean
           playlists_cap: number
+          plus_base_cents: number
+          plus_max_monthly_cents: number
+          radio_free_seconds: number
           saved_reads_cap: number
           supporter_min_cents: number
           supporter_signups_paused: boolean
@@ -1661,9 +1813,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allocation_model_cutover_at?: string
           collections_follow_cap?: number
+          donation_org_name?: string
+          donation_org_url?: string
           id?: boolean
           playlists_cap?: number
+          plus_base_cents?: number
+          plus_max_monthly_cents?: number
+          radio_free_seconds?: number
           saved_reads_cap?: number
           supporter_min_cents?: number
           supporter_signups_paused?: boolean
@@ -1671,9 +1829,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allocation_model_cutover_at?: string
           collections_follow_cap?: number
+          donation_org_name?: string
+          donation_org_url?: string
           id?: boolean
           playlists_cap?: number
+          plus_base_cents?: number
+          plus_max_monthly_cents?: number
+          radio_free_seconds?: number
           saved_reads_cap?: number
           supporter_min_cents?: number
           supporter_signups_paused?: boolean
@@ -2144,6 +2308,27 @@ export type Database = {
         }
         Relationships: []
       }
+      radio_monthly_usage: {
+        Row: {
+          month_start: string
+          seconds_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          month_start: string
+          seconds_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          month_start?: string
+          seconds_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       radio_stations: {
         Row: {
           cover_url: string | null
@@ -2347,57 +2532,93 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          allocation_model_cutover_at: string | null
+          allocation_model_version: string | null
           cancel_at_period_end: boolean | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
+          dedication_message: string | null
+          dedication_type: string
+          display_donation_publicly: boolean
+          donation_allocation_cents: number | null
           environment: string
           gateway: string
+          honoree_name: string | null
           id: string
           last_event_at: string | null
+          membership_allocation_cents: number | null
           monthly_amount_cents: number | null
           price_id: string
           product_id: string
+          public_donor_name: string | null
+          selected_total_cents: number | null
           status: string
+          stripe_base_item_id: string | null
           stripe_customer_id: string
+          stripe_donation_item_id: string | null
           stripe_subscription_id: string | null
           subscription_kind: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          allocation_model_cutover_at?: string | null
+          allocation_model_version?: string | null
           cancel_at_period_end?: boolean | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          dedication_message?: string | null
+          dedication_type?: string
+          display_donation_publicly?: boolean
+          donation_allocation_cents?: number | null
           environment?: string
           gateway?: string
+          honoree_name?: string | null
           id?: string
           last_event_at?: string | null
+          membership_allocation_cents?: number | null
           monthly_amount_cents?: number | null
           price_id: string
           product_id: string
+          public_donor_name?: string | null
+          selected_total_cents?: number | null
           status?: string
+          stripe_base_item_id?: string | null
           stripe_customer_id: string
+          stripe_donation_item_id?: string | null
           stripe_subscription_id?: string | null
           subscription_kind?: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          allocation_model_cutover_at?: string | null
+          allocation_model_version?: string | null
           cancel_at_period_end?: boolean | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          dedication_message?: string | null
+          dedication_type?: string
+          display_donation_publicly?: boolean
+          donation_allocation_cents?: number | null
           environment?: string
           gateway?: string
+          honoree_name?: string | null
           id?: string
           last_event_at?: string | null
+          membership_allocation_cents?: number | null
           monthly_amount_cents?: number | null
           price_id?: string
           product_id?: string
+          public_donor_name?: string | null
+          selected_total_cents?: number | null
           status?: string
+          stripe_base_item_id?: string | null
           stripe_customer_id?: string
+          stripe_donation_item_id?: string | null
           stripe_subscription_id?: string | null
           subscription_kind?: string
           updated_at?: string | null
@@ -3142,6 +3363,10 @@ export type Database = {
         Returns: boolean
       }
       host_trust_ok: { Args: { _user: string }; Returns: boolean }
+      increment_radio_usage: {
+        Args: { _seconds: number; _user: string }
+        Returns: number
+      }
       is_circle_member: {
         Args: { _circle: string; _user: string }
         Returns: boolean
@@ -3169,6 +3394,27 @@ export type Database = {
       is_mutual: { Args: { _a: string; _b: string }; Returns: boolean }
       recompute_walker_metrics: { Args: { _uid: string }; Returns: undefined }
       set_my_dob: { Args: { _dob: string }; Returns: string }
+      transparency_feed: {
+        Args: { _env?: string; _limit?: number }
+        Returns: {
+          dedication_message: string
+          dedication_type: string
+          donation_cents: number
+          honoree_name: string
+          paid_at: string
+          public_donor_name: string
+          source: string
+          status: string
+        }[]
+      }
+      transparency_totals: {
+        Args: { _env?: string }
+        Returns: {
+          awaiting_cents: number
+          designated_cents: number
+          transferred_cents: number
+        }[]
+      }
       user_in_event_allowlist: {
         Args: { _event: string; _user: string }
         Returns: boolean
