@@ -28,25 +28,16 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" } = {}) {
+export function NotificationsBell({ variant = "icon" }: { variant?: "icon" | "sidebar" | "row" } = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  const fetchCount = useServerFn(getUnreadNotificationCount);
   const fetchList = useServerFn(listNotifications);
   const markRead = useServerFn(markNotificationsRead);
 
-  const { data: countData } = useQuery({
-    queryKey: ["notifications", "unread"],
-    queryFn: () => fetchCount({}),
-    enabled: !!user,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
-  });
-  const unread = countData?.count ?? 0;
+  const unread = useUnreadNotifications();
 
   const { data: listData, isLoading } = useQuery({
     queryKey: ["notifications", "list"],
