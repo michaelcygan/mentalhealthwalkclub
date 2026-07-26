@@ -305,7 +305,25 @@ function WalkPage() {
 
           {isStale ? (
             <div className="mt-4 rounded-xl border border-clay/30 bg-clay/10 p-3 text-sm">
-              You still have an earlier Solo Walk open. Finish it or discard it below.
+              <p>You still have an earlier Solo Walk open. Finish it or discard it.</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onEndClick}
+                  disabled={busy}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium hover:bg-accent/40 disabled:opacity-60"
+                >
+                  End now
+                </button>
+                <button
+                  type="button"
+                  onClick={onAbandon}
+                  disabled={busy}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium hover:bg-accent/40 disabled:opacity-60"
+                >
+                  Discard
+                </button>
+              </div>
             </div>
           ) : null}
 
