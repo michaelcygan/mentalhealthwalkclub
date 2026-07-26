@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import WalkWeather from "@/components/walk-page/walk-weather";
+import { WalkWeatherPeek } from "@/components/walk-page/walk-weather-peek";
 import { Atmosphere } from "@/components/walk-page/atmosphere";
 import { RsvpConfetti } from "@/components/walk-page/rsvp-confetti";
 import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
@@ -99,25 +100,32 @@ function WalkPage() {
 
       <Cover event={event} lat={lat} lng={lng} startsAt={event.starts_at} />
 
-      <header className="mt-5">
-        <h1 className="font-serif text-3xl leading-tight">{event.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatDate(event.starts_at, event.timezone)}
-          {event.venue_name ? ` · ${event.venue_name}` : ""}
-          {event.city ? `, ${event.city}` : ""}
-        </p>
-        {host?.display_name ? (
-          <p className="mt-1 text-xs text-muted-foreground">Hosted by {host.display_name}</p>
-        ) : null}
-        {(group || circle) && (
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-foreground/80">
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: circle?.color ?? "var(--forest, #4a6741)" }}
-            />
-            with {group?.name ?? circle?.name}
+      <header className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="font-serif text-3xl leading-tight">{event.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatDate(event.starts_at, event.timezone)}
+            {event.venue_name ? ` · ${event.venue_name}` : ""}
+            {event.city ? `, ${event.city}` : ""}
+          </p>
+          {host?.display_name ? (
+            <p className="mt-1 text-xs text-muted-foreground">Hosted by {host.display_name}</p>
+          ) : null}
+          {(group || circle) && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-foreground/80">
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: circle?.color ?? "var(--forest, #4a6741)" }}
+              />
+              with {group?.name ?? circle?.name}
+            </div>
+          )}
+        </div>
+        {hasMap && !isPast ? (
+          <div className="shrink-0 sm:pt-1">
+            <WalkWeatherPeek lat={lat!} lng={lng!} centerIso={event.starts_at} />
           </div>
-        )}
+        ) : null}
       </header>
 
       {event.description ? (
