@@ -161,12 +161,21 @@ function ImpactPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
-            <Button
-              onClick={() => openPlusCheckout()}
-              className="mt-3 rounded-full bg-rose-600 text-white hover:opacity-90"
-            >
-              Give monthly
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                onClick={() => openPlusCheckout()}
+                className="rounded-full bg-rose-600 text-white hover:opacity-90"
+              >
+                Give monthly
+              </Button>
+              <Link
+                to="/contribute"
+                className="inline-flex items-center rounded-full border border-rose-200 bg-card px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              >
+                Give once
+              </Link>
+            </div>
+
           </div>
         </div>
         {wall.length > 0 && (
@@ -191,6 +200,14 @@ function ImpactPage() {
           Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to the 988 Suicide &amp; Crisis Lifeline. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
         </p>
         <p className="mt-3">
+          <Link to="/transparency" className="underline">
+            Live transparency ledger
+          </Link>{" "}
+          ·{" "}
+          <Link to="/contribute" className="underline">
+            Give once
+          </Link>{" "}
+          ·{" "}
           <Link to="/terms" className="underline">
             Terms
           </Link>{" "}
@@ -199,6 +216,7 @@ function ImpactPage() {
             Privacy
           </Link>
         </p>
+
       </section>
     </div>
   );

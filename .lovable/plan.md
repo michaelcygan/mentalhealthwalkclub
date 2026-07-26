@@ -1,55 +1,70 @@
-## Wave 3: Stripe webhook + immutable allocation accounting
+# Wave 4 — Transparency Page & One-Time Contributions
 
-Wave 2 is complete — checkout, hook, billing UI, and amount-change flow are wired to the unified base + donation model. Moving to Wave 3, which is entirely webhook + ledger work. No user-facing UI changes here.
+Builds on Waves 1–3 (ledger + webhook are live). Goal: expose the immutable allocation data publicly and let anyone (signed in or not) make a one-time 988-designated contribution.
 
-### Goal
-On every successful Plus renewal (and one-time contribution), post a single immutable row to `donation_allocations` splitting the invoice into $2.99 (membership) and the delta (988 designation). Also mirror the current donation amount onto the subscription row so the app can render it without recomputing.
+## 1. Public transparency route
 
-### Changes
+New route: `src/routes/transparency.tsx` (public, indexable, own `head()` with title/desc/og).
 
-**1. `src/routes/api/public/payments/webhook.ts` — expand handler**
-- Handle new events:
-  - `invoice.paid` (or `invoice.payment_succeeded`) — write ledger row + refresh subscription mirror fields.
-  - `charge.refunded` / `charge.dispute.created` — mark matching allocation as `refunded` / `partially_refunded` / `disputed`.
-- On `customer.subscription.created` / `.updated`:
-  - Detect the donation line item by product (resolve `plus_donation` product ID via `stripe.products.list({...})` cached in-module).
-  - Compute `base_cents = 299`, `donation_cents_monthly = donation_item.price.unit_amount || 0`, `monthly_amount_cents = 299 + donation`.
-  - Write these to `subscriptions` (`base_cents`, `donation_cents_monthly`, `monthly_amount_cents`, `stripe_base_item_id`, `stripe_donation_item_id`, `selected_total_cents`, `allocation_model_version = 'v2_unified'`).
-  - Drop legacy `supporter_profile` mirroring — retired in Wave 2.
-- Retire `kind === "supporter"` branch. Everything is `plus` in v2.
+Sections:
+- Hero: plain-language explanation of the $2.99 split ($2.99 → MHWC, everything above → 988 Suicide & Crisis Lifeline).
+- Totals strip: pulls `transparency_totals` SECURITY DEFINER fn (lifetime designated, lifetime transferred, pending balance, active Plus contributors count).
+- Transfer batches table: last N rows from `donation_transfer_batches` where `status = 'completed'` — date, amount, reference URL/note. Empty state explains "first transfer will appear here after our initial batch."
+- Recent designations feed: `transparency_feed` fn — timestamp, amount, optional dedication line (honoree first name only, PII-safe). Paginated (load more, 25/page).
+- FAQ accordion: "Where does the money go?", "How often are transfers made?", "Can I cancel?", "Is my dedication public?".
+- Footer CTA: "Contribute once" + "Become a Plus member".
 
-**2. Ledger write logic (new `handleInvoicePaid`)**
-- Idempotency: unique key is `stripe_event_id` (already unique in schema). Use `upsert` with `onConflict: "stripe_event_id"` and `ignoreDuplicates: true`.
-- Skip invoices where `billing_reason` is `subscription_create` AND `amount_paid = 0` (trial signup, already retired but defensive).
-- For each paid invoice on a Plus subscription:
-  - `gross_payment_cents = invoice.amount_paid`
-  - `membership_allocation_cents = min(299, gross)` (base always $2.99)
-  - `donation_allocation_cents = max(0, gross - 299)`
-  - Copy dedication/public-donor fields from the subscription row so the transparency feed can render them PII-safely.
-  - `source = 'plus_overage'` when donation > 0, `'legacy_plus_commitment'` otherwise.
-  - `status = 'designated'`, `paid_at = invoice.status_transitions.paid_at * 1000`.
-  - `stripe_payment_intent_id` / `stripe_charge_id` from `invoice.charge` and `invoice.payment_intent`.
+Data access: two new server fns in `src/lib/transparency.functions.ts` (unauthenticated, use server publishable client per template rules):
+- `getTransparencyTotals()` → wraps `transparency_totals` rpc.
+- `listTransparencyFeed({ cursor, limit })` → wraps `transparency_feed` rpc.
 
-**3. Refund + dispute handling**
-- `charge.refunded`: look up the allocation by `stripe_charge_id`. If `amount_refunded == amount`, set `status = 'refunded'`; otherwise `'partially_refunded'`. Preserve the original amounts (immutable) — status change only.
-- `charge.dispute.created`: set `status = 'disputed'`. Dispute won → keep `'disputed'` (admin later moves to `'reversed'` via Wave 6 admin flow, not automated).
-- Both refuse to touch rows already in a transfer batch (`transfer_batch_id IS NOT NULL`) — log a warning; batches are immutable once cut. Wave 6 handles clawback accounting.
+Wire with `queryClient.ensureQueryData` in the route loader + `useSuspenseQuery` in the component.
 
-**4. Idempotency + ordering guards**
-- Keep existing `last_event_at` guard on subscription upserts.
-- Ledger uses `stripe_event_id` uniqueness — retries are safe.
-- Wrap each event handler in try/catch so one failure doesn't 400 the whole webhook (Stripe will retry the failed one via a separate event).
+## 2. Footer/nav link
 
-**5. Nothing changes on the client**
-No UI, hook, or route edits in this wave. `useMembership` already reads `donation_cents_monthly` and `monthly_amount_cents` from the subscription row — the webhook simply starts populating them.
+Add "Transparency" link in the site footer (root layout footer component) and inside the `impact.tsx` route so members can jump from their dashboard.
 
-### Verification after build
-- Load `invoke-server-function` against the webhook URL with a signed test payload from Stripe CLI (sandbox) → confirm one `donation_allocations` row per invoice with correct split.
-- Run `SELECT * FROM public.transparency_totals('sandbox')` after seeding a test subscription — expect `designated_cents` to increase by exactly the donation delta.
-- Force a partial refund via Stripe CLI and check the allocation status flips to `partially_refunded` while amounts stay untouched.
+## 3. One-time contribution flow
 
-### Explicitly out of scope for Wave 3
-- Transparency page UI (Wave 4).
-- One-time contribution checkout (Wave 4).
-- Admin transfer batching (Wave 6).
-- Any schema changes — Wave 1 already provisioned every column and index this handler needs.
+New server fn `createOneTimeContributionSession` in `src/lib/billing.functions.ts`:
+- Input: `amount_cents` (min 100, max 100000), optional `dedication_name`, `dedication_message`, `dedication_visibility` ('public' | 'anonymous'), optional `email` for guest checkout.
+- Creates a Stripe Checkout Session in `payment` mode with a single ad-hoc line item (`price_data`, product = existing `plus_donation` product's 988 designation, or a new `one_time_988` product — will use existing `plus_donation` product with `price_data`).
+- Metadata: `kind=one_time_988`, dedication fields, `user_id` if authenticated.
+- Success URL → `/transparency?contribution=success`, cancel → `/transparency?contribution=cancelled`.
+
+Webhook update in `src/routes/api/public/payments/webhook.ts`:
+- Handle `checkout.session.completed` where `metadata.kind === 'one_time_988'`:
+  - Insert a `donation_allocations` row with `membership_allocation_cents = 0`, `donation_allocation_cents = amount_total`, `kind = 'one_time'`, dedication fields copied from metadata, `subscription_id = null`, `stripe_event_id` idempotency key.
+- Handle `charge.refunded` for one-time rows the same way subscription refunds are handled.
+
+New UI component `src/components/billing/one-time-contribution-sheet.tsx`:
+- Amount picker (preset chips: $5 / $10 / $25 / $50 / custom).
+- Optional dedication fields (name, short message, public/anonymous toggle) — copy explains only first name shows publicly.
+- Guest email field when not signed in.
+- Launches Stripe Embedded Checkout on submit.
+
+New route: `src/routes/contribute.tsx` — thin wrapper that mounts the sheet inline (also linked from the transparency CTA). Public. Own SEO head.
+
+## 4. Impact/settings integration
+
+- `src/routes/impact.tsx`: add "Contribute once" secondary CTA next to the Plus CTA.
+- `src/components/billing/billing-card.tsx`: small link under the picker: "Prefer to give once? →" → opens the one-time sheet.
+
+## 5. QA / verification
+
+- Build check.
+- Manually invoke `getTransparencyTotals` and `listTransparencyFeed` via `stack_modern--invoke-server-function` to confirm shape.
+- Confirm SECURITY DEFINER functions never leak `stripe_customer_id`, `email`, or full names — only first-name dedication + amount + timestamp.
+- Check that `/transparency` renders unauthenticated (no `requireSupabaseAuth` on the fns, no protected loader).
+- Verify webhook idempotency for a simulated `checkout.session.completed` replay (dedup by `stripe_event_id`).
+
+## Out of scope (Wave 6)
+
+Admin transfer batch creation UI, exporting CSVs, marking batches paid — that's the Wave 6 admin workflow. Wave 4 only reads batches; it doesn't create them.
+
+## Technical notes
+
+- All new server fns are public (no `requireSupabaseAuth`); one-time flow accepts guest email so anyone can contribute without an account.
+- The `donation_allocations.kind` column already exists from Wave 1 (`'subscription' | 'one_time'`); no schema change needed if so — will verify before writing code, and add a lightweight migration only if missing.
+- Uses existing Stripe `plus_donation` product with ad-hoc `price_data` — no new price object required for one-time.
+- Route loaders use `context.queryClient.ensureQueryData` + `useSuspenseQuery` per template conventions.

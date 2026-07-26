@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -22,6 +23,7 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -74,6 +76,11 @@ import { Route as ApiPublicWalkCodeIcsRouteImport } from './routes/api/public/wa
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransparencyRoute = TransparencyRouteImport.update({
+  id: '/transparency',
+  path: '/transparency',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -134,6 +141,11 @@ const GroupsRoute = GroupsRouteImport.update({
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributeRoute = ContributeRouteImport.update({
+  id: '/contribute',
+  path: '/contribute',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -385,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -397,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/transparency': typeof TransparencyRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -447,6 +461,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -459,6 +474,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/transparency': typeof TransparencyRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -511,6 +527,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/blog': typeof BlogRouteWithChildren
+  '/contribute': typeof ContributeRoute
   '/events': typeof EventsRouteWithChildren
   '/groups': typeof GroupsRoute
   '/impact': typeof ImpactRoute
@@ -523,6 +540,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/transparency': typeof TransparencyRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
@@ -575,6 +593,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -587,6 +606,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/transparency'
     | '/welcome'
     | '/circles'
     | '/discover'
@@ -637,6 +657,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -649,6 +670,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/transparency'
     | '/welcome'
     | '/circles'
     | '/discover'
@@ -700,6 +722,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/blog'
+    | '/contribute'
     | '/events'
     | '/groups'
     | '/impact'
@@ -712,6 +735,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/transparency'
     | '/welcome'
     | '/_authenticated/circles'
     | '/_authenticated/discover'
@@ -764,6 +788,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BlogRoute: typeof BlogRouteWithChildren
+  ContributeRoute: typeof ContributeRoute
   EventsRoute: typeof EventsRouteWithChildren
   GroupsRoute: typeof GroupsRoute
   ImpactRoute: typeof ImpactRoute
@@ -776,6 +801,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  TransparencyRoute: typeof TransparencyRoute
   WelcomeRoute: typeof WelcomeRoute
   GSlugRoute: typeof GSlugRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -796,6 +822,13 @@ declare module '@tanstack/react-router' {
       path: '/welcome'
       fullPath: '/welcome'
       preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transparency': {
+      id: '/transparency'
+      path: '/transparency'
+      fullPath: '/transparency'
+      preLoaderRoute: typeof TransparencyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -880,6 +913,13 @@ declare module '@tanstack/react-router' {
       path: '/events'
       fullPath: '/events'
       preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute': {
+      id: '/contribute'
+      path: '/contribute'
+      fullPath: '/contribute'
+      preLoaderRoute: typeof ContributeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -1401,6 +1441,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BlogRoute: BlogRouteWithChildren,
+  ContributeRoute: ContributeRoute,
   EventsRoute: EventsRouteWithChildren,
   GroupsRoute: GroupsRoute,
   ImpactRoute: ImpactRoute,
@@ -1413,6 +1454,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  TransparencyRoute: TransparencyRoute,
   WelcomeRoute: WelcomeRoute,
   GSlugRoute: GSlugRoute,
   UUsernameRoute: UUsernameRoute,
