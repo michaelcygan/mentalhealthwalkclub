@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 const Input = z.object({
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
+  city: z.string().trim().min(1).max(120).nullable().optional(),
   hours: z.number().int().min(1).max(168).default(72),
   limit: z.number().int().min(1).max(24).default(8),
 });
