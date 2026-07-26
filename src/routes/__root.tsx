@@ -144,6 +144,7 @@ function TabBar() {
         <ul className="space-y-1">
           {TABS.map(({ to, label, icon: Icon, exact }) => {
             const active = isActive(to, exact);
+            const showBadge = to === "/more" && !!user && unreadCount > 0;
             return (
               <li key={to}>
                 <Link
@@ -153,18 +154,17 @@ function TabBar() {
                   }`}
                 >
                   <Icon className="h-4.5 w-4.5" />
-                  {label}
+                  <span>{label}</span>
+                  {showBadge && (
+                    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-none text-destructive-foreground">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
           })}
         </ul>
-
-        {user && (
-          <div className="mt-1">
-            <NotificationsBell variant="sidebar" />
-          </div>
-        )}
 
         {user && (
           <Link
