@@ -85,8 +85,6 @@ async function handleSubscriptionUpsert(
         subscription_kind: "plus",
         monthly_amount_cents: monthlyCents,
         selected_total_cents: monthlyCents,
-        base_cents: BASE_CENTS,
-        donation_cents_monthly: donationCents,
         membership_allocation_cents: BASE_CENTS,
         donation_allocation_cents: donationCents,
         stripe_base_item_id: base?.id ?? null,
@@ -203,7 +201,7 @@ async function handleInvoicePaid(
     const { data } = await getSupabase()
       .from("subscriptions")
       .select(
-        "user_id, dedication_type, honoree_name, dedication_message, public_donor_name, display_donation_publicly, donation_cents_monthly, base_cents",
+        "user_id, dedication_type, honoree_name, dedication_message, public_donor_name, display_donation_publicly, donation_allocation_cents, membership_allocation_cents",
       )
       .eq("stripe_subscription_id", subscriptionId)
       .eq("environment", env)
@@ -211,7 +209,7 @@ async function handleInvoicePaid(
     subRow = data;
   }
 
-  const baseCents = subRow?.base_cents ?? BASE_CENTS;
+  const baseCents = subRow?.membership_allocation_cents ?? BASE_CENTS;
   const membership = Math.min(baseCents, gross);
   const donation = Math.max(0, gross - membership);
 
