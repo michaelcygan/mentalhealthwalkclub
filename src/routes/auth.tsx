@@ -22,7 +22,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio. Free forever — Plus supporters help keep half of every dollar flowing to mental-health nonprofits.",
+          "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio. Free forever — Plus members designate every dollar above $2.99 to the 988 Suicide & Crisis Lifeline.",
       },
       { property: "og:title", content: "Sign in — Mental Health Walk Club" },
       { property: "og:description", content: "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio." },
