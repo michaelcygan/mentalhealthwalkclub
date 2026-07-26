@@ -115,6 +115,7 @@ function TabBar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const { openAuth } = useAuthPrompt();
+  const unreadCount = useUnreadNotifications();
   const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
 
   return (
