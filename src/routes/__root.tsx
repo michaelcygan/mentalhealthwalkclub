@@ -225,11 +225,31 @@ function TabBar() {
   );
 }
 
+const ELIGIBILITY_ALLOWLIST = ["/auth", "/confirm-age", "/terms", "/privacy", "/support", "/w/"];
+
+function EligibilityGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { eligibility, loading } = useEligibility();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user || loading || !eligibility) return;
+    const allowed = ELIGIBILITY_ALLOWLIST.some((p) => path === p || path.startsWith(p));
+    if (allowed) return;
+    if (eligibility.eligibilityStatus !== "adult_active") {
+      void router.navigate({ to: "/confirm-age" });
+    }
+  }, [user, loading, eligibility, path, router]);
+
+  return <>{children}</>;
+}
+
 function AppFrame({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
-  if (path.startsWith("/auth") || path.startsWith("/w/")) return <>{children}</>;
+  if (path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/confirm-age")) return <>{children}</>;
   if (loading) return <LoadingScreen />;
 
   return (
