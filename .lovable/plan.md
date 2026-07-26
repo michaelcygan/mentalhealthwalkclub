@@ -1,61 +1,67 @@
-## Logo replacement — corrected "est. 2025" artwork
+## What the last logo update did — and didn't — cover
 
-Drop-in brand asset replacement. No behavior, layout, size, or copy changes.
+The previous pass replaced the in-app logo, favicon suite, Apple touch icons, and PWA manifest icons with cache-safe `-v2` filenames. It also swapped a generic branded `og-default-v2.jpg` into every route's `og:image`, but that file was generated during Wave 7 (before the corrected artwork arrived) and still uses the older stamp. So: yes, a social share image exists, but it is NOT yet based on the authoritative corrected logo. That's the main gap.
 
-### Audit results (all active references to old logo)
+## Plan
 
-- Bundled: `src/assets/logo-stamp.png` → imported by `src/components/logo-stamp.tsx` (used in `__root.tsx` desktop sidebar + mobile header, `src/routes/auth.tsx` brand panel + mobile header)
-- Public: `public/logo-stamp.png` → hard-coded `/logo-stamp.png` in `src/components/loading-screen.tsx`
-- Icons: `public/favicon.ico`, `public/icon-192.png`, `public/icon-512.png` → referenced in `src/routes/__root.tsx` head links and `public/manifest.webmanifest` (icons + shortcut)
-- OG default: `src/assets/og-default.jpg.asset.json` (CDN pointer) → hard-coded absolute URL in 11 route files (`index`, `auth`, `more`, `journal`, `profile`, `shop`, `impact`, `groups`, `g.$slug`, `u.$username`, `blog`, `blog.$slug`). Needs visual inspection — the current OG card visibly contains the old logo art.
-- Walk dynamic OG/Story generators (`src/routes/api/public/walk.$code.og.ts`, `walk.$code.story.ts`) do NOT embed the raster logo — text-only, no change.
+### 1. Generate a launch-ready OG social image (1200×630)
 
-No other copies (Base64, remote hosts, additional loaders) found.
+Design brief for the new `og-default-v3.jpg`:
+- Warm cream background (`#f6efdf`, matches PWA icon backdrop) so it reads as MHWC across iMessage / X / IG / LinkedIn light+dark previews.
+- Authoritative corrected black stamp logo, left-anchored, ~460px tall with safe padding.
+- Right column: wordmark "Mental Health Walk Club" + tagline "Walk together. Feel better." in the site's serif/sans pairing already used in the header.
+- Subtle forest-green accent rule under tagline; no photo, no gradients, no AI-looking abstract art — matches the calm editorial tone of the app.
+- Export as JPG (smaller, universally supported by scrapers) at 1200×630.
 
-### Asset prep (from uploaded `MentalHealthWalkClub-Logo-Black-2.png`)
+Ship it via the CDN under a new versioned name (`og-default-v3.jpg`) so Twitter/Meta scrapers refetch instead of serving cached v2.
 
-Uploaded file has a white background. Prep pipeline (one-off Bun/Node script using `sharp`, which is already a project dep):
-1. Read `/mnt/user-uploads/MentalHealthWalkClub-Logo-Black-2.png`
-2. Trim white background to transparency (threshold on luminance, keep black strokes intact; do not touch stroke pixels)
-3. Trim to content bbox, then pad to square with transparent margin so the stamp isn't stretched
-4. Emit master `logo-stamp-v2.png` (transparent, ~1024×1024, centered)
-5. From the master, composite onto warm cream `#f6efdf` with generous safe-area padding (≈12% inset) to produce maskable/touch icons
+### 2. Wire the new image into every route's head()
 
-### Files added
+Update the `OG_DEFAULT` constant in each of these leaf routes to the v3 URL, and confirm both `og:image` and `twitter:image` are set (per project head-meta rules — leaf routes only, never `__root`):
 
-- `src/assets/logo-stamp-v2.png` — corrected transparent master (bundled; Vite hashes URL)
-- `public/logo-stamp-v2.png` — corrected transparent master (served for `LoadingScreen`)
-- `public/favicon-32-v2.png` — 32×32 transparent (favicon)
-- `public/icon-180-v2.png` — 180×180 warm-cream background, padded logo (Apple touch)
-- `public/icon-192-v2.png` — 192×192 warm-cream, padded (maskable-safe)
-- `public/icon-512-v2.png` — 512×512 warm-cream, padded (maskable-safe)
-- New corrected OG default uploaded via `lovable-assets` → `src/assets/og-default-v2.jpg.asset.json` (new UUID / new stable URL)
+- `src/routes/index.tsx`
+- `src/routes/auth.tsx`
+- `src/routes/profile.tsx`
+- `src/routes/journal.tsx`
+- `src/routes/more.tsx`
+- `src/routes/shop.tsx`
+- `src/routes/impact.tsx`
+- `src/routes/blog.tsx` and `src/routes/blog.$slug.tsx` (default; per-post covers stay as-is)
+- `src/routes/g.$slug.tsx` (default; group covers stay as-is)
+- `src/routes/groups.tsx`
+- `src/routes/u.$username.tsx` (default; user avatars/covers stay as-is)
+- `src/routes/w.$code.tsx` and `src/routes/w.$code.recap.tsx` (default)
+- `src/lib/blogs.server.ts` fallback
 
-### Files edited
+### 3. Retire the stale asset
 
-- `src/components/logo-stamp.tsx`: import switches to `@/assets/logo-stamp-v2.png`. Public API, tone inversion, size, alt, `draggable={false}`, className behavior unchanged.
-- `src/components/loading-screen.tsx`: `src="/logo-stamp-v2.png"`. Animation, sizes, caption, a11y, variants unchanged.
-- `src/routes/__root.tsx` head `links`: replace favicon + icon + apple-touch entries with v2 filenames; drop `.ico`, use `/favicon-32-v2.png`, `/icon-180-v2.png` (apple-touch), `/icon-192-v2.png`, `/icon-512-v2.png`.
-- `public/manifest.webmanifest`: update both `icons[]` entries and the "Start a walk" shortcut icon to v2 filenames. No other manifest fields change (name, theme_color, start_url, share_target, shortcuts all preserved).
-- OG image URL swap: replace the 13 occurrences of the old `og-default.jpg` CDN URL with the new v2 URL across `src/routes/index.tsx`, `auth.tsx`, `more.tsx`, `journal.tsx`, `profile.tsx`, `shop.tsx`, `impact.tsx`, `groups.tsx`, `g.$slug.tsx`, `u.$username.tsx`, `blog.tsx`, `blog.$slug.tsx`. (Extract into a single shared `OG_DEFAULT` const only where already inlined per-file — otherwise straight replace to minimize diff.)
+Delete `src/assets/og-default-v2.jpg.asset.json` via `lovable-assets delete` so the old CDN object is purged and no route can accidentally point back at it.
 
-### Files removed (after verification)
+### 4. Quick audit of other final-branding touchpoints
 
-- `src/assets/logo-stamp.png`
-- `public/logo-stamp.png`
-- `public/favicon.ico`
-- `public/icon-192.png`
-- `public/icon-512.png`
-- `src/assets/og-default.jpg.asset.json` (deleted via `lovable-assets delete` so the old CDN object is also purged)
+While the OG refresh is the main ask, these are the remaining surfaces that carry the logo/brand and are worth a glance for launch:
 
-### What stays exactly the same
+| Surface | File | Status | Action |
+|---|---|---|---|
+| In-app stamp component | `src/components/logo-stamp.tsx` | Uses v2 asset | ✅ Correct |
+| Loading screen breathing logo | `src/components/loading-screen.tsx` | Uses v2 public path | ✅ Correct |
+| Favicon / Apple touch / PWA icons | `public/*-v2.png` + `__root.tsx` links | v2 | ✅ Correct |
+| PWA manifest | `public/manifest.webmanifest` | v2 icons + shortcut icons | ✅ Correct |
+| Invite card share preview | `src/components/discover/invite-card.tsx` | Uses in-app LogoStamp | ✅ Correct |
+| Billing brand mark | `src/components/billing/billing-card.tsx` | Uses in-app LogoStamp | ✅ Correct |
+| Social share image | `og-default-v2.jpg` (CDN) | ❌ **Stale artwork** | Replace with v3 |
+| Email templates | none — email sending is deferred to v1.5 | — | No action |
 
-Component APIs, layout, sizes, animations, copy, routes, colors, metadata text, walk OG/Story generators, Supabase, database, backend functions.
+Nothing else in the codebase references the old stamp artwork directly.
 
-### Verification checklist
+### 5. Verify
 
-1. `rg` for `logo-stamp.png`, `favicon.ico`, `icon-192.png`, `icon-512.png`, old og-default UUID `7a90bd38-...` → must return 0 hits in `src/` and `public/`.
-2. `bun run build` succeeds.
-3. Lint diff limited to touched files.
-4. Visual pass in incognito: desktop sidebar, mobile header, `/auth` desktop + mobile, cold-start `LoadingScreen`, favicon tab, manifest icons (DevTools → Application → Manifest), corrected "est. 2025" legible at 32px.
-5. Confirm no white rectangle behind the stamp on dark surfaces (inversion preserved).
+- `bun run build` for a clean typecheck.
+- Confirm the v3 URL loads.
+- Note in the reply that Meta/X/LinkedIn cache share previews aggressively — the user can force a re-scrape via each platform's debugger (Facebook Sharing Debugger, X Card Validator, LinkedIn Post Inspector) if they want the update visible in already-shared links immediately.
+
+## Technical notes
+
+- Use `imagegen--generate_image` at `premium` quality (typography must be legible in the wordmark) with `transparent_background: false`, save to `src/assets/og-default-v3.jpg`, then upload with `lovable-assets create`, capture the CDN URL, and thread it into the route constants.
+- Do not put `og:image` on `__root.tsx` — it would override every child (per the head-meta rules).
+- Keep `og:image` and `twitter:image` as absolute `https://mentalhealthwalkclub.com/...` URLs so scrapers accept them.
