@@ -152,13 +152,32 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
     },
   });
 
+  const { data: homeCity } = useQuery({
+    queryKey: ["home", "profile-city", user?.id],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("city")
+        .eq("id", user!.id)
+        .maybeSingle();
+      const c = (data?.city as string | null | undefined) ?? null;
+      return c && c.trim() ? c.trim() : null;
+    },
+  });
+
   if (!user) return null;
 
   return (
     <div className="space-y-6 pb-20">
       <TodayIsland user={user} />
       <UpcomingRail />
-      <NearbyGrid initialWalks={initialWalks} subtitle="Public walks within reach" />
+      <NearbyGrid
+        initialWalks={initialWalks}
+        subtitle="Public walks within reach"
+        homeCity={homeCity ?? null}
+      />
       <RadioRail />
       <BestWindow />
       <Reflect30s lastReflection={lastReflection} />
@@ -173,6 +192,7 @@ function HomeTab({ initialWalks }: { initialWalks: WalkCardData[] }) {
     </div>
   );
 }
+
 
 function NearbyGrid({
   initialWalks,
