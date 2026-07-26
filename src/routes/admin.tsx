@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart, Shield, Inbox, Users as UsersIcon, Radio } from "lucide-react";
+import { ChevronLeft, Headphones, ShoppingBag, CalendarDays, BookOpen, Sparkles, BarChart3, Heart, Shield, Inbox, Users as UsersIcon, Radio, HandHeart } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -85,6 +85,13 @@ function AdminLayout() {
           activeProps={{ className: "active" }}
         >
           <Heart className="h-3.5 w-3.5" /> Membership
+        </Link>
+        <Link
+          to="/admin/donations"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent [&.active]:border-forest [&.active]:bg-forest [&.active]:text-primary-foreground"
+          activeProps={{ className: "active" }}
+        >
+          <HandHeart className="h-3.5 w-3.5" /> Donations
         </Link>
         <Link
           to="/admin/merch"

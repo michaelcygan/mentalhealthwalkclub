@@ -44,6 +44,7 @@ import { Route as AdminMerchRouteImport } from './routes/admin.merch'
 import { Route as AdminMembershipRouteImport } from './routes/admin.membership'
 import { Route as AdminInsightsRouteImport } from './routes/admin.insights'
 import { Route as AdminEventsRouteImport } from './routes/admin.events'
+import { Route as AdminDonationsRouteImport } from './routes/admin.donations'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
 import { Route as AdminBlogsRouteImport } from './routes/admin.blogs'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
@@ -247,6 +248,11 @@ const AdminEventsRoute = AdminEventsRouteImport.update({
   path: '/events',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDonationsRoute = AdminDonationsRouteImport.update({
+  id: '/donations',
+  path: '/donations',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCollectionsRoute = AdminCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -421,6 +427,7 @@ export interface FileRoutesByFullPath {
   '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
+  '/admin/donations': typeof AdminDonationsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/membership': typeof AdminMembershipRoute
@@ -485,6 +492,7 @@ export interface FileRoutesByTo {
   '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
+  '/admin/donations': typeof AdminDonationsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/membership': typeof AdminMembershipRoute
@@ -551,6 +559,7 @@ export interface FileRoutesById {
   '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/blogs': typeof AdminBlogsRoute
   '/admin/collections': typeof AdminCollectionsRoute
+  '/admin/donations': typeof AdminDonationsRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/membership': typeof AdminMembershipRoute
@@ -617,6 +626,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
+    | '/admin/donations'
     | '/admin/events'
     | '/admin/insights'
     | '/admin/membership'
@@ -681,6 +691,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
+    | '/admin/donations'
     | '/admin/events'
     | '/admin/insights'
     | '/admin/membership'
@@ -746,6 +757,7 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/blogs'
     | '/admin/collections'
+    | '/admin/donations'
     | '/admin/events'
     | '/admin/insights'
     | '/admin/membership'
@@ -1062,6 +1074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEventsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/donations': {
+      id: '/admin/donations'
+      path: '/donations'
+      fullPath: '/admin/donations'
+      preLoaderRoute: typeof AdminDonationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/collections': {
       id: '/admin/collections'
       path: '/collections'
@@ -1365,6 +1384,7 @@ interface AdminRouteChildren {
   AdminBlogRoute: typeof AdminBlogRouteWithChildren
   AdminBlogsRoute: typeof AdminBlogsRoute
   AdminCollectionsRoute: typeof AdminCollectionsRoute
+  AdminDonationsRoute: typeof AdminDonationsRoute
   AdminEventsRoute: typeof AdminEventsRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMembershipRoute: typeof AdminMembershipRoute
@@ -1381,6 +1401,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBlogRoute: AdminBlogRouteWithChildren,
   AdminBlogsRoute: AdminBlogsRoute,
   AdminCollectionsRoute: AdminCollectionsRoute,
+  AdminDonationsRoute: AdminDonationsRoute,
   AdminEventsRoute: AdminEventsRoute,
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMembershipRoute: AdminMembershipRoute,

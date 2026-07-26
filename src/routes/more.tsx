@@ -78,7 +78,7 @@ function MorePage() {
             <h1 className="truncate font-serif text-xl">{displayName}</h1>
             {isPlus && (
               <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-700">
-                <Heart className="h-3 w-3" /> Supporter
+                <Heart className="h-3 w-3" /> Plus
               </span>
             )}
           </div>

@@ -9,7 +9,7 @@ import { FoundingBadge } from "@/components/membership/founding-badge";
 
 const IMPACT_URL = "https://mentalhealthwalkclub.com/impact";
 const IMPACT_OG = "https://mentalhealthwalkclub.com/__l5e/assets-v1/a9e1c704-8b35-4af9-8a3b-6571b05a857e/og-default-v4.jpg";
-const IMPACT_DESC = "50% of every Walk Club Plus dollar goes to the 988 Suicide & Crisis Lifeline. 100% of Supporter donations go straight there too.";
+const IMPACT_DESC = "Every dollar of Walk Club Plus above the $2.99 base is designated to the 988 Suicide & Crisis Lifeline. See the live ledger.";
 
 export const Route = createFileRoute("/impact")({
   component: ImpactPage,
@@ -91,7 +91,7 @@ function ImpactPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Our impact</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Half of every Walk Club Plus dollar goes to the 988 Suicide &amp; Crisis Lifeline. 100% of Supporter donations go straight there too. The other half of Plus keeps the lights on so we can keep building.
+          Walk Club Plus is $2.99/month. Every dollar you add on top is designated to the 988 Suicide &amp; Crisis Lifeline. The $2.99 base keeps the lights on so we can keep building.
         </p>
       </header>
 
@@ -128,7 +128,7 @@ function ImpactPage() {
         <h2 className="text-lg font-semibold">By period</h2>
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            First donation report posts at the end of our first full revenue period. Subscribe to Plus or become a Supporter and you'll show up here.
+            First donation report posts at the end of our first full revenue period. Join Plus and you'll show up here.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -157,9 +157,9 @@ function ImpactPage() {
             <Heart className="h-5 w-5" />
           </span>
           <div className="flex-1">
-            <h2 className="font-serif text-xl">Become a Supporter</h2>
+            <h2 className="font-serif text-xl">Add to your monthly gift</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose your own monthly amount. 100% of profits go straight to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
+              Plus is $2.99/month. Add any amount on top — 100% of that add-on is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
@@ -180,12 +180,12 @@ function ImpactPage() {
         </div>
         {wall.length > 0 && (
           <div className="mt-6 border-t border-rose-200 pt-4">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Supporter wall</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Founding members</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {wall.map((p) => (
                 <li key={p.user_id} className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-card px-3 py-1 text-xs">
                   <FoundingBadge size="xs" />
-                  <span>{p.display_name ?? "Supporter"}</span>
+                  <span>{p.display_name ?? "Member"}</span>
                 </li>
               ))}
             </ul>
@@ -197,7 +197,7 @@ function ImpactPage() {
       <section className="mt-10 rounded-2xl bg-muted/40 p-5 text-sm text-muted-foreground">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Methodology</h2>
         <p>
-          Each month we tally successful Walk Club Plus charges, subtract payment processing fees (~6.4% + $0.30 per charge), and donate 50% of the remainder to the 988 Suicide &amp; Crisis Lifeline. Supporter donations are tracked separately and routed at 100% of profits. We publish the numbers here so you can check our math.
+          Each successful Walk Club Plus charge splits into two lines: a $2.99 membership allocation that keeps the app running, and a donation allocation for everything above that. We route 100% of designated allocations to the 988 Suicide &amp; Crisis Lifeline and publish each transfer on the ledger so you can check our math.
         </p>
         <p className="mt-3">
           <Link to="/transparency" className="underline">
