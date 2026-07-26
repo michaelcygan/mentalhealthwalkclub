@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
 
+const BASE_LOOKUP = "plus_monthly_v2";
+const BASE_CENTS = 299;
+
 let _supabase: any = null;
 function getSupabase(): any {
   if (!_supabase) {
@@ -21,34 +24,36 @@ function pickPriceId(item: any): string | undefined {
   );
 }
 
-async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, eventCreated: number) {
+/** Split subscription items into base (Plus $2.99) and donation lines. */
+function splitItems(subscription: any) {
+  const items: any[] = subscription.items?.data ?? [];
+  const base = items.find((it) => it?.price?.lookup_key === BASE_LOOKUP) ?? items[0];
+  const donation = items.find((it) => it && it !== base) ?? null;
+  const donationCents =
+    typeof donation?.price?.unit_amount === "number" ? donation.price.unit_amount : 0;
+  return { base, donation, donationCents };
+}
+
+async function handleSubscriptionUpsert(
+  subscription: any,
+  env: StripeEnv,
+  eventCreated: number,
+) {
   const userId = subscription.metadata?.userId;
   if (!userId) {
     console.error("No userId in subscription metadata");
     return;
   }
-  const item = subscription.items?.data?.[0];
-  const priceId = pickPriceId(item);
-  const productId = item?.price?.product;
-  const periodStart = item?.current_period_start ?? subscription.current_period_start;
-  const periodEnd = item?.current_period_end ?? subscription.current_period_end;
+
+  const { base, donation, donationCents } = splitItems(subscription);
+  const priceId = pickPriceId(base);
+  const productId = base?.price?.product;
+  const periodStart = base?.current_period_start ?? subscription.current_period_start;
+  const periodEnd = base?.current_period_end ?? subscription.current_period_end;
   const eventAtIso = new Date(eventCreated * 1000).toISOString();
+  const monthlyCents = BASE_CENTS + donationCents;
 
-  // Kind: 'plus' or 'supporter'. Supporter rows use price_data, so price_id is
-  // opaque — we tag the row with subscription_kind from metadata and store the
-  // monthly amount. Legacy 'patron' metadata is mapped to 'supporter'.
-  const kindMeta = subscription.metadata?.kind;
-  const kind: "plus" | "supporter" =
-    kindMeta === "supporter" || kindMeta === "patron" ? "supporter" : "plus";
-  const unitAmount =
-    typeof item?.price?.unit_amount === "number"
-      ? item.price.unit_amount
-      : kind === "supporter"
-        ? Number(subscription.metadata?.amount_cents ?? 0) || null
-        : null;
-  const normalizedPriceId = kind === "supporter" ? "supporter_custom" : priceId;
-
-  // Out-of-order guard: skip if a newer event has already been applied.
+  // Out-of-order guard
   const { data: existing } = await getSupabase()
     .from("subscriptions")
     .select("last_event_at")
@@ -59,9 +64,7 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
     return;
   }
 
-  // The subscriptions upsert and the supporter_profile mirror touch
-  // different tables and don't depend on each other — run in parallel.
-  const subUpsert = getSupabase()
+  await getSupabase()
     .from("subscriptions")
     .upsert(
       {
@@ -69,7 +72,7 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
         stripe_subscription_id: subscription.id,
         stripe_customer_id: subscription.customer,
         product_id: productId,
-        price_id: normalizedPriceId,
+        price_id: priceId,
         status: subscription.status,
         current_period_start: periodStart
           ? new Date(periodStart * 1000).toISOString()
@@ -79,40 +82,28 @@ async function handleSubscriptionUpsert(subscription: any, env: StripeEnv, event
           : null,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
         environment: env,
-        subscription_kind: kind,
-        monthly_amount_cents: unitAmount,
+        subscription_kind: "plus",
+        monthly_amount_cents: monthlyCents,
+        selected_total_cents: monthlyCents,
+        base_cents: BASE_CENTS,
+        donation_cents_monthly: donationCents,
+        membership_allocation_cents: BASE_CENTS,
+        donation_allocation_cents: donationCents,
+        stripe_base_item_id: base?.id ?? null,
+        stripe_donation_item_id: donation?.id ?? null,
+        allocation_model_version: "v2_unified",
         last_event_at: eventAtIso,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" },
     );
-
-  let supporterMirror: Promise<unknown> = Promise.resolve();
-  if (kind === "supporter") {
-    const active = ["active", "trialing", "past_due"].includes(subscription.status);
-    if (active) {
-      supporterMirror = getSupabase()
-        .from("supporter_profile")
-        .upsert(
-          {
-            user_id: userId,
-            monthly_amount_cents: unitAmount ?? 0,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id" },
-        );
-    } else {
-      supporterMirror = getSupabase()
-        .from("supporter_profile")
-        .update({ monthly_amount_cents: 0, updated_at: new Date().toISOString() })
-        .eq("user_id", userId);
-    }
-  }
-
-  await Promise.all([subUpsert, supporterMirror]);
 }
 
-async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, eventCreated: number) {
+async function handleSubscriptionDeleted(
+  subscription: any,
+  env: StripeEnv,
+  eventCreated: number,
+) {
   const eventAtIso = new Date(eventCreated * 1000).toISOString();
   const { data: existing } = await getSupabase()
     .from("subscriptions")
@@ -132,7 +123,6 @@ async function handleSubscriptionDeleted(subscription: any, env: StripeEnv, even
     .eq("environment", env);
 }
 
-// Resolve userId from a subscription/invoice payload (metadata first, then DB lookup).
 async function resolveUserId(opts: {
   subscriptionId?: string;
   customerId?: string;
@@ -182,8 +172,138 @@ async function recordBillingEvent(params: {
   });
 }
 
+/**
+ * Write an immutable ledger row splitting the invoice into base + donation.
+ * Idempotent via `stripe_event_id` unique constraint.
+ */
+async function handleInvoicePaid(
+  invoice: any,
+  env: StripeEnv,
+  eventId: string,
+  eventCreated: number,
+) {
+  const gross = Number(invoice.amount_paid ?? 0);
+  if (!gross || gross <= 0) return; // trial/$0 invoices — nothing to allocate
+
+  const subscriptionId =
+    invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
+  const customerId = invoice.customer;
+
+  const userId = await resolveUserId({
+    subscriptionId,
+    customerId,
+    metadataUserId: invoice.metadata?.userId,
+    env,
+  });
+
+  // Load subscription row for dedication + display fields (PII stays there;
+  // we copy the display-safe slice onto the immutable ledger row).
+  let subRow: any = null;
+  if (subscriptionId) {
+    const { data } = await getSupabase()
+      .from("subscriptions")
+      .select(
+        "user_id, dedication_type, honoree_name, dedication_message, public_donor_name, display_donation_publicly, donation_cents_monthly, base_cents",
+      )
+      .eq("stripe_subscription_id", subscriptionId)
+      .eq("environment", env)
+      .maybeSingle();
+    subRow = data;
+  }
+
+  const baseCents = subRow?.base_cents ?? BASE_CENTS;
+  const membership = Math.min(baseCents, gross);
+  const donation = Math.max(0, gross - membership);
+
+  const paidAtSec =
+    invoice.status_transitions?.paid_at ??
+    invoice.effective_at ??
+    invoice.created ??
+    eventCreated;
+
+  const payload = {
+    source: donation > 0 ? "plus_overage" : "legacy_plus_commitment",
+    user_id: userId ?? subRow?.user_id ?? null,
+    environment: env,
+    currency: (invoice.currency ?? "usd").toLowerCase(),
+    stripe_event_id: eventId,
+    stripe_invoice_id: invoice.id ?? null,
+    stripe_payment_intent_id: invoice.payment_intent ?? null,
+    stripe_charge_id: invoice.charge ?? null,
+    stripe_subscription_id: subscriptionId ?? null,
+    gross_payment_cents: gross,
+    membership_allocation_cents: membership,
+    donation_allocation_cents: donation,
+    status: "designated",
+    paid_at: new Date(paidAtSec * 1000).toISOString(),
+    dedication_type: subRow?.dedication_type ?? "none",
+    honoree_name: subRow?.honoree_name ?? null,
+    dedication_message: subRow?.dedication_message ?? null,
+    public_donor_name: subRow?.public_donor_name ?? null,
+    display_publicly: !!subRow?.display_donation_publicly,
+  };
+
+  const { error } = await getSupabase()
+    .from("donation_allocations")
+    .upsert(payload, { onConflict: "stripe_event_id", ignoreDuplicates: true });
+  if (error) console.error("donation_allocations upsert failed", error);
+}
+
+async function handleChargeRefunded(charge: any, env: StripeEnv) {
+  const chargeId = charge.id;
+  if (!chargeId) return;
+  const amount = Number(charge.amount ?? 0);
+  const refunded = Number(charge.amount_refunded ?? 0);
+  const fullRefund = refunded >= amount && amount > 0;
+
+  const { data: rows } = await getSupabase()
+    .from("donation_allocations")
+    .select("id, transfer_batch_id, status")
+    .eq("stripe_charge_id", chargeId)
+    .eq("environment", env);
+  const list = (rows as Array<{ id: string; transfer_batch_id: string | null; status: string }>) ?? [];
+  for (const row of list) {
+    if (row.transfer_batch_id) {
+      console.warn(
+        "Refund on allocation already in transfer batch — leaving status; admin flow handles clawback",
+        row.id,
+      );
+      continue;
+    }
+    await getSupabase()
+      .from("donation_allocations")
+      .update({
+        status: fullRefund ? "refunded" : "partially_refunded",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+  }
+}
+
+async function handleDisputeCreated(dispute: any, env: StripeEnv) {
+  const chargeId = dispute.charge;
+  if (!chargeId) return;
+  const { data: rows } = await getSupabase()
+    .from("donation_allocations")
+    .select("id, transfer_batch_id")
+    .eq("stripe_charge_id", chargeId)
+    .eq("environment", env);
+  const list = (rows as Array<{ id: string; transfer_batch_id: string | null }>) ?? [];
+  for (const row of list) {
+    if (row.transfer_batch_id) {
+      console.warn("Dispute on allocation already in transfer batch", row.id);
+      continue;
+    }
+    await getSupabase()
+      .from("donation_allocations")
+      .update({ status: "disputed", updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+  }
+}
+
 async function handleInvoicePaymentFailed(invoice: any, env: StripeEnv) {
-  const subscriptionId = invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
+  const subscriptionId =
+    invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
   const customerId = invoice.customer;
   const userId = await resolveUserId({
     subscriptionId,
@@ -191,10 +311,7 @@ async function handleInvoicePaymentFailed(invoice: any, env: StripeEnv) {
     metadataUserId: invoice.metadata?.userId,
     env,
   });
-  if (!userId) {
-    console.warn("payment_failed: no userId resolved");
-    return;
-  }
+  if (!userId) return;
   await recordBillingEvent({
     userId,
     env,
@@ -218,39 +335,63 @@ async function handleTrialWillEnd(subscription: any, env: StripeEnv) {
     metadataUserId: subscription.metadata?.userId,
     env,
   });
-  if (!userId) {
-    console.warn("trial_will_end: no userId resolved");
-    return;
-  }
+  if (!userId) return;
   await recordBillingEvent({
     userId,
     env,
     eventType: "trial_will_end",
     subscriptionId: subscription.id,
     customerId: subscription.customer,
-    metadata: {
-      trial_end: subscription.trial_end,
-      status: subscription.status,
-    },
+    metadata: { trial_end: subscription.trial_end, status: subscription.status },
   });
+}
+
+async function safe(fn: () => Promise<void>, label: string) {
+  try {
+    await fn();
+  } catch (e) {
+    console.error(`Webhook handler '${label}' failed:`, e);
+  }
 }
 
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
-  const eventCreated = (event as { created?: number }).created ?? Math.floor(Date.now() / 1000);
+  const eventCreated =
+    (event as { created?: number }).created ?? Math.floor(Date.now() / 1000);
+  const eventId = (event as { id?: string }).id ?? `evt_${eventCreated}`;
+
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
-      await handleSubscriptionUpsert(event.data.object, env, eventCreated);
+      await safe(
+        () => handleSubscriptionUpsert(event.data.object, env, eventCreated),
+        event.type,
+      );
       break;
     case "customer.subscription.deleted":
-      await handleSubscriptionDeleted(event.data.object, env, eventCreated);
+      await safe(
+        () => handleSubscriptionDeleted(event.data.object, env, eventCreated),
+        event.type,
+      );
       break;
     case "customer.subscription.trial_will_end":
-      await handleTrialWillEnd(event.data.object, env);
+      await safe(() => handleTrialWillEnd(event.data.object, env), event.type);
+      break;
+    case "invoice.paid":
+    case "invoice.payment_succeeded":
+      await safe(
+        () => handleInvoicePaid(event.data.object, env, eventId, eventCreated),
+        event.type,
+      );
       break;
     case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(event.data.object, env);
+      await safe(() => handleInvoicePaymentFailed(event.data.object, env), event.type);
+      break;
+    case "charge.refunded":
+      await safe(() => handleChargeRefunded(event.data.object, env), event.type);
+      break;
+    case "charge.dispute.created":
+      await safe(() => handleDisputeCreated(event.data.object, env), event.type);
       break;
     default:
       console.log("Unhandled event:", event.type);
