@@ -99,6 +99,7 @@ function MorePage() {
       </Section>
 
       <Section title="Account">
+        <NotificationsBell variant="row" />
         <Row to="/settings" icon={Settings} label="Settings" hint="Account, notifications, billing" />
         <Row to="/support" icon={ShieldCheck} label="Help & safety" hint="Crisis support" />
         <ReportIssueDialog trigger={
