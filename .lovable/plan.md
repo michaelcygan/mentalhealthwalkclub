@@ -1,46 +1,69 @@
-## Problem
-"Walks near you" today only uses browser geolocation coords + a 25-mile radius. When the browser returns an approximate/off-city location (or a distant one), real walks in the user's home city — like the Grant Park walk in the screenshot — get filtered out and the section falls back to the generic empty state. The user's profile `city` (a text field like "Chicago") is never consulted.
+## Restore Discover as a V1 Directory
 
-## Fix
-Make **home city** the primary signal for nearby. Geolocation stays as an optional refinement.
+Replace the redirect at `/discover` with a real, focused three-segment directory: **Walks · Groups · Places**. Reuse existing server functions and card components. No schema changes, no map, no new routes.
 
-Behavior:
-- **No home city set** → empty state asks the user to set one, with a link to `/settings`. No walks shown, no misleading "No walks posted yet" copy.
-- **Home city set** → server returns walks whose event `city` matches (case-insensitive, trimmed) the profile city, unioned with any walks within 25 mi if the browser also provided coords. Section shows those walks when there is at least one.
-- **Home city set, truly zero matches** → current "No walks posted yet · Plant the first flag" empty state.
+### Wave 0 — Audit (done)
+- Nav already links to `/discover`; current route redirects home.
+- Reuse: `discoverNearbyWalks`, `listMyGroups`, `discoverPublicGroups`, `discoverTrails`, `WalkCard`.
+- Public group cards must link to `/g/$slug` (not `/groups/$slug`); authed group detail at `/groups/$slug`.
+- `discoverPublicGroups` has a scope bug: only filters when `scope === 'global'`. Local scope must add `.eq('scope','local')`.
+- Existing geolocation pattern in `src/hooks/use-weather.ts` / homepage; reuse without modification.
+- `/places`, `/places/$key`, `/trails` remain redirect stubs — do not link them.
 
-## Changes
+### Wave 1 — Route shell
+Rewrite `src/routes/_authenticated/discover.tsx`:
+- Remove redirect; add `head()` metadata (title "Discover — Mental Health Walk Club", matching description + og/twitter).
+- Component: page header, segmented control (Walks | Groups | Places, default Walks), sticky on mobile with safe-area padding.
+- Segment state via `Route.useSearch()` + `validateSearch` (`tab: 'walks'|'groups'|'places'`) so tab is shareable and preserved on refresh.
+- Lightweight geolocation: request via `navigator.geolocation` in an effect; render immediately with `coords = null`. Show subtle status row ("Using your location" / "Turn on location for nearby distances" with a "Use location" button).
+- Shared `<Section>`, `<SectionLoading>`, `<SectionError onRetry>`, `<SectionEmpty>` primitives local to the file.
 
-### 1. `src/lib/nearby.functions.ts`
-- Extend input schema: add `city: z.string().trim().min(1).max(120).nullable().optional()`.
-- After the base 72-hour query, build the result set as the union of:
-  - rows where `row.city` case-insensitively equals the input `city`, AND
-  - rows within 25 mi of `lat/lng` (existing distance filter) when coords are present.
-- Sort by `starts_at` asc, then miles asc (nulls last). De-dupe by `id`. Apply `limit` at the end.
-- Keep the current fallback (return unfiltered upcoming list) only when BOTH `city` and coords are absent — used by the SSR loader for the public/logged-out homepage.
+### Wave 2 — Walks segment
+- Single React Query: `['discover','walks',lat,lng]` → `discoverNearbyWalks({ lat, lng, hours: 168, limit: 20 })`, staleTime 60s, enabled always.
+- Filters (local UI state): time `[Today | This week]` default This week; distance `[5 | 10 | 25 mi]` default 25.
+  - Today = walks whose local calendar date matches user's today (use event `timezone` when present, else browser tz).
+  - Distance applies only when `miles != null`; walks with no coords remain visible at 25 mi, hidden at 5/10 mi.
+- Cards: reuse `src/components/discover/walk-card.tsx` (already links to `/w/$code` via existing RSVP pill/flow — verify at implementation time; if it links to slug, keep as-is).
+- Empty: "No walks match this view yet." + `[Post a walk]` (`/walk/new`), `[Show 25 miles]`.
+- Error: inline retry, does not block other segments.
 
-### 2. `src/routes/index.tsx` — `NearbyGrid`
-- Accept optional `homeCity: string | null` prop from the authenticated home view (read from the existing profile query pattern already used in `more.tsx` / `settings.tsx`).
-- Pass `city: homeCity` alongside `lat/lng` into `nearbyWalksPublic`. Enable the query as soon as EITHER `homeCity` is present OR geolocation has resolved with coords (today it waits for geo only).
-- Query key includes `homeCity` so it refetches when the user updates their city in Settings.
-- Section heading: show "Walks near you" whenever `homeCity` OR `coords` is set; keep "Upcoming walks" only for the truly public homepage.
-- Subtitle: when `homeCity` is set, read `In ${homeCity}${coords ? " · plus within 25 mi" : ""}` instead of the current "Within 25 mi · …".
+### Wave 3 — Groups segment
+Two independent queries, both enabled only when `tab === 'groups'`:
+1. `['discover','my-groups', userId]` → `listMyGroups()`, staleTime 5m. Merge `owned` + `member` with badges: "You host", "Member", "Private"/"Public". Link to `/groups/$slug`.
+2. `['discover','public-groups', lat, lng]` → `discoverPublicGroups({ lat, lng, scope: 'local' })`, staleTime 2m. Link cards to `/g/$slug`. Exclude group ids already present in `my-groups`.
 
-### 3. Empty state — `EmptyNearby`
-- New variant: **no home city**. When the authenticated viewer has no `profiles.city`, render:
-  - copy: "Set your home city to see walks near you."
-  - primary link: "Set home city" → `/settings`.
-- Existing "No walks posted yet · Plant the first flag" copy stays for the `homeCity`-is-set-but-zero-matches case (and for the public/logged-out variant).
-- Loader-fed public homepage (`publicMode`) is unchanged: it still shows the unfiltered upcoming list or the current empty copy.
+Fix `discoverPublicGroups` scope bug in `src/lib/groups.functions.ts`: add explicit `q = q.eq('scope','local')` branch alongside global.
 
-### 4. Profile read
-- Fetch `profiles.city` for the current user once in the home route (same pattern as elsewhere, via TanStack Query), pass it into `NearbyGrid`. No new endpoints.
+Footer actions: `[Manage my groups]` and `[Start a group]` both → `/groups`.
 
-## Out of scope
-- Any schema change (no lat/lng added to profiles).
-- Fuzzy city matching, geocoding profile city into coords, or radius-based expansion beyond the existing 25 mi.
-- Changing the geolocation prompt UX.
+Empty states per section as specified.
 
-## Technical notes
-- City match uses `row.city?.trim().toLowerCase() === input.city.trim().toLowerCase()`; done in JS after the base query (avoids Postgres collation surprises and keeps the query the same shape).
-- Public homepage loader keeps calling `nearbyWalksPublic({ data: { hours, limit } })` with no city/coords, so anonymous SSR is unchanged.
+### Wave 4 — Places segment
+- Query `['discover','places', lat, lng]` → `discoverTrails({ lat, lng, limit: 20 })`, staleTime 10m, enabled only when `tab === 'places' && coords != null`.
+- Show first 12 named results. Card: name, type badge (Park/Path/Footway/Trail), distance, `[Maps]` external link (`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, `target=_blank rel="noopener noreferrer"`), optional `[Plan a walk]` → `/walk/new` (no prefill).
+- Location denied: prompt "Use your location to find nearby parks and walking paths." + `[Use location]`.
+- Trail fetch failure: isolated error with `[Try again]`; other segments unaffected.
+- Do NOT link `/places`, `/places/$key`, `/trails`.
+
+### Wave 5 — Query isolation & performance
+- Independent queries with keys above; no `Promise.all` shared loading.
+- `enabled` per section as specified; each section owns its loading/error/empty.
+- Images: `loading="lazy" decoding="async"`.
+- Caps: 20 walks / 12 groups / 12 places rendered.
+
+### Wave 6 — Polish
+- Reuse cream/forest/serif tokens. Editorial narrow width on desktop; two-column grid for Groups/Places at ≥md.
+- Accessible segmented tabs (`role="tablist"`, `aria-selected`), busy states, labeled filter chips, external-link semantics.
+- Respect mobile header, tab bar, Now Playing dock (bottom padding already conventional in project).
+
+### Wave 7 — QA
+- `npm run lint && npm run build`, fix issues from this change only.
+- Manual: route no longer redirects; segment switch preserves scroll and URL; location denial degrades gracefully; failure in one segment leaves others usable; private groups do not leak into public; global groups excluded from local list; `/g/$slug` opens public group page.
+
+### Files touched
+- `src/routes/_authenticated/discover.tsx` — full rewrite (route shell + three segments in one file, small local subcomponents).
+- `src/lib/groups.functions.ts` — one-line scope fix in `discoverPublicGroups`.
+- No other files. No generated files. No migrations.
+
+### Out of scope (per spec)
+Friends activity, Circles, memories, invitations, featured content, maps, saved trails, place/trail detail pages, new schema, unauth Discover.
