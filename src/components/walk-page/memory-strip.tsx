@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, X, Trash2 } from "lucide-react";
+import { Camera, X, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -15,14 +15,18 @@ import { compressImage } from "@/lib/image-compress";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
+type Access = "member" | "gated";
+
 export default function MemoryStrip({ eventId }: { eventId: string }) {
   const { user } = useAuth();
-  const { requireAuth } = useAuthPrompt();
+  const { openAuth, requireAuth } = useAuthPrompt();
   const fetchPhotos = useServerFn(getEventPhotos);
   const addPhoto = useServerFn(addEventPhoto);
   const removePhoto = useServerFn(deleteEventPhoto);
 
   const [photos, setPhotos] = useState<EventPhoto[]>([]);
+  const [access, setAccess] = useState<Access>("gated");
+  const [photoCount, setPhotoCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState<EventPhoto | null>(null);
@@ -30,8 +34,10 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
 
   const load = async () => {
     try {
-      const { photos } = await fetchPhotos({ data: { eventId } });
-      setPhotos(photos);
+      const res = await fetchPhotos({ data: { eventId } });
+      setPhotos(res.photos);
+      setAccess(res.access);
+      setPhotoCount(res.photoCount);
     } catch (e) {
       console.error("load photos", e);
     } finally {
@@ -40,9 +46,11 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
   };
 
   useEffect(() => {
-    // Photos are auth-scoped; skip fetch when logged out to avoid 401 noise.
+    // Logged-out viewers never touch the endpoint — photos are private to
+    // walkers who joined. Show the gated state instead.
     if (!user) {
       setLoading(false);
+      setAccess("gated");
       return;
     }
     void load();
@@ -72,7 +80,6 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
         .from("event-photos")
         .upload(path, file, { contentType: file.type, upsert: false });
       if (upErr) throw upErr;
-
 
       await addPhoto({
         data: {
@@ -104,7 +111,53 @@ export default function MemoryStrip({ eventId }: { eventId: string }) {
     }
   };
 
-  const hasPhotos = photos.length > 0;
+  const isMember = !!user && access === "member";
+  const hasPhotos = isMember && photos.length > 0;
+
+  // Gated card for logged-out or non-member logged-in viewers.
+  if (!loading && !isMember) {
+    return (
+      <section className="mt-8">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Memory strip</p>
+        <div className="mt-3 rounded-3xl border border-border bg-card/60 p-6 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Lock className="h-4 w-4" />
+          </div>
+          <p className="mt-3 font-serif text-lg">Memories from this walk</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            {user
+              ? "Photos here are for members who joined the walk. RSVP to see the memory strip."
+              : "Photos here are private to walkers who joined. Log in or create an account to see them."}
+          </p>
+          {photoCount > 0 ? (
+            <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              {photoCount} memor{photoCount === 1 ? "y" : "ies"} shared
+            </p>
+          ) : null}
+          {!user ? (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={() => openAuth("signup")}
+                className="rounded-full bg-forest px-5 py-2 text-sm text-primary-foreground hover:opacity-90"
+              >
+                Create account
+              </button>
+              <button
+                onClick={() => openAuth("signin")}
+                className="rounded-full border border-border bg-card px-5 py-2 text-sm text-foreground hover:bg-muted"
+              >
+                Log in
+              </button>
+            </div>
+          ) : (
+            <p className="mt-4 text-xs text-muted-foreground">
+              Tap “Going” above to unlock the memory strip.
+            </p>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-8">
