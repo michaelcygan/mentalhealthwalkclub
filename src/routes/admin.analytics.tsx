@@ -107,7 +107,7 @@ function Body({ d }: { d: AnalyticsOverview }) {
           <Stat label="Active Plus" value={d.monetization.activePlus} />
           <Stat label="Monthly / Yearly" value={`${d.monetization.plusMonthly} / ${d.monetization.plusYearly}`} />
           <Stat label="Trialing" value={d.monetization.trialing} />
-          <Stat label="Supporters" value={d.monetization.supporters} />
+          <Stat label="Legacy Supporters" value={d.monetization.legacySupporters} />
           <Stat label="MRR (est.)" value={`$${(d.monetization.mrrCentsEstimate / 100).toFixed(2)}`} />
         </div>
       </Card>

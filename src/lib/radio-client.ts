@@ -1,4 +1,5 @@
 import { getStation, signTrackUrl, type StationCard, type StationTrack } from "@/lib/radio.functions";
+import { supabase } from "@/integrations/supabase/client";
 import type { PlayableTrack } from "@/lib/player-context";
 
 const LAST_STATION_KEY = "mhwc_last_station";
@@ -8,6 +9,18 @@ export function rememberLastStation(slug: string) {
 }
 export function getLastStation(): string | null {
   try { return window.localStorage.getItem(LAST_STATION_KEY); } catch { return null; }
+}
+
+export async function recordRadioUsage(seconds: number): Promise<number | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || seconds <= 0) return null;
+  const { data } = await supabase.rpc("increment_radio_usage", {
+    _user: user.id,
+    _seconds: Math.round(seconds),
+  });
+  return (data as number | null) ?? null;
 }
 
 function shuffle<T>(arr: T[]): T[] {

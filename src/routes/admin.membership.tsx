@@ -117,16 +117,16 @@ function AdminMembershipPage() {
     <div className="space-y-6">
       <header>
         <h2 className="font-serif text-xl">Membership</h2>
-        <p className="text-sm text-muted-foreground">Tune free caps and Supporter amounts without redeploying.</p>
+        <p className="text-sm text-muted-foreground">Tune free caps and legacy Supporter amounts without redeploying.</p>
       </header>
 
       {/* Breakdown */}
       <section className="grid gap-3 sm:grid-cols-3">
         <Tile icon={Sparkles} label="Plus monthly" value={breakdown?.plus_monthly ?? "—"} />
         <Tile icon={Sparkles} label="Plus yearly" value={breakdown?.plus_yearly ?? "—"} />
-        <Tile icon={Heart} label="Supporters" value={breakdown?.supporter ?? "—"} />
+        <Tile icon={Heart} label="Legacy Supporters" value={breakdown?.supporter ?? "—"} />
         <Tile icon={Users} label="Plus MRR" value={breakdown ? `$${(breakdown.plus_mrr_cents / 100).toFixed(0)}` : "—"} />
-        <Tile icon={Heart} label="Supporter MRR" value={breakdown ? `$${(breakdown.supporter_mrr_cents / 100).toFixed(0)}` : "—"} />
+        <Tile icon={Heart} label="Legacy Supporter MRR" value={breakdown ? `$${(breakdown.supporter_mrr_cents / 100).toFixed(0)}` : "—"} />
         <Tile icon={Heart} label="Combined MRR" value={breakdown ? `$${((breakdown.plus_mrr_cents + breakdown.supporter_mrr_cents) / 100).toFixed(0)}` : "—"} />
       </section>
 
@@ -150,13 +150,13 @@ function AdminMembershipPage() {
         />
       </section>
 
-      {/* Supporter settings */}
+      {/* Legacy Supporter settings */}
       <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
-        <h3 className="font-serif text-lg">Supporter tier</h3>
+        <h3 className="font-serif text-lg">Legacy Supporter tier</h3>
         <div className="flex items-center justify-between">
           <div>
-            <Label className="font-medium">Pause new Supporter signups</Label>
-            <p className="text-xs text-muted-foreground">Existing Supporters keep giving; checkout is blocked.</p>
+            <Label className="font-medium">Pause new Legacy Supporter signups</Label>
+            <p className="text-xs text-muted-foreground">Existing Legacy Supporters keep giving; checkout is blocked.</p>
           </div>
           <Switch
             checked={draft.supporter_signups_paused}
@@ -200,15 +200,15 @@ function AdminMembershipPage() {
       </div>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h3 className="font-serif text-lg">Recent Supporters</h3>
+        <h3 className="font-serif text-lg">Recent Legacy Supporters</h3>
         {supporters.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No Supporters yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">No Legacy Supporters yet.</p>
         ) : (
           <ul className="mt-3 divide-y divide-border">
             {supporters.slice(0, 25).map((p) => (
               <li key={p.user_id} className="flex items-center justify-between py-2 text-sm">
                 <div>
-                  <div className="font-medium">{p.display_name ?? "Supporter"}</div>
+                  <div className="font-medium">{p.display_name ?? "Legacy Supporter"}</div>
                   <div className="text-[11px] text-muted-foreground">
                     Joined {new Date(p.joined_at).toLocaleDateString()} · {p.display_on_wall ? "On wall" : "Private"}
                   </div>

@@ -12,8 +12,8 @@ const SIZE: Record<NonNullable<Props["size"]>, string> = {
   md: "h-4 w-4",
 };
 
-/** Small leaf badge shown next to a Supporter's name across the app. */
-export function FoundingBadge({ size = "sm", title = "Founding Supporter", className = "" }: Props) {
+/** Small leaf badge shown next to a Plus member's name across the app. */
+export function FoundingBadge({ size = "sm", title = "Founding Plus", className = "" }: Props) {
   return (
     <span
       title={title}

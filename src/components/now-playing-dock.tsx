@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Pause, Play, X, Music2, Loader2, ChevronUp } from "lucide-react";
 import { useAmbient } from "@/lib/ambient-context";
 import { usePlayer } from "@/lib/player-context";
+import { recordRadioUsage } from "@/lib/radio-client";
+import { useAuth } from "@/lib/auth-context";
 import { NowPlayingSheet } from "@/components/now-playing-sheet";
 import { ambientCover } from "@/lib/ambient-cover";
 
@@ -12,10 +14,18 @@ const HIDDEN_PREFIX = ["/w/"];
 
 export function NowPlayingDock() {
   const { current: ambientTrack, playing: ambientPlaying, stop: ambientStop, toggleMute, muted } = useAmbient();
-  const { current: audioTrack, playing: audioPlaying, loading: audioLoading, toggle: audioToggle, stop: audioStop } = usePlayer();
+  const {
+    current: audioTrack,
+    playing: audioPlaying,
+    loading: audioLoading,
+    toggle: audioToggle,
+    stop: audioStop,
+    position,
+  } = usePlayer();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const reduceMotion = useReducedMotion();
   const [expanded, setExpanded] = useState(false);
+  const { user } = useAuth();
 
   // Foreground audio takes priority over ambient in the dock.
   const showAudio = !!audioTrack;
@@ -31,6 +41,60 @@ export function NowPlayingDock() {
   const isPaused = showAudio ? !audioPlaying : (muted || !ambientPlaying);
   const canExpand = true;
   const cover = showAudio ? audioTrack?.cover ?? null : ambientCover(ambientTrack);
+
+  // Record radio listening time for Plus analytics and free-tier enforcement.
+  const lastRadioIdRef = useRef<string | null>(null);
+  const lastPosRef = useRef(0);
+  const accSecondsRef = useRef(0);
+  const flush = useCallback(async () => {
+    const secs = Math.floor(accSecondsRef.current);
+    if (secs > 0) {
+      accSecondsRef.current -= secs;
+      try {
+        await recordRadioUsage(secs);
+      } catch {
+        // If the RPC fails, put the seconds back so we retry on next flush.
+        accSecondsRef.current += secs;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const isRadio = audioTrack?.id.startsWith("radio:");
+    if (!isRadio || !user) {
+      lastRadioIdRef.current = null;
+      lastPosRef.current = 0;
+      return;
+    }
+    const currentId = audioTrack!.id;
+    if (lastRadioIdRef.current && lastRadioIdRef.current !== currentId) {
+      void flush();
+    }
+    lastRadioIdRef.current = currentId;
+    lastPosRef.current = 0;
+    return () => {
+      void flush();
+    };
+  }, [audioTrack?.id, user, flush]);
+
+  useEffect(() => {
+    const isRadio = audioTrack?.id.startsWith("radio:");
+    if (!isRadio || !audioPlaying || !user) return;
+    const delta = Math.max(0, Math.min(60, position - lastPosRef.current));
+    lastPosRef.current = position;
+    if (delta > 0) {
+      accSecondsRef.current += delta;
+      if (accSecondsRef.current >= 60) {
+        void flush();
+      }
+    }
+  }, [audioTrack, audioPlaying, position, user, flush]);
+
+  useEffect(() => {
+    if (!audioPlaying) {
+      void flush();
+    }
+  }, [audioPlaying, flush]);
 
   return (
     <>

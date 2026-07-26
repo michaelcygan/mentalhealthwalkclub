@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AuthForm, type AuthPlan, PLAN_INTENT_KEY } from "@/components/auth-form";
 import { PlusCheckout } from "@/components/billing/plus-checkout";
-import { PlusAmountPicker } from "@/components/billing/plus-amount-picker";
+import { PlusAmountPicker, type PlusDedication } from "@/components/billing/plus-amount-picker";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { useAuth } from "@/lib/auth-context";
 import { trackBillingEvent } from "@/lib/billing-analytics";
@@ -29,6 +29,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
 
   const [plusOpen, setPlusOpen] = useState(false);
   const [donationCents, setDonationCents] = useState<number>(0);
+  const [plusDedication, setPlusDedication] = useState<PlusDedication>({});
   const [checkoutStarted, setCheckoutStarted] = useState(false);
 
   useEffect(() => {
@@ -40,10 +41,11 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || typeof window === "undefined") return;
     const intent = window.localStorage.getItem(PLAN_INTENT_KEY);
-    if (intent === "plus" || intent === "supporter" || intent === "patron") {
+    if (intent === "plus") {
       window.localStorage.removeItem(PLAN_INTENT_KEY);
       const t = setTimeout(() => {
         setDonationCents(0);
+        setPlusDedication({});
         setCheckoutStarted(false);
         setPlusOpen(true);
         void trackBillingEvent("checkout_opened", { stage: "amount_picker" });
@@ -74,6 +76,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
         void trackBillingEvent("checkout_opened", { donation_cents: donation });
       } else {
         setDonationCents(0);
+        setPlusDedication({});
         setCheckoutStarted(false);
       }
       setPlusOpen(true);
@@ -102,6 +105,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
           if (!open) {
             void trackBillingEvent("checkout_dismissed", { donation_cents: donationCents });
             setCheckoutStarted(false);
+            setPlusDedication({});
           }
         }}
       >
@@ -127,12 +131,14 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
                     void trackBillingEvent("checkout_opened", { donation_cents: donationCents });
                     setCheckoutStarted(true);
                   }}
+                  dedication={plusDedication}
+                  onDedicationChange={setPlusDedication}
                 />
               </div>
             )}
             {plusOpen && checkoutStarted && (
               <div className="mt-5">
-                <PlusCheckout donationCents={donationCents} />
+                <PlusCheckout donationCents={donationCents} dedication={plusDedication} />
               </div>
             )}
           </div>

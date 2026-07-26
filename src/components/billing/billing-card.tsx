@@ -299,6 +299,7 @@ export function BillingCard() {
               onChange={setNextDonation}
               onConfirm={saveAmount}
               confirmLabel={busy === "amount" ? "Saving…" : "Save"}
+              enableDedication={false}
             />
           </div>
         </DialogContent>

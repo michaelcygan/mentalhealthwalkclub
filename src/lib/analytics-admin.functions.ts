@@ -69,7 +69,7 @@ export interface AnalyticsOverview {
     plusMonthly: number;
     plusYearly: number;
     trialing: number;
-    supporters: number;
+    legacySupporters: number;
     mrrCentsEstimate: number;
   };
 }
@@ -224,7 +224,7 @@ export const adminAnalyticsOverview = createServerFn({ method: "GET" })
       .from("subscriptions")
       .select("subscription_kind,status,price_id,monthly_amount_cents,current_period_end")
       .limit(20000);
-    let activePlus = 0, plusMonthly = 0, plusYearly = 0, trialing = 0, supporters = 0, mrrCentsEstimate = 0;
+    let activePlus = 0, plusMonthly = 0, plusYearly = 0, trialing = 0, legacySupporters = 0, mrrCentsEstimate = 0;
     for (const s of (subs ?? []) as Array<{ subscription_kind: string | null; status: string | null; price_id: string | null; monthly_amount_cents: number | null; current_period_end: string | null }>) {
       const stillValid = !s.current_period_end || new Date(s.current_period_end).getTime() > now;
       const active = (s.status === "active" || s.status === "trialing" || s.status === "past_due") && stillValid;
@@ -235,7 +235,7 @@ export const adminAnalyticsOverview = createServerFn({ method: "GET" })
         if (s.price_id === "plus_yearly") { plusYearly += 1; mrrCentsEstimate += Math.round(8000 / 12) * 1; } // ~$80/yr rough
         else if (s.price_id === "plus_monthly") { plusMonthly += 1; mrrCentsEstimate += 800; }
       } else if (s.subscription_kind === "supporter") {
-        supporters += 1;
+        legacySupporters += 1;
         mrrCentsEstimate += s.monthly_amount_cents ?? 0;
       }
     }
@@ -268,6 +268,6 @@ export const adminAnalyticsOverview = createServerFn({ method: "GET" })
         notificationsByKind,
       },
       listen: { topTerms, zeroResultTerms, actions },
-      monetization: { activePlus, plusMonthly, plusYearly, trialing, supporters, mrrCentsEstimate },
+      monetization: { activePlus, plusMonthly, plusYearly, trialing, legacySupporters, mrrCentsEstimate },
     };
   });
