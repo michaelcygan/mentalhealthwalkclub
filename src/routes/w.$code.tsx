@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt";
 import WalkWeather from "@/components/walk-page/walk-weather";
+import { WalkWeatherPeek } from "@/components/walk-page/walk-weather-peek";
 import { Atmosphere } from "@/components/walk-page/atmosphere";
 import { RsvpConfetti } from "@/components/walk-page/rsvp-confetti";
 import { GuestRsvpSheet } from "@/components/walk-page/guest-rsvp-sheet";
