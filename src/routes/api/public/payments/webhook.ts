@@ -359,6 +359,12 @@ async function handleWebhook(req: Request, env: StripeEnv) {
   const eventId = (event as { id?: string }).id ?? `evt_${eventCreated}`;
 
   switch (event.type) {
+    case "checkout.session.completed":
+      await safe(
+        () => handleCheckoutSessionCompleted(event.data.object, env, eventId, eventCreated),
+        event.type,
+      );
+      break;
     case "customer.subscription.created":
     case "customer.subscription.updated":
       await safe(
@@ -394,6 +400,7 @@ async function handleWebhook(req: Request, env: StripeEnv) {
     default:
       console.log("Unhandled event:", event.type);
   }
+
 }
 
 export const Route = createFileRoute("/api/public/payments/webhook")({
