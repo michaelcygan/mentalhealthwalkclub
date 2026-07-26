@@ -1,49 +1,36 @@
-## Radio V1 — Follow-up Pass (Waves 5, 7, 8, 10–14)
+## Radio V1 QA Pass
 
-Continue the mixed-source Radio upgrade. Waves 1–4, 6, and part of 9 already landed (schema, source-aware server fns, resolveRadioItem, cycle-based client, admin station editor, admin feed panel). This pass finishes the rest.
+End-to-end verification of the mixed-source Radio flow with fixes applied inline for anything blocking.
 
-### Wave 5 — Reordering & bulk actions in station editor
-- Drag-to-reorder playlist rows in `admin.radio.$id.tsx` (persist `position` via a new `adminReorderStationTracks` server fn).
-- Row actions: remove, edit `repeat_count`, toggle enabled.
-- Empty-state polish.
+### 1. Static checks
+- `tsgo --noEmit` typecheck
+- Production build (`bun run build`) to catch SSR / bundler issues
+- Grep for any lingering references to the old single-source Radio shape (`audio_url` only, missing `source_type`)
 
-### Wave 7 — Playback-mode + loop controls
-- Station editor: toggles for `playback_mode` (ordered/shuffle) and `loop_enabled`; "Set as default station" action wired to `is_default`.
-- Client honors mode; already partly in `radio-client.ts` — verify shuffle stability and loop pre-enqueue in edge cases (single-track station, empty resolve).
+### 2. Admin flow (Playwright, authenticated as admin)
+- `/admin/radio`: create a station, mark as default (verify only one default enforced), register a podcast feed, toggle `radio_enabled`, run "Sync now"
+- `/admin/radio/$id`: add tracks from all three sources (Upload, External Link, Podcast Episode); reorder via drag; adjust `repeat_count`; toggle `is_active`; run Test Resolve on each source type; remove a track
+- Verify SSRF guard rejects `http://` and private IPs on external link add
 
-### Wave 8 (finish) — Continuous playback UX
-- `now-playing-dock.tsx`: show current source type badge (Upload / Link / Podcast) and station name; auto-advance on `ended`; skip-forward/back across cycles.
-- Handle resolve failures gracefully (skip + toast, don't stall the cycle).
+### 3. Public + playback flow
+- `/` home Radio rail: default station shows star badge, Resume chip appears after playing once, mobile scroller + desktop grid both render
+- `/radio/$slug`: tracklist renders with source badges, play a track, verify continuous playback advances through cycle, shuffle vs ordered mode honored, loop pre-enqueues next cycle
+- Dock: current track shows correct title/source, next/prev works across source types, resume on reload restores station + position
 
-### Wave 10 — Resume & session persistence
-- Persist `{stationId, cycleIndex, trackId, positionSec}` to `localStorage` on pause/unmount.
-- On dock mount, offer "Resume {station}" chip when a recent session exists (<24h).
+### 4. Safety + metering
+- Free-tier monthly cap still enforced (UpsellSheet triggers)
+- Signed-out user can browse `/radio/$slug` but paywall/limit behaves correctly
+- Non-adult-active user: Radio browsing works (not gated), adult-only actions still gate
 
-### Wave 11 — Public Radio surface
-- `radio-rail.tsx`: use `is_default` to pin the default station first; show source-mix chips (e.g. "Uploads · Podcast").
-- Station detail route `/radio/$id` (public read) showing tracklist w/ source badges and a Play button that boots the dock.
+### 5. Deferred items to confirm (from prior message)
+Not blocking QA, but flag status of:
+- Wave 7 (playback controls polish)
+- Wave 8 (continuous UX details)
+- Wave 10 (metering edges)
+- Wave 12 (public discovery surfaces)
+- Wave 14 (final metrics/telemetry)
 
-### Wave 12 — Free-tier metering integration
-- Confirm `radio_monthly_usage` increments once per resolved item (not per cycle repeat). Adjust in `resolveRadioItem` or client boundary.
-- Upsell sheet copy tuned for mixed sources.
+Any regressions found get fixed in the same pass; anything larger gets called out with a recommendation.
 
-### Wave 13 — Admin QA tools
-- "Test resolve" button per row in station editor: calls `resolveRadioItem`, shows resolved URL + duration + any error inline.
-- Feed panel: "Sync now" per feed with last-sync timestamp + error surface.
-
-### Wave 14 — Launch QA + build
-- `tsgo --noEmit` clean.
-- Manual smoke: create station with 1 upload + 1 link + 2 podcast episodes, ordered + looped; verify continuous playback across cycles; verify shuffle; verify free-tier cap; verify SSRF rejection on private URL.
-- Verify signed-out users can still hear the default station within free cap.
-
-### Technical notes
-- New server fn: `adminReorderStationTracks({ stationId, orderedIds })` — single `UPDATE ... FROM (VALUES ...)` to rewrite positions atomically.
-- Reorder UI: `@dnd-kit/core` + `@dnd-kit/sortable` (already common in the stack; confirm on install).
-- Resume storage key: `mhwc:radio:last-session`; guarded by `useHydrated`.
-- Station detail route is public read via server publishable client + narrow `TO anon` SELECT on `radio_stations`/`radio_tracks` (already in place from earlier waves — verify).
-- Metering: move increment into `resolveRadioItem` handler so cycle repeats don't double-count; key on `(user_id, month, item_id)` de-dupe.
-
-### Out of scope for this pass
-- User-created stations (admin-only stays).
-- Cross-device sync of resume state.
-- Analytics dashboards for Radio.
+### Deliverable
+A short QA report: what passed, what was fixed inline, and any remaining follow-ups for the deferred waves before launch.
