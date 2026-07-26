@@ -109,7 +109,20 @@ function WalkPage() {
             {event.city ? `, ${event.city}` : ""}
           </p>
           {host?.display_name ? (
-            <p className="mt-1 text-xs text-muted-foreground">Hosted by {host.display_name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Hosted by{" "}
+              {host.username ? (
+                <Link
+                  to="/u/$username"
+                  params={{ username: host.username }}
+                  className="font-medium text-foreground underline-offset-2 hover:underline"
+                >
+                  {host.display_name}
+                </Link>
+              ) : (
+                host.display_name
+              )}
+            </p>
           ) : null}
           {(group || circle) && (
             <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-foreground/80">
