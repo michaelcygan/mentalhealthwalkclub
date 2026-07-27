@@ -33,6 +33,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { WalkPlacePicker, type WalkPlaceSelection } from "@/components/walk-page/walk-place-picker";
+
 
 type EventRow = {
   id: string;
@@ -524,13 +527,10 @@ type FormState = {
   title: string;
   description: string;
   vibe: string;
-  venue_name: string;
-  address: string;
+  place: WalkPlaceSelection | null;
   city: string;
   state: string;
   country: string;
-  lat: string;
-  lng: string;
   timezone: string;
   first_local_date: string;
   start_local_time: string;
@@ -543,6 +543,8 @@ type FormState = {
   host_mode: "community" | "self";
   active: boolean;
   horizon_occurrences: number;
+  allow_off_hours: boolean;
+  allow_long_duration: boolean;
 };
 
 function toForm(s?: SeedSchedule | null): FormState {
@@ -554,13 +556,10 @@ function toForm(s?: SeedSchedule | null): FormState {
       title: "",
       description: "",
       vibe: "",
-      venue_name: "",
-      address: "",
+      place: null,
       city: "",
       state: "",
       country: "",
-      lat: "",
-      lng: "",
       timezone: localTz,
       first_local_date: d.toISOString().slice(0, 10),
       start_local_time: "11:00",
@@ -573,20 +572,38 @@ function toForm(s?: SeedSchedule | null): FormState {
       host_mode: "community",
       active: true,
       horizon_occurrences: 6,
+      allow_off_hours: false,
+      allow_long_duration: false,
     };
   }
+  const place: WalkPlaceSelection | null = s.place_id
+    ? {
+        id: s.place_id,
+        name: s.venue_name ?? "Selected place",
+        address: s.address,
+        hero_url: null,
+        lat: s.lat != null ? Number(s.lat) : null,
+        lng: s.lng != null ? Number(s.lng) : null,
+      }
+    : s.venue_name || s.address
+      ? {
+          id: null,
+          name: s.venue_name ?? s.address ?? "",
+          address: s.address,
+          hero_url: null,
+          lat: s.lat != null ? Number(s.lat) : null,
+          lng: s.lng != null ? Number(s.lng) : null,
+        }
+      : null;
   return {
     internal_name: s.internal_name,
     title: s.title,
     description: s.description ?? "",
     vibe: s.vibe ?? "",
-    venue_name: s.venue_name ?? "",
-    address: s.address ?? "",
+    place,
     city: s.city,
     state: s.state ?? "",
     country: s.country ?? "",
-    lat: s.lat != null ? String(s.lat) : "",
-    lng: s.lng != null ? String(s.lng) : "",
     timezone: s.timezone,
     first_local_date: s.first_local_date,
     start_local_time: s.start_local_time.slice(0, 5),
@@ -599,8 +616,11 @@ function toForm(s?: SeedSchedule | null): FormState {
     host_mode: s.host_user_id ? "self" : "community",
     active: s.active,
     horizon_occurrences: s.horizon_occurrences,
+    allow_off_hours: false,
+    allow_long_duration: false,
   };
 }
+
 
 function ScheduleSheet({
   open,
@@ -623,8 +643,8 @@ function ScheduleSheet({
       toast.error("Fill in name, title and city.");
       return;
     }
-    if (!form.venue_name.trim() && !form.address.trim()) {
-      toast.error("Provide a venue name or address for the meeting point.");
+    if (!form.place || !form.place.name.trim()) {
+      toast.error("Pick or enter a meeting point.");
       return;
     }
     setSaving(true);
@@ -634,14 +654,14 @@ function ScheduleSheet({
         title: form.title.trim(),
         description: form.description.trim() || null,
         vibe: form.vibe.trim() || null,
-        place_id: null,
-        venue_name: form.venue_name.trim() || null,
-        address: form.address.trim() || null,
+        place_id: form.place.id,
+        venue_name: form.place.name.trim() || null,
+        address: form.place.address?.trim() || null,
         city: form.city.trim(),
         state: form.state.trim() || null,
         country: form.country.trim() || null,
-        lat: form.lat ? Number(form.lat) : null,
-        lng: form.lng ? Number(form.lng) : null,
+        lat: form.place.lat,
+        lng: form.place.lng,
         timezone: form.timezone,
         first_local_date: form.first_local_date,
         start_local_time: form.start_local_time,
@@ -654,7 +674,10 @@ function ScheduleSheet({
         host_mode: form.host_mode,
         active: form.active,
         horizon_occurrences: form.horizon_occurrences,
+        allow_off_hours: form.allow_off_hours,
+        allow_long_duration: form.allow_long_duration,
       };
+
       if (existing) {
         const res = await updateSeedSchedule({ data: { id: existing.id, ...payload } });
         setResult({ preserved: res.preserved, removed: res.removed, created: res.created });
@@ -742,30 +765,16 @@ function ScheduleSheet({
             <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
           </Field>
 
-          <Field label="Venue / meeting point name">
-            <Input
-              value={form.venue_name}
-              onChange={(e) => setForm({ ...form, venue_name: e.target.value })}
-              placeholder="Winnemac Park — Damen entrance"
+          <Field label="Meeting point">
+            <WalkPlacePicker
+              value={form.place}
+              onChange={(v) => setForm({ ...form, place: v })}
+              allowManual
+              placeholder="Search a park, cafe, plaza…"
+              hint="Pick a Photon result to auto-fill address and coordinates, or enter manually."
             />
           </Field>
 
-          <Field label="Address (optional)">
-            <Input
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="5001 N Damen Ave, Chicago, IL"
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Latitude (optional)">
-              <Input value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
-            </Field>
-            <Field label="Longitude (optional)">
-              <Input value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} />
-            </Field>
-          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="First date">
@@ -904,6 +913,32 @@ function ScheduleSheet({
               </button>
             </div>
           </Field>
+
+          <Field label="Safety overrides">
+            <div className="space-y-2 rounded-xl border border-border bg-card/50 p-3 text-xs">
+              <label className="flex items-center justify-between gap-3">
+                <span>
+                  Allow off-hours start
+                  <span className="ml-1 text-muted-foreground">(outside 06:00–21:00 local)</span>
+                </span>
+                <Switch
+                  checked={form.allow_off_hours}
+                  onCheckedChange={(v) => setForm({ ...form, allow_off_hours: v })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3">
+                <span>
+                  Allow long duration
+                  <span className="ml-1 text-muted-foreground">(over 180 min)</span>
+                </span>
+                <Switch
+                  checked={form.allow_long_duration}
+                  onCheckedChange={(v) => setForm({ ...form, allow_long_duration: v })}
+                />
+              </label>
+            </div>
+          </Field>
+
 
           {result && (
             <div className="rounded-2xl border border-border bg-card/60 p-3 text-xs text-muted-foreground">

@@ -40,7 +40,64 @@ const ScheduleInput = z.object({
   host_mode: z.enum(["community", "self"]).default("community"),
   active: z.boolean().default(true),
   horizon_occurrences: z.number().int().min(1).max(12).default(6),
+
+  // Safety overrides (Wave 8). Default deny; admin can opt in per schedule.
+  allow_off_hours: z.boolean().default(false),
+  allow_long_duration: z.boolean().default(false),
 });
+
+const MIN_HOUR = 6; // 06:00 local
+const MAX_HOUR_START = 21; // last legal start is 21:00 local
+const MAX_ACTIVE_PER_CITY = 20;
+const LONG_DURATION_MINUTES = 180;
+
+function parseLocalHour(t: string): number {
+  const [hh] = t.split(":").map((n) => parseInt(n, 10));
+  return hh;
+}
+
+function assertSafetyGuardrails(input: {
+  start_local_time?: string;
+  duration_minutes?: number;
+  allow_off_hours?: boolean;
+  allow_long_duration?: boolean;
+  place_id?: string | null;
+  venue_name?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  city?: string;
+}) {
+  if (input.start_local_time && !input.allow_off_hours) {
+    const hh = parseLocalHour(input.start_local_time);
+    if (hh < MIN_HOUR || hh > MAX_HOUR_START) {
+      throw new Error(
+        `Start time must be between ${String(MIN_HOUR).padStart(2, "0")}:00 and ${String(MAX_HOUR_START).padStart(2, "0")}:00 local. Enable "off-hours" if this is intentional.`,
+      );
+    }
+  }
+  if (
+    input.duration_minutes != null &&
+    input.duration_minutes > LONG_DURATION_MINUTES &&
+    !input.allow_long_duration
+  ) {
+    throw new Error(
+      `Walks longer than ${LONG_DURATION_MINUTES} minutes need "long duration" enabled.`,
+    );
+  }
+  // Location sufficiency
+  if (input.city !== undefined) {
+    const hasPlace = !!input.place_id;
+    const hasVenueAndCoords =
+      !!input.venue_name && (input.lat != null || input.lng != null || !!input.address);
+    if (!hasPlace && !hasVenueAndCoords) {
+      throw new Error(
+        "Provide a place, or a venue name plus address or lat/lng, so the seed points somewhere real.",
+      );
+    }
+  }
+}
+
 
 function assertValidTimezone(tz: string) {
   try {
@@ -171,13 +228,35 @@ export const createSeedSchedule = createServerFn({ method: "POST" })
       lng: data.lng,
     });
 
-    // Basic safety: require some meeting location text so seed walks can't
-    // point at "nowhere".
-    if (!snap.place_id && !snap.venue_name && !data.address) {
-      throw new Error("Provide a place or a meeting-point description.");
+    assertSafetyGuardrails({
+      start_local_time: data.start_local_time,
+      duration_minutes: data.duration_minutes,
+      allow_off_hours: data.allow_off_hours,
+      allow_long_duration: data.allow_long_duration,
+      place_id: snap.place_id,
+      venue_name: snap.venue_name,
+      address: snap.address,
+      lat: snap.lat,
+      lng: snap.lng,
+      city: data.city,
+    });
+
+    // City cap: no more than MAX_ACTIVE_PER_CITY active schedules per city.
+    if (data.active) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", data.city)
+        .eq("active", true);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
     }
 
     const host_user_id = data.host_mode === "self" ? context.userId : null;
+
 
     const { data: row, error } = await supabaseAdmin
       .from("walk_seed_schedules")
@@ -266,6 +345,44 @@ export const updateSeedSchedule = createServerFn({ method: "POST" })
         : data.host_mode === "self"
           ? context.userId
           : null;
+
+    // Guardrails against the *effective* post-update values.
+    const effectiveStart = data.start_local_time ?? existing.start_local_time;
+    const effectiveDuration = data.duration_minutes ?? existing.duration_minutes;
+    const effectiveCity = data.city ?? existing.city;
+    const effectiveActive = data.active ?? existing.active;
+    assertSafetyGuardrails({
+      start_local_time: effectiveStart,
+      duration_minutes: effectiveDuration,
+      allow_off_hours: data.allow_off_hours ?? false,
+      allow_long_duration: data.allow_long_duration ?? false,
+      place_id: snap.place_id,
+      venue_name: snap.venue_name,
+      address: snap.address,
+      lat: snap.lat,
+      lng: snap.lng,
+      city: effectiveCity,
+    });
+
+    // Re-check city cap when activating an inactive schedule, or when the city
+    // is changing while it stays active.
+    const activating = effectiveActive && !existing.active;
+    const cityChanging =
+      effectiveActive && data.city !== undefined && data.city !== existing.city;
+    if (activating || cityChanging) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", effectiveCity)
+        .eq("active", true)
+        .neq("id", data.id);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
+    }
+
 
     const recurrenceChanged =
       data.timezone !== undefined ||
@@ -399,6 +516,28 @@ export const resumeSeedSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // City cap on resume.
+    const { data: existing } = await supabaseAdmin
+      .from("walk_seed_schedules")
+      .select("city,active")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!existing) throw new Error("Schedule not found");
+    if (!existing.active) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", existing.city)
+        .eq("active", true)
+        .neq("id", data.id);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("walk_seed_schedules")
       .update({ active: true })
@@ -409,6 +548,7 @@ export const resumeSeedSchedule = createServerFn({ method: "POST" })
     });
     return { ok: true, materialize: matResult };
   });
+
 
 /* ---------- manual materialize ---------- */
 

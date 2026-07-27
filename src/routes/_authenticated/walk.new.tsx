@@ -1,20 +1,16 @@
 import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { ArrowLeft, MapPin, Loader2, Lock, Globe, Users, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Globe, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  searchWalkPlaces,
-  getOrCreateWalkPlace,
-  type PlaceSuggestion,
-} from "@/lib/walk-places.functions";
 import { listMyHostableGroups, createWalk, getWalkPrefill } from "@/lib/walks.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { WhenPicker } from "@/components/walk-page/when-picker";
 import { FirstWalkCoach } from "@/components/walk-page/first-walk-coach";
+import { WalkPlacePicker, type WalkPlaceSelection } from "@/components/walk-page/walk-place-picker";
 import { useAuth } from "@/lib/auth-context";
 
 const SearchSchema = z.object({
@@ -53,19 +49,7 @@ function ComposeWalkPage() {
   const [startsAt, setStartsAt] = useState(defaultStarts);
 
   // place
-  const [placeQuery, setPlaceQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [pickedPlace, setPickedPlace] = useState<{
-    id: string;
-    name: string;
-    address: string | null;
-    hero_url: string | null;
-    lat: number | null;
-    lng: number | null;
-  } | null>(null);
-  const [resolvingPlace, setResolvingPlace] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [pickedPlace, setPickedPlace] = useState<WalkPlaceSelection | null>(null);
 
   // audience
   const [audience, setAudience] = useState<Audience>("link_only");
@@ -177,7 +161,6 @@ function ComposeWalkPage() {
               lat: p.lat != null ? Number(p.lat) : null,
               lng: p.lng != null ? Number(p.lng) : null,
             });
-            setPlaceQuery(p.name);
           }
         }
       })
@@ -187,75 +170,12 @@ function ComposeWalkPage() {
     };
   }, [search.from]);
 
-  // debounced place search with stale-response guard
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchSeq = useRef(0);
-  const [searchError, setSearchError] = useState(false);
+  // Auto-fill title once when a place is picked, if user hasn't set one yet.
   useEffect(() => {
-    if (pickedPlace) return; // don't search while a place is picked
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    const q = placeQuery.trim();
-    if (q.length < 3) {
-      setSuggestions([]);
-      setSearchError(false);
-      return;
-    }
-    searchTimer.current = setTimeout(async () => {
-      const seq = ++searchSeq.current;
-      setSearching(true);
-      setSearchError(false);
-      try {
-        const res = await searchWalkPlaces({
-          data: { query: q, near: deviceCoords ?? undefined },
-        });
-        if (seq !== searchSeq.current) return; // stale
-        setSuggestions(res.results);
-        setShowSuggestions(true);
-      } catch (e) {
-        if (seq !== searchSeq.current) return;
-        console.error(e);
-        setSearchError(true);
-        setSuggestions([]);
-      } finally {
-        if (seq === searchSeq.current) setSearching(false);
-      }
-    }, 400);
-    return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-    };
-  }, [placeQuery, pickedPlace, deviceCoords]);
+    if (pickedPlace?.id && !title) setTitle(`Walk at ${pickedPlace.name}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedPlace?.id]);
 
-  async function pickSuggestion(s: PlaceSuggestion) {
-    setShowSuggestions(false);
-    searchSeq.current++; // invalidate any in-flight search
-    setResolvingPlace(true);
-    try {
-      const { place } = await getOrCreateWalkPlace({
-        data: { suggestion: s },
-      });
-      setPickedPlace({
-        id: place.id,
-        name: place.name,
-        address: place.address,
-        hero_url: place.hero_url,
-        lat: place.lat != null ? Number(place.lat) : null,
-        lng: place.lng != null ? Number(place.lng) : null,
-      });
-      setPlaceQuery(place.name);
-      if (!title) setTitle(`Walk at ${place.name}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load that place.");
-    } finally {
-      setResolvingPlace(false);
-    }
-  }
-
-  function clearPlace() {
-    setPickedPlace(null);
-    setPlaceQuery("");
-    setSuggestions([]);
-    setSearchError(false);
-  }
 
   async function submit() {
     if (!title.trim()) return toast.error("Give your walk a title.");
@@ -307,82 +227,14 @@ function ComposeWalkPage() {
       {/* WHERE */}
       <section ref={whereRef} className="mt-6 space-y-2">
         <Label>Where</Label>
-        {pickedPlace ? (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
-            {pickedPlace.hero_url ? (
-              <img src={pickedPlace.hero_url} alt="" className="h-32 w-full object-cover" loading="lazy" />
-            ) : null}
-            <div className="flex items-start gap-3 p-4">
-              <MapPin className="mt-0.5 h-4 w-4 text-forest" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{pickedPlace.name}</div>
-                {pickedPlace.address ? (
-                  <div className="truncate text-xs text-muted-foreground">{pickedPlace.address}</div>
-                ) : null}
-              </div>
-              <button
-                onClick={clearPlace}
-                className="rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-accent/40"
-              >
-                Change
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={placeQuery}
-                onChange={(e) => setPlaceQuery(e.target.value)}
-                onFocus={() => suggestions.length && setShowSuggestions(true)}
-                placeholder="Search a park, trail, neighborhood…"
-                inputMode="search"
-                autoComplete="off"
-                className="pl-9"
-              />
-              {(searching || resolvingPlace) && (
-                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.provider_place_id}
-                    onClick={() => pickSuggestion(s)}
-                    className="block w-full px-4 py-3 text-left hover:bg-accent/40"
-                  >
-                    <div className="text-sm font-medium">{s.name}</div>
-                    {s.address ? (
-                      <div className="truncate text-xs text-muted-foreground">{s.address}</div>
-                    ) : null}
-                  </button>
-                ))}
-                <div className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
-                  Place data ©{" "}
-                  <a
-                    href="https://www.openstreetmap.org/copyright"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    OpenStreetMap contributors
-                  </a>
-                </div>
-              </div>
-            )}
-            {showSuggestions && !searching && suggestions.length === 0 && placeQuery.trim().length >= 3 && (
-              <div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-soft">
-                {searchError ? "Couldn't search right now — enter a meeting point below." : "No places found — try a different name or enter a meeting point below."}
-              </div>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              Or leave blank and add a meeting point below — you can pick later.
-            </p>
-          </div>
-        )}
+        <WalkPlacePicker
+          value={pickedPlace}
+          onChange={setPickedPlace}
+          near={deviceCoords}
+          hint="Or leave blank and add a meeting point below — you can pick later."
+        />
       </section>
+
 
       {/* WHEN */}
       <section ref={whenRef} className="mt-6 space-y-2">
