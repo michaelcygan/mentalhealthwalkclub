@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdultAccount } from "@/lib/account-eligibility.functions";
+import { SOLO_WALK_MAX_SECONDS, SOLO_WALK_REFLECTION_PROMPT } from "@/lib/solo-walk.constants";
 
 export interface SoloWalkSession {
   id: string;
@@ -168,17 +169,27 @@ export const completeSoloWalk = createServerFn({ method: "POST" })
 
     const startedMs = new Date(row.started_at).getTime();
     const nowMs = Date.now();
-    const duration = Math.max(0, Math.round((nowMs - startedMs) / 1000));
+    const rawDuration = Math.max(0, Math.round((nowMs - startedMs) / 1000));
+    // Hard cap: protects against forgotten timers, stale/direct requests, and
+    // walks reopened days later. Server owns duration; client input is ignored.
+    const duration = Math.min(rawDuration, SOLO_WALK_MAX_SECONDS);
+    const endedAtIso = new Date(startedMs + duration * 1000).toISOString();
+
+    const reflectionNote = data.reflectionNote?.trim() || null;
+    const explicitPrompt = data.reflectionPrompt?.trim() || null;
+    const reflectionPrompt = reflectionNote
+      ? explicitPrompt || SOLO_WALK_REFLECTION_PROMPT
+      : null;
 
     const update = await supabase
       .from("walk_sessions")
       .update({
         status: "completed",
-        ended_at: new Date(nowMs).toISOString(),
+        ended_at: endedAtIso,
         duration_seconds: duration,
         mood_after: data.moodAfter?.trim() || null,
-        reflection_note: data.reflectionNote?.trim() || null,
-        reflection_prompt: data.reflectionPrompt?.trim() || null,
+        reflection_note: reflectionNote,
+        reflection_prompt: reflectionPrompt,
       })
       .eq("id", data.id)
       .eq("user_id", userId)
@@ -196,6 +207,55 @@ export const completeSoloWalk = createServerFn({ method: "POST" })
       if (reread.error) throw new Error(reread.error.message);
       return normalize(reread.data as unknown as RawRow);
     }
+    return normalize(update.data as unknown as RawRow);
+  });
+
+const SaveReflectionInput = z.object({
+  id: z.string().uuid(),
+  moodAfter: MoodSchema.optional(),
+  reflectionNote: ReflectionSchema.optional(),
+});
+
+/**
+ * Update reflection fields on an already-completed Solo Walk. Idempotent;
+ * used by the finish screen so the walk is ended immediately and the note
+ * can be saved (or edited) separately.
+ */
+export const saveSoloWalkReflection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => SaveReflectionInput.parse(d))
+  .handler(async ({ data, context }): Promise<SoloWalkSession> => {
+    const { supabase, userId } = context;
+
+    const found = await supabase
+      .from("walk_sessions")
+      .select(SELECT_COLS + ",user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (found.error) throw new Error(found.error.message);
+    if (!found.data) throw new Error("walk not found");
+    const row = found.data as unknown as RawRow & { user_id: string };
+    if (row.user_id !== userId) throw new Error("forbidden");
+    if (row.walk_type !== "solo") throw new Error("not a solo walk");
+    if (row.status !== "completed") throw new Error("walk is not completed");
+
+    const reflectionNote = data.reflectionNote?.trim() || null;
+    const reflectionPrompt = reflectionNote ? SOLO_WALK_REFLECTION_PROMPT : null;
+
+    const update = await supabase
+      .from("walk_sessions")
+      .update({
+        mood_after: data.moodAfter?.trim() || null,
+        reflection_note: reflectionNote,
+        reflection_prompt: reflectionPrompt,
+      })
+      .eq("id", data.id)
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .eq("walk_type", "solo")
+      .select(SELECT_COLS)
+      .single();
+    if (update.error) throw new Error(update.error.message);
     return normalize(update.data as unknown as RawRow);
   });
 
