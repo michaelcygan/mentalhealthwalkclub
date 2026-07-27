@@ -765,30 +765,16 @@ function ScheduleSheet({
             <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
           </Field>
 
-          <Field label="Venue / meeting point name">
-            <Input
-              value={form.venue_name}
-              onChange={(e) => setForm({ ...form, venue_name: e.target.value })}
-              placeholder="Winnemac Park — Damen entrance"
+          <Field label="Meeting point">
+            <WalkPlacePicker
+              value={form.place}
+              onChange={(v) => setForm({ ...form, place: v })}
+              allowManual
+              placeholder="Search a park, cafe, plaza…"
+              hint="Pick a Photon result to auto-fill address and coordinates, or enter manually."
             />
           </Field>
 
-          <Field label="Address (optional)">
-            <Input
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="5001 N Damen Ave, Chicago, IL"
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Latitude (optional)">
-              <Input value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
-            </Field>
-            <Field label="Longitude (optional)">
-              <Input value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} />
-            </Field>
-          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="First date">
