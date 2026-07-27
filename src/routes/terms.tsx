@@ -60,7 +60,7 @@ function TermsPage() {
 
       <h2>5. Subscriptions (Walk Club Plus)</h2>
       <ul>
-        <li>Plus is offered at $2.99/month (or $29/year), with a 30-day free trial for new subscribers. The $2.99 base unlocks unlimited MHWC Radio and keeps the service running. Every dollar above $2.99 is designated to the 988 Suicide &amp; Crisis Lifeline.</li>
+        <li>Plus is offered at $2.99/month (or $29/year), with a 30-day free trial for new subscribers. The $2.99 base unlocks unlimited Radio and keeps the service running. Every dollar above $2.99 is designated to the 988 Suicide &amp; Crisis Lifeline.</li>
         <li>Trials and subscriptions auto-renew until you cancel.</li>
         <li>You can cancel anytime from your Profile (web) or in the App Store / Google Play settings (mobile).</li>
         <li>Refunds are handled by the platform that processed your payment (Stripe, Apple, or Google) under their refund policies.</li>

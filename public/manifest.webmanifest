@@ -1,7 +1,7 @@
 {
   "name": "Mental Health Walk Club",
   "short_name": "MH Walk Club",
-  "description": "Post walks, join groups, keep a private journal, and listen to MHWC Radio. You don't have to walk through it alone.",
+  "description": "Post walks, join groups, keep a private journal, and listen to Radio. You don't have to walk through it alone.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

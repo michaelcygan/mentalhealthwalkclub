@@ -147,7 +147,7 @@ export function BillingCard() {
           <div className="flex-1">
             <h3 className="font-serif text-lg leading-tight">Walk Club Plus</h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              $2.99/mo unlocks unlimited MHWC Radio and keeps the club running. Every cent above is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
+              $2.99/mo unlocks unlimited Radio and keeps the club running. Every cent above is designated to the 988 Suicide &amp; Crisis Lifeline. Cancel anytime.
             </p>
             <Button
               onClick={() => openPlusCheckout()}
