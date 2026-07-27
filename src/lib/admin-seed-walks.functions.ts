@@ -311,7 +311,7 @@ export const updateSeedSchedule = createServerFn({ method: "POST" })
 
     const { error: upErr } = await supabaseAdmin
       .from("walk_seed_schedules")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id);
     if (upErr) throw new Error(upErr.message);
 
