@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdultAccount } from "@/lib/account-eligibility.functions";
+import { SOLO_WALK_MAX_SECONDS, SOLO_WALK_REFLECTION_PROMPT } from "@/lib/solo-walk.constants";
 
 export interface SoloWalkSession {
   id: string;
