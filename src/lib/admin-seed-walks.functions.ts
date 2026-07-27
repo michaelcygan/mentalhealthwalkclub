@@ -40,7 +40,64 @@ const ScheduleInput = z.object({
   host_mode: z.enum(["community", "self"]).default("community"),
   active: z.boolean().default(true),
   horizon_occurrences: z.number().int().min(1).max(12).default(6),
+
+  // Safety overrides (Wave 8). Default deny; admin can opt in per schedule.
+  allow_off_hours: z.boolean().default(false),
+  allow_long_duration: z.boolean().default(false),
 });
+
+const MIN_HOUR = 6; // 06:00 local
+const MAX_HOUR_START = 21; // last legal start is 21:00 local
+const MAX_ACTIVE_PER_CITY = 20;
+const LONG_DURATION_MINUTES = 180;
+
+function parseLocalHour(t: string): number {
+  const [hh] = t.split(":").map((n) => parseInt(n, 10));
+  return hh;
+}
+
+function assertSafetyGuardrails(input: {
+  start_local_time?: string;
+  duration_minutes?: number;
+  allow_off_hours?: boolean;
+  allow_long_duration?: boolean;
+  place_id?: string | null;
+  venue_name?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  city?: string;
+}) {
+  if (input.start_local_time && !input.allow_off_hours) {
+    const hh = parseLocalHour(input.start_local_time);
+    if (hh < MIN_HOUR || hh > MAX_HOUR_START) {
+      throw new Error(
+        `Start time must be between ${String(MIN_HOUR).padStart(2, "0")}:00 and ${String(MAX_HOUR_START).padStart(2, "0")}:00 local. Enable "off-hours" if this is intentional.`,
+      );
+    }
+  }
+  if (
+    input.duration_minutes != null &&
+    input.duration_minutes > LONG_DURATION_MINUTES &&
+    !input.allow_long_duration
+  ) {
+    throw new Error(
+      `Walks longer than ${LONG_DURATION_MINUTES} minutes need "long duration" enabled.`,
+    );
+  }
+  // Location sufficiency
+  if (input.city !== undefined) {
+    const hasPlace = !!input.place_id;
+    const hasVenueAndCoords =
+      !!input.venue_name && (input.lat != null || input.lng != null || !!input.address);
+    if (!hasPlace && !hasVenueAndCoords) {
+      throw new Error(
+        "Provide a place, or a venue name plus address or lat/lng, so the seed points somewhere real.",
+      );
+    }
+  }
+}
+
 
 function assertValidTimezone(tz: string) {
   try {
