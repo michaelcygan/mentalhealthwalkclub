@@ -2081,7 +2081,6 @@ export type Database = {
           cached_at: string
           category: string | null
           created_at: string
-          google_place_id: string | null
           hero_attribution: string | null
           hero_source: string | null
           hero_url: string | null
@@ -2090,6 +2089,8 @@ export type Database = {
           lng: number | null
           name: string
           osm_static_url: string | null
+          provider: string
+          provider_place_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2099,7 +2100,6 @@ export type Database = {
           cached_at?: string
           category?: string | null
           created_at?: string
-          google_place_id?: string | null
           hero_attribution?: string | null
           hero_source?: string | null
           hero_url?: string | null
@@ -2108,6 +2108,8 @@ export type Database = {
           lng?: number | null
           name: string
           osm_static_url?: string | null
+          provider?: string
+          provider_place_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2117,7 +2119,6 @@ export type Database = {
           cached_at?: string
           category?: string | null
           created_at?: string
-          google_place_id?: string | null
           hero_attribution?: string | null
           hero_source?: string | null
           hero_url?: string | null
@@ -2126,6 +2127,8 @@ export type Database = {
           lng?: number | null
           name?: string
           osm_static_url?: string | null
+          provider?: string
+          provider_place_id?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -187,39 +187,51 @@ function ComposeWalkPage() {
     };
   }, [search.from]);
 
-  // debounced place search
+  // debounced place search with stale-response guard
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeq = useRef(0);
+  const [searchError, setSearchError] = useState(false);
   useEffect(() => {
     if (pickedPlace) return; // don't search while a place is picked
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = placeQuery.trim();
-    if (q.length < 2) {
+    if (q.length < 3) {
       setSuggestions([]);
+      setSearchError(false);
       return;
     }
     searchTimer.current = setTimeout(async () => {
+      const seq = ++searchSeq.current;
       setSearching(true);
+      setSearchError(false);
       try {
-        const res = await searchWalkPlaces({ data: { query: q } });
+        const res = await searchWalkPlaces({
+          data: { query: q, near: deviceCoords ?? undefined },
+        });
+        if (seq !== searchSeq.current) return; // stale
         setSuggestions(res.results);
         setShowSuggestions(true);
       } catch (e) {
+        if (seq !== searchSeq.current) return;
         console.error(e);
+        setSearchError(true);
+        setSuggestions([]);
       } finally {
-        setSearching(false);
+        if (seq === searchSeq.current) setSearching(false);
       }
-    }, 300);
+    }, 400);
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [placeQuery, pickedPlace]);
+  }, [placeQuery, pickedPlace, deviceCoords]);
 
   async function pickSuggestion(s: PlaceSuggestion) {
     setShowSuggestions(false);
+    searchSeq.current++; // invalidate any in-flight search
     setResolvingPlace(true);
     try {
       const { place } = await getOrCreateWalkPlace({
-        data: { google_place_id: s.google_place_id },
+        data: { suggestion: s },
       });
       setPickedPlace({
         id: place.id,
@@ -242,6 +254,7 @@ function ComposeWalkPage() {
     setPickedPlace(null);
     setPlaceQuery("");
     setSuggestions([]);
+    setSearchError(false);
   }
 
   async function submit() {
@@ -336,7 +349,7 @@ function ComposeWalkPage() {
               <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
                 {suggestions.map((s) => (
                   <button
-                    key={s.google_place_id}
+                    key={s.provider_place_id}
                     onClick={() => pickSuggestion(s)}
                     className="block w-full px-4 py-3 text-left hover:bg-accent/40"
                   >
@@ -346,10 +359,26 @@ function ComposeWalkPage() {
                     ) : null}
                   </button>
                 ))}
+                <div className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
+                  Place data ©{" "}
+                  <a
+                    href="https://www.openstreetmap.org/copyright"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    OpenStreetMap contributors
+                  </a>
+                </div>
+              </div>
+            )}
+            {showSuggestions && !searching && suggestions.length === 0 && placeQuery.trim().length >= 3 && (
+              <div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-soft">
+                {searchError ? "Couldn't search right now — enter a meeting point below." : "No places found — try a different name or enter a meeting point below."}
               </div>
             )}
             <p className="mt-1 text-xs text-muted-foreground">
-              Or leave blank and add details below — you can pick later.
+              Or leave blank and add a meeting point below — you can pick later.
             </p>
           </div>
         )}
