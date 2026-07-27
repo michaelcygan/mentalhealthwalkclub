@@ -22,10 +22,10 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio. Free forever — Plus unlocks unlimited Radio and keeps the service running; every dollar above $2.99 is designated to the 988 Suicide & Crisis Lifeline.",
+          "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to Radio. Free forever — Plus unlocks unlimited Radio and keeps the service running; every dollar above $2.99 is designated to the 988 Suicide & Crisis Lifeline.",
       },
       { property: "og:title", content: "Sign in — Mental Health Walk Club" },
-      { property: "og:description", content: "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to MHWC Radio." },
+      { property: "og:description", content: "Join the Mental Health Walk Club. Post walks, join groups, keep a private journal, and listen to Radio." },
       { property: "og:url", content: "https://mentalhealthwalkclub.com/auth" },
       { property: "og:type", content: "website" },
       { property: "og:image", content: "https://mentalhealthwalkclub.com/__l5e/assets-v1/a9e1c704-8b35-4af9-8a3b-6571b05a857e/og-default-v4.jpg" },
@@ -66,7 +66,7 @@ function AuthPage() {
             <PanelTile icon={Footprints} label="Post walks" sub="Public or private" />
             <PanelTile icon={Users} label="Groups" sub="Find your people" />
             <PanelTile icon={BookHeart} label="Journal" sub="Private reflections" />
-            <PanelTile icon={Headphones} label="Radio" sub="MHWC stations" />
+            <PanelTile icon={Headphones} label="Radio" sub="Stations & shows" />
           </div>
           </div>
 

@@ -78,7 +78,7 @@ function TransparencyPage() {
         </h1>
         <p className="mt-3 max-w-prose text-sm text-muted-foreground">
           Walk Club Plus is <span className="font-medium text-foreground">$2.99/month minimum</span>.
-          The first $2.99 unlocks unlimited MHWC Radio and keeps the app running.{" "}
+          The first $2.99 unlocks unlimited Radio and keeps the app running.{" "}
           <span className="font-medium text-foreground">Every cent above that</span> is designated to the{" "}
           <a
             href="https://988lifeline.org/"
@@ -215,7 +215,7 @@ function TransparencyPage() {
         {[
           {
             q: "Where does the money go?",
-            a: "The first $2.99 of every Plus payment unlocks unlimited MHWC Radio and keeps Mental Health Walk Club running (hosting, safety, moderation). Every cent above $2.99, plus 100% of one-time contributions, is designated to the 988 Suicide & Crisis Lifeline.",
+            a: "The first $2.99 of every Plus payment unlocks unlimited Radio and keeps Mental Health Walk Club running (hosting, safety, moderation). Every cent above $2.99, plus 100% of one-time contributions, is designated to the 988 Suicide & Crisis Lifeline.",
           },
           {
             q: "How often are transfers made?",

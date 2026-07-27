@@ -1,18 +1,25 @@
-## Google removal — final status
+## Rename "MHWC Radio" / "MHWC stations" → "Radio"
 
-I scanned the repo for any lingering Google Maps / Places references after you deleted the connector.
+Replace every user-facing occurrence with just "Radio". Handle the two grammar cases:
 
-**Runtime code:** clean. Zero references to `google.maps`, `googleapis.com`, `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_*`, `GOOGLE_MAPS_API_KEY`, or the Lovable Google connector gateway remain in `src/`, server functions, routes, or `.env.example`.
+- `unlimited MHWC Radio` → `unlimited Radio`
+- `listen to MHWC Radio` → `listen to Radio`
+- `MHWC stations` → `Radio`
 
-**Database:** clean. The active `places` table uses `provider` + `provider_place_id`. The only remaining hits are inside two historical migration files (the original 2026-06-05 create + the 2026-07-27 rename that dropped the Google-specific unique constraint). Those are immutable history — they must not be edited, and they don't affect runtime.
+### Files to edit (all string replacements, no logic changes)
 
-**Places pipeline:** Photon (OSM) is the sole geocoder, with Wikipedia/Wikimedia enrichment + static OSM tile fallback for imagery. Walk composer, cached places, and map display all work without any Google credential.
+- `public/manifest.webmanifest` — description
+- `src/routes/transparency.tsx` — lines 81, 218
+- `src/routes/terms.tsx` — line 63
+- `src/routes/impact.tsx` — lines 12, 94, 162, 200
+- `src/routes/auth.tsx` — lines 25, 28, 69 (`sub="MHWC stations"` → `sub="Stations & shows"` or similar; see note)
+- `src/components/auth-form.tsx` — lines 194, 195, 230
+- `src/components/billing/plus-amount-picker.tsx` — lines 32 (comment), 111
+- `src/components/billing/billing-card.tsx` — line 150
+- `src/lib/auth-prompt.tsx` — line 122
 
-**Nothing left to build for the Google → Photon migration.** Since you've now also deleted the workspace connector, the managed secrets are gone and the switch is fully complete.
+### One judgment call
 
-If you'd like, next launch-QA candidates I can pick up (unrelated to Google):
-- Verify Photon search under a flaky-network case (timeout → manual meeting point fallback UX)
-- Final pre-launch pass on the Discover directory + Solo Walk single-page flow with Playwright
-- Any copy/UI polish you've been sitting on
+`auth.tsx:69` shows a tile: `label="Radio" sub="MHWC stations"`. If we just drop "MHWC" the sub becomes "stations" which reads thin next to a label already saying "Radio". I'll change the sub to **"Stations & shows"** so the tile stays informative. If you'd rather just kill the sub entirely or use a different phrase, say so.
 
-Just say the word on which (if any) you want next.
+No DB / schema / route / behavior changes.
