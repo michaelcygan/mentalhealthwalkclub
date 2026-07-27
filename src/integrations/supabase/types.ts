@@ -1137,6 +1137,7 @@ export type Database = {
           practice_id: string | null
           price_cents: number
           region: string | null
+          seed_schedule_id: string | null
           slug: string
           started_at: string | null
           starts_at: string
@@ -1190,6 +1191,7 @@ export type Database = {
           practice_id?: string | null
           price_cents?: number
           region?: string | null
+          seed_schedule_id?: string | null
           slug: string
           started_at?: string | null
           starts_at: string
@@ -1243,6 +1245,7 @@ export type Database = {
           practice_id?: string | null
           price_cents?: number
           region?: string | null
+          seed_schedule_id?: string | null
           slug?: string
           started_at?: string | null
           starts_at?: string
@@ -1282,6 +1285,13 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_seed_schedule_id_fkey"
+            columns: ["seed_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "walk_seed_schedules"
             referencedColumns: ["id"]
           },
         ]
@@ -3152,6 +3162,144 @@ export type Database = {
         }
         Relationships: []
       }
+      walk_seed_schedules: {
+        Row: {
+          accessibility_notes: string | null
+          active: boolean
+          address: string | null
+          city: string
+          country: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          dog_friendly: boolean
+          duration_minutes: number
+          first_local_date: string
+          frequency_weeks: number
+          horizon_occurrences: number
+          host_user_id: string | null
+          id: string
+          internal_name: string
+          kid_friendly: boolean
+          last_error: string | null
+          last_materialized_at: string | null
+          lat: number | null
+          lng: number | null
+          next_occurrence_at: string | null
+          pace: string | null
+          place_id: string | null
+          start_local_time: string
+          state: string | null
+          timezone: string
+          title: string
+          updated_at: string
+          venue_name: string | null
+          vibe: string | null
+        }
+        Insert: {
+          accessibility_notes?: string | null
+          active?: boolean
+          address?: string | null
+          city: string
+          country?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          dog_friendly?: boolean
+          duration_minutes?: number
+          first_local_date: string
+          frequency_weeks?: number
+          horizon_occurrences?: number
+          host_user_id?: string | null
+          id?: string
+          internal_name: string
+          kid_friendly?: boolean
+          last_error?: string | null
+          last_materialized_at?: string | null
+          lat?: number | null
+          lng?: number | null
+          next_occurrence_at?: string | null
+          pace?: string | null
+          place_id?: string | null
+          start_local_time: string
+          state?: string | null
+          timezone: string
+          title: string
+          updated_at?: string
+          venue_name?: string | null
+          vibe?: string | null
+        }
+        Update: {
+          accessibility_notes?: string | null
+          active?: boolean
+          address?: string | null
+          city?: string
+          country?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          dog_friendly?: boolean
+          duration_minutes?: number
+          first_local_date?: string
+          frequency_weeks?: number
+          horizon_occurrences?: number
+          host_user_id?: string | null
+          id?: string
+          internal_name?: string
+          kid_friendly?: boolean
+          last_error?: string | null
+          last_materialized_at?: string | null
+          lat?: number | null
+          lng?: number | null
+          next_occurrence_at?: string | null
+          pace?: string | null
+          place_id?: string | null
+          start_local_time?: string
+          state?: string | null
+          timezone?: string
+          title?: string
+          updated_at?: string
+          venue_name?: string | null
+          vibe?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walk_seed_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_seed_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_seed_schedules_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_seed_schedules_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_seed_schedules_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       walk_sessions: {
         Row: {
           created_at: string
@@ -3475,6 +3623,7 @@ export type Database = {
         Returns: boolean
       }
       is_mutual: { Args: { _a: string; _b: string }; Returns: boolean }
+      materialize_seed_walks: { Args: { _schedule_id?: string }; Returns: Json }
       recompute_walker_metrics: { Args: { _uid: string }; Returns: undefined }
       set_my_dob: { Args: { _dob: string }; Returns: string }
       transparency_feed: {
