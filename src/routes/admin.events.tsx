@@ -33,6 +33,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { WalkPlacePicker, type WalkPlaceSelection } from "@/components/walk-page/walk-place-picker";
+
 
 type EventRow = {
   id: string;
