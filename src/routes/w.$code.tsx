@@ -141,6 +141,19 @@ function WalkPage() {
         ) : null}
       </header>
 
+      {event.is_seed && !event.host_user_id ? (
+        <section className="mt-5 rounded-2xl border border-clay/30 bg-clay/10 p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-clay">Community starter walk</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-foreground/85">
+            Mental Health Walk Club added this time and place to help nearby walkers connect. No official leader is assigned. Please use your judgment, meet in a public place, and remember this is a peer walking meetup — not therapy or crisis care.
+          </p>
+        </section>
+      ) : event.is_seed ? (
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
+          Scheduled through Mental Health Walk Club
+        </p>
+      ) : null}
+
       {event.description ? (
         <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
           {event.description}
