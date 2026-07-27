@@ -227,82 +227,14 @@ function ComposeWalkPage() {
       {/* WHERE */}
       <section ref={whereRef} className="mt-6 space-y-2">
         <Label>Where</Label>
-        {pickedPlace ? (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
-            {pickedPlace.hero_url ? (
-              <img src={pickedPlace.hero_url} alt="" className="h-32 w-full object-cover" loading="lazy" />
-            ) : null}
-            <div className="flex items-start gap-3 p-4">
-              <MapPin className="mt-0.5 h-4 w-4 text-forest" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{pickedPlace.name}</div>
-                {pickedPlace.address ? (
-                  <div className="truncate text-xs text-muted-foreground">{pickedPlace.address}</div>
-                ) : null}
-              </div>
-              <button
-                onClick={clearPlace}
-                className="rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-accent/40"
-              >
-                Change
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={placeQuery}
-                onChange={(e) => setPlaceQuery(e.target.value)}
-                onFocus={() => suggestions.length && setShowSuggestions(true)}
-                placeholder="Search a park, trail, neighborhood…"
-                inputMode="search"
-                autoComplete="off"
-                className="pl-9"
-              />
-              {(searching || resolvingPlace) && (
-                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.provider_place_id}
-                    onClick={() => pickSuggestion(s)}
-                    className="block w-full px-4 py-3 text-left hover:bg-accent/40"
-                  >
-                    <div className="text-sm font-medium">{s.name}</div>
-                    {s.address ? (
-                      <div className="truncate text-xs text-muted-foreground">{s.address}</div>
-                    ) : null}
-                  </button>
-                ))}
-                <div className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
-                  Place data ©{" "}
-                  <a
-                    href="https://www.openstreetmap.org/copyright"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    OpenStreetMap contributors
-                  </a>
-                </div>
-              </div>
-            )}
-            {showSuggestions && !searching && suggestions.length === 0 && placeQuery.trim().length >= 3 && (
-              <div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-soft">
-                {searchError ? "Couldn't search right now — enter a meeting point below." : "No places found — try a different name or enter a meeting point below."}
-              </div>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              Or leave blank and add a meeting point below — you can pick later.
-            </p>
-          </div>
-        )}
+        <WalkPlacePicker
+          value={pickedPlace}
+          onChange={setPickedPlace}
+          near={deviceCoords}
+          hint="Or leave blank and add a meeting point below — you can pick later."
+        />
       </section>
+
 
       {/* WHEN */}
       <section ref={whenRef} className="mt-6 space-y-2">
