@@ -135,6 +135,7 @@ function WalkPage() {
       setElapsed(Math.min(el, SOLO_WALK_MAX_SECONDS));
       if (el >= SOLO_WALK_MAX_SECONDS) {
         setUi((prev) => (prev === "active" ? "timed_out" : prev));
+        setStatus("Timer stopped");
       }
     };
     tick();
