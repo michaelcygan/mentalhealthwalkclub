@@ -516,6 +516,28 @@ export const resumeSeedSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // City cap on resume.
+    const { data: existing } = await supabaseAdmin
+      .from("walk_seed_schedules")
+      .select("city,active")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!existing) throw new Error("Schedule not found");
+    if (!existing.active) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", existing.city)
+        .eq("active", true)
+        .neq("id", data.id);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("walk_seed_schedules")
       .update({ active: true })
@@ -526,6 +548,7 @@ export const resumeSeedSchedule = createServerFn({ method: "POST" })
     });
     return { ok: true, materialize: matResult };
   });
+
 
 /* ---------- manual materialize ---------- */
 
