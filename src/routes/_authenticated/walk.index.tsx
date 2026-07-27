@@ -103,7 +103,12 @@ function WalkPage() {
           setSession(active);
           const el = elapsedFor(active);
           setElapsed(Math.min(el, SOLO_WALK_MAX_SECONDS));
-          setUi(el >= SOLO_WALK_MAX_SECONDS ? "timed_out" : "active");
+          if (el >= SOLO_WALK_MAX_SECONDS) {
+            setUi("timed_out");
+            setStatus("Timer stopped");
+          } else {
+            setUi("active");
+          }
           const draft =
             typeof window !== "undefined" ? window.localStorage.getItem(draftKey(active.id)) : null;
           if (draft) {
