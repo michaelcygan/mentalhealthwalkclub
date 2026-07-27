@@ -346,6 +346,44 @@ export const updateSeedSchedule = createServerFn({ method: "POST" })
           ? context.userId
           : null;
 
+    // Guardrails against the *effective* post-update values.
+    const effectiveStart = data.start_local_time ?? existing.start_local_time;
+    const effectiveDuration = data.duration_minutes ?? existing.duration_minutes;
+    const effectiveCity = data.city ?? existing.city;
+    const effectiveActive = data.active ?? existing.active;
+    assertSafetyGuardrails({
+      start_local_time: effectiveStart,
+      duration_minutes: effectiveDuration,
+      allow_off_hours: data.allow_off_hours ?? false,
+      allow_long_duration: data.allow_long_duration ?? false,
+      place_id: snap.place_id,
+      venue_name: snap.venue_name,
+      address: snap.address,
+      lat: snap.lat,
+      lng: snap.lng,
+      city: effectiveCity,
+    });
+
+    // Re-check city cap when activating an inactive schedule, or when the city
+    // is changing while it stays active.
+    const activating = effectiveActive && !existing.active;
+    const cityChanging =
+      effectiveActive && data.city !== undefined && data.city !== existing.city;
+    if (activating || cityChanging) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", effectiveCity)
+        .eq("active", true)
+        .neq("id", data.id);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
+    }
+
+
     const recurrenceChanged =
       data.timezone !== undefined ||
       data.first_local_date !== undefined ||
