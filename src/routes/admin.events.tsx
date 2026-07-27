@@ -524,13 +524,10 @@ type FormState = {
   title: string;
   description: string;
   vibe: string;
-  venue_name: string;
-  address: string;
+  place: WalkPlaceSelection | null;
   city: string;
   state: string;
   country: string;
-  lat: string;
-  lng: string;
   timezone: string;
   first_local_date: string;
   start_local_time: string;
@@ -543,6 +540,8 @@ type FormState = {
   host_mode: "community" | "self";
   active: boolean;
   horizon_occurrences: number;
+  allow_off_hours: boolean;
+  allow_long_duration: boolean;
 };
 
 function toForm(s?: SeedSchedule | null): FormState {
@@ -554,13 +553,10 @@ function toForm(s?: SeedSchedule | null): FormState {
       title: "",
       description: "",
       vibe: "",
-      venue_name: "",
-      address: "",
+      place: null,
       city: "",
       state: "",
       country: "",
-      lat: "",
-      lng: "",
       timezone: localTz,
       first_local_date: d.toISOString().slice(0, 10),
       start_local_time: "11:00",
@@ -573,20 +569,38 @@ function toForm(s?: SeedSchedule | null): FormState {
       host_mode: "community",
       active: true,
       horizon_occurrences: 6,
+      allow_off_hours: false,
+      allow_long_duration: false,
     };
   }
+  const place: WalkPlaceSelection | null = s.place_id
+    ? {
+        id: s.place_id,
+        name: s.venue_name ?? "Selected place",
+        address: s.address,
+        hero_url: null,
+        lat: s.lat != null ? Number(s.lat) : null,
+        lng: s.lng != null ? Number(s.lng) : null,
+      }
+    : s.venue_name || s.address
+      ? {
+          id: null,
+          name: s.venue_name ?? s.address ?? "",
+          address: s.address,
+          hero_url: null,
+          lat: s.lat != null ? Number(s.lat) : null,
+          lng: s.lng != null ? Number(s.lng) : null,
+        }
+      : null;
   return {
     internal_name: s.internal_name,
     title: s.title,
     description: s.description ?? "",
     vibe: s.vibe ?? "",
-    venue_name: s.venue_name ?? "",
-    address: s.address ?? "",
+    place,
     city: s.city,
     state: s.state ?? "",
     country: s.country ?? "",
-    lat: s.lat != null ? String(s.lat) : "",
-    lng: s.lng != null ? String(s.lng) : "",
     timezone: s.timezone,
     first_local_date: s.first_local_date,
     start_local_time: s.start_local_time.slice(0, 5),
@@ -599,8 +613,11 @@ function toForm(s?: SeedSchedule | null): FormState {
     host_mode: s.host_user_id ? "self" : "community",
     active: s.active,
     horizon_occurrences: s.horizon_occurrences,
+    allow_off_hours: false,
+    allow_long_duration: false,
   };
 }
+
 
 function ScheduleSheet({
   open,
