@@ -228,13 +228,35 @@ export const createSeedSchedule = createServerFn({ method: "POST" })
       lng: data.lng,
     });
 
-    // Basic safety: require some meeting location text so seed walks can't
-    // point at "nowhere".
-    if (!snap.place_id && !snap.venue_name && !data.address) {
-      throw new Error("Provide a place or a meeting-point description.");
+    assertSafetyGuardrails({
+      start_local_time: data.start_local_time,
+      duration_minutes: data.duration_minutes,
+      allow_off_hours: data.allow_off_hours,
+      allow_long_duration: data.allow_long_duration,
+      place_id: snap.place_id,
+      venue_name: snap.venue_name,
+      address: snap.address,
+      lat: snap.lat,
+      lng: snap.lng,
+      city: data.city,
+    });
+
+    // City cap: no more than MAX_ACTIVE_PER_CITY active schedules per city.
+    if (data.active) {
+      const { count: cityCount } = await supabaseAdmin
+        .from("walk_seed_schedules")
+        .select("id", { count: "exact", head: true })
+        .ilike("city", data.city)
+        .eq("active", true);
+      if ((cityCount ?? 0) >= MAX_ACTIVE_PER_CITY) {
+        throw new Error(
+          `At most ${MAX_ACTIVE_PER_CITY} active auto schedules per city. Pause one before adding another.`,
+        );
+      }
     }
 
     const host_user_id = data.host_mode === "self" ? context.userId : null;
+
 
     const { data: row, error } = await supabaseAdmin
       .from("walk_seed_schedules")
