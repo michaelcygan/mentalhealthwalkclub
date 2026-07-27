@@ -3,33 +3,21 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Google Places (New) + Wikipedia lookup for the Plan-a-walk flow.
- * Results are cached in public.places keyed by google_place_id.
+ * Place autosuggest + caching for the Plan-a-walk flow.
  *
- * NOTE: this is distinct from src/lib/places.functions.ts, which aggregates
- * standing-walk meetup locations into a discovery feed.
+ * V1 provider: Photon (OpenStreetMap). Called server-side only.
+ * Legacy rows keyed by Google place IDs continue to exist as
+ * (provider='google', provider_place_id=<old id>) but are not looked
+ * up here anymore — new searches always create provider='osm' rows.
+ *
+ * Distinct from src/lib/places.functions.ts, which aggregates standing-walk
+ * meetup locations into a discovery feed.
  */
-
-const GATEWAY = "https://connector-gateway.lovable.dev/google_maps";
-
-function gatewayHeaders(extra: Record<string, string> = {}) {
-  const lovKey = process.env.LOVABLE_API_KEY;
-  const gKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!lovKey || !gKey) {
-    throw new Error("Google Maps connector not configured");
-  }
-  return {
-    Authorization: `Bearer ${lovKey}`,
-    "X-Connection-Api-Key": gKey,
-    "Content-Type": "application/json",
-    ...extra,
-  };
-}
 
 /* ---------- search ---------- */
 
 const SearchInput = z.object({
-  query: z.string().trim().min(2).max(120),
+  query: z.string().trim().min(3).max(120),
   near: z
     .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
     .optional()
@@ -37,71 +25,78 @@ const SearchInput = z.object({
 });
 
 export type PlaceSuggestion = {
-  google_place_id: string;
+  provider: "osm";
+  provider_place_id: string;
   name: string;
   address: string | null;
-  lat: number | null;
-  lng: number | null;
+  lat: number;
+  lng: number;
+  category: string | null;
+  osm_type: "node" | "way" | "relation" | null;
+  osm_id: string | null;
 };
 
 export const searchWalkPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => SearchInput.parse(d))
   .handler(async ({ data }): Promise<{ results: PlaceSuggestion[] }> => {
-    const body: Record<string, unknown> = { textQuery: data.query, pageSize: 8 };
-    if (data.near) {
-      body.locationBias = {
-        circle: { center: { latitude: data.near.lat, longitude: data.near.lng }, radius: 50000 },
-      };
-    }
-    const res = await fetch(`${GATEWAY}/places/v1/places:searchText`, {
-      method: "POST",
-      headers: gatewayHeaders({
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.location",
-      }),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("places searchText failed", res.status, txt);
+    const {
+      photonSearch,
+      providerPlaceIdFromFeature,
+      buildAddress,
+      categoryFromFeature,
+      displayName,
+    } = await import("./geocoding/photon.server");
+
+    let features;
+    try {
+      features = await photonSearch({
+        query: data.query,
+        lat: data.near?.lat,
+        lng: data.near?.lng,
+        limit: 8,
+      });
+    } catch (e) {
+      console.warn("photon search failed", e);
       return { results: [] };
     }
-    const json = (await res.json()) as {
-      places?: Array<{
-        id: string;
-        displayName?: { text?: string };
-        formattedAddress?: string;
-        location?: { latitude?: number; longitude?: number };
-      }>;
-    };
-    const results: PlaceSuggestion[] = (json.places ?? []).map((p) => ({
-      google_place_id: p.id,
-      name: p.displayName?.text ?? p.formattedAddress ?? "Unknown",
-      address: p.formattedAddress ?? null,
-      lat: p.location?.latitude ?? null,
-      lng: p.location?.longitude ?? null,
-    }));
+
+    const results: PlaceSuggestion[] = [];
+    for (const f of features) {
+      const providerPlaceId = providerPlaceIdFromFeature(f);
+      const [lon, lat] = f.geometry.coordinates ?? [];
+      if (!providerPlaceId || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      results.push({
+        provider: "osm",
+        provider_place_id: providerPlaceId,
+        name: displayName(f.properties),
+        address: buildAddress(f.properties),
+        lat: Number(lat),
+        lng: Number(lon),
+        category: categoryFromFeature(f.properties),
+        osm_type: providerPlaceId.split(":")[0] as "node" | "way" | "relation",
+        osm_id: providerPlaceId.split(":")[1] ?? null,
+      });
+      if (results.length >= 8) break;
+    }
     return { results };
   });
 
 /* ---------- get or create cached place ---------- */
 
-const GetOrCreateInput = z.object({
-  google_place_id: z.string().min(3).max(255),
-});
+const ALLOWED_CATEGORIES = ["park", "trail", "beach", "neighborhood", "city", "cafe"] as const;
 
-function categoryFromTypes(types: string[] | undefined): string | null {
-  if (!types?.length) return null;
-  const t = new Set(types.map((x) => x.toLowerCase()));
-  if (t.has("park") || t.has("national_park") || t.has("state_park")) return "park";
-  if (t.has("hiking_area") || t.has("trail")) return "trail";
-  if (t.has("beach")) return "beach";
-  if (t.has("neighborhood") || t.has("sublocality")) return "neighborhood";
-  if (t.has("locality") || t.has("administrative_area_level_2")) return "city";
-  if (t.has("cafe") || t.has("coffee_shop")) return "cafe";
-  return null;
-}
+const SuggestionInput = z.object({
+  suggestion: z.object({
+    provider: z.literal("osm"),
+    provider_place_id: z.string().min(3).max(64).regex(/^(node|way|relation):\d+$/),
+    name: z.string().trim().min(1).max(200),
+    address: z.string().trim().max(500).nullable().optional(),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    category: z.enum(ALLOWED_CATEGORIES).nullable().optional(),
+  }),
+});
 
 async function fetchWikiSummary(name: string, city: string | null) {
   const q = encodeURIComponent(city ? `${name} ${city}` : name);
@@ -136,63 +131,36 @@ async function fetchWikiSummary(name: string, city: string | null) {
   }
 }
 
+const PLACE_SELECT =
+  "id,provider,provider_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url";
+
 export const getOrCreateWalkPlace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => GetOrCreateInput.parse(d))
+  .inputValidator((d) => SuggestionInput.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const s = data.suggestion;
 
     // 1. cache hit?
     const { data: cached } = await supabaseAdmin
       .from("places")
-      .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
-      .eq("google_place_id", data.google_place_id)
+      .select(PLACE_SELECT)
+      .eq("provider", s.provider)
+      .eq("provider_place_id", s.provider_place_id)
       .maybeSingle();
     if (cached) return { place: cached };
 
-    // 2. fetch place details (Places API New)
-    const detailRes = await fetch(
-      `${GATEWAY}/places/v1/places/${encodeURIComponent(data.google_place_id)}`,
-      {
-        method: "GET",
-        headers: gatewayHeaders({
-          "X-Goog-FieldMask":
-            "id,displayName,formattedAddress,location,types,addressComponents,photos",
-        }),
-      },
-    );
-    if (!detailRes.ok) {
-      const txt = await detailRes.text();
-      console.error("places details failed", detailRes.status, txt);
-      throw new Error("Could not look up that place.");
-    }
-    const place = (await detailRes.json()) as {
-      id: string;
-      displayName?: { text?: string };
-      formattedAddress?: string;
-      location?: { latitude?: number; longitude?: number };
-      types?: string[];
-      addressComponents?: Array<{ longText?: string; types?: string[] }>;
-      photos?: Array<{ name: string }>;
-    };
-
-    const name = place.displayName?.text ?? "Unnamed place";
-    const address = place.formattedAddress ?? null;
-    const lat = place.location?.latitude ?? null;
-    const lng = place.location?.longitude ?? null;
-    const category = categoryFromTypes(place.types);
-    const city =
-      place.addressComponents?.find((c) => c.types?.includes("locality"))?.longText ?? null;
-
-    // 3. wiki lookup for park/trail/neighborhood/city/beach
+    // 2. optional Wikipedia enrichment for outdoor / place-y categories
+    const wikiCats = new Set(["park", "trail", "neighborhood", "city", "beach"]);
     let hero_url: string | null = null;
     let hero_attribution: string | null = null;
     let hero_source: string | null = null;
     let blurb: string | null = null;
     let blurb_source: string | null = null;
 
-    if (category && ["park", "trail", "neighborhood", "city", "beach"].includes(category)) {
-      const wiki = await fetchWikiSummary(name, city);
+    if (s.category && wikiCats.has(s.category)) {
+      const city = s.address?.split(",").map((x) => x.trim())[1] ?? null;
+      const wiki = await fetchWikiSummary(s.name, city);
       if (wiki) {
         hero_url = wiki.hero_url;
         hero_attribution = wiki.page_url ? `Wikipedia · ${wiki.page_url}` : "Wikipedia";
@@ -202,27 +170,18 @@ export const getOrCreateWalkPlace = createServerFn({ method: "POST" })
       }
     }
 
-    // 4. fallback to Google photo
-    if (!hero_url && place.photos?.[0]?.name) {
-      hero_url = `${GATEWAY}/places/v1/${place.photos[0].name}/media?maxWidthPx=1200&skipHttpRedirect=false`;
-      hero_attribution = "Google";
-      hero_source = "google";
-    }
-
-    const osm_static_url =
-      lat != null && lng != null
-        ? `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x300&markers=${lat},${lng},red-pushpin`
-        : null;
+    const osm_static_url = `https://staticmap.openstreetmap.de/staticmap.php?center=${s.lat},${s.lng}&zoom=14&size=600x300&markers=${s.lat},${s.lng},red-pushpin`;
 
     const { data: saved, error } = await supabaseAdmin
       .from("places")
       .insert({
-        google_place_id: data.google_place_id,
-        name,
-        address,
-        lat,
-        lng,
-        category,
+        provider: s.provider,
+        provider_place_id: s.provider_place_id,
+        name: s.name,
+        address: s.address ?? null,
+        lat: s.lat,
+        lng: s.lng,
+        category: s.category ?? null,
         hero_url,
         hero_attribution,
         hero_source,
@@ -230,15 +189,16 @@ export const getOrCreateWalkPlace = createServerFn({ method: "POST" })
         blurb_source,
         osm_static_url,
       })
-      .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
+      .select(PLACE_SELECT)
       .single();
 
     if (error) {
       // race: another insert won. fetch existing.
       const { data: again } = await supabaseAdmin
         .from("places")
-        .select("id,google_place_id,name,address,lat,lng,category,hero_url,hero_attribution,hero_source,blurb,blurb_source,osm_static_url")
-        .eq("google_place_id", data.google_place_id)
+        .select(PLACE_SELECT)
+        .eq("provider", s.provider)
+        .eq("provider_place_id", s.provider_place_id)
         .maybeSingle();
       if (again) return { place: again };
       throw new Error(error.message);
