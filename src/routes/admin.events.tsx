@@ -914,6 +914,32 @@ function ScheduleSheet({
             </div>
           </Field>
 
+          <Field label="Safety overrides">
+            <div className="space-y-2 rounded-xl border border-border bg-card/50 p-3 text-xs">
+              <label className="flex items-center justify-between gap-3">
+                <span>
+                  Allow off-hours start
+                  <span className="ml-1 text-muted-foreground">(outside 06:00–21:00 local)</span>
+                </span>
+                <Switch
+                  checked={form.allow_off_hours}
+                  onCheckedChange={(v) => setForm({ ...form, allow_off_hours: v })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3">
+                <span>
+                  Allow long duration
+                  <span className="ml-1 text-muted-foreground">(over 180 min)</span>
+                </span>
+                <Switch
+                  checked={form.allow_long_duration}
+                  onCheckedChange={(v) => setForm({ ...form, allow_long_duration: v })}
+                />
+              </label>
+            </div>
+          </Field>
+
+
           {result && (
             <div className="rounded-2xl border border-border bg-card/60 p-3 text-xs text-muted-foreground">
               {existing ? (
