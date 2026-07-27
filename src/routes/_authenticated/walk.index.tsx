@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Footprints, Loader2, Pause, Play, Radio as RadioIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -13,10 +13,7 @@ import {
   startSoloWalk,
   type SoloWalkSession,
 } from "@/lib/solo-walk.functions";
-import {
-  SOLO_WALK_MAX_SECONDS,
-  SOLO_WALK_REFLECTION_PROMPT,
-} from "@/lib/solo-walk.constants";
+import { SOLO_WALK_MAX_SECONDS, SOLO_WALK_REFLECTION_PROMPT } from "@/lib/solo-walk.constants";
 import { haptics } from "@/lib/device";
 import { RadioQuickPicker } from "@/components/radio/radio-quick-picker";
 import { usePlayer } from "@/lib/player-context";
@@ -106,7 +103,12 @@ function WalkPage() {
           setSession(active);
           const el = elapsedFor(active);
           setElapsed(Math.min(el, SOLO_WALK_MAX_SECONDS));
-          setUi(el >= SOLO_WALK_MAX_SECONDS ? "timed_out" : "active");
+          if (el >= SOLO_WALK_MAX_SECONDS) {
+            setUi("timed_out");
+            setStatus("Timer stopped");
+          } else {
+            setUi("active");
+          }
           const draft =
             typeof window !== "undefined" ? window.localStorage.getItem(draftKey(active.id)) : null;
           if (draft) {
@@ -133,6 +135,7 @@ function WalkPage() {
       setElapsed(Math.min(el, SOLO_WALK_MAX_SECONDS));
       if (el >= SOLO_WALK_MAX_SECONDS) {
         setUi((prev) => (prev === "active" ? "timed_out" : prev));
+        setStatus("Timer stopped");
       }
     };
     tick();
@@ -174,7 +177,8 @@ function WalkPage() {
       if (resumedExisting) toast("Resumed your open walk.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not start walk";
-      if (msg.toLowerCase().includes("adult")) toast.error("Please confirm your age to start a walk.");
+      if (msg.toLowerCase().includes("adult"))
+        toast.error("Please confirm your age to start a walk.");
       else toast.error(msg);
     } finally {
       setBusy(false);
@@ -314,7 +318,10 @@ function WalkPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Everything below is optional.</p>
 
-          <label htmlFor="mood-after" className="mt-5 block text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor="mood-after"
+            className="mt-5 block text-xs font-medium text-muted-foreground"
+          >
             How are you leaving?
           </label>
           <input
@@ -373,10 +380,7 @@ function WalkPage() {
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {timedOut ? "Timer stopped" : "Walking"}
           </div>
-          <div
-            aria-live="off"
-            className="mt-1 font-serif text-5xl tabular-nums tracking-tight"
-          >
+          <div aria-live="off" className="mt-1 font-serif text-5xl tabular-nums tracking-tight">
             {fmtElapsed(displaySeconds)}
           </div>
           {timedOut ? (
@@ -548,11 +552,7 @@ function WalkPage() {
 
 function VisuallyHiddenStatus({ text }: { text: string }) {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="sr-only"
-    >
+    <div role="status" aria-live="polite" className="sr-only">
       {text}
     </div>
   );

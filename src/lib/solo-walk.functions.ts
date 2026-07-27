@@ -83,10 +83,7 @@ export const startSoloWalk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => StartInput.parse(d ?? {}))
   .handler(
-    async ({
-      data,
-      context,
-    }): Promise<{ session: SoloWalkSession; resumedExisting: boolean }> => {
+    async ({ data, context }): Promise<{ session: SoloWalkSession; resumedExisting: boolean }> => {
       const { supabase, userId } = context;
       await requireAdultAccount(supabase, userId);
 
@@ -177,9 +174,7 @@ export const completeSoloWalk = createServerFn({ method: "POST" })
 
     const reflectionNote = data.reflectionNote?.trim() || null;
     const explicitPrompt = data.reflectionPrompt?.trim() || null;
-    const reflectionPrompt = reflectionNote
-      ? explicitPrompt || SOLO_WALK_REFLECTION_PROMPT
-      : null;
+    const reflectionPrompt = reflectionNote ? explicitPrompt || SOLO_WALK_REFLECTION_PROMPT : null;
 
     const update = await supabase
       .from("walk_sessions")
