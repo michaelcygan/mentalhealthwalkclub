@@ -1,20 +1,16 @@
 import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { ArrowLeft, MapPin, Loader2, Lock, Globe, Users, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Globe, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  searchWalkPlaces,
-  getOrCreateWalkPlace,
-  type PlaceSuggestion,
-} from "@/lib/walk-places.functions";
 import { listMyHostableGroups, createWalk, getWalkPrefill } from "@/lib/walks.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { WhenPicker } from "@/components/walk-page/when-picker";
 import { FirstWalkCoach } from "@/components/walk-page/first-walk-coach";
+import { WalkPlacePicker, type WalkPlaceSelection } from "@/components/walk-page/walk-place-picker";
 import { useAuth } from "@/lib/auth-context";
 
 const SearchSchema = z.object({
@@ -53,19 +49,7 @@ function ComposeWalkPage() {
   const [startsAt, setStartsAt] = useState(defaultStarts);
 
   // place
-  const [placeQuery, setPlaceQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [pickedPlace, setPickedPlace] = useState<{
-    id: string;
-    name: string;
-    address: string | null;
-    hero_url: string | null;
-    lat: number | null;
-    lng: number | null;
-  } | null>(null);
-  const [resolvingPlace, setResolvingPlace] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [pickedPlace, setPickedPlace] = useState<WalkPlaceSelection | null>(null);
 
   // audience
   const [audience, setAudience] = useState<Audience>("link_only");
