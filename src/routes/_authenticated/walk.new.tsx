@@ -187,39 +187,51 @@ function ComposeWalkPage() {
     };
   }, [search.from]);
 
-  // debounced place search
+  // debounced place search with stale-response guard
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeq = useRef(0);
+  const [searchError, setSearchError] = useState(false);
   useEffect(() => {
     if (pickedPlace) return; // don't search while a place is picked
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = placeQuery.trim();
-    if (q.length < 2) {
+    if (q.length < 3) {
       setSuggestions([]);
+      setSearchError(false);
       return;
     }
     searchTimer.current = setTimeout(async () => {
+      const seq = ++searchSeq.current;
       setSearching(true);
+      setSearchError(false);
       try {
-        const res = await searchWalkPlaces({ data: { query: q } });
+        const res = await searchWalkPlaces({
+          data: { query: q, near: deviceCoords ?? undefined },
+        });
+        if (seq !== searchSeq.current) return; // stale
         setSuggestions(res.results);
         setShowSuggestions(true);
       } catch (e) {
+        if (seq !== searchSeq.current) return;
         console.error(e);
+        setSearchError(true);
+        setSuggestions([]);
       } finally {
-        setSearching(false);
+        if (seq === searchSeq.current) setSearching(false);
       }
-    }, 300);
+    }, 400);
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [placeQuery, pickedPlace]);
+  }, [placeQuery, pickedPlace, deviceCoords]);
 
   async function pickSuggestion(s: PlaceSuggestion) {
     setShowSuggestions(false);
+    searchSeq.current++; // invalidate any in-flight search
     setResolvingPlace(true);
     try {
       const { place } = await getOrCreateWalkPlace({
-        data: { google_place_id: s.google_place_id },
+        data: { suggestion: s },
       });
       setPickedPlace({
         id: place.id,
@@ -242,6 +254,7 @@ function ComposeWalkPage() {
     setPickedPlace(null);
     setPlaceQuery("");
     setSuggestions([]);
+    setSearchError(false);
   }
 
   async function submit() {
