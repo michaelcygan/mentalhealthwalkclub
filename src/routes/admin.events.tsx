@@ -643,8 +643,8 @@ function ScheduleSheet({
       toast.error("Fill in name, title and city.");
       return;
     }
-    if (!form.venue_name.trim() && !form.address.trim()) {
-      toast.error("Provide a venue name or address for the meeting point.");
+    if (!form.place || !form.place.name.trim()) {
+      toast.error("Pick or enter a meeting point.");
       return;
     }
     setSaving(true);
@@ -654,14 +654,14 @@ function ScheduleSheet({
         title: form.title.trim(),
         description: form.description.trim() || null,
         vibe: form.vibe.trim() || null,
-        place_id: null,
-        venue_name: form.venue_name.trim() || null,
-        address: form.address.trim() || null,
+        place_id: form.place.id,
+        venue_name: form.place.name.trim() || null,
+        address: form.place.address?.trim() || null,
         city: form.city.trim(),
         state: form.state.trim() || null,
         country: form.country.trim() || null,
-        lat: form.lat ? Number(form.lat) : null,
-        lng: form.lng ? Number(form.lng) : null,
+        lat: form.place.lat,
+        lng: form.place.lng,
         timezone: form.timezone,
         first_local_date: form.first_local_date,
         start_local_time: form.start_local_time,
@@ -674,7 +674,10 @@ function ScheduleSheet({
         host_mode: form.host_mode,
         active: form.active,
         horizon_occurrences: form.horizon_occurrences,
+        allow_off_hours: form.allow_off_hours,
+        allow_long_duration: form.allow_long_duration,
       };
+
       if (existing) {
         const res = await updateSeedSchedule({ data: { id: existing.id, ...payload } });
         setResult({ preserved: res.preserved, removed: res.removed, created: res.created });
