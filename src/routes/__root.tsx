@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Home as HomeIcon, Footprints, Compass, BookHeart, Menu, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { PublicShell } from "@/components/public/public-shell";
 import { NowPlayingDock } from "@/components/now-playing-dock";
 import { LogoStamp } from "@/components/logo-stamp";
 import { LoadingScreen } from "@/components/loading-screen";
