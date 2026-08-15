@@ -145,7 +145,7 @@ export function PublicWalkBoard({
             </button>
           }
         />
-      ) : isLoading && !data ? (
+      ) : isLoading && walks.length === 0 ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-44 animate-pulse rounded-3xl bg-card" />
