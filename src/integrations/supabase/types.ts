@@ -2327,6 +2327,59 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_locations: {
+        Row: {
+          city: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          lat: number
+          lng: number
+          place_id: string | null
+          radius_miles: number
+          region: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          lat: number
+          lng: number
+          place_id?: string | null
+          radius_miles?: number
+          region?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          lat?: number
+          lng?: number
+          place_id?: string | null
+          radius_miles?: number
+          region?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_locations_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age_band: string | null
@@ -3624,6 +3677,44 @@ export type Database = {
       }
       is_mutual: { Args: { _a: string; _b: string }; Returns: boolean }
       materialize_seed_walks: { Args: { _schedule_id?: string }; Returns: Json }
+      miles_between: {
+        Args: { _lat1: number; _lat2: number; _lng1: number; _lng2: number }
+        Returns: number
+      }
+      public_walk_board: {
+        Args: {
+          _city?: string
+          _cursor_id?: string
+          _cursor_starts_at?: string
+          _horizon_hours?: number
+          _lat?: number
+          _limit?: number
+          _lng?: number
+          _radius_miles?: number
+        }
+        Returns: {
+          attendee_count: number
+          city: string
+          cover_override_url: string
+          dog_friendly: boolean
+          ends_at: string
+          id: string
+          image_url: string
+          kid_friendly: boolean
+          lat: number
+          lng: number
+          meeting_point: string
+          miles: number
+          pace: string
+          region: string
+          slug: string
+          starts_at: string
+          timezone: string
+          title: string
+          venue_name: string
+          vibe: string
+        }[]
+      }
       recompute_walker_metrics: { Args: { _uid: string }; Returns: undefined }
       set_my_dob: { Args: { _dob: string }; Returns: string }
       transparency_feed: {
