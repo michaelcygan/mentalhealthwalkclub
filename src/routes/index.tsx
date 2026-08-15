@@ -20,15 +20,17 @@ import { RadioRail } from "@/components/home/radio-rail";
 import { Shimmer } from "@/components/ui/shimmer";
 import { WalkCard, type WalkCardData } from "@/components/discover/walk-card";
 import { nearbyWalksPublic } from "@/lib/nearby.functions";
+import { publicWalkBoard, type PublicBoardWalk } from "@/lib/public-utility.functions";
+import { PublicWalkBoard } from "@/components/public/walk-board";
 
 const SITE_URL = "https://mentalhealthwalkclub.com";
 const SITE_DESC =
-  "A walking club for your people. Find public walks near you, post your own, and RSVP with friends.";
+  "Find community walks near you, post your own, and RSVP — no account needed to look around.";
 const OG_DEFAULT = "https://mentalhealthwalkclub.com/__l5e/assets-v1/a9e1c704-8b35-4af9-8a3b-6571b05a857e/og-default-v4.jpg";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
-  loader: () => nearbyWalksPublic({ data: { hours: 72, limit: 8 } }),
+  loader: () => publicWalkBoard({ data: { radiusMiles: 25, horizonHours: 720, limit: 24 } }),
   head: () => ({
     meta: [
       { title: "Mental Health Walk Club — walks near you" },
