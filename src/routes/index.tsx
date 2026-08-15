@@ -62,18 +62,11 @@ function toCardData(walks: PublicBoardWalk[]): WalkCardData[] {
 }
 
 function HomeRoute() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const initial = Route.useLoaderData();
 
-  if (loading) {
-    return (
-      <div className="space-y-4" aria-busy="true">
-        <Shimmer className="h-48 w-full" rounded="rounded-3xl" />
-        <Shimmer className="h-32 w-full" />
-      </div>
-    );
-  }
-
+  // No auth-loading shimmer here: the public board is the server-rendered
+  // default, and the app shell holds the screen for browsers with a session.
   if (!user) return <LoggedOutHome initialWalks={initial.walks} />;
 
   return (
