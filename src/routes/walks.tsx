@@ -16,10 +16,21 @@ const Search = z.object({
 
 export const Route = createFileRoute("/walks")({
   validateSearch: (s) => Search.parse(s),
-  loaderDeps: ({ search }) => ({ city: search.city ?? null, lat: search.lat ?? null, lng: search.lng ?? null }),
+  loaderDeps: ({ search }) => ({
+    city: search.city ?? null,
+    lat: search.lat ?? null,
+    lng: search.lng ?? null,
+  }),
   loader: ({ deps }) =>
     publicWalkBoard({
-      data: { city: deps.city, lat: deps.lat, lng: deps.lng, radiusMiles: 25, horizonHours: 720, limit: 24 },
+      data: {
+        city: deps.city,
+        lat: deps.lat,
+        lng: deps.lng,
+        radiusMiles: 25,
+        horizonHours: 720,
+        limit: 24,
+      },
     }),
   head: () => ({
     meta: [

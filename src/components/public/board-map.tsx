@@ -29,7 +29,11 @@ interface Props {
 export default function BoardMap({ walks, center }: Props) {
   const pins = walks.filter((w) => w.lat != null && w.lng != null);
   const first = pins[0];
-  const c = center ?? (first ? { lat: first.lat as number, lng: first.lng as number } : { lat: 41.8781, lng: -87.6298 });
+  const c =
+    center ??
+    (first
+      ? { lat: first.lat as number, lng: first.lng as number }
+      : { lat: 41.8781, lng: -87.6298 });
 
   return (
     <div className="overflow-hidden rounded-3xl border border-border shadow-soft">

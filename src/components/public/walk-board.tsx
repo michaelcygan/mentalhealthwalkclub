@@ -51,7 +51,13 @@ export function PublicWalkBoard({
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["public-board", area?.city ?? null, area?.lat ?? null, area?.lng ?? null, area?.radiusMiles ?? 25],
+    queryKey: [
+      "public-board",
+      area?.city ?? null,
+      area?.lat ?? null,
+      area?.lng ?? null,
+      area?.radiusMiles ?? 25,
+    ],
     staleTime: 60_000,
     queryFn: () =>
       publicWalkBoard({
@@ -94,19 +100,39 @@ export function PublicWalkBoard({
           <p className="mt-1 max-w-lg text-sm text-muted-foreground">{subheading}</p>
         </div>
         <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1 shadow-soft">
-          <ViewToggle active={view === "list"} onClick={() => setView("list")} icon={List} label="List" />
-          <ViewToggle active={view === "map"} onClick={() => setView("map")} icon={MapIcon} label="Map" />
+          <ViewToggle
+            active={view === "list"}
+            onClick={() => setView("list")}
+            icon={List}
+            label="List"
+          />
+          <ViewToggle
+            active={view === "map"}
+            onClick={() => setView("map")}
+            icon={MapIcon}
+            label="Map"
+          />
         </div>
       </div>
 
       {allowAreaChange && <AreaSelector area={area} onChange={updateArea} />}
 
       <div className="flex flex-wrap gap-2">
-        <Chip active={when === "anytime"} onClick={() => setWhen("anytime")}>Anytime</Chip>
-        <Chip active={when === "today"} onClick={() => setWhen("today")}>Today</Chip>
-        <Chip active={when === "weekend"} onClick={() => setWhen("weekend")}>This weekend</Chip>
-        <Chip active={dogOnly} onClick={() => setDogOnly((v) => !v)}>Dog friendly</Chip>
-        <Chip active={kidOnly} onClick={() => setKidOnly((v) => !v)}>Kid friendly</Chip>
+        <Chip active={when === "anytime"} onClick={() => setWhen("anytime")}>
+          Anytime
+        </Chip>
+        <Chip active={when === "today"} onClick={() => setWhen("today")}>
+          Today
+        </Chip>
+        <Chip active={when === "weekend"} onClick={() => setWhen("weekend")}>
+          This weekend
+        </Chip>
+        <Chip active={dogOnly} onClick={() => setDogOnly((v) => !v)}>
+          Dog friendly
+        </Chip>
+        <Chip active={kidOnly} onClick={() => setKidOnly((v) => !v)}>
+          Kid friendly
+        </Chip>
       </div>
 
       {isError ? (
@@ -128,8 +154,12 @@ export function PublicWalkBoard({
       ) : filtered.length === 0 ? (
         <EmptyBoard area={area} />
       ) : view === "map" ? (
-        <ClientOnly fallback={<div className="h-[420px] w-full animate-pulse rounded-3xl bg-muted" />}>
-          <Suspense fallback={<div className="h-[420px] w-full animate-pulse rounded-3xl bg-muted" />}>
+        <ClientOnly
+          fallback={<div className="h-[420px] w-full animate-pulse rounded-3xl bg-muted" />}
+        >
+          <Suspense
+            fallback={<div className="h-[420px] w-full animate-pulse rounded-3xl bg-muted" />}
+          >
             <BoardMap walks={filtered} center={center} />
           </Suspense>
         </ClientOnly>
@@ -146,7 +176,8 @@ export function PublicWalkBoard({
       <div className="rounded-3xl border border-border bg-card p-5 shadow-soft">
         <h2 className="font-serif text-lg">Know a good walk?</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Post it and get a page you can share anywhere. You can start the draft before making an account.
+          Post it and get a page you can share anywhere. You can start the draft before making an
+          account.
         </p>
         <Link
           to="/walk/new"
@@ -177,7 +208,9 @@ function BoardCard({ walk }: { walk: PublicBoardWalk }) {
           />
         ) : (
           <div className="flex h-full items-end bg-gradient-to-br from-forest/30 via-clay/20 to-cream p-4">
-            <span className="font-serif text-base text-foreground/85">{walk.city ?? "Somewhere outside"}</span>
+            <span className="font-serif text-base text-foreground/85">
+              {walk.city ?? "Somewhere outside"}
+            </span>
           </div>
         )}
       </div>
@@ -213,7 +246,8 @@ function EmptyBoard({ area }: { area: PublicArea | null }) {
         {area ? `No walks posted in ${area.label} yet.` : "No walks posted yet."}
       </p>
       <p className="mx-auto mt-1 max-w-sm text-[12px] text-muted-foreground">
-        Someone has to be first. Post a walk for this week and share the link — people show up for a plan.
+        Someone has to be first. Post a walk for this week and share the link — people show up for a
+        plan.
       </p>
       <Link
         to="/walk/new"
@@ -225,7 +259,15 @@ function EmptyBoard({ area }: { area: PublicArea | null }) {
   );
 }
 
-function BoardNotice({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+function BoardNotice({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="rounded-3xl border border-border bg-card p-5 text-center">
       <p className="text-sm font-medium">{title}</p>
@@ -235,7 +277,15 @@ function BoardNotice({ title, body, action }: { title: string; body: string; act
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"

@@ -71,40 +71,50 @@ const BoardInput = z.object({
 
 export const publicWalkBoard = createServerFn({ method: "GET" })
   .inputValidator((d) => BoardInput.parse(d ?? {}))
-  .handler(async ({ data }): Promise<{ walks: PublicBoardWalk[]; nextCursor: { startsAt: string; id: string } | null }> => {
-    const supabase = publicClient();
-    if (!supabase) return { walks: [], nextCursor: null };
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      walks: PublicBoardWalk[];
+      nextCursor: { startsAt: string; id: string } | null;
+    }> => {
+      const supabase = publicClient();
+      if (!supabase) return { walks: [], nextCursor: null };
 
-    const { data: rows, error } = await supabase.rpc("public_walk_board" as never, {
-      _lat: data.lat ?? null,
-      _lng: data.lng ?? null,
-      _city: data.city ?? null,
-      _radius_miles: data.radiusMiles,
-      _horizon_hours: data.horizonHours,
-      _limit: data.limit,
-      _cursor_starts_at: data.cursorStartsAt ?? null,
-      _cursor_id: data.cursorId ?? null,
-    } as never);
+      const { data: rows, error } = await supabase.rpc(
+        "public_walk_board" as never,
+        {
+          _lat: data.lat ?? null,
+          _lng: data.lng ?? null,
+          _city: data.city ?? null,
+          _radius_miles: data.radiusMiles,
+          _horizon_hours: data.horizonHours,
+          _limit: data.limit,
+          _cursor_starts_at: data.cursorStartsAt ?? null,
+          _cursor_id: data.cursorId ?? null,
+        } as never,
+      );
 
-    if (error) {
-      console.error("publicWalkBoard error", error.message);
-      return { walks: [], nextCursor: null };
-    }
+      if (error) {
+        console.error("publicWalkBoard error", error.message);
+        return { walks: [], nextCursor: null };
+      }
 
-    const list = ((rows ?? []) as unknown as PublicBoardWalk[]).map((r) => ({
-      ...r,
-      lat: r.lat != null ? Number(r.lat) : null,
-      lng: r.lng != null ? Number(r.lng) : null,
-      miles: r.miles != null ? Number(r.miles) : null,
-      image_url: r.cover_override_url ?? r.image_url,
-    }));
+      const list = ((rows ?? []) as unknown as PublicBoardWalk[]).map((r) => ({
+        ...r,
+        lat: r.lat != null ? Number(r.lat) : null,
+        lng: r.lng != null ? Number(r.lng) : null,
+        miles: r.miles != null ? Number(r.miles) : null,
+        image_url: r.cover_override_url ?? r.image_url,
+      }));
 
-    const last = list.length === data.limit ? list[list.length - 1] : undefined;
-    return {
-      walks: list,
-      nextCursor: last ? { startsAt: last.starts_at, id: last.id } : null,
-    };
-  });
+      const last = list.length === data.limit ? list[list.length - 1] : undefined;
+      return {
+        walks: list,
+        nextCursor: last ? { startsAt: last.starts_at, id: last.id } : null,
+      };
+    },
+  );
 
 /* ---------------------------------------------------------------- portals */
 
@@ -162,9 +172,7 @@ export type PublicAreaSuggestion = {
  * Bounded query length, capped results, no caching of visitor input.
  */
 export const publicAreaSearch = createServerFn({ method: "POST" })
-  .inputValidator((d) =>
-    z.object({ query: z.string().trim().min(2).max(80) }).parse(d),
-  )
+  .inputValidator((d) => z.object({ query: z.string().trim().min(2).max(80) }).parse(d))
   .handler(async ({ data }): Promise<{ results: PublicAreaSuggestion[] }> => {
     const { photonSearch, displayName } = await import("./geocoding/photon.server");
     let features;

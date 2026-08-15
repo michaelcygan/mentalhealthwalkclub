@@ -25,7 +25,12 @@ export const Route = createFileRoute("/p/$portalSlug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Unavailable — Mental Health Walk Club" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Unavailable — Mental Health Walk Club" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     }
     const title = `Walks around ${loaderData.portal.label} — Mental Health Walk Club`;
     const desc = `Upcoming community walks within ${loaderData.portal.radius_miles} miles of ${loaderData.portal.label}.`;
