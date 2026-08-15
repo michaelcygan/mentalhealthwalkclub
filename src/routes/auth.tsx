@@ -8,12 +8,14 @@ import { Footprints, Headphones, Users, BookHeart } from "lucide-react";
 interface AuthSearch {
   mode?: "signin" | "signup";
   plan?: AuthPlan;
+  next?: string;
 }
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): AuthSearch => ({
     mode: s.mode === "signin" || s.mode === "signup" ? s.mode : undefined,
     plan: s.plan === "plus" || s.plan === "free" ? s.plan : undefined,
+    next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
   }),
   component: AuthPage,
   head: () => ({
