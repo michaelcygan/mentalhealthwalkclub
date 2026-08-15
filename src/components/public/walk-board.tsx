@@ -77,8 +77,6 @@ export function PublicWalkBoard({
 
   const filtered = useMemo(() => {
     return walks.filter((w) => {
-      if (dogOnly && !w.dog_friendly) return false;
-      if (kidOnly && !w.kid_friendly) return false;
       if (when === "anytime") return true;
       const d = new Date(w.starts_at);
       const now = new Date();
@@ -87,7 +85,7 @@ export function PublicWalkBoard({
       const withinWeek = d.getTime() - now.getTime() < 7 * 24 * 3600 * 1000;
       return withinWeek && (day === 0 || day === 6);
     });
-  }, [walks, when, dogOnly, kidOnly]);
+  }, [walks, when]);
 
   const center = area?.lat != null && area?.lng != null ? { lat: area.lat, lng: area.lng } : null;
 
@@ -127,12 +125,6 @@ export function PublicWalkBoard({
         </Chip>
         <Chip active={when === "weekend"} onClick={() => setWhen("weekend")}>
           This weekend
-        </Chip>
-        <Chip active={dogOnly} onClick={() => setDogOnly((v) => !v)}>
-          Dog friendly
-        </Chip>
-        <Chip active={kidOnly} onClick={() => setKidOnly((v) => !v)}>
-          Kid friendly
         </Chip>
       </div>
 
