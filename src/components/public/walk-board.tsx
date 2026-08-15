@@ -59,6 +59,9 @@ export function PublicWalkBoard({
       area?.radiusMiles ?? 25,
     ],
     staleTime: 60_000,
+    // Server-rendered rows show immediately (and get indexed) while the
+    // area-filtered fetch resolves in the background.
+    placeholderData: { walks: initialWalks, nextCursor: null },
     queryFn: () =>
       publicWalkBoard({
         data: {
