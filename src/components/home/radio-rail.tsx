@@ -69,7 +69,6 @@ export function RadioRail() {
 
   const StationTile = ({ s, variant }: { s: StationCard; variant: "mobile" | "desktop" }) => {
     const cover = s.cover_signed ?? radioCoverDefault;
-    const detailHref = `/radio/${s.slug}` as const;
     if (variant === "mobile") {
       return (
         <div className="relative w-44 shrink-0 snap-start">
@@ -99,7 +98,8 @@ export function RadioRail() {
             </Card>
           </button>
           <Link
-            to={detailHref}
+            to="/radio/$slug"
+            params={{ slug: s.slug }}
             className="absolute bottom-2 right-2 rounded-full bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur hover:text-foreground"
             aria-label={`Open ${s.title} station page`}
           >
@@ -136,7 +136,8 @@ export function RadioRail() {
           </Card>
         </button>
         <Link
-          to={detailHref}
+          to="/radio/$slug"
+          params={{ slug: s.slug }}
           className="absolute bottom-3 right-3 rounded-full bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground backdrop-blur transition hover:text-foreground"
         >
           Details
