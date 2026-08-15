@@ -49,9 +49,19 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+/** Board rows are display-safe; widen them for the member walk cards. */
+function toCardData(walks: PublicBoardWalk[]): WalkCardData[] {
+  return walks.map((w) => ({
+    ...w,
+    neighborhood: null,
+    audience_mode: "public",
+    visibility: "public",
+    host_user_id: null,
+  }));
+}
+
 function HomeRoute() {
   const { user, loading } = useAuth();
-  const { openAuth } = useAuthPrompt();
   const initial = Route.useLoaderData();
 
   if (loading) {
@@ -63,59 +73,38 @@ function HomeRoute() {
     );
   }
 
-  if (!user) {
-    return (
-      <LoggedOutHome
-        onSignUp={() => openAuth("signup")}
-        onSignIn={() => openAuth("signin")}
-        initialWalks={initial.walks as WalkCardData[]}
-      />
-    );
-  }
+  if (!user) return <LoggedOutHome initialWalks={initial.walks} />;
+
   return (
     <>
       <AmbientBackdrop />
-      <HomeTab initialWalks={initial.walks as WalkCardData[]} />
+      <HomeTab initialWalks={toCardData(initial.walks)} />
     </>
   );
 }
 
-function LoggedOutHome({
-  onSignUp,
-  onSignIn,
-  initialWalks,
-}: {
-  onSignUp: () => void;
-  onSignIn: () => void;
-  initialWalks: WalkCardData[];
-}) {
+function LoggedOutHome({ initialWalks }: { initialWalks: PublicBoardWalk[] }) {
   return (
-    <div className="space-y-8 py-6">
-      <div className="rounded-3xl bg-gradient-to-br from-forest/90 to-forest p-8 text-primary-foreground shadow-soft">
-        <h1 className="font-serif text-3xl leading-tight md:text-4xl">
-          You don't have to walk through it alone.
-        </h1>
-        <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">
-          Post a walk, share a beautiful page, and let friends RSVP. A walking club for your people — built around real meetups.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button onClick={onSignUp} className="rounded-full bg-background text-foreground hover:opacity-90">
-            Join the club
-          </Button>
-          <Button onClick={onSignIn} variant="ghost" className="rounded-full text-primary-foreground hover:bg-white/10">
-            Sign in
-          </Button>
-        </div>
-      </div>
-
-      <NearbyGrid initialWalks={initialWalks} publicMode subtitle="Public walks anyone can join" />
-
-      <RadioRail />
+    <div className="space-y-10 py-6">
+      <PublicWalkBoard
+        initialWalks={initialWalks}
+        heading="Find a walk near you"
+        subheading="Community walks in real places, posted by real people. Look around — no account needed."
+      />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <ValueCard icon={CalendarPlus} title="Post a walk" body="Pick a place and time. Get a sharable page you can drop in a group chat or story." />
         <ValueCard icon={Footprints} title="Walk together" body="RSVP, follow, and keep a small group walking every week." />
         <ValueCard icon={BookHeart} title="Keep memory" body="Photos and reflections from each walk — for you and the people who came." />
+      </div>
+
+      <div className="rounded-3xl bg-gradient-to-br from-forest/90 to-forest p-8 text-primary-foreground shadow-soft">
+        <h2 className="font-serif text-2xl leading-tight md:text-3xl">
+          You don't have to walk through it alone.
+        </h2>
+        <p className="mt-3 max-w-md text-sm opacity-90 md:text-base">
+          Making an account adds groups, a private journal, Radio, and the people you walk with.
+        </p>
       </div>
     </div>
   );
