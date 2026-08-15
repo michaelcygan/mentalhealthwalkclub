@@ -290,15 +290,44 @@ function AgeConfirmBanner() {
   );
 }
 
+/**
+ * True once we can see a stored Supabase session in this browser. Starts false
+ * so the server render (and first hydration pass) match, then flips on mount.
+ */
+function useStoredSessionHint() {
+  const [hint, setHint] = useState(false);
+  useEffect(() => {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+          setHint(true);
+          return;
+        }
+      }
+    } catch {
+      /* storage unavailable — treat as visitor */
+    }
+  }, []);
+  return hint;
+}
+
 function AppFrame({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const maybeMember = useStoredSessionHint();
 
   if (path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/confirm-age"))
     return <>{children}</>;
-  if (loading) return <LoadingScreen />;
 
   // Visitors get the small public utility chrome; members get the full app.
+  // While auth resolves we only hold the screen for browsers that already
+  // carry a session, so public pages still server-render their content.
+  if (loading) {
+    if (maybeMember) return <LoadingScreen />;
+    return <PublicShell>{children}</PublicShell>;
+  }
+
   if (!user) return <PublicShell>{children}</PublicShell>;
 
   return (
