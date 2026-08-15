@@ -242,11 +242,14 @@ function AgeConfirmBanner() {
 }
 
 function AppFrame({ children }: { children: React.ReactNode }) {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   if (path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/confirm-age")) return <>{children}</>;
   if (loading) return <LoadingScreen />;
+
+  // Visitors get the small public utility chrome; members get the full app.
+  if (!user) return <PublicShell>{children}</PublicShell>;
 
   return (
     <div className="min-h-dvh bg-background">
