@@ -31,6 +31,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
@@ -63,7 +64,6 @@ import { Route as WCodeRecapRouteImport } from './routes/w.$code.recap'
 import { Route as AdminRadioIdRouteImport } from './routes/admin.radio.$id'
 import { Route as AdminPodcastsFeedIdRouteImport } from './routes/admin.podcasts.$feedId'
 import { Route as AdminBlogIdRouteImport } from './routes/admin.blog.$id'
-import { Route as AuthenticatedWalkNewRouteImport } from './routes/_authenticated/walk.new'
 import { Route as AuthenticatedTrailsIdRouteImport } from './routes/_authenticated/trails.$id'
 import { Route as AuthenticatedReadPostIdRouteImport } from './routes/_authenticated/read.$postId'
 import { Route as AuthenticatedPlacesKeyRouteImport } from './routes/_authenticated/places.$key'
@@ -185,6 +185,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalkNewRoute = WalkNewRouteImport.update({
+  id: '/walk/new',
+  path: '/walk/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WCodeRoute = WCodeRouteImport.update({
@@ -347,11 +352,6 @@ const AdminBlogIdRoute = AdminBlogIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AdminBlogRoute,
 } as any)
-const AuthenticatedWalkNewRoute = AuthenticatedWalkNewRouteImport.update({
-  id: '/walk/new',
-  path: '/walk/new',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedTrailsIdRoute = AuthenticatedTrailsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -471,12 +471,12 @@ export interface FileRoutesByFullPath {
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
+  '/walk/new': typeof WalkNewRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
-  '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/admin/radio/$id': typeof AdminRadioIdRoute
@@ -540,12 +540,12 @@ export interface FileRoutesByTo {
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
+  '/walk/new': typeof WalkNewRoute
   '/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/listen/$id': typeof AuthenticatedListenIdRoute
   '/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/trails/$id': typeof AuthenticatedTrailsIdRoute
-  '/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/admin/radio/$id': typeof AdminRadioIdRoute
@@ -611,12 +611,12 @@ export interface FileRoutesById {
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$code': typeof WCodeRouteWithChildren
+  '/walk/new': typeof WalkNewRoute
   '/_authenticated/groups/$slug': typeof AuthenticatedGroupsSlugRoute
   '/_authenticated/listen/$id': typeof AuthenticatedListenIdRoute
   '/_authenticated/places/$key': typeof AuthenticatedPlacesKeyRoute
   '/_authenticated/read/$postId': typeof AuthenticatedReadPostIdRoute
   '/_authenticated/trails/$id': typeof AuthenticatedTrailsIdRoute
-  '/_authenticated/walk/new': typeof AuthenticatedWalkNewRoute
   '/admin/blog/$id': typeof AdminBlogIdRoute
   '/admin/podcasts/$feedId': typeof AdminPodcastsFeedIdRoute
   '/admin/radio/$id': typeof AdminRadioIdRoute
@@ -682,12 +682,12 @@ export interface FileRouteTypes {
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
+    | '/walk/new'
     | '/groups/$slug'
     | '/listen/$id'
     | '/places/$key'
     | '/read/$postId'
     | '/trails/$id'
-    | '/walk/new'
     | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
     | '/admin/radio/$id'
@@ -751,12 +751,12 @@ export interface FileRouteTypes {
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
+    | '/walk/new'
     | '/groups/$slug'
     | '/listen/$id'
     | '/places/$key'
     | '/read/$postId'
     | '/trails/$id'
-    | '/walk/new'
     | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
     | '/admin/radio/$id'
@@ -821,12 +821,12 @@ export interface FileRouteTypes {
     | '/shop/return'
     | '/u/$username'
     | '/w/$code'
+    | '/walk/new'
     | '/_authenticated/groups/$slug'
     | '/_authenticated/listen/$id'
     | '/_authenticated/places/$key'
     | '/_authenticated/read/$postId'
     | '/_authenticated/trails/$id'
-    | '/_authenticated/walk/new'
     | '/admin/blog/$id'
     | '/admin/podcasts/$feedId'
     | '/admin/radio/$id'
@@ -870,6 +870,7 @@ export interface RootRouteChildren {
   RadioSlugRoute: typeof RadioSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   WCodeRoute: typeof WCodeRouteWithChildren
+  WalkNewRoute: typeof WalkNewRoute
   ApiPublicHooksSyncBlogFeedsRoute: typeof ApiPublicHooksSyncBlogFeedsRoute
   ApiPublicHooksSyncPodcastFeedsRoute: typeof ApiPublicHooksSyncPodcastFeedsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -1033,6 +1034,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/walk/new': {
+      id: '/walk/new'
+      path: '/walk/new'
+      fullPath: '/walk/new'
+      preLoaderRoute: typeof WalkNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/w/$code': {
@@ -1259,13 +1267,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBlogIdRouteImport
       parentRoute: typeof AdminBlogRoute
     }
-    '/_authenticated/walk/new': {
-      id: '/_authenticated/walk/new'
-      path: '/walk/new'
-      fullPath: '/walk/new'
-      preLoaderRoute: typeof AuthenticatedWalkNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/trails/$id': {
       id: '/_authenticated/trails/$id'
       path: '/$id'
@@ -1404,7 +1405,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrailsRoute: typeof AuthenticatedTrailsRouteWithChildren
   AuthenticatedGroupsSlugRoute: typeof AuthenticatedGroupsSlugRoute
   AuthenticatedReadPostIdRoute: typeof AuthenticatedReadPostIdRoute
-  AuthenticatedWalkNewRoute: typeof AuthenticatedWalkNewRoute
   AuthenticatedWalkIndexRoute: typeof AuthenticatedWalkIndexRoute
 }
 
@@ -1416,7 +1416,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrailsRoute: AuthenticatedTrailsRouteWithChildren,
   AuthenticatedGroupsSlugRoute: AuthenticatedGroupsSlugRoute,
   AuthenticatedReadPostIdRoute: AuthenticatedReadPostIdRoute,
-  AuthenticatedWalkNewRoute: AuthenticatedWalkNewRoute,
   AuthenticatedWalkIndexRoute: AuthenticatedWalkIndexRoute,
 }
 
@@ -1564,6 +1563,7 @@ const rootRouteChildren: RootRouteChildren = {
   RadioSlugRoute: RadioSlugRoute,
   UUsernameRoute: UUsernameRoute,
   WCodeRoute: WCodeRouteWithChildren,
+  WalkNewRoute: WalkNewRoute,
   ApiPublicHooksSyncBlogFeedsRoute: ApiPublicHooksSyncBlogFeedsRoute,
   ApiPublicHooksSyncPodcastFeedsRoute: ApiPublicHooksSyncPodcastFeedsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,

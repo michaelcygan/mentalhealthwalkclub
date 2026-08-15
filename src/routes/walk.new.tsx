@@ -18,7 +18,7 @@ const SearchSchema = z.object({
   circle: z.string().uuid().optional(),
 });
 
-export const Route = createFileRoute("/_authenticated/walk/new")({
+export const Route = createFileRoute("/walk/new")({
   component: ComposeWalkPage,
   validateSearch: (s) => SearchSchema.parse(s),
   head: () => ({
