@@ -30,8 +30,6 @@ export function PublicWalkBoard({
 }: Props) {
   const [area, setArea] = useState<PublicArea | null>(forcedArea);
   const [when, setWhen] = useState<WhenFilter>("anytime");
-  const [dogOnly, setDogOnly] = useState(false);
-  const [kidOnly, setKidOnly] = useState(false);
   const [view, setView] = useState<"list" | "map">("list");
 
   // Saved local choice only applies when nothing stronger was supplied.
