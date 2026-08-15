@@ -35,6 +35,7 @@ import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ShopReturnRouteImport } from './routes/shop.return'
 import { Route as RadioSlugRouteImport } from './routes/radio.$slug'
+import { Route as PPortalSlugRouteImport } from './routes/p.$portalSlug'
 import { Route as GSlugRouteImport } from './routes/g.$slug'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
@@ -204,6 +205,11 @@ const ShopReturnRoute = ShopReturnRouteImport.update({
 const RadioSlugRoute = RadioSlugRouteImport.update({
   id: '/radio/$slug',
   path: '/radio/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PPortalSlugRoute = PPortalSlugRouteImport.update({
+  id: '/p/$portalSlug',
+  path: '/p/$portalSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GSlugRoute = GSlugRouteImport.update({
@@ -460,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/p/$portalSlug': typeof PPortalSlugRoute
   '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
@@ -528,6 +535,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/p/$portalSlug': typeof PPortalSlugRoute
   '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
@@ -598,6 +606,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/events/$slug': typeof EventsSlugRoute
   '/g/$slug': typeof GSlugRoute
+  '/p/$portalSlug': typeof PPortalSlugRoute
   '/radio/$slug': typeof RadioSlugRoute
   '/shop/return': typeof ShopReturnRoute
   '/u/$username': typeof UUsernameRoute
@@ -668,6 +677,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/p/$portalSlug'
     | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
@@ -736,6 +746,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/p/$portalSlug'
     | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
@@ -805,6 +816,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/events/$slug'
     | '/g/$slug'
+    | '/p/$portalSlug'
     | '/radio/$slug'
     | '/shop/return'
     | '/u/$username'
@@ -854,6 +866,7 @@ export interface RootRouteChildren {
   WalksRoute: typeof WalksRoute
   WelcomeRoute: typeof WelcomeRoute
   GSlugRoute: typeof GSlugRoute
+  PPortalSlugRoute: typeof PPortalSlugRoute
   RadioSlugRoute: typeof RadioSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   WCodeRoute: typeof WCodeRouteWithChildren
@@ -1048,6 +1061,13 @@ declare module '@tanstack/react-router' {
       path: '/radio/$slug'
       fullPath: '/radio/$slug'
       preLoaderRoute: typeof RadioSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$portalSlug': {
+      id: '/p/$portalSlug'
+      path: '/p/$portalSlug'
+      fullPath: '/p/$portalSlug'
+      preLoaderRoute: typeof PPortalSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/g/$slug': {
@@ -1540,6 +1560,7 @@ const rootRouteChildren: RootRouteChildren = {
   WalksRoute: WalksRoute,
   WelcomeRoute: WelcomeRoute,
   GSlugRoute: GSlugRoute,
+  PPortalSlugRoute: PPortalSlugRoute,
   RadioSlugRoute: RadioSlugRoute,
   UUsernameRoute: UUsernameRoute,
   WCodeRoute: WCodeRouteWithChildren,
