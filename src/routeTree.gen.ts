@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as WalksRouteImport } from './routes/walks'
 import { Route as TransparencyRouteImport } from './routes/transparency'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
@@ -79,6 +80,11 @@ import { Route as ApiPublicWalkCodeIcsRouteImport } from './routes/api/public/wa
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalksRoute = WalksRouteImport.update({
+  id: '/walks',
+  path: '/walks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransparencyRoute = TransparencyRouteImport.update({
@@ -430,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transparency': typeof TransparencyRoute
+  '/walks': typeof WalksRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -497,6 +504,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transparency': typeof TransparencyRoute
+  '/walks': typeof WalksRoute
   '/welcome': typeof WelcomeRoute
   '/circles': typeof AuthenticatedCirclesRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -566,6 +574,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transparency': typeof TransparencyRoute
+  '/walks': typeof WalksRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/circles': typeof AuthenticatedCirclesRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
@@ -635,6 +644,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/transparency'
+    | '/walks'
     | '/welcome'
     | '/circles'
     | '/discover'
@@ -702,6 +712,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/transparency'
+    | '/walks'
     | '/welcome'
     | '/circles'
     | '/discover'
@@ -770,6 +781,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/transparency'
+    | '/walks'
     | '/welcome'
     | '/_authenticated/circles'
     | '/_authenticated/discover'
@@ -839,6 +851,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TransparencyRoute: typeof TransparencyRoute
+  WalksRoute: typeof WalksRoute
   WelcomeRoute: typeof WelcomeRoute
   GSlugRoute: typeof GSlugRoute
   RadioSlugRoute: typeof RadioSlugRoute
@@ -860,6 +873,13 @@ declare module '@tanstack/react-router' {
       path: '/welcome'
       fullPath: '/welcome'
       preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/walks': {
+      id: '/walks'
+      path: '/walks'
+      fullPath: '/walks'
+      preLoaderRoute: typeof WalksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transparency': {
@@ -1517,6 +1537,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TransparencyRoute: TransparencyRoute,
+  WalksRoute: WalksRoute,
   WelcomeRoute: WelcomeRoute,
   GSlugRoute: GSlugRoute,
   RadioSlugRoute: RadioSlugRoute,
