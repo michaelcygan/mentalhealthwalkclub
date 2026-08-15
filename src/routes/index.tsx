@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { useAuthPrompt } from "@/lib/auth-prompt";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Footprints, CalendarPlus, BookHeart, Sparkles, MapPin } from "lucide-react";
 import { AmbientBackdrop } from "@/components/home/ambient-backdrop";
@@ -17,7 +15,6 @@ import { WeatherForecast } from "@/components/home/weather-forecast";
 import { FriendPulse } from "@/components/home/friend-pulse";
 import { RadioRail } from "@/components/home/radio-rail";
 
-import { Shimmer } from "@/components/ui/shimmer";
 import { WalkCard, type WalkCardData } from "@/components/discover/walk-card";
 import { nearbyWalksPublic } from "@/lib/nearby.functions";
 import { publicWalkBoard, type PublicBoardWalk } from "@/lib/public-utility.functions";
