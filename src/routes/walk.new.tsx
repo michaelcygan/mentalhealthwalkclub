@@ -33,7 +33,7 @@ type Audience = "open" | "group" | "link_only";
 
 function ComposeWalkPage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/_authenticated/walk/new" });
+  const search = useSearch({ from: "/walk/new" });
 
   // form state
   const [title, setTitle] = useState("");
